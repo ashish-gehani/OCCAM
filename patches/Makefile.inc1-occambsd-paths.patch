@@ -1,0 +1,20 @@
+--- Makefile.inc1.bak	2012-08-15 16:41:56.000000000 -0700
++++ Makefile.inc1	2012-08-15 16:42:59.000000000 -0700
+@@ -178,10 +178,13 @@
+ .endif
+ WORLDTMP=	${OBJTREE}${.CURDIR}/tmp
+ # /usr/games added for fortune which depend on strfile
+-BPATH=		${WORLDTMP}/legacy/usr/sbin:${WORLDTMP}/legacy/usr/bin:${WORLDTMP}/legacy/usr/games
+-XPATH=		${WORLDTMP}/usr/sbin:${WORLDTMP}/usr/bin:${WORLDTMP}/usr/games
+-STRICTTMPPATH=	${BPATH}:${XPATH}
+-TMPPATH=	${STRICTTMPPATH}:${PATH}
++BPATH_MAIN=	${WORLDTMP}/legacy/usr/sbin:${WORLDTMP}/legacy/usr/bin:${WORLDTMP}/legacy/usr/games
++BPATH=		/home/moore/occam/bin:${BPATH_MAIN}
++XPATH_MAIN=	${WORLDTMP}/usr/sbin:${WORLDTMP}/usr/bin:${WORLDTMP}/usr/games
++XPATH=		/home/moore/occam/bin:${XPATH_MAIN}
++STRICTTMPPATH_MAIN=	${BPATH_MAIN}:${XPATH_MAIN}
++STRICTTMPPATH=	/home/moore/occam/bin:${STRICTTMPPATH_MAIN}
++TMPPATH=	/home/moore/occam/bin:${STRICTTMPPATH_MAIN}:${PATH}
+ 
+ #
+ # Avoid running mktemp(1) unless actually needed.

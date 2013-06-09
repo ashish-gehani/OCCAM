@@ -1,0 +1,16 @@
+--- nweb.bak	2012-08-14 14:47:13.000000000 -0700
++++ nweb.c	2012-08-14 14:49:53.000000000 -0700
+@@ -161,11 +161,11 @@
+ 	/* Become deamon + unstopable and no zombies children (= no wait()) */
+ 	if(fork() != 0)
+ 		return 0; /* parent returns OK to shell */
+-	(void)signal(SIGCLD, SIG_IGN); /* ignore child death */
++	(void)signal(SIGCHLD, SIG_IGN); /* ignore child death */
+ 	(void)signal(SIGHUP, SIG_IGN); /* ignore terminal hangups */
+ 	for(i=0;i<32;i++)
+ 		(void)close(i);		/* close open files */
+-		(void)setpgrp();		/* break away from process group */
++	(void)setpgrp(0,0);		/* break away from process group */
+ 
+ 	log(LOG,"nweb starting",argv[1],getpid());
+ 	/* setup the network socket */

@@ -1,0 +1,18 @@
+This demo shows how to use occam2 watch to monitor code. The files
+contain the following:
+
+- main.c - the source file that will be watched.
+
+- hooks.c - the source file that provides the hooks to run.
+
+- main.hooks - the hooks file that describes how to monitor the program.
+
+The build script generates two programs: main.watched and
+main.unwatched which are the monitored and unmonitored versions of
+main.
+
+
+To build do:
+
+occam ./build.sh
+

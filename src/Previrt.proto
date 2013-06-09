@@ -1,0 +1,198 @@
+/*
+ * OCCAM
+ *
+ * Copyright © 2011-2012, SRI International
+ *
+ *  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * * Redistributions of source code must retain the above copyright notice, this
+ *   list of conditions and the following disclaimer.
+ *
+ * * Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ *
+ * * Neither the name of SRI International nor the names of its contributors may
+ *   be used to endorse or promote products derived from this software without
+ *   specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+package previrt.proto;
+
+enum Type {
+  U = 0 ; // unknown
+  I = 1 ; // integer
+  F = 2 ; // float
+  S = 3 ; // string
+  V = 4 ; // vector
+  N = 5 ; // null value of any type
+  G = 6 ; // global
+}
+
+enum FloatSemantics {
+  IEEEhalf = 1 ;
+  IEEEsingle = 2 ;
+  IEEEdouble = 3 ;
+  IEEEquad = 4 ;
+  x87DoubleExtended = 5 ;
+  Bogus = 6 ;
+  PPCDoubleDouble = 7 ; 
+}
+
+// DEAD
+/*
+message LlvmValue {
+  optional group Int = 10 {
+    required uint32 bits = 2 ;
+    optional string value = 3 ;
+  }
+  optional group Vec = 20 {
+    repeated LlvmValue elems = 21 ;
+  }
+  optional group Str = 30 {
+    optional bytes data = 31 ;
+    optional bool cstr = 32 [default=true];
+  }
+  optional group Float = 40 {
+    required FloatSemantics sem = 41 ;
+  	optional string data = 42 ;
+  }
+}
+*/
+
+message PrevirtType {
+  required Type type = 1 ;
+  optional group Int = 10 {
+    required uint32 bits = 2 ;
+    optional string value = 3 ;
+  }
+  optional group Vec = 20 {
+    repeated PrevirtType elems = 21 ;
+  }
+  optional group Str = 30 {
+    optional bytes data = 31 ;
+    optional bool cstr = 32 [default=true] ;
+  }
+  optional group Float = 40 {
+    required FloatSemantics sem = 41 ;
+  	optional string data = 42 ;
+  }
+  optional group Global = 50 {
+    required bytes name = 51 ;
+    optional bool is_const = 52 [default=false] ;
+  }
+}
+
+message CallInfo {
+  required bytes name = 1 ;
+  optional uint32 count = 2 [default = 1] ;
+  repeated PrevirtType args = 3 ;
+}
+
+message CallRewrite {
+  required CallInfo call = 1 ;
+  required bytes new_function = 2 ;
+  repeated int32 args = 3 [packed=true] ;
+}
+
+/*
+call : foo(1,?,?)
+new_function = foo_1
+args = [ 1 2 ]
+
+foo(x,y,z)
+foo(1,?,?)
+
+foo_1
+[1 2] 
+*/
+
+message ComponentInterface {
+  repeated CallInfo    calls = 1 ;  // USED
+  repeated CallInfo    definitions = 2 ; // Not implemented?
+  repeated PrevirtType globals = 3 ;
+  repeated bytes       references = 4 ;
+}
+
+message ComponentInterfaceTransform {
+  repeated CallRewrite calls = 1 ;
+}
+
+// Enforcement
+enum ActionType {
+  CASE    = 1 ;
+  FORWARD = 2 ;
+  EVENT   = 3 ;
+  FAIL    = 4 ;
+}
+
+message ActionTree {
+  required ActionType type = 1 ;
+  optional group Case = 10 {
+  	required int32 var = 11 ;
+    required PrevirtType test = 12 ;
+    
+    required ActionTree _then = 18 ;
+    required ActionTree _else = 19 ;
+  }
+  optional group Forward = 20 {
+    
+  }
+  optional group Event = 30 {
+    optional bool exit = 31 [default=false] ;
+    optional bytes handler = 32 ;
+    repeated int32 args = 33 ; 
+    
+    optional ActionTree then = 39 ;   
+  }
+}
+
+message EnforceInterface {
+  repeated group Functions = 1 {
+    required bytes name = 2 ;
+    required ActionTree actions = 3 ;
+  }
+}
+
+// Not Needed Yet
+/*
+enum PredType {
+  ARG  = 1 ;
+  GLOB = 2 ;
+  RET  = 3 ;
+  AND  = 4 ;
+  OR   = 5 ;
+  EQ   = 6 ;
+  LT   = 7 ;
+  LE   = 8 ;
+  CALL = 9 ;
+}
+
+message Expr {
+  required PredType type = 1 ;
+  optional group BinOp = 10 {
+    required Expr left = 11 ;
+    required Expr right = 12 ;  
+  }
+  optional group Call = 20 {
+  	required bytes name = 21 ;
+  	repeated Expr args = 22 ;
+  }
+  optional uint32 Arg = 31 ;
+  optional bytes Global = 32 ;
+}
+*/

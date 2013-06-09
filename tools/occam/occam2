@@ -1,0 +1,88 @@
+#!/usr/local/bin/python
+
+# ------------------------------------------------------------------------------
+# OCCAM
+#
+# Copyright © 2011-2012, SRI International
+#
+#  All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# * Redistributions of source code must retain the above copyright notice, this
+#   list of conditions and the following disclaimer.
+#
+# * Redistributions in binary form must reproduce the above copyright notice,
+#   this list of conditions and the following disclaimer in the documentation
+#   and/or other materials provided with the distribution.
+#
+# * Neither the name of SRI International nor the names of its contributors may
+#   be used to endorse or promote products derived from this software without
+#   specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# ------------------------------------------------------------------------------
+
+from occam import target
+#from occam.targets import *
+import logging
+import sys, os
+
+#iam thinks this is a relic
+#def isChild():
+#    cmd = open('/proc/%d/cmdline' % os.getppid(),'r').read()
+#    return (cmd.startswith('gcc')) or ('llvm-ld' in cmd) or \
+#        cmd.startswith(STD['gcc']) or cmd.endswith('ranlib')
+
+if __name__ == '__main__':
+    # Set up the logger
+    logger = logging.getLogger()
+    hdlr = logging.FileHandler('/tmp/.log')
+    hdlr.setFormatter(logging.Formatter("%(message)s"))
+    logger.addHandler(hdlr)
+    if os.environ.has_key('OCCAM_LOGFILE'):
+        hdlr = logging.FileHandler(os.environ['OCCAM_LOGFILE'])
+        hdlr.setFormatter(logging.Formatter("%(message)s"))
+        logger.addHandler(hdlr)
+
+    
+    levels = {'CRITICAL' : logging.CRITICAL,
+              'ERROR' : logging.ERROR,
+              'WARNING' : logging.WARNING,
+              'INFO' : logging.INFO,
+              'DEBUG' : logging.DEBUG
+              }
+    level = None
+    if os.environ.has_key('OCCAM_LOGLEVEL'):
+        level = levels[os.environ['OCCAM_LOGLEVEL']]
+    if level is None:
+        level = logging.WARNING        
+    logger.setLevel(level)
+
+    logger.info(">> %s\n" % ' '.join(sys.argv))
+
+    # Determine what tool we are running
+    tool_name = os.path.basename(sys.argv[0])
+
+    # Now, do the standard part of the compile
+    # When we use this program directly we're going to just use
+    # the arguments
+    if tool_name != 'occam2':
+        if tool_name.startswith('occam-'):
+            tool_name = tool_name[6:]
+        exit(target.run(sys.argv[1:], tool=tool_name))
+    else:
+        exit(target.run(sys.argv[1:]))
+
+else:
+    assert False and "Don't include this file!"

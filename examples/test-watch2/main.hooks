@@ -1,0 +1,7 @@
+hook /foo/ () 
+{
+  call [ "enter_" $0 ] ( %0 ) ;
+  forward ;
+  call [ "exit_" $0 ] ( %0, %-1 ) ;
+  return %-2
+}

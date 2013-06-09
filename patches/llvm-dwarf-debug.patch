@@ -1,0 +1,80 @@
+--- a/llvm/lib/CodeGen/AsmPrinter/DwarfDebug.cpp	Fri May 18 17:32:31 2012 -0700
++++ a/llvm/lib/CodeGen/AsmPrinter/DwarfDebug.cpp	Thu May 24 18:06:26 2012 -0700
+@@ -520,7 +520,8 @@ 
+ /// in the SourceIds map. This can update DirectoryNames and SourceFileNames
+ /// maps as well.
+ unsigned DwarfDebug::GetOrCreateSourceID(StringRef FileName, 
+-                                         StringRef DirName) {
++                                         StringRef DirName,
++                                         StringRef Extra) {
+   // If FE did not provide a file name, then assume stdin.
+   if (FileName.empty())
+     return GetOrCreateSourceID("<stdin>", StringRef());
+@@ -536,6 +537,8 @@ 
+   NamePair += DirName;
+   NamePair += '\0'; // Zero bytes are not allowed in paths.
+   NamePair += FileName;
++  NamePair += '\0'; // Zero bytes are not allowed in paths.
++  NamePair += Extra;
+ 
+   StringMapEntry<unsigned> &Ent = SourceIdMap.GetOrCreateValue(NamePair, SrcId);
+   if (Ent.getValue() != SrcId)
+@@ -547,13 +550,37 @@ 
+   return SrcId;
+ }
+ 
++// 
++// A special version of GetOrCreateSourceID for CompileUnits.
++// It is possible that with bitcode linking, we end up with distinct
++// compile units based on the same source file.
++// E.g., compile foo.c with -DMACRO1 to foo1.bc, then compile
++// foo.c again with -DMACRO2 to foo2.bc and link.
++// We use additional information (currently the pointer val), to form
++// a unique ID in that case.
++unsigned DwarfDebug::GetOrCreateSourceID(StringRef Filename,
++                                         StringRef Dirname,
++                                         const MDNode *N) {
++  std::string DIUnitStr;
++  raw_string_ostream ostr(DIUnitStr);
++
++  // DIUnit->print() just prints the filename and stringifying
++  // getEnumTypes(), getRetainedTypes(), getSubprograms(), getGlobalVariables()
++  // could be pretty expensive.
++  // Cheat and use the MDNode's address as an additional identifying factor...
++  // constructCompileUnit() is only called once per compile unit.
++  ostr << static_cast<const void*>(N);
++  return GetOrCreateSourceID(Filename, Dirname, ostr.str());
++}
++
++
+ /// constructCompileUnit - Create new CompileUnit for the given
+ /// metadata node with tag DW_TAG_compile_unit.
+ CompileUnit *DwarfDebug::constructCompileUnit(const MDNode *N) {
+   DICompileUnit DIUnit(N);
+   StringRef FN = DIUnit.getFilename();
+   CompilationDir = DIUnit.getDirectory();
+-  unsigned ID = GetOrCreateSourceID(FN, CompilationDir);
++  unsigned ID = GetOrCreateSourceID(FN, CompilationDir, N);
+ 
+   DIE *Die = new DIE(dwarf::DW_TAG_compile_unit);
+   CompileUnit *NewCU = new CompileUnit(ID, DIUnit.getLanguage(), Die, Asm, this);
+--- a/llvm/lib/CodeGen/AsmPrinter/DwarfDebug.h			  Fri May 18 17:32:31 2012 -0700
++++ a/llvm/lib/CodeGen/AsmPrinter/DwarfDebug.h			  Thu May 24 18:06:26 2012 -0700
+@@ -515,7 +515,16 @@ 
+   /// GetOrCreateSourceID - Look up the source id with the given directory and
+   /// source file names. If none currently exists, create a new id and insert it
+   /// in the SourceIds map.
+-  unsigned GetOrCreateSourceID(StringRef DirName, StringRef FullName);
++  unsigned GetOrCreateSourceID(StringRef DirName, StringRef FullName,
++                               StringRef Extra = "");
++
++  // GetOrCreateSourceID - Create an ID for CompileUnits, taking extra care
++  // in the case that we have multiple compile units coming from the
++  // same source file and directory.
++  unsigned GetOrCreateSourceID(StringRef FileName, StringRef DirName,
++                               const MDNode *N);
++
++
+ 
+   /// createSubprogramDIE - Create new DIE using SP.
+   DIE *createSubprogramDIE(DISubprogram SP);

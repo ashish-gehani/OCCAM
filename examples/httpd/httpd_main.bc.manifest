@@ -1,0 +1,38 @@
+{
+"binary": "httpd.bc", 
+"search": [
+"/usr/local/lib", 
+"/usr/bin/../lib/clang/3.1", 
+"/usr/lib"
+], 
+"native-libs": [
+"-lc", 
+"-lpthread"
+], 
+"modules": [
+"httpd_main.bc"
+], 
+"libs": [
+"-lz", 
+"-lssl", 
+"-lcrypto", 
+"-lcrypt"
+], 
+"shared": [
+"-lexpat"
+],
+"args": [
+"-X",
+"-d", "/home/moore/root",
+"-f", "httpd.conf",
+"-C", "Listen 8181",
+"-C", "LogLevel debug",
+"-C", "User apache", 
+"-C", "Group apache", 
+"-C", "ServerName localhost", 
+"-C", "ErrorLog /home/moore/root/error_log", 
+"-C", "DocumentRoot /home/moore/root/www", 
+"-C", "AddType text/plain .html",
+"-k", "start"
+]
+}

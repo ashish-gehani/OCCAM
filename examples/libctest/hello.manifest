@@ -1,0 +1,7 @@
+{ "binary"  : "hello"
+, "modules" : ["main.bc"]
+, "args"    : ["Hello bitcode world!"]
+, "name"    : "hello"
+, "search"  : ["."]
+, "libs"    : ["-lc"]
+}
