@@ -64,6 +64,7 @@ See the FreeBSD handbook section 5 for instructions. Quick and dirty:
    su -
    cd /usr/ports
    cd shells/bash && make -DBATCH install clean && \
+     cd ../../devel/git && make -DBATCH install clean && \
      cd ../../devel/subversion && make -DBATCH install clean && \
      cd ../../devel/protobuf && make -DBATCH install clean
 
@@ -79,7 +80,7 @@ a little easier. You can do this, or replace commands including sudo below.
 
 3. Checkout the BSD branch of SelfContainedPrevirt
 
-   svn co svn+ssh://spartan.csl.sri.com/svn/private/occam/SelfContainedPrevirt/branches/bsd SelfContainedPrevirt
+   git clone https://code.google.com/p/application-specialization/ SelfContainedPrevirt
    export OCCAM_SRC=`pwd`/SelfContainedPrevirt
 
 4. LLVM and Clang 3.1
