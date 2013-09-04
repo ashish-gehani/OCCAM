@@ -58,7 +58,7 @@ RELENG_9_0_0_RELEASE or later.
 2. Necessary ports
 
 Install the following ports using the BSD port tree: 
-  bash subversion python27 protobuf
+  bash git subversion python27 protobuf
 See the FreeBSD handbook section 5 for instructions. Quick and dirty:
 
    su -
