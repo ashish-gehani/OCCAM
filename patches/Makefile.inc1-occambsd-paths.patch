@@ -9,12 +9,12 @@
 -STRICTTMPPATH=	${BPATH}:${XPATH}
 -TMPPATH=	${STRICTTMPPATH}:${PATH}
 +BPATH_MAIN=	${WORLDTMP}/legacy/usr/sbin:${WORLDTMP}/legacy/usr/bin:${WORLDTMP}/legacy/usr/games
-+BPATH=		/home/moore/occam/bin:${BPATH_MAIN}
++BPATH=		${OCCAM_HOME}/bin:${BPATH_MAIN}
 +XPATH_MAIN=	${WORLDTMP}/usr/sbin:${WORLDTMP}/usr/bin:${WORLDTMP}/usr/games
-+XPATH=		/home/moore/occam/bin:${XPATH_MAIN}
++XPATH=		${OCCAM_HOME}/bin:${XPATH_MAIN}
 +STRICTTMPPATH_MAIN=	${BPATH_MAIN}:${XPATH_MAIN}
-+STRICTTMPPATH=	/home/moore/occam/bin:${STRICTTMPPATH_MAIN}
-+TMPPATH=	/home/moore/occam/bin:${STRICTTMPPATH_MAIN}:${PATH}
++STRICTTMPPATH=	${OCCAM_HOME}/bin:${STRICTTMPPATH_MAIN}
++TMPPATH=	${OCCAM_HOME}/bin:${STRICTTMPPATH_MAIN}:${PATH}
  
  #
  # Avoid running mktemp(1) unless actually needed.
