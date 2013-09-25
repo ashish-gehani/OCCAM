@@ -171,9 +171,7 @@ takes.
 
   cd /usr/src
   sudo patch -p1 < $OCCAM_SRC/patches/Makefile.inc1-occambsd-paths.patch
-  XXX patch is my paths... need to change based on occam install location
   sudo cp $OCCAM_SRC/patches/src.conf /etc/src.conf
-  XXX edit occam_base to point to $OCCAM_HOME
 
 Before starting the build, you can choose to record logs from the occam tool by
 setting the following variables:
