@@ -26,7 +26,7 @@ export OCCAM_LIB = $(OCCAM_HOME)/lib
 
 MKDIR_P = mkdir -p
 INSTALL = install
-MAKE = make
+MAKE = gmake
 
 #
 # Build the libprevirt.so in src
