@@ -136,13 +136,13 @@ SelfContainedPrevirt. There is a dependency issue in the Makefiles I still need
 to fix, so you may need to invoke gmake twice to get it to build...
 
   gmake ; gmake
-  sudo gmake install
+  sudo -E gmake install
 
 If you make modifications to the python scripts and want to install the new ones
 without rebuilding the C library, do "sudo gmake install-occam".
 
 Create an alias to the occam toolchain wrapper. For bash, add the following to
-.bashrc or .bash_profile:
+.profile:
 
   alias occam=$OCCAM_HOME/bin/occam
 
