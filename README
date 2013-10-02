@@ -130,10 +130,11 @@ will still be installed
   export OCCAM_HOME=~/occam
   cd $OCCAM_SRC
 
-Edit the Makefile and and uncomment the lines exporting these variables at the 
-top of the file. Change the paths to your choices. Now make and install 
-SelfContainedPrevirt. There is a dependency issue in the Makefiles I still need 
-to fix, so you may need to invoke gmake twice to get it to build...
+Edit the Makefile and uncomment the lines exporting LLVM_HOME and OCCAM_HOME at the 
+top of the file, if they are not set in your environment. Change the paths to your 
+choices. Now make and install SelfContainedPrevirt. There is a dependency issue in 
+the Makefiles that still needs to be fixed, so you may need to invoke gmake twice 
+to get it to build...
 
   gmake ; gmake
   sudo -E gmake install
