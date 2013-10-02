@@ -5,11 +5,11 @@
 #  set LLVM_HOME to the install directory of LLVM
 #  set OCCAM_HOME to where you want the Occam tools to be installed
 #
-# Then type make, followed make install (or sudo -E make install).
+# Then type gmake, followed gmake install (or sudo -E gmake install).
 #
 
-export LLVM_HOME=/usr/local
-export OCCAM_HOME=/home/moore/occam
+# export LLVM_HOME=/usr/local
+# export OCCAM_HOME=/home/moore/occam
 
 ifneq (,)
 This Makefile requires GNU Make.
