@@ -209,7 +209,7 @@ Option 1) Actually install your new "world"
      make installkernel                            (don't use -j)
      mergemaster -p
      occam make installworld                       (don't use -j)
-     mergermaster -iU
+     mergemaster -iU
      shutdown -r now
 
   When the machine comes back up, you should have a full BSD system with bitcode
