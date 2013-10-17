@@ -60,7 +60,7 @@ class ClangTool (par.ParallelTool, argparser.ArgParser):
         'flax-vector-conversions', 'fblocks', 'fobjc-gc-only',
         'fobjc-gc', 'fobjc-nonfragile-abi', 'fno-objc-nonfragile-abi',
         'miphoneos-version-min', 'O0', 'O1', 'O2', 'Os', 'Oz',
-        'O3', 'O4', 'g', 'fexceptions', 'ftrapv', 'fvisibility',
+        'O3', 'O4', 'g', 'fexceptions', 'ftrapv', 'fvisibility', 'frename-registers', 
         'fcommon', 'flto', 'emit-llvm', '###', 'help',
         'Qunused-arguments', 'print-libgcc-file-name',
         'print-search-dirs', 'save-temps', 'integrated-as',
