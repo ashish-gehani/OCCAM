@@ -54,7 +54,7 @@ def useAsm(flags):
 class ClangTool (par.ParallelTool, argparser.ArgParser):
     def flags(self): return [
         'E', 'fsyntax-only', 'S', 'c', 'analyze', 'ansi', 'pg', 'p',
-        'ObjC++', 'ObjC', 'trigraphs', 'ffreestanding',
+        'ObjC++', 'ObjC', 'trigraphs', 'ffreestanding', 'fwrapv', 
         'fno-builtin', 'fmath-errno', 'fpascal-strings',
         'fms-extensions', 'fborland-extensions', 'fwritable-strings',
         'flax-vector-conversions', 'fblocks', 'fobjc-gc-only',
