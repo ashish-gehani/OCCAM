@@ -66,7 +66,8 @@ See the FreeBSD handbook section 5 for instructions. Quick and dirty:
    cd shells/bash && make -DBATCH install clean && \
      cd ../../devel/git && make -DBATCH install clean && \
      cd ../../devel/subversion && make -DBATCH install clean && \
-     cd ../../devel/protobuf && make -DBATCH install clean
+     cd ../../devel/protobuf && make -DBATCH install clean && \
+     cd ../../devel/py-protobuf && make -DBATCH install clean
 
 (Python27 is a prerequisite of subversion so that takes care of it)
 
@@ -204,10 +205,25 @@ Option 1) Actually install your new "world"
   
   !!! You'll need non-ssh access to the box for this.
 
+  If you don't want to rebuild the kernel, only perform the second step 
+  of the below four:
+
      make buildkernel
      shutdown now                                  (drops into single user mode)
      make installkernel                            (don't use -j)
      mergemaster -p
+
+  Switching to single user mode results in a new shell, where environment
+  variables and aliases must be set again:
+
+     export OCCAM_HOME=/usr/local/occam
+     export OCCAM_LOGFILE=/tmp/occam.log
+     export OCCAM_LOGLEVEL=INFO
+     export MAKEOBJDIRPREFIX=$OBJ_DIR
+     alias occam=$OCCAM_HOME/bin/occam
+
+  The new world can now be installed:
+
      occam make installworld                       (don't use -j)
      mergemaster -iU
      shutdown -r now
