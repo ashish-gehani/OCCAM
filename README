@@ -172,7 +172,7 @@ we're at it we'll turn off some parts of the build to reduce how much time it
 takes.
 
   cd /usr/src
-  sudo patch -p1 < $OCCAM_SRC/patches/Makefile.inc1-occambsd-paths.patch
+  sudo patch -p1 < $OCCAM_SRC/patches/Makefile.inc1-occam.patch
   sudo cp $OCCAM_SRC/patches/src.conf /etc/src.conf
 
 Before starting the build, you can choose to record logs from the occam tool by
@@ -205,11 +205,12 @@ Option 1) Actually install your new "world"
   
   !!! You'll need non-ssh access to the box for this.
 
-  If you don't want to rebuild the kernel, only perform the second step 
-  of the below four:
+  If you don't want to rebuild the kernel, only perform the third step 
+  of the below five:
 
+     cd /usr/src
      make buildkernel
-     shutdown now                                  (drops into single user mode)
+     sudo shutdown now              (drops into single user mode)
      make installkernel                            (don't use -j)
      mergemaster -p
 
@@ -224,6 +225,7 @@ Option 1) Actually install your new "world"
 
   The new world can now be installed:
 
+     cd /usr/src
      occam make installworld                       (don't use -j)
      mergemaster -iU
      shutdown -r now
