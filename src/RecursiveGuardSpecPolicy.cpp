@@ -31,7 +31,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-#include "llvm/Function.h"
+#include "llvm/IR/Function.h"
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -53,12 +53,12 @@ namespace previrt
     typedef std::map<Function*, int> SCC;
 
   private:
-    CallGraph& cg;
+    CallGraphWrapperPass& cg;
     SpecializationPolicy* const delegate;
     SCC sccs;
 
   private:
-    RecursiveGuardSpecPolicy(SpecializationPolicy* delegate, CallGraph& CG);
+    RecursiveGuardSpecPolicy(SpecializationPolicy* delegate, CallGraphWrapperPass& CG);
 
   public:
     virtual
@@ -88,11 +88,11 @@ namespace previrt
   private:
     friend SpecializationPolicy*
     SpecializationPolicy::recursiveGuard(SpecializationPolicy*,
-        llvm::CallGraph&);
+        llvm::CallGraphWrapperPass&);
   };
 
   static void
-  strongconnect(CallGraphNode* from, CallGraph& cg,
+  strongconnect(CallGraphNode* from, CallGraphWrapperPass& cg,
       std::list<Function*>& stack, std::set<Function*>& stack_contents,
       std::map<const Function*, std::pair<int, int> >& indicies, int& next_idx,
       RecursiveGuardSpecPolicy::SCC& result)
@@ -137,14 +137,14 @@ namespace previrt
   }
 
   static void
-  scc(CallGraph &cg, RecursiveGuardSpecPolicy::SCC& scc)
+  scc(CallGraphWrapperPass &cg, RecursiveGuardSpecPolicy::SCC& scc)
   {
     std::map<const Function*, std::pair<int, int> > indicies;
     std::list<Function*> stack;
     std::set<Function*> stack_contents;
     int index = 0;
 
-    for (CallGraph::iterator i = cg.begin(), e = cg.end(); i != e; ++i) {
+    for (CallGraphWrapperPass::iterator i = cg.begin(), e = cg.end(); i != e; ++i) {
       if (indicies.find(i->first) == indicies.end()) {
         strongconnect(i->second, cg, stack, stack_contents, indicies, index, scc);
       }
@@ -152,7 +152,7 @@ namespace previrt
   }
 
   RecursiveGuardSpecPolicy::RecursiveGuardSpecPolicy(
-      SpecializationPolicy* _delegate, CallGraph& _cg) :
+      SpecializationPolicy* _delegate, CallGraphWrapperPass& _cg) :
     cg(_cg), delegate(_delegate)
   {
     assert(delegate != NULL);
@@ -217,7 +217,7 @@ namespace previrt
 
   SpecializationPolicy*
   SpecializationPolicy::recursiveGuard(SpecializationPolicy* policy,
-      llvm::CallGraph& cg)
+      llvm::CallGraphWrapperPass& cg)
   {
     return new RecursiveGuardSpecPolicy(policy, cg);
   }

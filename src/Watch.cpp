@@ -31,13 +31,13 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-#include "llvm/User.h"
-#include "llvm/Module.h"
-#include "llvm/Instructions.h"
+#include "llvm/IR/User.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Instructions.h"
 #include "llvm/Pass.h"
 #include "llvm/Transforms/Utils/Cloning.h"
-#include "llvm/Support/IRBuilder.h"
-#include "llvm/Support/CallSite.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/CallSite.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/ADT/StringMap.h"
@@ -126,7 +126,7 @@ namespace previrt
             ArrayRef<Type*> (Type::getInt32Ty(M->getContext())), false);
       }
       failureFunction = Function::Create(typ, GlobalVariable::ExternalLinkage, failureName, M);
-      failureFunction->setDoesNotReturn(true);
+      failureFunction->setDoesNotReturn();
       return failureFunction;
     }
   }
@@ -368,7 +368,8 @@ namespace previrt
           inside->takeName(delegate);
         } else {
           inside = delegate;
-          delegate = CloneFunction(inside);
+          ValueToValueMapTy VMap;
+          delegate = CloneFunction(inside, VMap, true); // Being conservative, cloning debug info metadata
           M.getFunctionList().push_back(delegate);
           inside->deleteBody();
         }

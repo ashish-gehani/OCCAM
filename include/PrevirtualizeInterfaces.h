@@ -35,7 +35,7 @@
 #define __PREVIRTUALIZE_INTERFACES_H__
 
 #include "llvm/ADT/StringMap.h"
-#include "llvm/Function.h"
+#include "llvm/IR/Function.h"
 
 #include <vector>
 #include <string>

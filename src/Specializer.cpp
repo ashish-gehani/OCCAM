@@ -31,16 +31,16 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-#include "llvm/Function.h"
-#include "llvm/Module.h"
-#include "llvm/Value.h"
-#include "llvm/Constants.h"
-#include "llvm/GlobalVariable.h"
-#include "llvm/Instructions.h"
-#include "llvm/ADT/ValueMap.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Value.h"
+#include "llvm/IR/Constants.h"
+#include "llvm/IR/GlobalVariable.h"
+#include "llvm/IR/Instructions.h"
+#include "llvm/IR/ValueMap.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
-#include "llvm/Support/InstIterator.h"
+#include "llvm/IR/InstIterator.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include "llvm/ADT/ArrayRef.h"
@@ -117,8 +117,7 @@ namespace previrt
         assert(arg->getType() == args[i]->getType()
 	       && "Specializing argument with concrete value of wrong type!");
 
-        vmap.insert(std::pair<Value*, TrackingVH<Value> >(arg,
-            args[i]));
+        vmap.insert(std::pair<Value*, WeakVH>(arg, args[i]));
         PrevirtType pt = PrevirtType::abstract(args[i]);
         argNames[j] = pt.to_string();
         /*
@@ -246,7 +245,7 @@ namespace previrt
   materializeStringLiteral(llvm::Module& m, const char* data)
   {
     Constant* ary = llvm::ConstantDataArray::getString(m.getContext(), data, true);
-    GlobalVariable* gv = new GlobalVariable(m, ary->getType(), true, GlobalValue::LinkerPrivateLinkage, ary, "");
+    GlobalVariable* gv = new GlobalVariable(m, ary->getType(), true, GlobalValue::LinkageTypes::PrivateLinkage, ary, "");
     gv->setConstant(true);
 
     return gv;

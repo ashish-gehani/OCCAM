@@ -31,15 +31,15 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-#include "llvm/Value.h"
-#include "llvm/User.h"
-#include "llvm/Module.h"
-#include "llvm/Instructions.h"
+#include "llvm/IR/Value.h"
+#include "llvm/IR/User.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Instructions.h"
 #include "llvm/Pass.h"
-#include "llvm/Constants.h"
+#include "llvm/IR/Constants.h"
 #include "llvm/Transforms/Utils/Cloning.h"
-#include "llvm/Support/IRBuilder.h"
-#include "llvm/Support/CallSite.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/CallSite.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/ADT/StringMap.h"
@@ -247,7 +247,8 @@ namespace previrt
     }
 
     // The normal case is a string that is constructed from components
-    Twine name;
+    std::vector<Twine> names(exprs.size()+1); // Use a vector since Twines are no longer assignable. Previously a bug too, since it would have resulted in undefined behaviour
+    names.emplace_back();
     for (google::protobuf::RepeatedPtrField<watch::proto::PrimExpr>::const_iterator
         i = exprs.begin(), e = exprs.end(); i != e; ++i) {
       if (i->has_var() || i->has_lit()) {
@@ -259,14 +260,14 @@ namespace previrt
           errs() << "didn't find! " << i->match() << "\n";
           return NULL;
         }
-        name = name.concat(res);
+        names.push_back(names.back().concat(res));
       } else if (i->has_str()) {
         // Get the string...
-        name = name.concat(i->str());
+        names.push_back(names.back().concat(i->str()));
       }
     }
 
-    std::string fullName = name.str();
+    std::string fullName = names.back().str();
     Constant* f = this->module->getFunction(fullName);
     if (f != NULL)
       return f;
@@ -348,7 +349,7 @@ namespace previrt
       failureFunction = Function::Create(typ, GlobalVariable::ExternalLinkage,
           failureName);
       ctx->added_functions.push_back(failureFunction);
-      failureFunction->setDoesNotReturn(true);
+      failureFunction->setDoesNotReturn();
       return failureFunction;
     }
   }
@@ -700,7 +701,7 @@ namespace previrt
   static const Function*
   getAliasedFunction(const GlobalAlias* alias)
   {
-    const GlobalValue* gv = alias->getAliasedGlobal();
+    const GlobalValue* gv = alias->getBaseObject();
     if (gv == NULL)
       return NULL;
     if (const Function* f = dyn_cast<Function>(gv)) {
@@ -797,7 +798,8 @@ namespace previrt
               inside->takeName(delegate);
             } else {
               inside = delegate;
-              delegate = CloneFunction(inside);
+              ValueToValueMapTy VMap;
+              delegate = CloneFunction(inside, VMap, true); // Being conservative, cloning debug info metadata
               context.added_functions.push_back(delegate);
               inside->deleteBody();
             }

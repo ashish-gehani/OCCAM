@@ -46,7 +46,7 @@
 
 namespace llvm
 {
-  class CallGraph;
+  class CallGraphWrapperPass;
 }
 
 namespace previrt
@@ -91,7 +91,7 @@ namespace previrt
     conservativePolicy();
 
     static SpecializationPolicy*
-    recursiveGuard(SpecializationPolicy*, llvm::CallGraph&);
+    recursiveGuard(SpecializationPolicy*, llvm::CallGraphWrapperPass&);
   };
 }
 
