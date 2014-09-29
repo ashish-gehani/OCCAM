@@ -23,22 +23,24 @@ PROTOC = $(shell which protoc)
 
 LIBRARYNAME=libprevirt
 
-OBJECTS := $(patsubst %.cpp,%.o,$(wildcard *.cpp)) proto/Previrt.pb.o  proto/Watch.pb.o 
+OBJECTS := proto/Previrt.pb.o proto/Watch.pb.o $(patsubst %.cpp,%.o,$(wildcard *.cpp)) 
 
 INSTALL = install
 
 all: ${LIBRARYNAME}.so
 
-${LIBRARYNAME}.so: ${OBJECTS}
+${LIBRARYNAME}.so: 
+	$(MAKE) protoc 
+	$(MAKE) lib
+
+lib: ${OBJECTS}
 	$(CXX) ${OBJECTS} -shared -Wl,-soname,${LIBRARYNAME}.so -o ${LIBRARYNAME}.so ${CXX_FLAGS} ${LDFLAGS} -lpthread -lprotobuf
 
-
-%.o: %.cpp protoc
+%.o: %.cpp
 	$(CXX) -I. ${CXX_FLAGS} $< -c 
 
-proto/%.o: proto/%.cc proto/%.h protoc
+proto/%.o: proto/%.cc proto/%.h 
 	$(CXX)   -DGOOGLE_PROTOBUF_NO_RTTI ${CXX_FLAGS} $< -c -o $@
-
 
 protoc: Watch.proto Previrt.proto
 	mkdir -p proto
@@ -49,5 +51,13 @@ clean:
 	rm -rf ${OBJECTS} proto ${LIBRARYNAME}.so
 
 
-install: $(LIBRARYNAME).so
+install: check-occam-lib $(LIBRARYNAME).so
 	$(INSTALL) -m 664 $(LIBRARYNAME).so $(OCCAM_LIB)
+
+#
+# Check for OCCAM_LIB
+#
+check-occam-lib:
+ifeq ($(OCCAM_LIB),)
+	$(error OCCAM_LIB is undefined)
+endif

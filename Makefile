@@ -32,7 +32,7 @@ MAKE = gmake
 # Build the libprevirt.so in src
 # and the config.py file in tools/occam/occam
 #
-all:
+all: 
 	$(MAKE) -C src all
 	$(MAKE) -C tools/occam config
 
@@ -40,7 +40,7 @@ all:
 # Install all tools needed by occam in INSTALL_DIR
 # (may need sudo -E for this to work)
 #
-install: install-previrt install-occam install-tools
+install: check-occam-home install-previrt install-occam install-tools
 
 install-dirs:
 	$(MKDIR_P) $(OCCAM_BIN)
@@ -61,12 +61,20 @@ install-tools:
 # Remove the INSTALL_DIR directory and everything in it
 # (may need sudo for this)
 #
-uninstall:
+uninstall: check-occam-home
 	$(MAKE) -C tools/occam uninstall
 
 #
 # Delete the object files from src
 #
-clean:
+clean: 
 	$(MAKE) -C src clean
 	$(MAKE) -C tools/occam clean
+
+#
+# Check for OCCAM_HOME
+#
+check-occam-home:
+ifeq ($(OCCAM_HOME),)
+	$(error OCCAM_HOME is undefined)
+endif

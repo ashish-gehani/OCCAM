@@ -15,7 +15,7 @@ config:
 clean:
 	rm -rf occam/config.py build
 
-install:
+install: check-occam-bin
 	$(INSTALL) -m 775 occam2 ${OCCAM_BIN}
 	$(INSTALL) -m 775 occam_environment ${OCCAM_BIN}/occam
 	for x in clean enforce interface peval rewrite show simplify slice build; do \
@@ -32,8 +32,16 @@ install:
 	done
 	$(PYTHON) setup.py install
 
-uninstall:
+uninstall: check-occam-bin
 	rm -rf ${OCCAM_BIN} ${OCCAM_PBIN}
 
 lint:
 	@ $(PYLINT) -E occam/*.py occam/targets/*.py
+
+#
+# Check for OCCAM_BIN
+#
+check-occam-bin:
+ifeq ($(OCCAM_BIN),)
+	$(error OCCAM_BIN is undefined)
+endif
