@@ -367,16 +367,13 @@ class PrevirtTool (target.Target):
                 return None
         searchflags = [x for x in map(toLflag,search) if x is not None]
 
+        xlinker_start = ['-Wl,-static']
         if '-lpthread' in native_libs:
-            native_libs.append('-Xlinker=-pthread')
+            xlinker_start.append('-Wl,-pthread')
+        xlinker_end = ['-Wl,-call_shared']
         # Link everything together
         sys.stderr.write("linking...")
-        sys.stderr.write(config.LLVM['ld'])
-        driver.run(config.LLVM['ld'],
-                   ['-native'] +
-                   ['-o=%s' % binary] +
-                   [files[m].get() for m in modules] + final_libs + 
-                   searchflags + shared + ['-Xlinker=-static'] + native_libs)
+        toolchain.llvmLDWrapper(binary, [files[m].get() for m in modules], final_libs, searchflags, shared, xlinker_start, native_libs, xlinker_end, [])
         sys.stderr.write("done\n")
         
         if not (POOL is None):

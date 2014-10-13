@@ -1,7 +1,5 @@
 #!/usr/local/bin/bash
 
-export OCCAM_LOGFILE=occam.log
-
 ROOT=`pwd`/root
 
 # Build the manifest file
@@ -33,4 +31,5 @@ ln -s previrt/nweb .
 # Now build the non-previrt application
 opt -O3 nweb.bc -o nweb.opt.bc
 
-llvm-ld -native -Xlinker=-static -o nweb-base nweb.opt.bc
+llc -filetype=obj -o nweb.opt.o nweb.opt.bc
+clang nweb.opt.o -o nweb-base 

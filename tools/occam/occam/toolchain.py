@@ -40,6 +40,7 @@ import tempfile, logging
 import json
 import subprocess
 import collections
+import sys
 
 def assemble(input_file, output_file, args):
     return driver.run(config.LLVM['as'],
@@ -126,10 +127,26 @@ def archive_to_module(input_file, output_file, minimal=None):
                         contents = contents + [x]
                         undef_symbols = undef_symbols.union(undefined(s)).difference(defed)
                         progress = True
-    driver.run(config.LLVM['ld'],
-               ['-link-as-library', '-o=%s' % output_file] + \
-                [os.path.join(d, x) for x in contents])
+    driver.run(config.STD['ld'], ['-o=%s' % output_file] + \
+               [os.path.join(d, x) for x in contents])
     shutil.rmtree(d)
+
+def llvmLDWrapper(output, inputs, found_libs, searchflags, shared, xlinker_start, native_libs, xlinker_end, flags):
+    inputs_in_bc = [i for i in inputs if i.endswith('.bc')]
+    for input in inputs_in_bc:
+        driver.run(config.LLVM['llc'], ['-filetype=obj', '-o=%s.o' % input, input])
+    new_inputs = []
+    for input in inputs:
+        if input.endswith('.bc'):
+            new_inputs.append('%s.o' % input)
+        else:
+            new_inputs.append(input)
+    args = new_inputs + found_libs + searchflags + shared + xlinker_start + native_libs + xlinker_end
+    for (a,b) in flags:
+        if a == '-O':
+            args += ['-O%s' % b]
+    args += ['-o%s' % output]
+    return driver.run(config.LLVM['clang'], args)
 
 class LibNotFound (Exception):
     def __init__(self, lib, path):
@@ -185,11 +202,9 @@ def findlib(l, paths):
 #    raise LibNotFound(l,paths)
 
 def bundle(output, inputs, libs, paths):
-    args = ['-link-as-library', '-o=%s' % output] + libs
-    args += inputs + [x for x in [findlib(x, paths) for x in libs]
-                      if not (x is None)]
-    return driver.run(config.LLVM['ld'], args)
-
+    args = ['-o=%s' % output]
+    args += inputs + [x for x in [findlib(x, paths) for x in libs] if not (x is None)]
+    return driver.run(config.LLVM['link'], args)
 
 def clean(input_file, output_file):
     # TODO: I shouldn't need to do this, but I'm getting \01 characters
@@ -287,7 +302,6 @@ def link(inputs, output_file, args, save=None, link=True):
 
             if link and '.o' not in output_file:
                 args = ["%s.manifest" % main_name, "%s" % output_file]
-                print "Calling build with %s" % ' '.join(args)
                 logging.getLogger().info("Calling build with %s" % ' '.join(args))
                 retcode = target.run(args, tool='build')
 #        def linker_option(x):
