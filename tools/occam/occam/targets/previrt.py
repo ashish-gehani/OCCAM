@@ -375,7 +375,7 @@ class PrevirtTool (target.Target):
 
         xlinker_start = ['-Wl,-static']
         if '-lpthread' in native_libs:
-            xlinker_start.append('-Wl,-pthread')
+            shared.append('-pthread')
         xlinker_end = ['-Wl,-call_shared']
         # Link everything together
         sys.stderr.write("linking...")

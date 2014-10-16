@@ -97,8 +97,6 @@ class BuildTool (target.Target):
         libs = get_default(manifest, 'libs', [])
         native_libs = get_default(manifest, 'native-libs', [])
         xlinker_start = ['-Wl,-static']
-        if '-lpthread' in native_libs:
-            xlinker_start.append('-Wl,-pthread')
         xlinker_end = ['-Wl,-call_shared']
         search = get_default(manifest, 'search', [])
         def toLflag(path):
@@ -115,6 +113,9 @@ class BuildTool (target.Target):
             logging.getLogger().error('\n'.join(search))
             return 1
 
+        if '-lpthread' in native_libs:
+            shared.append('-pthread')
+            
         if output.endswith('.bc'):
             output = output[:-3]
 
