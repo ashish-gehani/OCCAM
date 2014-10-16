@@ -128,22 +128,25 @@ def archive_to_module(input_file, output_file, minimal=None):
                         undef_symbols = undef_symbols.union(undefined(s)).difference(defed)
                         progress = True
     if len(contents) > 0:
-    driver.run(config.STD['ld'], ['-o=%s' % output_file] + \
+        driver.run(config.STD['ld'], ['-o=%s' % output_file] + \
                [os.path.join(d, x) for x in contents])
-    shutil.rmtree(d)
+        shutil.rmtree(d)
         return True
     else:
         return False
 
 def llvmLDWrapper(output, inputs, found_libs, searchflags, shared, xlinker_start, native_libs, xlinker_end, flags):
-    inputs_in_bc = [i for i in inputs if i.endswith('.bc')]
-    for input in inputs_in_bc:
-        driver.run(config.LLVM['llc'], ['-filetype=obj', '-o=%s.o' % input, input])
     new_inputs = []
+    inputs_in_bc = [i for i in inputs if i.endswith('.bc') or i.endswith('.bc.o')]
+    if len(inputs_in_bc) > 0:
+        tout = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
+        tout.close()
+        tout = tout.name
+        driver.run(config.LLVM['link'], ['-o=%s' % tout] + inputs_in_bc)
+        driver.run(config.LLVM['llc'], ['-filetype=obj', '-o=%s.o' % tout[:-3], tout])
+        new_inputs.append('%s.o' % tout[:-3])
     for input in inputs:
-        if input.endswith('.bc'):
-            new_inputs.append('%s.o' % input)
-        else:
+        if input not in inputs_in_bc:
             new_inputs.append(input)
     args = new_inputs + found_libs + searchflags + shared + xlinker_start + native_libs + xlinker_end
     for (a,b) in flags:
@@ -206,9 +209,26 @@ def findlib(l, paths):
 #    raise LibNotFound(l,paths)
 
 def bundle(output, inputs, libs, paths):
-    args = ['-o=%s' % output]
-    args += inputs + [x for x in [findlib(x, paths) for x in libs] if not (x is None)]
-    return driver.run(config.LLVM['link'], args)
+    tout = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
+    tout.close()
+    tout = tout.name
+    args = ['-o', output]
+    inputs_in_bc = [i for i in inputs if i.endswith('.bc') or i.endswith('.bc.o')]
+    if len(inputs_in_bc) > 0:
+        driver.run(config.LLVM['link'], ['-o=%s' % tout] + inputs_in_bc)
+        driver.run(config.LLVM['llc'], ['-filetype=obj', '-o=%s.o' % tout[:-3], tout])
+        args += ['%s.o' % tout[:-3]]
+    for input in inputs:
+        if input not in inputs_in_bc:
+            args.append(input)
+    args += [x for x in [findlib(x, paths) for x in libs] if not (x is None)]
+    args += ['-L%s' % path for path in paths]
+    return driver.run(config.LLVM['clang'], args)
+
+def bundle_bc(output, inputs):
+    inputs_in_bc = [i for i in inputs if i.endswith('.bc') or i.endswith('.bc.o')]
+    if len(inputs_in_bc) > 0:
+        return driver.run(config.LLVM['link'], ['-o=%s' % output] + inputs_in_bc)
 
 def clean(input_file, output_file):
     # TODO: I shouldn't need to do this, but I'm getting \01 characters
@@ -272,13 +292,9 @@ def link(inputs, output_file, args, save=None, link=True):
         if not (save is None):
             main_name = save
             # Bundle the non-library inputs into a single module
-            retcode = bundle(main_name, inputs, [], [])
+            retcode = bundle_bc(main_name, inputs)
             if retcode != 0:
                 return retcode
-            logging.getLogger().info("Bundled executable '%(exe)s' into '%(mod)s' from %(libs)s",
-                                     {'exe' : output_file,
-                                      'mod' : main_name,
-                                      'libs' : inputs.__str__() })
             if 'OCCAM_LIB_PATH' in os.environ:
                 paths.extend(os.environ['OCCAM_LIB_PATH'].split(os.pathsep))
             search = getSearchPath()
@@ -289,13 +305,18 @@ def link(inputs, output_file, args, save=None, link=True):
                 if libname.startswith('lib'):
                     libname = "-l%s" % libname[3:]
                 return libname
+            shared = [soTolFlag(x) for x in inputs if x.endswith('.so')]
+            logging.getLogger().info("Bundled executable '%(exe)s' into '%(mod)s' from %(libs)s",
+                                     {'exe' : output_file,
+                                      'mod' : main_name,
+                                      'libs' : inputs.__str__() })
             manifest('%s.manifest' % main_name,
                      output_file,
                      [main_name],
                      libs = libraries,
                      nativelibs = nativelibs,
                      search = paths,
-                     shared = [soTolFlag(x) for x in inputs if x.endswith('.so')])
+                     shared = shared)
 #                     shared=['%s.bc.a' % x[:-3] for x in args if x.endswith('.so')])
         #retcode = bundle(tout, inputs, libraries, paths)
         #if retcode != 0:
