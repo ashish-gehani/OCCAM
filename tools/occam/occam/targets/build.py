@@ -113,6 +113,9 @@ class BuildTool (target.Target):
             logging.getLogger().error('\n'.join(search))
             return 1
 
+        if output.endswith('.bc'):
+            output = output[:-3]
+        
         args = ['-native', '-o=%s' % output] + inputs + found_libs + searchflags + shared + ['-Xlinker=-static'] + native_libs
         for (a,b) in flags:
             if a == '-O':

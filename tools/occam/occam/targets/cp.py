@@ -45,6 +45,7 @@ class CpTool (par.ParallelTool):
         flags = []
         nargs = []
         i = 0
+        bc_found = False
         while i < len(args):
             if self.name == 'install' and args[i] in ['-B', '-f', '-g', '-m', '-o']:
                 flags.extend(args[i:i+2])
@@ -57,6 +58,10 @@ class CpTool (par.ParallelTool):
         cmdline = flags
         def fixarg(arg): return self.fixinputname(arg,keep=False,create=self.name not in ['unlink','rm'])
         inputs = filter(None,map(fixarg,nargs[0:len(nargs)-1]))
+        for s in inputs:
+            if s.endswith('.bc'):
+                bc_found = True
+                break
         if not inputs:
             return 0
         last = nargs[len(nargs)-1]
@@ -64,6 +69,8 @@ class CpTool (par.ParallelTool):
             output = last
         else:
             output = self.fixname(last)
+        if '-s' in flags and bc_found:
+            flags.remove('-s')
         cmdline = flags + inputs + [output]
         if self.name == 'ln' and os.path.exists(output):
             return 0

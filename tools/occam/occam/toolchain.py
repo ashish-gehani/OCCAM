@@ -126,10 +126,14 @@ def archive_to_module(input_file, output_file, minimal=None):
                         contents = contents + [x]
                         undef_symbols = undef_symbols.union(undefined(s)).difference(defed)
                         progress = True
-    driver.run(config.LLVM['ld'],
+    if len(contents) > 0:
+        driver.run(config.LLVM['ld'],
                ['-link-as-library', '-o=%s' % output_file] + \
                 [os.path.join(d, x) for x in contents])
-    shutil.rmtree(d)
+        shutil.rmtree(d)
+        return True
+    else:
+        return False
 
 class LibNotFound (Exception):
     def __init__(self, lib, path):

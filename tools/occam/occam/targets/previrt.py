@@ -185,9 +185,11 @@ class PrevirtTool (target.Target):
         llvm_libs = [x for (x,y) in found_libs if y]
         #found_libs = llvm_libs + [x for (x,y) in found_libs if not y]
 
+        temp_llvm_libs = []
         files = {}
         all_my_modules = []
         for x in modules + llvm_libs:
+            libCreated = False
             bn = os.path.basename(x)
             target = os.path.join(work_dir, os.path.basename(x))
             if os.path.abspath(x) != target:
@@ -202,18 +204,22 @@ class PrevirtTool (target.Target):
                     sys.stderr.write("got archive %s, need to convert to .bc\n" % x)
                     # Stripping the '.bc.a'
                     if target.endswith('libcrt.bc.a'):
-                        toolchain.archive_to_module(target, target[:-5] + '.bc',
+                        libCreated = toolchain.archive_to_module(target, target[:-5] + '.bc',
                                                     minimal=None)
                     else:
-                        toolchain.archive_to_module(target, target[:-5] + '.bc',
+                        libCreated = toolchain.archive_to_module(target, target[:-5] + '.bc',
                                                     minimal=all_my_modules)
+                    if libCreated:
                     files[x] = FileStream(target[:-5], 'bc')
+                        temp_llvm_libs.append(x)
             else:
                 idx = target.rfind('.bc')
                 if target[idx:] != '.bc':
                     shutil.copyfile(target, target[:idx] + '.bc')
                 files[x] = FileStream(target[:idx], 'bc')
+            if libCreated:
             all_my_modules += [files[x].get()]
+            llvm_libs = temp_llvm_libs
 
         # Change directory
         os.chdir(work_dir)
@@ -372,6 +378,8 @@ class PrevirtTool (target.Target):
         # Link everything together
         sys.stderr.write("linking...")
         sys.stderr.write(config.LLVM['ld'])
+        if binary.endswith('.bc'):
+            binary = binary[:-3]
         driver.run(config.LLVM['ld'],
                    ['-native'] +
                    ['-o=%s' % binary] +
