@@ -127,9 +127,13 @@ def archive_to_module(input_file, output_file, minimal=None):
                         contents = contents + [x]
                         undef_symbols = undef_symbols.union(undefined(s)).difference(defed)
                         progress = True
+    if len(contents) > 0:
     driver.run(config.STD['ld'], ['-o=%s' % output_file] + \
                [os.path.join(d, x) for x in contents])
     shutil.rmtree(d)
+        return True
+    else:
+        return False
 
 def llvmLDWrapper(output, inputs, found_libs, searchflags, shared, xlinker_start, native_libs, xlinker_end, flags):
     inputs_in_bc = [i for i in inputs if i.endswith('.bc')]
