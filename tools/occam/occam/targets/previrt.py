@@ -210,7 +210,7 @@ class PrevirtTool (target.Target):
                         libCreated = toolchain.archive_to_module(target, target[:-5] + '.bc',
                                                     minimal=all_my_modules)
                     if libCreated:
-                    files[x] = FileStream(target[:-5], 'bc')
+                        files[x] = FileStream(target[:-5], 'bc')
                         temp_llvm_libs.append(x)
             else:
                 idx = target.rfind('.bc')
@@ -218,7 +218,7 @@ class PrevirtTool (target.Target):
                     shutil.copyfile(target, target[:idx] + '.bc')
                 files[x] = FileStream(target[:idx], 'bc')
             if libCreated:
-            all_my_modules += [files[x].get()]
+                all_my_modules += [files[x].get()]
             llvm_libs = temp_llvm_libs
 
         # Change directory
