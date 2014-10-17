@@ -128,7 +128,7 @@ def archive_to_module(input_file, output_file, minimal=None):
                         undef_symbols = undef_symbols.union(undefined(s)).difference(defed)
                         progress = True
     if len(contents) > 0:
-        driver.run(config.STD['ld'], ['-o=%s' % output_file] + \
+        driver.run(config.LLVM['link'], ['-o=%s' % output_file] + \
                [os.path.join(d, x) for x in contents])
         shutil.rmtree(d)
         return True
@@ -145,8 +145,16 @@ def llvmLDWrapper(output, inputs, found_libs, searchflags, shared, xlinker_start
         driver.run(config.LLVM['link'], ['-o=%s' % tout] + inputs_in_bc)
         driver.run(config.LLVM['llc'], ['-filetype=obj', '-o=%s.o' % tout[:-3], tout])
         new_inputs.append('%s.o' % tout[:-3])
+    inputs_in_bc_a = [i for i in inputs if i.endswith('.bc.a')]
+    for input in inputs_in_bc_a:
+        tout = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
+        tout.close()
+        tout = tout.name
+        archive_to_module(input, tout, None)
+        driver.run(config.LLVM['llc'], ['-filetype=obj', '-o=%s.o' % tout[:-3], tout])
+        new_inputs.append('%s.o' % tout[:-3])
     for input in inputs:
-        if input not in inputs_in_bc:
+        if input not in inputs_in_bc and input not in inputs_in_bc_a:
             new_inputs.append(input)
     args = new_inputs + found_libs + searchflags + shared + xlinker_start + native_libs + xlinker_end
     for (a,b) in flags:
@@ -227,6 +235,13 @@ def bundle(output, inputs, libs, paths):
 
 def bundle_bc(output, inputs):
     inputs_in_bc = [i for i in inputs if i.endswith('.bc') or i.endswith('.bc.o')]
+    inputs_in_bc_a = [i for i in inputs if i.endswith('.bc.a')]
+    for input in inputs_in_bc_a:
+        tout = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
+        tout.close()
+        tout = tout.name
+        archive_to_module(input, tout, None)
+        inputs_in_bc.append(tout)
     if len(inputs_in_bc) > 0:
         return driver.run(config.LLVM['link'], ['-o=%s' % output] + inputs_in_bc)
 
