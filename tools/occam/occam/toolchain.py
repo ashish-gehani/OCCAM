@@ -161,7 +161,7 @@ def llvmLDWrapper(output, inputs, found_libs, searchflags, shared, xlinker_start
         if a == '-O':
             args += ['-O%s' % b]
     args += ['-o%s' % output]
-    return driver.run(config.LLVM['clang'], args)
+    return driver.run(config.LLVM['clang++'], args)
 
 class LibNotFound (Exception):
     def __init__(self, lib, path):
@@ -231,7 +231,7 @@ def bundle(output, inputs, libs, paths):
             args.append(input)
     args += [x for x in [findlib(x, paths) for x in libs] if not (x is None)]
     args += ['-L%s' % path for path in paths]
-    return driver.run(config.LLVM['clang'], args)
+    return driver.run(config.LLVM['clang++'], args)
 
 def bundle_bc(output, inputs):
     inputs_in_bc = [i for i in inputs if i.endswith('.bc') or i.endswith('.bc.o')]
