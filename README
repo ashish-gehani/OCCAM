@@ -94,7 +94,9 @@ a little easier. You can do this, or replace commands including sudo below.
 
 3. Checkout the BSD branch of SelfContainedPrevirt
 
-   git clone https://code.google.com/p/application-specialization/ SelfContainedPrevirt
+   git clone https://github.com/SRI-CSL/application-specialization.git SelfContainedPrevirt
+   cd SelfContainedPrevirt
+   git checkout llvm3.5-on-freebsd10
    export OCCAM_SRC=`pwd`/SelfContainedPrevirt
 
 4. LLVM and Clang 3.5
