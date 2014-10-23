@@ -1,12 +1,12 @@
 ================================================================================
 == Occam Toolchain (BSD)
-== Scott Moore (scott@thinkmoore.net)
 ================================================================================
 
 --------------------------------------------------------------------------------
-This package includes OCCAM software, available from
-http://code.google.com/p/application-specialization/ .  The following terms
-apply to OCCAM:
+This package includes OCCAM software, available from:
+http://github.com/SRI-CSL/application-specialization
+
+The following terms apply to OCCAM:
 
 Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -34,26 +34,25 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------------
 
-// Installation/Getting Started ////////////////////////////////////////////////
+// Installation / Getting Started //////////////////////////////////////////////
 
-Instructions for installing the occam toolchain and building a bitcode version
-of the BSD userland. The following instructions have been tested with FreeBSD
-9.0 amd64, though they *should* work with later releases as well.
+Instructions for installing the OCCAM toolchain and building a bitcode version
+of the FreeBSD base distribution. The following instructions have been tested with 
+FreeBSD 10.0 amd64.
 
 -- Prerequisites: --------------------------------------------------------------
 
 1. FreeBSD
 
 The ideal way to start is with a clean install of FreeBSD 10.0 with sources
-installed. The simplest way to do this is to install from the Release 10.0 iso
+installed. The simplest way to do this is to install from the Release 10.0 ISO
 image and and on the "Distribution Select" screen select just the following:
   [*] ports   Ports tree
   [*] src     System source code
 
 If you are on an existing system that has either an old version of the source
 tree or is missing source, you can follow the instructions in the FreeBSD
-handbook section 25.6 to get the correct set. You should use the cvs tag
-RELENG_10_0_0_RELEASE or later.
+Handbook Chapter 24 to get the relevant sources. 
 
 2. Necessary ports
 
@@ -65,7 +64,7 @@ First, you need to upgrade existing ports:
 
 Install the following ports using the BSD port tree: 
   bash git subversion python27 protobuf
-See the FreeBSD handbook section 5 for instructions. Quick and dirty:
+See the FreeBSD Handbook Chapter 5 for instructions. Quick and dirty:
 
    su -
    cd /usr/ports
@@ -84,31 +83,32 @@ You will need to do the following to make Python work
    cd /usr/local/bin
    ln -s python2 python
 
-I prefer bash so I switched my shell:
+Below we assume the shell being used is 'bash', that is:
    chsh -s /usr/local/bin/bash
-If you want to stick with csh, just replace bash-isms like export with the
-appropriate equivalent.
+has been run. If you want to use another shell, replace bash-isms like 'export'
+with the appropriate equivalent.
 
-I also install sudo and set up my account as a sudoer to make installing things
-a little easier. You can do this, or replace commands including sudo below.
+We suggest installing 'sudo' and setting up your account as a sudoer, to make
+installing programs easier. You can do this, or modify the commands that use 'sudo' below.
 
-3. Checkout the BSD branch of SelfContainedPrevirt
+3. Checkout the 'master' branch of the code:
 
-   git clone https://github.com/SRI-CSL/application-specialization.git SelfContainedPrevirt
-   cd SelfContainedPrevirt
-   git checkout llvm3.5-on-freebsd10
-   export OCCAM_SRC=`pwd`/SelfContainedPrevirt
+   git clone https://github.com/SRI-CSL/application-specialization.git
+   cd application-specialization
+   git checkout master
+   export OCCAM_SRC=`pwd`/application-specialization
 
 4. LLVM and Clang 3.5
 
-Install llvm and clang version 3.5 (these instructions adapted from
-http://llvm.org/docs/GettingStarted.html). First, decide where you want to
-install LLVM. If you have root access, you might as well use /usr/local, but any
-prefix is ok. I recommend adding this to your shell startup.
+Install LLVM and Clang version 3.5. (These instructions adapted from
+http://llvm.org/docs/GettingStarted.html) First, decide where you want to
+install LLVM. If you have 'root' access, you may as well use /usr/local, but any
+prefix is okay. We recommend adding this to your shell startup (in '~/.profile'
+for 'bash':
 
   export LLVM_HOME=/usr/local
 
-Get LLVM and Clang release 3.5:
+Get LLVM and Clang version 3.5:
 
   svn co http://llvm.org/svn/llvm-project/llvm/branches/release_35 llvm
   cd llvm/tools
@@ -127,103 +127,102 @@ Now finish the build and install:
   gmake
   sudo gmake install
 
-N.B. FreeBSD 10.0 ships with clang 3.3 but does not include the llvm toolchain
-itself. In addition to installing llvm, we'll also need to upgrade them to
-version 3.5, to match the version of clang compiled by "make buildworld".
+N.B. FreeBSD 10.0 ships with Clang 3.3 but does not include the LLVM toolchain
+itself. 
 
--- Installing SelfContainedPrevirt ---------------------------------------------
+-- Installing OCCAM -------------------------------------------------------------
 
-With prerequisites satisfied, we can install SelfContainedPrevirt. Decide where
-you want to install the occam toolchain. I chose my home directory. I recommend
-adding this export to your shell startup as well. Note that the python wrappers
-will still be installed 
+With the prerequisites satisfied, we can install OCCAM. Decide where you want to 
+install the tool. Below we assume it will be in your home directory. We recommend
+adding the below 'export' to your shell startup as well. 
 
   export OCCAM_HOME=~/occam
   cd $OCCAM_SRC
 
 Edit the Makefile and uncomment the lines exporting LLVM_HOME and OCCAM_HOME at the 
 top of the file, if they are not set in your environment. Change the paths to your 
-choices. Now make and install SelfContainedPrevirt.
+choices. Now make and install the tool.
 
   gmake
   sudo -E gmake install
 
-If you make modifications to the python scripts and want to install the new ones
+If you make modifications to the Python scripts and want to install the new ones
 without rebuilding the C library, do "sudo -E gmake install-occam".
 
-Create an alias to the occam toolchain wrapper. For bash, add the following to
-.profile:
+Create an alias to the 'occam' toolchain wrapper. For 'bash', add the following to
+to your shell startup:
 
   alias occam=$OCCAM_HOME/bin/occam
 
 -- Mount the /proc filesystem --------------------------------------------------
 
 Part of the parallel build driver in the toolchain reads from the /proc
-filesystem. This isn't mounted by default on FreeBSD, so we'll need to mount it
+filesystem. This isn't mounted by default on FreeBSD. We'll need to mount it
 before using the tool. You can mount it with the following command:
 
   sudo mount -t procfs proc /proc
 
-Alternatively, you can add this filesystem to fstab:
+Alternatively, you can add this filesystem to '/etc/fstab':
 
 proc            /proc           procfs  rw      0       0
 
 -- Mount the /dev/fd filesystem ------------------------------------------------
 
-If you are using bash, you need to mount the fdescfs filesystem. 
+If you are using 'bash', you need to mount the 'fdescfs' filesystem. 
 This isn't mounted by default on FreeBSD, so we'll need to mount it
-before using bash. You can mount it with the following command:
+before using the tool. You can mount it with the following command:
 
   sudo mount -t fdescfs fdesc /dev/fd
 
-Alternatively, you can add this filesystem to fstab:
+Alternatively, you can add this filesystem to '/etc/fstab':
 
 fdesc           /dev/fd         fdescfs rw      0       0
 
 -- buildworld ------------------------------------------------------------------
 
 To build a lot of useful libraries and executables in a hurry, we'll first run
-the bsd "buildworld" upgrade process using the occam toolchain. For details of
-the buildworld process, see section 25.7 of the FreeBSD handbook.
+the FreeBSD 'buildworld' process using the OCCAM toolchain. For details of
+the 'buildworld' process, see Chapter 24.6 of the FreeBSD Handbook.
 
-First, we need to patch one of the buildworld makefiles to prevent it from
-removing the occam toolchain from the path after it compiles fresh versions of
-clang and the rest of the BSD toolchain. We'll also need to tell make to use
-clang (which our toolchain will masquerade as) by changing /etc/src.conf. While
-we're at it we'll turn off some parts of the build to reduce how much time it
+First, we need to patch one of the 'buildworld' make files to prevent it from
+removing the OCCAM toolchain from the path after it compiles fresh versions of
+Clang and the rest of the FreeBSD toolchain. We'll also need to tell 'make' to use
+Clang (which our toolchain will masquerade as) by changing '/etc/src.conf'. While
+we're at it, we'll turn off some parts of the build to reduce how much time it
 takes.
 
   cd /usr/src
   sudo patch -p1 < $OCCAM_SRC/patches/Makefile.inc1-occam.patch
   sudo cp $OCCAM_SRC/patches/src.conf /etc/src.conf
 
-Before starting the build, you can choose to record logs from the occam tool by
+Before starting the build, you can choose to record logs from the OCCAM tool by
 setting the following variables:
 
   export OCCAM_LOGFILE={absolute path to log location}
   export OCCAM_LOGLEVEL={INFO, WARNING, or ERROR}
 
 Now kick off the build. You will want to use -jN for some N, as this process
-takes a long time without the occam toolchain, and even longer with (hours).
+takes a long time without the OCCAM toolchain, and even longer with (i.e. hours).
 
-  mkdir $OBJ_DIR (wherever you want to build everything)
+  mkdir $OBJ_DIR {wherever you want to build everything}
   MAKEOBJDIRPREFIX=$OBJ_DIR ; export MAKEOBJDIRPREFIX
   occam make buildworld
 
-This should go smoothly, but I occasionally see IOErrors related to reading the
-proc file system. If this error occurs, it should be safe to restart the build:
+This should go smoothly, but occasionally IOErrors related to reading the
+/proc file system may occur. It should be safe to continue the build in this
+case:
 
   occam make -DNO_CLEAN buildworld
 
-At this point, you have a few options. I followed (and have tested) option 1,
+At this point, you have a few options. We have tested option 1 below,
 but the others should also work.
 
 Option 1) Actually install your new "world"
 
   To be really safe, we'll build a new kernel with this source as well. You
-  *may* be able to skip this step, along with mergemaster, but I haven't
-  tried. For more information on mergemaster, see man mergemaster. "-iU" tries 
-  to make this process as automatic as possible...
+  *may* be able to skip this step, along with 'mergemaster', but we haven't
+  tried that. For more information, use 'man mergemaster'. The "-iU" options
+  try  to make this process as automatic as possible.
   
   !!! You'll need non-ssh access to the box for this.
 
@@ -252,7 +251,7 @@ Option 1) Actually install your new "world"
      mergemaster -iU
      shutdown -r now
 
-  When the machine comes back up, you should have a full BSD system with bitcode
+  When the machine comes back up, you should have a full FreeBSD system with bitcode
   versions of all of the core libraries and executables.
 
 Option 2) Install your new "world" somewhere else, chroot into it, and set up a
@@ -262,13 +261,13 @@ development environment.
     
      occam make installworld DESTDIR=$WORLD_DIR
   
-  !Note, you cannot (according to the handbook) use -j when using installworld
-  chroot into $WORLD_DIR and reinstall LLVM, Clang, and SelfContainedPrevirt
+  !Note, you cannot (according to the Handbook) use -j when using installworld.
+  chroot into $WORLD_DIR and reinstall LLVM, Clang, and OCCAM.
 
 Option 3) Extract all the libraries and store them somewhere else.
 
-  Choose a folder to store all of your libraries, $LIB_DIR, then extract all the
-  libraries you build to it.
+  Choose a folder to store all of your libraries, $LIB_DIR. Extract all the
+  libraries you built into it.
   
      find /usr/obj/usr/src/lib -name "*.bc.a" -exec cp {} $LIB_DIR \;
   
@@ -281,8 +280,8 @@ Option 3) Extract all the libraries and store them somewhere else.
      find /usr/obj/usr/src/usr.* -name "*_main.bc" -exec cp {} $DEST \;
      find /usr/obj/usr/src/usr.* -name "*.bc" -exec cp {} $DEST \;
 
-  When trying to use the occam toolchain against these libraries, you'll need to
-  add $LIB_DIR to $OCCAM_LIB_PATH (described more below). When previrtualizing
+  When trying to use the OCCAM toolchain with these libraries, you'll need to
+  add $LIB_DIR to $OCCAM_LIB_PATH (described further below). When specializing
   or using "occam2 build" with a manifest, you'll need to add $LIB_DIR to the
   "search" entry in the manifest.
 
@@ -291,8 +290,7 @@ Option 3) Extract all the libraries and store them somewhere else.
 Once you have your base system installed and ready to go, you should be ready to
 compile and install other libraries or applications.
 
-First, set these following environmental variables (works best in your startup
-file):
+First, set the following environmental variables. (You may want to set these in
 
    CC=clang
    CXX=clang++
@@ -312,7 +310,7 @@ Occam has a few configuration options, set via environmental variables.
    			finding bitcode versions of libraries. Not necessary if
 			libraries are installed next to their native versions
 			(e.g., /path/to/libs:/morelibs)
-   OCCAM_PROTECT_PATH	Set/unset flag. If set, occam will remove all non-occam
+   OCCAM_PROTECT_PATH	Set/unset flag. If set, OCCAM will remove all non-OCCAM
    			items from the path and intercept calls to common 
 			executables so that they can be logged at level INFO.
 			Can be useful for debugging a build that isn't working
@@ -321,7 +319,7 @@ Occam has a few configuration options, set via environmental variables.
 To compile as much code as possible to bitcode, you should choose any available
 configure options for building or using static libraries rather than shared ones.
 
--- Special notes for apache ----------------------------------------------------
+-- Special notes for Apache ----------------------------------------------------
 
 For apache, you'll first need to compile and install libpcre, libapr, and 
 libapr-util. The configurations I used for each of these are:
@@ -378,17 +376,17 @@ The following set of arguments should then work to get apache serving files:
 // Using manifest files ////////////////////////////////////////////////////////
 
 Once you have a manifest file and a bundle, you can use it to build a final
-bitcode version of an application or previrtualize it. To build from the
+bitcode version of an application or specialize it. To build from the
 manifest, just execute:
 
    occam build $MANIFEST_FILE $NAME_FOR_EXECUTABLE
 
-To previrtualize the application, add a "args": ["arg1", "arg2", ...] entry to
+To specialize the application, add a "args": ["arg1", "arg2", ...] entry to
 the manifest file and call the previrt tool:
 
    occam previrt --work-dir=$WORKDIR $MANIFEST_FILE
 
-As before, you can set occam configuration variables to control logging.
+As before, you can set OCCAM configuration variables to control logging.
 
 // TODO items //////////////////////////////////////////////////////////////////
 
