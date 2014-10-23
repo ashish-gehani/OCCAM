@@ -91,11 +91,11 @@ with the appropriate equivalent.
 We suggest installing 'sudo' and setting up your account as a sudoer, to make
 installing programs easier. You can do this, or modify the commands that use 'sudo' below.
 
-3. Checkout the 'master' branch of the code:
+3. Checkout the 'llvm3.5-on-freebsd10' branch of the code:
 
    git clone https://github.com/SRI-CSL/application-specialization.git
    cd application-specialization
-   git checkout master
+   git checkout llvm3.5-on-freebsd10
    export OCCAM_SRC=`pwd`/application-specialization
 
 4. LLVM and Clang 3.5
