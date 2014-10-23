@@ -58,6 +58,8 @@ Handbook Chapter 24 to get the relevant sources.
 
 First, you need to upgrade existing ports:
 
+   portsnap fetch
+   portsnap extract
    cd /usr/ports/ports-mgmt/portupgrade
    make -DBATCH install clean
    portupgrade -a
