@@ -233,10 +233,26 @@ def bundle(output, inputs, libs, paths):
         tout = tout.name
         driver.run(config.LLVM['llc'], ['-filetype=obj', '-o=%s' % tout, input])
         args.append(tout)
+    libinputs = [x for x in [findlib(x, paths) for x in libs] if not (x is None)]
+    inputs_in_bc_a = [i for i in (inputs + libinputs) if i.endswith('.bc.a')]
+    for input in inputs_in_bc_a:
+        (d, contents) = extract_archive(input, None)
+        new_contents = []
+        for c in contents:
+            tout = tempfile.NamedTemporaryFile(suffix='.o', delete=False)
+            tout.close()
+            tout = tout.name
+            driver.run(config.LLVM['llc'], ['-filetype=obj', '-o=%s' % tout, os.path.join(d, c)])
+            new_contents.append(tout)
+        archive('rcs', new_contents, '%s_bc.a' % input[:-5])
+        args.append('%s_bc.a' % input[:-5])
+        shutil.rmtree(d)
     for input in inputs:
-        if input not in inputs_in_bc:
+        if input not in inputs_in_bc and input not in inputs_in_bc_a:
             args.append(input)
-    args += [x for x in [findlib(x, paths) for x in libs] if not (x is None)]
+    for lib in libinputs:
+        if lib not in args:
+            args.append(lib)
     args += ['-L%s' % path for path in paths]
     return driver.run(config.LLVM['clang++'], args)
 
