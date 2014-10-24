@@ -62,10 +62,10 @@ First, you need to upgrade existing ports:
    portsnap extract
    cd /usr/ports/ports-mgmt/portupgrade
    make -DBATCH install clean
-   portupgrade -a
+   portupgrade -a --batch
 
 Install the following ports using the BSD port tree: 
-  bash git subversion python27 protobuf
+  bash git subversion python27 protobuf py-protobuf sudo wget
 See the FreeBSD Handbook Chapter 5 for instructions. Quick and dirty:
 
    su -
@@ -93,14 +93,7 @@ with the appropriate equivalent.
 We suggest installing 'sudo' and setting up your account as a sudoer, to make
 installing programs easier. You can do this, or modify the commands that use 'sudo' below.
 
-3. Checkout the 'llvm3.5-on-freebsd10' branch of the code:
-
-   git clone https://github.com/SRI-CSL/application-specialization.git
-   cd application-specialization
-   git checkout llvm3.5-on-freebsd10
-   export OCCAM_SRC=`pwd`/application-specialization
-
-4. LLVM and Clang 3.5
+3. LLVM and Clang 3.5
 
 Install LLVM and Clang version 3.5. (These instructions adapted from
 http://llvm.org/docs/GettingStarted.html) First, decide where you want to
@@ -131,6 +124,13 @@ Now finish the build and install:
 
 N.B. FreeBSD 10.0 ships with Clang 3.3 but does not include the LLVM toolchain
 itself. 
+
+4. Checkout the 'llvm3.5-on-freebsd10' branch of the code:
+
+   git clone https://github.com/SRI-CSL/application-specialization.git
+   cd application-specialization
+   git checkout llvm3.5-on-freebsd10
+   export OCCAM_SRC=`pwd`/application-specialization
 
 -- Installing OCCAM -------------------------------------------------------------
 
