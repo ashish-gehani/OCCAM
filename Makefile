@@ -9,7 +9,7 @@
 #
 
 # export LLVM_HOME=/usr/local
-# export OCCAM_HOME=/home/moore/occam
+# export OCCAM_HOME=~/occam
 
 ifneq (,)
 This Makefile requires GNU Make.
