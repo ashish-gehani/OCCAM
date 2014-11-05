@@ -1,4 +1,4 @@
-#!/usr/local/bin/bash
+#!/usr/bin/env bash
 
 # ------------------------------------------------------------------------------
 # OCCAM
@@ -50,4 +50,4 @@ export LD_SEARCH_PATH=${occam_root}/lib:${occam_root}/usr/lib
 export LLVM_LIB_SEARCH_PATH=${occam_root}/lib:${occam_root}/usr/lib
 
 hash -r
-exec $@
+exec "$@"
