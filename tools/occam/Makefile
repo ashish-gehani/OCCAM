@@ -30,7 +30,12 @@ install: check-occam-bin
 	  rm -f ${OCCAM_PBIN}/$$x; \
 	  $(LN_S) ${OCCAM_BIN}/occam2 ${OCCAM_PBIN}/$$x; \
 	done
-	$(PYTHON) setup.py install
+	if test `whoami` != "root" ; \
+	then \
+	  sudo -E $(PYTHON) setup.py install; \
+	else \
+	  $(PYTHON) setup.py install; \
+	fi
 
 uninstall: check-occam-bin
 	rm -rf ${OCCAM_BIN} ${OCCAM_PBIN}
