@@ -70,7 +70,7 @@ class ClangTool (par.ParallelTool, argparser.ArgParser):
         'fdiagnostics-print-source-range-info', 'fprint-source-range-info',
         'fdiagnostics-show-option', 'fmessage-length', 'nostdinc', 'nostdlib',
         'nostdlibinc', 'nobuiltininc', 'M', 'pipe', 'fno-exceptions',
-        'static', 'fno-rtti', 'fpic', 'fPIC', 'fstack-protector',
+        'static', 'fno-rtti', 'fpic', 'fPIC', 'fpie', 'fPIE', 'fstack-protector',
         'w', 'fno-omit-frame-pointer', 'finhibit-size-directive',
         'fno-inline-functions', 'nodefaultlibs', 'shared', 
         'fno-zero-initialized-in-bss', 'fno-toplevel-reorder',
