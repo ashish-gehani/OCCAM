@@ -15,7 +15,7 @@ config:
 clean:
 	rm -rf occam/config.py build
 
-install: check-occam-bin
+install: check-occam-bin config
 	$(INSTALL) -m 775 occam2 ${OCCAM_BIN}
 	$(INSTALL) -m 775 occam_environment ${OCCAM_BIN}/occam
 	for x in clean enforce interface peval rewrite show simplify slice build; do \
