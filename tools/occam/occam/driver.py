@@ -90,6 +90,10 @@ def run(prog, args, quiet=False, inp=None,pipe=True, wd=None, resetPath=True):
         lenv = os.environ.copy()
         pathelems = [e for e in lenv["PATH"].split(':') if e.find("occam") == -1]
         lenv["PATH"] = ':'.join(pathelems)
+        
+    info = ("\nPROG ", prog, "\nPATH ", lenv["PATH"], "\nresetPath ", str(resetPath), "\n")
+    log.warn("run %s", ' '.join(info))
+    
     if pipe:
         proc = subprocess.Popen([prog] + args, 
                                 stderr=err,
