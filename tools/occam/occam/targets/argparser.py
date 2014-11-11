@@ -49,6 +49,9 @@ class AmbiguousParse (Exception):
         return "Ambiguous parse of argument: %s\n\twhile parsing %s" % (self._arg, ' '.join(self._cmd))
 
 class ArgParser:
+    # flags that are no longer understood
+    def not_flags(self): return []
+    # flags that are accepted (some may no longer be understood)
     def flags(self): return []
     def shortWithOpt(self): return []
     def longWithOpt(self): return []
@@ -75,7 +78,7 @@ class ArgParser:
             if curFlag is not None:
                 matchingShortOpts = filter(curFlag.startswith,self.shortWithOpt())
                 matchingShortOpts.sort(key=(lambda s: (-len(s), s)))
-                if curFlag in self.flags():
+                if curFlag in self.flags() and not curFlag in self.not_flags():
                     flags.append(args[i])
                     i += 1
                 elif len(matchingShortOpts) > 0:
