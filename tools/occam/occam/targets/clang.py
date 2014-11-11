@@ -52,6 +52,11 @@ def useAsm(flags):
         return False
 
 class ClangTool (par.ParallelTool, argparser.ArgParser):
+    # current clang no longer understands these commands (old timers)
+    def not_flags(self): return [
+            'finhibit-size-directive', 'fno-toplevel-reorder'
+    ]
+    # clang at some stage in it's life knew what to do with these flags
     def flags(self): return [
         'E', 'fsyntax-only', 'S', 'c', 'analyze', 'ansi', 'pg', 'p',
         'ObjC++', 'ObjC', 'trigraphs', 'ffreestanding', 'fwrapv', 
@@ -70,7 +75,7 @@ class ClangTool (par.ParallelTool, argparser.ArgParser):
         'fdiagnostics-print-source-range-info', 'fprint-source-range-info',
         'fdiagnostics-show-option', 'fmessage-length', 'nostdinc', 'nostdlib',
         'nostdlibinc', 'nobuiltininc', 'M', 'pipe', 'fno-exceptions',
-        'static', 'fno-rtti', 'fpic', 'fPIC', 'fpie', 'fPIE', 'fstack-protector',
+        'static', 'fno-rtti', 'fpic', 'fPIC', 'fstack-protector',
         'w', 'fno-omit-frame-pointer', 'finhibit-size-directive',
         'fno-inline-functions', 'nodefaultlibs', 'shared', 
         'fno-zero-initialized-in-bss', 'fno-toplevel-reorder',
@@ -82,14 +87,12 @@ class ClangTool (par.ParallelTool, argparser.ArgParser):
         'mno-align-long-strings', 'mrtd', 'ffreestanding', 'fomit-frame-pointer',
         'fno-strict-aliasing', 'fshort-wchar', 'undef', 'fno-builtin-strftime',
         'funsigned-char', 'mmmx', 'msse', 'msse2', 'fformat-extensions',
-        'fno-common', 'C', 'dM', 'fvisibility-inlines-hidden', 'pthread', 'version',
-        'verbose',
-        'fno-stack-protector', 'MM', 'MG', 'MT'
+        'fno-common', 'C', 'dM', 'fvisibility-inlines-hidden', 'pthread', 'version'
         ]
     def shortWithOpt(self): return [
         'x', 'arch', 'Wa,', 'Wl,', 'Wp,', 'o', 'D', 'U', 'I', 'F', 'Ttext',
         'l', 'L', 'W', 'param', 'include', 'mllvm', 'Tdata', 'Tbss', 'e', 'm',
-        'isystem', 'B', 'T', 'rpath'
+        'isystem', 'B', 'T'
         ]
     def longWithOpt(self): return [
         'std', 'stdlib', 'fmsc-version', 'fobjc-abi-version',
@@ -201,7 +204,8 @@ class ClangTool (par.ParallelTool, argparser.ArgParser):
                     output_file = 'a.out'
                 toLink = [x for x in input_files if x not in toCompile]
                 try:
-                    retcode = toolchain.link(map(self.fixname,o_files) + map(self.fixinputname,toLink),
+                    retcode = toolchain.link(map(self.fixname,o_files) +
+                                             map(self.fixinputname,toLink),
                                              self.fixname(output_file),
                                              flags + stdlibs,
                                              link=True,
