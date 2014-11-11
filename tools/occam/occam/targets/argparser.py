@@ -78,8 +78,9 @@ class ArgParser:
             if curFlag is not None:
                 matchingShortOpts = filter(curFlag.startswith,self.shortWithOpt())
                 matchingShortOpts.sort(key=(lambda s: (-len(s), s)))
-                if curFlag in self.flags() and not curFlag in self.not_flags():
-                    flags.append(args[i])
+                if curFlag in self.flags():
+                    if curFlag not in self.not_flags():
+                        flags.append(args[i])
                     i += 1
                 elif len(matchingShortOpts) > 0:
                     shortOpt = matchingShortOpts[0]
