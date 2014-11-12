@@ -32,7 +32,7 @@ INSTALL = install
 # Build the libprevirt.so in src
 # and the config.py file in tools/occam/occam
 #
-all: 
+all: check-occam-home
 	$(MAKE) -C src all
 	$(MAKE) -C tools/occam config
 
@@ -42,7 +42,7 @@ all:
 #
 install: check-occam-home install-previrt install-occam install-tools
 
-install-dirs:
+install-dirs: check-occam-home
 	$(MKDIR_P) $(OCCAM_BIN)
 	$(MKDIR_P) $(OCCAM_PBIN)
 	$(MKDIR_P) $(OCCAM_ROOT)
@@ -54,7 +54,7 @@ install-previrt: install-dirs
 install-occam: install-dirs
 	$(MAKE) -C tools/occam install
 
-install-tools:
+install-tools: check-occam-home
 	$(INSTALL) -m 775 tools/bin/clean-all.sh $(OCCAM_BIN)
 
 #
