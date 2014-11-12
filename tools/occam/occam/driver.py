@@ -88,11 +88,11 @@ def run(prog, args, quiet=False, inp=None,pipe=True, wd=None, resetPath=True):
         lenv['PATH'] = lenv['OCCAM_PROTECTED_PATH']
     elif resetPath:
         lenv = os.environ.copy()
-        occam_home =  lenv["OCCAM_HOME"]
-        if occam_home:
-            pathelems = [e for e in lenv["PATH"].split(':') if os.path.abspath(occam_home) != os.path.abspath(e)]
+        occam_bin =  lenv["OCCAM_BIN"]
+        if occam_bin:
+            pathelems = [e for e in lenv["PATH"].split(':') if os.path.abspath(occam_bin) != os.path.abspath(e)]
         else:
-            raise Exception("OCCAM_HOME not set properly in the environment")
+            raise Exception("OCCAM_BIN not set properly in the environment")
         #pathelems = [e for e in lenv["PATH"].split(':') if e.find("occam") == -1]
         lenv["PATH"] = ':'.join(pathelems)
         
