@@ -104,6 +104,13 @@ class ParallelTool (target.Target):
                     return None
             return name
 
+    #
+    # BD: attempt to fix incorrect processing of any filename
+    # that contains a '.' (e.g., ../bin/test)
+    #
+    # This code is still very flaky and likely to mess up in
+    # some cases.
+    #
     def fixname(self, name):
         if name == '-':
             return name
@@ -115,7 +122,10 @@ class ParallelTool (target.Target):
             # XXX Should this be more clever or should creating
             # .bin files be handled by some target?
             return name
-        if '.' in name:
+#
+#       if '.' in name: BD changed this. That's clearly wrong.
+#
+        if name.endswith(".o") or name.endswith(".a"):
             return '%s.bc%s' % (name[:name.rfind('.')],
                                 name[name.rfind('.'):])
         return '%s.bc' % name

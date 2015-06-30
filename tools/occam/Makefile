@@ -15,7 +15,7 @@ config:
 clean:
 	rm -rf occam/config.py build
 
-install:
+install: check-occam-bin config
 	$(INSTALL) -m 775 occam2 ${OCCAM_BIN}
 	$(INSTALL) -m 775 occam_environment ${OCCAM_BIN}/occam
 	for x in clean enforce interface peval rewrite show simplify slice build; do \
@@ -30,10 +30,23 @@ install:
 	  rm -f ${OCCAM_PBIN}/$$x; \
 	  $(LN_S) ${OCCAM_BIN}/occam2 ${OCCAM_PBIN}/$$x; \
 	done
-	$(PYTHON) setup.py install
+	if test `whoami` != "root" ; \
+	then \
+	  sudo -E $(PYTHON) setup.py install; \
+	else \
+	  $(PYTHON) setup.py install; \
+	fi
 
-uninstall:
+uninstall: check-occam-bin
 	rm -rf ${OCCAM_BIN} ${OCCAM_PBIN}
 
 lint:
 	@ $(PYLINT) -E occam/*.py occam/targets/*.py
+
+#
+# Check for OCCAM_BIN
+#
+check-occam-bin:
+ifeq ($(OCCAM_BIN),)
+	$(error OCCAM_BIN is undefined)
+endif

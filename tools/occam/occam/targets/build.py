@@ -96,8 +96,8 @@ class BuildTool (target.Target):
             inputs = get_default(manifest, 'modules', []) + inputs
         libs = get_default(manifest, 'libs', [])
         native_libs = get_default(manifest, 'native-libs', [])
-        if '-lpthread' in native_libs:
-            native_libs.append('-Xlinker=-pthread')
+        xlinker_start = ['-Wl,-static']
+        xlinker_end = ['-Wl,-call_shared']
         search = get_default(manifest, 'search', [])
         def toLflag(path):
             if os.path.exists(path):
@@ -113,15 +113,13 @@ class BuildTool (target.Target):
             logging.getLogger().error('\n'.join(search))
             return 1
 
+        if '-lpthread' in native_libs:
+            shared.append('-pthread')
+            
         if output.endswith('.bc'):
             output = output[:-3]
-        
-        args = ['-native', '-o=%s' % output] + inputs + found_libs + searchflags + shared + ['-Xlinker=-static'] + native_libs
-        for (a,b) in flags:
-            if a == '-O':
-                args += ['-O%s' % b]
 
-        return driver.run(config.LLVM['ld'], args)
+        return toolchain.llvmLDWrapper(output, inputs, found_libs, searchflags, shared, xlinker_start, native_libs, xlinker_end, flags)
 
 target.register('build', BuildTool('build'))
             

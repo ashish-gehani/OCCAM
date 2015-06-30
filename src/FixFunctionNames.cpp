@@ -37,8 +37,8 @@
  *  Created on: Jul 25, 2011
  *      Author: Gregory Malecha
  */
-#include "llvm/Function.h"
-#include "llvm/Module.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/Module.h"
 #include "llvm/Pass.h"
 
 using namespace llvm;

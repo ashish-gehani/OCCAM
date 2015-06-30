@@ -31,13 +31,13 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-#include "llvm/Module.h"
-#include "llvm/Function.h"
-#include "llvm/Instruction.h"
-#include "llvm/Constants.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/Instruction.h"
+#include "llvm/IR/Constants.h"
 #include "llvm/PassManager.h"
 #include "llvm/Analysis/CallGraph.h"
-#include "llvm/Support/CallSite.h"
+#include "llvm/IR/CallSite.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/Scalar.h"
@@ -81,7 +81,7 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
       const unsigned int callee_arg_count = callee->getArgumentList().size();
       if (callee == NULL || !canSpecialize(callee) || callee->isVarArg())
         continue;
-      if (callee->hasFnAttr(Attribute::NoInline)) {
+      if (callee->hasFnAttribute(Attribute::NoInline)) {
         errs() << "Function '" << callee->getName()
             << "' has noinline, skipping.\n";
         continue;
@@ -163,7 +163,7 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
 bool
 SpecializerPass::runOnModule(Module &M)
 {
-  CallGraph& CG = this->getAnalysis<CallGraph> ();
+  CallGraphWrapperPass& CG = this->getAnalysis<CallGraphWrapperPass> ();
 
   // Perform SCC analysis
   // (I can't seem to do this with the SCC pass because I'm not going to preserve it)
@@ -223,7 +223,7 @@ SpecializerPass::runOnModule(Module &M)
 void
 SpecializerPass::getAnalysisUsage(AnalysisUsage &AU) const
 {
-  AU.addRequired<CallGraph> ();
+  AU.addRequired<CallGraphWrapperPass> ();
 }
 
 namespace previrt

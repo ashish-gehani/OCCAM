@@ -40,6 +40,7 @@ import tempfile, logging
 import json
 import subprocess
 import collections
+import sys
 
 def assemble(input_file, output_file, args):
     return driver.run(config.LLVM['as'],
@@ -82,7 +83,7 @@ def symbols(obj):
     p.wait()
     return result
 
-def archive_to_module(input_file, output_file, minimal=None):
+def extract_archive(input_file, minimal=None):
     SCACHE = {}
     def syms(s):
         if not SCACHE.has_key(s):
@@ -100,7 +101,6 @@ def archive_to_module(input_file, output_file, minimal=None):
             ss = syms(s)
             UCACHE[s] = ss['U'].union(ss['u']).difference(defined(s))
         return UCACHE[s]
-    output_file = os.path.abspath(output_file)
     d = tempfile.mkdtemp()
     contents = archive_contents(input_file)
     for c in contents:
@@ -126,14 +126,50 @@ def archive_to_module(input_file, output_file, minimal=None):
                         contents = contents + [x]
                         undef_symbols = undef_symbols.union(undefined(s)).difference(defed)
                         progress = True
+    return (d, contents)
+
+def archive_to_module(input_file, output_file, minimal=None):
+    output_file = os.path.abspath(output_file)
+    (d, contents) = extract_archive(input_file, minimal)
     if len(contents) > 0:
-        driver.run(config.LLVM['ld'],
-               ['-link-as-library', '-o=%s' % output_file] + \
-                [os.path.join(d, x) for x in contents])
+        driver.run(config.LLVM['link'], ['-o=%s' % output_file] + \
+               [os.path.join(d, x) for x in contents])
         shutil.rmtree(d)
         return True
     else:
         return False
+
+def llvmLDWrapper(output, inputs, found_libs, searchflags, shared, xlinker_start, native_libs, xlinker_end, flags):
+    new_inputs = []
+    inputs_in_bc = [i for i in inputs if i.endswith('.bc') or i.endswith('.bc.o')]
+    for input in inputs_in_bc:
+        tout = tempfile.NamedTemporaryFile(suffix='.o', delete=False)
+        tout.close()
+        tout = tout.name
+        driver.run(config.LLVM['llc'], ['-filetype=obj', '-o=%s' % tout, input])
+        new_inputs.append(tout)
+    inputs_in_bc_a = [i for i in inputs if i.endswith('.bc.a')]
+    for input in inputs_in_bc_a:
+        (d, contents) = extract_archive(input, None)
+        new_contents = []
+        for c in contents:
+            tout = tempfile.NamedTemporaryFile(suffix='.o', delete=False)
+            tout.close()
+            tout = tout.name
+            driver.run(config.LLVM['llc'], ['-filetype=obj', '-o=%s' % tout, os.path.join(d, c)])
+            new_contents.append(tout)
+        archive('rcs', new_contents, '%s_bc.a' % input[:-5])
+        new_inputs.append('%s_bc.a' % input[:-5])
+        shutil.rmtree(d)
+    for input in inputs:
+        if input not in inputs_in_bc and input not in inputs_in_bc_a:
+            new_inputs.append(input)
+    args = new_inputs + found_libs + searchflags + shared + xlinker_start + native_libs + xlinker_end
+    for (a,b) in flags:
+        if a == '-O':
+            args += ['-O%s' % b]
+    args += ['-o%s' % output]
+    return driver.run(config.LLVM['clang++'], args)
 
 class LibNotFound (Exception):
     def __init__(self, lib, path):
@@ -189,11 +225,48 @@ def findlib(l, paths):
 #    raise LibNotFound(l,paths)
 
 def bundle(output, inputs, libs, paths):
-    args = ['-link-as-library', '-o=%s' % output] + libs
-    args += inputs + [x for x in [findlib(x, paths) for x in libs]
-                      if not (x is None)]
-    return driver.run(config.LLVM['ld'], args)
+    args = ['-o', output]
+    inputs_in_bc = [i for i in inputs if i.endswith('.bc') or i.endswith('.bc.o')]
+    for input in inputs_in_bc:
+        tout = tempfile.NamedTemporaryFile(suffix='.o', delete=False)
+        tout.close()
+        tout = tout.name
+        driver.run(config.LLVM['llc'], ['-filetype=obj', '-o=%s' % tout, input])
+        args.append(tout)
+    libinputs = [x for x in [findlib(x, paths) for x in libs] if not (x is None)]
+    inputs_in_bc_a = [i for i in (inputs + libinputs) if i.endswith('.bc.a')]
+    for input in inputs_in_bc_a:
+        (d, contents) = extract_archive(input, None)
+        new_contents = []
+        for c in contents:
+            tout = tempfile.NamedTemporaryFile(suffix='.o', delete=False)
+            tout.close()
+            tout = tout.name
+            driver.run(config.LLVM['llc'], ['-filetype=obj', '-o=%s' % tout, os.path.join(d, c)])
+            new_contents.append(tout)
+        archive('rcs', new_contents, '%s_bc.a' % input[:-5])
+        args.append('%s_bc.a' % input[:-5])
+        shutil.rmtree(d)
+    for input in inputs:
+        if input not in inputs_in_bc and input not in inputs_in_bc_a:
+            args.append(input)
+    for lib in libinputs:
+        if lib not in args:
+            args.append(lib)
+    args += ['-L%s' % path for path in paths]
+    return driver.run(config.LLVM['clang++'], args)
 
+def bundle_bc(output, inputs):
+    inputs_in_bc = [i for i in inputs if i.endswith('.bc') or i.endswith('.bc.o')]
+    inputs_in_bc_a = [i for i in inputs if i.endswith('.bc.a')]
+    for input in inputs_in_bc_a:
+        tout = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
+        tout.close()
+        tout = tout.name
+        archive_to_module(input, tout, None)
+        inputs_in_bc.append(tout)
+    if len(inputs_in_bc) > 0:
+        return driver.run(config.LLVM['link'], ['-o=%s' % output] + inputs_in_bc)
 
 def clean(input_file, output_file):
     # TODO: I shouldn't need to do this, but I'm getting \01 characters
@@ -257,13 +330,10 @@ def link(inputs, output_file, args, save=None, link=True):
         if not (save is None):
             main_name = save
             # Bundle the non-library inputs into a single module
-            retcode = bundle(main_name, inputs, [], [])
-            if retcode != 0:
-                return retcode
-            logging.getLogger().info("Bundled executable '%(exe)s' into '%(mod)s' from %(libs)s",
-                                     {'exe' : output_file,
-                                      'mod' : main_name,
-                                      'libs' : inputs.__str__() })
+            # Not doing this anymore because we get multiply defined symbol errors
+            # retcode = bundle_bc(main_name, inputs)
+            # if retcode != 0:
+            #     return retcode
             if 'OCCAM_LIB_PATH' in os.environ:
                 paths.extend(os.environ['OCCAM_LIB_PATH'].split(os.pathsep))
             search = getSearchPath()
@@ -274,13 +344,18 @@ def link(inputs, output_file, args, save=None, link=True):
                 if libname.startswith('lib'):
                     libname = "-l%s" % libname[3:]
                 return libname
+            shared = [soTolFlag(x) for x in inputs if x.endswith('.so')]
+            # logging.getLogger().info("Bundled executable '%(exe)s' into '%(mod)s' from %(libs)s",
+            #                          {'exe' : output_file,
+            #                           'mod' : main_name,
+            #                           'libs' : inputs.__str__() })
             manifest('%s.manifest' % main_name,
                      output_file,
-                     [main_name],
+                     [i for i in inputs if not i.endswith('.so')],
                      libs = libraries,
                      nativelibs = nativelibs,
                      search = paths,
-                     shared = [soTolFlag(x) for x in inputs if x.endswith('.so')])
+                     shared = shared)
 #                     shared=['%s.bc.a' % x[:-3] for x in args if x.endswith('.so')])
         #retcode = bundle(tout, inputs, libraries, paths)
         #if retcode != 0:
@@ -291,7 +366,6 @@ def link(inputs, output_file, args, save=None, link=True):
 
             if link and '.o' not in output_file:
                 args = ["%s.manifest" % main_name, "%s" % output_file]
-                print "Calling build with %s" % ' '.join(args)
                 logging.getLogger().info("Calling build with %s" % ' '.join(args))
                 retcode = target.run(args, tool='build')
 #        def linker_option(x):

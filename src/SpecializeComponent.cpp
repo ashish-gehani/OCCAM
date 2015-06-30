@@ -33,12 +33,12 @@
 
 #include "llvm/Pass.h"
 #include "llvm/ADT/StringMap.h"
-#include "llvm/User.h"
-#include "llvm/Support/InstVisitor.h"
-#include "llvm/Module.h"
-#include "llvm/Instructions.h"
+#include "llvm/IR/User.h"
+#include "llvm/IR/InstVisitor.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Instructions.h"
 #include "llvm/Analysis/CallGraph.h"
-#include "llvm/Support/CallSite.h"
+#include "llvm/IR/CallSite.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Support/CommandLine.h"
@@ -57,6 +57,7 @@ using namespace llvm;
 
 namespace previrt
 {
+
   static Function*
   resolveFunction(Module& M, StringRef name)
   {
@@ -65,7 +66,7 @@ namespace previrt
       return f;
     GlobalAlias* ga = M.getNamedAlias(name);
     if (ga != NULL) {
-      const GlobalValue* v = ga->resolveAliasedGlobal(true);
+      const GlobalValue* v = ga->getBaseObject();
       f = dyn_cast<Function>(const_cast<GlobalValue*>(v));
       if (f != NULL) {
         errs() << "Resolved alias " << name << " to " << f->getName() << "\n";
@@ -203,7 +204,7 @@ namespace {
       if (transform.interface == NULL) return false;
 
       std::list<Function*> to_add;
-      CallGraph& CG = getAnalysis<CallGraph> ();
+      CallGraphWrapperPass& CG = getAnalysis<CallGraphWrapperPass> ();
       SpecializationPolicy* policy = SpecializationPolicy::recursiveGuard(
           SpecializationPolicy::aggressivePolicy(), CG);
 
@@ -236,7 +237,7 @@ namespace {
     virtual void
     getAnalysisUsage(AnalysisUsage &AU) const
     {
-      AU.addRequired<CallGraph> ();
+      AU.addRequired<CallGraphWrapperPass> ();
     }
   };
   char SpecializeComponentPass::ID;

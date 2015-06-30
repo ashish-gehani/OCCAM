@@ -32,12 +32,12 @@
 //
 
 #include "llvm/ADT/StringMap.h"
-#include "llvm/User.h"
-#include "llvm/Support/InstVisitor.h"
-#include "llvm/Support/InstIterator.h"
-#include "llvm/Module.h"
-#include "llvm/Instructions.h"
-#include "llvm/Support/CallSite.h"
+#include "llvm/IR/User.h"
+#include "llvm/IR/InstVisitor.h"
+#include "llvm/IR/InstIterator.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Instructions.h"
+#include "llvm/IR/CallSite.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Pass.h"
@@ -102,9 +102,9 @@ namespace previrt
       if (f == NULL) continue;
 
       for (Function::use_iterator ui = f->use_begin(), ue = f->use_end(); ui != ue; ++ui) {
-        User* U = *ui;
+        Use* U = &(*ui);
         if ((!isa<CallInst>(U) && !isa<InvokeInst>(U))
-            || !CallSite(cast<Instruction>(U)).isCallee(ui)) {
+            || !CallSite(cast<Instruction>(U)).isCallee(U)) {
           // Not a call, or being used as a parameter rather than as the callee.
 
         } else {

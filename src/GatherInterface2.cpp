@@ -33,15 +33,15 @@
 
 #include "llvm/ADT/StringMap.h"
 #include "llvm/ADT/SmallVector.h"
-#include "llvm/Constants.h"
-#include "llvm/User.h"
-#include "llvm/Support/InstVisitor.h"
-#include "llvm/Module.h"
-#include "llvm/Instructions.h"
+#include "llvm/IR/Constants.h"
+#include "llvm/IR/User.h"
+#include "llvm/IR/InstVisitor.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Instructions.h"
 #include "llvm/Pass.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
-#include "llvm/Support/CallSite.h"
+#include "llvm/IR/CallSite.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Analysis/AliasAnalysis.h"
@@ -366,14 +366,14 @@ namespace previrt
     virtual void
     getAnalysisUsage(AnalysisUsage &Info) const
     {
-      Info.addRequired<CallGraph> ();
+      Info.addRequired<CallGraphWrapperPass> ();
       Info.addRequiredTransitive<AliasAnalysis>();
       Info.setPreservesAll();
     }
     virtual bool
     runOnModule(Module& M)
     {
-      CallGraph& cg = this->getAnalysis<CallGraph> ();
+      CallGraphWrapperPass& cg = this->getAnalysis<CallGraphWrapperPass> ();
 
       bool checked = false;
 

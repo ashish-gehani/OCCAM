@@ -1,4 +1,4 @@
-#!/usr/local/bin/python
+#!/usr/bin/env python
 
 # ------------------------------------------------------------------------------
 # OCCAM
@@ -75,9 +75,11 @@ LLVM = { 'link'    : "%s"
        , 'clang++' : "%s"
        , 'clang-cpp' : "%s"
        , 'nm'      : "%s"
+       , 'llc'     : "%s"
        }""" % (std('llvm-link'), std('llvm-as'), std('llvm-ar'), 
                std('llvm-ld'), std('opt'), std('clang'),
-               std('clang++'), std('clang-cpp'), std('llvm-nm'))
+               std('clang++'), std('clang-cpp'), std('llvm-nm'),
+               std('llc'))
 #% (llvm('llvm-link'), llvm('llvm-as'), llvm('llvm-ar'), 
 #               llvm('llvm-ld'), llvm('opt'), llvm('clang'),
 #               llvm('clang++'), llvm('llvm-nm'))

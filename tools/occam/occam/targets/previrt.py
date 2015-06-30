@@ -210,7 +210,7 @@ class PrevirtTool (target.Target):
                         libCreated = toolchain.archive_to_module(target, target[:-5] + '.bc',
                                                     minimal=all_my_modules)
                     if libCreated:
-                    files[x] = FileStream(target[:-5], 'bc')
+                        files[x] = FileStream(target[:-5], 'bc')
                         temp_llvm_libs.append(x)
             else:
                 idx = target.rfind('.bc')
@@ -218,7 +218,7 @@ class PrevirtTool (target.Target):
                     shutil.copyfile(target, target[:idx] + '.bc')
                 files[x] = FileStream(target[:idx], 'bc')
             if libCreated:
-            all_my_modules += [files[x].get()]
+                all_my_modules += [files[x].get()]
             llvm_libs = temp_llvm_libs
 
         # Change directory
@@ -373,18 +373,15 @@ class PrevirtTool (target.Target):
                 return None
         searchflags = [x for x in map(toLflag,search) if x is not None]
 
+        xlinker_start = ['-Wl,-static']
         if '-lpthread' in native_libs:
-            native_libs.append('-Xlinker=-pthread')
+            shared.append('-pthread')
+        xlinker_end = ['-Wl,-call_shared']
         # Link everything together
         sys.stderr.write("linking...")
-        sys.stderr.write(config.LLVM['ld'])
         if binary.endswith('.bc'):
             binary = binary[:-3]
-        driver.run(config.LLVM['ld'],
-                   ['-native'] +
-                   ['-o=%s' % binary] +
-                   [files[m].get() for m in modules] + final_libs + 
-                   searchflags + shared + ['-Xlinker=-static'] + native_libs)
+        toolchain.llvmLDWrapper(binary, [files[m].get() for m in modules], final_libs, searchflags, shared, xlinker_start, native_libs, xlinker_end, [])
         sys.stderr.write("done\n")
         
         if not (POOL is None):

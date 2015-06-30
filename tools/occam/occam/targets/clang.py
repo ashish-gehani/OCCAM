@@ -52,6 +52,11 @@ def useAsm(flags):
         return False
 
 class ClangTool (par.ParallelTool, argparser.ArgParser):
+    # current clang no longer understands these commands (old timers)
+    def not_flags(self): return [
+            'finhibit-size-directive', 'fno-toplevel-reorder'
+    ]
+    # clang at some stage in it's life knew what to do with these flags
     def flags(self): return [
         'E', 'fsyntax-only', 'S', 'c', 'analyze', 'ansi', 'pg', 'p',
         'ObjC++', 'ObjC', 'trigraphs', 'ffreestanding', 'fwrapv', 
@@ -82,12 +87,12 @@ class ClangTool (par.ParallelTool, argparser.ArgParser):
         'mno-align-long-strings', 'mrtd', 'ffreestanding', 'fomit-frame-pointer',
         'fno-strict-aliasing', 'fshort-wchar', 'undef', 'fno-builtin-strftime',
         'funsigned-char', 'mmmx', 'msse', 'msse2', 'fformat-extensions',
-        'fno-common', 'C', 'dM', 'fvisibility-inlines-hidden', 'pthread', 'version'
+            'fno-common', 'C', 'dM', 'fvisibility-inlines-hidden', 'pthread', 'version', 'verbose'
         ]
     def shortWithOpt(self): return [
         'x', 'arch', 'Wa,', 'Wl,', 'Wp,', 'o', 'D', 'U', 'I', 'F', 'Ttext',
         'l', 'L', 'W', 'param', 'include', 'mllvm', 'Tdata', 'Tbss', 'e', 'm',
-        'isystem', 'B', 'T'
+            'isystem', 'B', 'T', 'rpath'
         ]
     def longWithOpt(self): return [
         'std', 'stdlib', 'fmsc-version', 'fobjc-abi-version',

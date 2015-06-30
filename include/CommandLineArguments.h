@@ -31,8 +31,8 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-#include "llvm/Function.h"
-#include "llvm/Constants.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/Constants.h"
 #include "llvm/Pass.h"
 
 #include "llvm/Support/raw_ostream.h"

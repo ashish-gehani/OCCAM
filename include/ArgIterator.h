@@ -37,8 +37,8 @@
  *  Created on: Jul 8, 2011
  *      Author: malecha
  */
-#include "llvm/Instructions.h"
-#include "llvm/Support/CallSite.h"
+#include "llvm/IR/Instructions.h"
+#include "llvm/IR/CallSite.h"
 
 namespace previrt
 {

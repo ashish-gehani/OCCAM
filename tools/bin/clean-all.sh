@@ -15,7 +15,7 @@ do
 
     N=`ar t $x`
     V=${N#\#_LLVM_SYM_TAB_}
-        
+
     for y in $V
     do 
     	mkdir -p `dirname $y`

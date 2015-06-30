@@ -41,7 +41,7 @@
 #ifndef COMPONENT_H_
 #define COMPONENT_H_
 
-#include "llvm/Function.h"
+#include "llvm/IR/Function.h"
 
 namespace previrt
 {
