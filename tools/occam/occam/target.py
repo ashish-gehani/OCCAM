@@ -110,6 +110,7 @@ def run(args, tool=None):
             if 'OCCAM_PROTECT_PATH' in os.environ:
                 return driver.runUnknown(tool,args)
             else:
+		print "checking os env", os.environ
                 logging.getLogger().error("ERROR: failed to load tool %s", tool)
                 print "Bad command '%s'" % tool
                 return -1

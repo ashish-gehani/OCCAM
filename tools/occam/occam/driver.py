@@ -99,7 +99,10 @@ def run(prog, args, quiet=False, inp=None,pipe=True, wd=None, resetPath=True):
         
     info = ("\nPROG ", prog, "\nPATH ", lenv["PATH"], "\nresetPath ", str(resetPath), "\n")
     log.warn("run %s", ' '.join(info))
-    
+ 
+    sys.stderr.write("prog %s \n" %prog)
+    sys.stderr.write("args %s" %args)	   
+
     if pipe:
         proc = subprocess.Popen([prog] + args, 
                                 stderr=err,

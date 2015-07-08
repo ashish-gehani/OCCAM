@@ -34,7 +34,6 @@
 from . import driver
 from . import target
 from . import config
-from . import asm
 import shutil, os
 import tempfile, logging
 import json
@@ -46,11 +45,6 @@ def assemble(input_file, output_file, args):
     return driver.run(config.LLVM['as'],
                       [input_file, '-o=%s' % output_file])
 
-def compileS(input_file, output_file, args, tool='gcc'):
-    logging.getLogger().info("%(name)s\n----\n%(file)s" %
-                             { 'name' : input_file,
-                               'file' : driver.open_input(input_file).read() })
-    return asm.assemble(input_file, output_file, args)
 
 def compile(input_files, output_file, args, tool='clang'):
     ok = driver.run(config.LLVM[tool],
@@ -83,7 +77,9 @@ def symbols(obj):
     p.wait()
     return result
 
+
 def extract_archive(input_file, minimal=None):
+
     SCACHE = {}
     def syms(s):
         if not SCACHE.has_key(s):
@@ -101,14 +97,19 @@ def extract_archive(input_file, minimal=None):
             ss = syms(s)
             UCACHE[s] = ss['U'].union(ss['u']).difference(defined(s))
         return UCACHE[s]
+
     d = tempfile.mkdtemp()
     contents = archive_contents(input_file)
+ 	
     for c in contents:
         try:
             os.makedirs(os.path.join(d, os.path.dirname(c)))
         except:
             pass
-    driver.run(config.getStdTool('ar'), ['x', os.path.abspath(input_file)], wd=d)
+
+    #+ extracting bitcode files from the bitcode archive 			
+    driver.run("ar", ['x', os.path.abspath(input_file)], wd=d)
+    
     if not (minimal is None):
         all_contents = contents
         undef_symbols = set()
@@ -119,16 +120,27 @@ def extract_archive(input_file, minimal=None):
         while progress:
             progress = False
             for x in all_contents:
-                s = os.path.join(d, x)
+		s = os.path.join(d, x)
                 if not (x in contents):
                     defed = defined(s)
-                    if not undef_symbols.isdisjoint(defed):
+		    if not undef_symbols.isdisjoint(defed):
                         contents = contents + [x]
                         undef_symbols = undef_symbols.union(undefined(s)).difference(defed)
-                        progress = True
+                	progress = True
+    
     return (d, contents)
 
+
 def archive_to_module(input_file, output_file, minimal=None):
+      
+    #+ extract-bc extracts the bitcode archive (.bca file) from the native archive (.a file)     
+    proc = subprocess.Popen(["extract-bc"] + [input_file], stderr=subprocess.PIPE, shell=False)
+    retcode = proc.wait()  
+    if retcode != 0:
+        return False	  
+   		
+    #+ The extracted bitcode archive has a .bca extension
+    input_file = input_file[:-2] + '.bca'    
     output_file = os.path.abspath(output_file)
     (d, contents) = extract_archive(input_file, minimal)
     if len(contents) > 0:

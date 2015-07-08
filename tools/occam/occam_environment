@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env python
 
 # ------------------------------------------------------------------------------
 # OCCAM
@@ -33,21 +33,166 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # ------------------------------------------------------------------------------
 
-occam_base=`dirname $0`/..
-occam_root=${occam_base}/root
+from occam import config
+import os
+from os import path
+import logging
+import sys
+from occam import targets
+from occam import driver
+from occam.targets.previrt import PrevirtTool
+from occam.targets.help import HelpTool
+from occam.targets.enforce import EnforceTool
+from occam.targets.show import ShowTool
+from occam.targets.peval import PartialEvalTool
+from occam.targets.watch import WatchTool
 
-if [ -n "${OCCAM_PROTECT_PATH+x}" ]; then
-    export OCCAM_PROTECTED_PATH=${PATH}
-    export PATH=${occam_base}/bin:${occam_base}/pbin
-else
-    export PATH=${occam_base}/bin:${PATH}
-fi
+TOOLS = {}
 
-export ISYSTEM=${occam_root}/usr/include
-export PKG_CONFIG_PATH=${occam_root}/usr/lib/pkgconfig
-export LIB_SEARCH_PATH=${occam_root}/lib:${occam_root}/usr/lib
-export LD_SEARCH_PATH=${occam_root}/lib:${occam_root}/usr/lib
-export LLVM_LIB_SEARCH_PATH=${occam_root}/lib:${occam_root}/usr/lib
+class ArgError (Exception):
+    def __init__(self):
+        pass
 
-hash -r
-exec "$@"
+class Target:
+    def __init__(self, name):
+        self.name = name
+    def opts(self, args):
+        return ([], args)
+
+    def usage(self):
+        return  "...document %s!!!..." % self.name
+    def desc(self):
+        return ''
+    def args(self):
+        return []
+    def help(self, verbose=False):
+        print self.usage()
+        print self.desc()
+        if verbose:
+            print self.args()
+
+    def run(self, cfg, flags, args):
+        assert False
+        return None
+
+class Configuration:
+    def getStdTool(self, n):
+        return config.STD[n]
+    def getLLVMTool(self, n):
+        return config.LLVM[n]
+    def log(self, msg, args):
+        logging.getLogger().info(msg, args)
+
+
+def flag(flags, f, default=None):
+    for (x,y) in flags:
+        if x == f:
+            return y
+        return default
+
+def usage():
+    for t in TOOLS.values():
+        t.help()
+        print ""
+
+def loadAll():
+    for x in targets.__all__:
+        __import__('occam.targets.%s' % x)
+
+def run(args, tool=None):     	
+    
+    if tool is None and (len(args) == 0 or args[0] == '-h'):
+        usage()
+        return -1
+    if tool is None:
+        tool = args[0]
+        args = args[1:]
+
+    try:
+        defFile = tool
+        __import__('occam.targets.%s' % defFile) # SM
+        x = TOOLS[tool]
+	
+    except:
+        if not TOOLS.has_key(tool):
+            if 'OCCAM_PROTECT_PATH' in os.environ:
+                return driver.runUnknown(tool,args)      
+	    else:
+	    	print "checking os env", os.environ
+                logging.getLogger().error("ERROR: failed to load tool %s", tool)
+                print "Bad command '%s'" % tool
+                return -1
+    
+        x = TOOLS[tool]
+
+    (flags, args) = x.opts(args)
+    try:
+        cfg = Configuration()
+        return x.run(cfg, flags, args)
+    except ArgError,e:
+        print e
+        print x.usage()
+        return -1
+
+
+def setLogger():
+    logger = logging.getLogger()
+    hdlr = logging.FileHandler('/tmp/.log')
+    hdlr.setFormatter(logging.Formatter("%(message)s"))
+    logger.addHandler(hdlr)
+    if os.environ.has_key('OCCAM_LOGFILE'):
+        hdlr = logging.FileHandler(os.environ['OCCAM_LOGFILE'])
+        hdlr.setFormatter(logging.Formatter("%(message)s"))
+        logger.addHandler(hdlr)
+
+    
+    levels = {'CRITICAL' : logging.CRITICAL,
+              'ERROR' : logging.ERROR,
+              'WARNING' : logging.WARNING,
+              'INFO' : logging.INFO,
+              'DEBUG' : logging.DEBUG
+              }
+
+    level = None
+    if os.environ.has_key('OCCAM_LOGLEVEL'):
+        level = levels[os.environ['OCCAM_LOGLEVEL']]
+    if level is None:
+        level = logging.WARNING        
+    logger.setLevel(level)
+    logger.info(">> %s\n" % ' '.join(sys.argv))
+
+
+def setEnvironment():
+    occam_base = os.path.dirname(__file__) + "/.."
+    occam_root = occam_base + "/root"    
+    os.environ["PATH"] = occam_base + "/bin:" + os.environ["PATH"]
+    os.environ["ISYSTEM"] = occam_root + "/usr/include"
+    os.environ["PKG_CONFIG_PATH"] = occam_root + "usr/lib/pkgconfig"
+    os.environ["LIB_SEARCH_PATH"] = occam_root + "/lib:" + occam_root + "/usr/lib"
+    os.environ["LD_SEARCH_PATH"] = occam_root + "/lib:" + occam_root + "/usr/lib"
+    os.environ["LLVM_LIB_SEARCH_PATH"] = occam_root + "/lib:" + occam_root + "/usr/lib"
+   
+
+def register(name, tool):
+    assert not TOOLS.has_key(name)    
+    print "target.py registering name '%s' to tool '%s'" % (name, tool)
+    tool.name = name
+    TOOLS[name] = tool
+
+
+def registerTools():
+    register('previrt', PrevirtTool('previrt'))	
+    register('enforce', EnforceTool('enforce'))	
+    register('peval', PartialEvalTool('peval'))	
+    register('show', ShowTool('show'))
+    register('help', HelpTool('help'))
+    register('watch', WatchTool('watch'))
+    	
+
+if __name__ == "__main__":
+	
+    setEnvironment()
+    setLogger()
+    registerTools()			
+    run(sys.argv[1:])
+

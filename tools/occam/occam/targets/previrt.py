@@ -40,6 +40,7 @@ import getopt
 import json
 import os, shutil, tempfile, sys
 
+
 def get_flag(flags, flag, default=None):
     for (x,y) in flags:
         if x == '--%s' % flag:
@@ -65,12 +66,9 @@ def get_library(lib, paths):
     if lib.startswith('-l'):
         lib = lib[2:]
         for p in paths:
-            full_path = os.path.join(p, 'lib%s.bc.a' % lib)
-            if os.path.exists(full_path):
-                return (full_path, True)
             full_path = os.path.join(p, 'lib%s.a' % lib)
             if os.path.exists(full_path):
-                return (full_path, False)
+                return (full_path, True)
         raise NotFound(lib)
     else:
         full_path = os.path.abspath(lib)
@@ -120,12 +118,11 @@ class PrevirtTool (target.Target):
                 ('--no-strip', "Leave symbol information in the binary"),
                 ('--force', "Proceed after dependency warnings")]
 
-    def run(self, cfg, flags, args):
-        if len(args) != 1:
+    def run(self, cfg, flags, args):        	
+	if len(args) != 1:
             raise ArgError()
         
-        manifest_file = args[0]
-        
+        manifest_file = args[0]        
         manifest = json.load(open(manifest_file, 'r'))
 
         work_dir = get_work_dir(flags)
@@ -146,6 +143,7 @@ class PrevirtTool (target.Target):
         if len(modules) == 0:
             sys.stderr.write("The manifest file '%s' does not have a main module!\n" % manifest_file)
             return 1
+
         libs = get_default(manifest, 'libs', [])
         native_libs = get_default(manifest, 'native-libs', [])
         shared = get_default(manifest, 'shared', [])
@@ -182,36 +180,37 @@ class PrevirtTool (target.Target):
                 sys.stderr.write("If native libraries refer to llvm libraries, this is NOT safe!\n")
                 if not force:
                     return 1
-        llvm_libs = [x for (x,y) in found_libs if y]
-        #found_libs = llvm_libs + [x for (x,y) in found_libs if not y]
 
+
+        llvm_libs = [x for (x,y) in found_libs if y]     
         temp_llvm_libs = []
         files = {}
-        all_my_modules = []
-        for x in modules + llvm_libs:
-            libCreated = False
+        all_my_modules = [] + modules
+        #+ Adding an archive_libs list to hold the native libraries that could not be converted to bitcode
+	archive_libs = []
+        for x in modules + llvm_libs:            
+	    libCreated = False
             bn = os.path.basename(x)
             target = os.path.join(work_dir, os.path.basename(x))
             if os.path.abspath(x) != target:
                 shutil.copyfile(x, target)
-            if target.endswith('.bc.a'):
+            if target.endswith('.a'):
                 if files.has_key(x):
                     # We've already seen this file, but we may need to pull in more symbols
                     print "don't handle linking the same file multiple times!"
-                    # TODO
                     return 1
                 else:
-                    sys.stderr.write("got archive %s, need to convert to .bc\n" % x)
-                    # Stripping the '.bc.a'
-                    if target.endswith('libcrt.bc.a'):
-                        libCreated = toolchain.archive_to_module(target, target[:-5] + '.bc',
-                                                    minimal=None)
-                    else:
-                        libCreated = toolchain.archive_to_module(target, target[:-5] + '.bc',
+                    sys.stderr.write("got archive %s, need to convert to .bc\n" % x)        
+		    #+ If the Bitcode equivalent of the library was found, the lib is added to the temp_llvm_libs instead to archive_libs(native)
+                    libCreated = toolchain.archive_to_module(target, target[:-2] + '.bc',
                                                     minimal=all_my_modules)
                     if libCreated:
-                        files[x] = FileStream(target[:-5], 'bc')
+                        files[x] = FileStream(target[:-2], 'bc')
                         temp_llvm_libs.append(x)
+		    else:
+		        sys.stderr.write("Bitcode library not created; using native instead \n") 		      
+		        archive_libs.append(target)
+		
             else:
                 idx = target.rfind('.bc')
                 if target[idx:] != '.bc':
@@ -363,8 +362,9 @@ class PrevirtTool (target.Target):
                 os.unlink(trg)
             os.symlink(x.get(), trg)
 
+        #+ final_libs contains the native and bitcode libraries in a list
         final_libs = [files[x].get() for x in llvm_libs] + \
-            [x for (x,y) in found_libs if not y]
+            [x for x in archive_libs]
 
         def toLflag(path):
             if os.path.exists(path):
@@ -388,6 +388,7 @@ class PrevirtTool (target.Target):
             POOL.shutdown()
 
         return 0
+
 
 target.register('previrt', PrevirtTool('previrt'))
             

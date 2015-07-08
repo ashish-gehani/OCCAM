@@ -18,18 +18,8 @@ clean:
 install: check-occam-bin config
 	$(INSTALL) -m 775 occam2 ${OCCAM_BIN}
 	$(INSTALL) -m 775 occam_environment ${OCCAM_BIN}/occam
-	for x in clean enforce interface peval rewrite show simplify slice build; do \
-	  rm -f ${OCCAM_BIN}/occam-$$x; \
-	  $(LN_S) occam2 ${OCCAM_BIN}/occam-$$x; \
-	done
-	for x in clang clang++ clang-cpp ar ranlib ld install cp mv chmod ln rm unlink; do \
-	  rm -f ${OCCAM_BIN}/$$x; \
-	  $(LN_S) occam2 ${OCCAM_BIN}/$$x; \
-	done
-	for x in make sed cat touch mkdir tr sort nawk grep expr ls uname; do \
-	  rm -f ${OCCAM_PBIN}/$$x; \
-	  $(LN_S) ${OCCAM_BIN}/occam2 ${OCCAM_PBIN}/$$x; \
-	done
+		
+
 	if test `whoami` != "root" ; \
 	then \
 	  sudo -E $(PYTHON) setup.py install; \
