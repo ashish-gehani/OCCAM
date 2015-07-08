@@ -16,10 +16,8 @@ clean:
 	rm -rf occam/config.py build
 
 install: check-occam-bin config
-	$(INSTALL) -m 775 occam2 ${OCCAM_BIN}
-	$(INSTALL) -m 775 occam_environment ${OCCAM_BIN}/occam
+	$(INSTALL) -m 775 occam_start ${OCCAM_BIN}/occam
 		
-
 	if test `whoami` != "root" ; \
 	then \
 	  sudo -E $(PYTHON) setup.py install; \
