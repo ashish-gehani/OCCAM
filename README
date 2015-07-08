@@ -329,6 +329,17 @@ Occam has a few configuration options, set via environmental variables.
 			Can be useful for debugging a build that isn't working
 			properly.
 
+
+// WLLVM installation ///////////////////
+Occam leverages WLLVM bitcode generation for building bitcode equivalents for libraries
+and executables. Install WLLVM:
+
+    https://github.com/travitch/whole-program-llvm/blob/master/wllvm
+
+Make sure the WLLVM tools are added to the PATH variable
+
+/// ------------------------- ////////   
+
 To compile as much code as possible to bitcode, you should choose any available
 configure options for building or using static libraries rather than shared ones.
 
