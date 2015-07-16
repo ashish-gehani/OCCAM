@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/local/bin/python
 
 # ------------------------------------------------------------------------------
 # OCCAM
@@ -62,7 +62,13 @@ def std(name):
 if __name__ == '__main__':
     print """LOGFILE='%s/../log'""" % os.path.abspath(os.path.dirname(__file__))
     libprevirt = os.getenv('OCCAM_LIB') + '/libprevirt.so'
+    llpe_main = os.getenv('OCCAM_LIB') + '/libLLVMLLPEMain.so'
+    llpe_driver = os.getenv('OCCAM_LIB') + '/libLLVMLLPEDriver.so'
+    
     print "OCCAM_LIB='%s'" % libprevirt
+    print "LLPE_MAIN='%s'" % llpe_main
+    print "LLPE_DRIVER='%s'" % llpe_driver  
+
 #    dragonegg = os.getenv('DRAGONEGG')
 #    print "DRAGONEGG='%s'" % dragonegg
     print """
@@ -75,11 +81,10 @@ LLVM = { 'link'    : "%s"
        , 'clang++' : "%s"
        , 'clang-cpp' : "%s"
        , 'nm'      : "%s"
-       , 'llc'     : "%s"
+       , 'llc'     : "%s"	
        }""" % (std('llvm-link'), std('llvm-as'), std('llvm-ar'), 
                std('llvm-ld'), std('opt'), std('clang'),
-               std('clang++'), std('clang-cpp'), std('llvm-nm'),
-               std('llc'))
+               std('clang++'), std('clang-cpp'), std('llvm-nm'), std('llc'))
 #% (llvm('llvm-link'), llvm('llvm-as'), llvm('llvm-ar'), 
 #               llvm('llvm-ld'), llvm('opt'), llvm('clang'),
 #               llvm('clang++'), llvm('llvm-nm'))

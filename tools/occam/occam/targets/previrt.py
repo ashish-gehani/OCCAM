@@ -153,6 +153,7 @@ class PrevirtTool (target.Target):
         watches = [os.path.abspath(x) 
                    for x in get_default(manifest, 'watch', [])]
         binary = get_default(manifest, 'binary', modules[0] + '.exe')
+	llpe_analysis = get_default(manifest, 'llpe_analysis', True)  # An llpe pass will be performed by default (on all modules)
 
         try:
             found_libs = [get_library(x, search) for x in libs]
@@ -303,9 +304,9 @@ class PrevirtTool (target.Target):
                 post = m.new('p')
                 fn = 'previrt_%s-%s' % (os.path.basename(pre),
                                         os.path.basename(post))
-                passes.peval(pre, post, log=open(fn, 'w'))
-            InParallel(intra, files.values())
+                passes.peval(pre, post, llpe_analysis, log=open(fn, 'w'))
 
+            InParallel(intra, files.values())
             # Inter-module previrt
             iface = passes.deep([x.get() for x in files.values()],
                                 ['main.iface'])

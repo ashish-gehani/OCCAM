@@ -88,7 +88,8 @@ def enforce(input_file, output_file, interfaces, inside, **opts):
                    all_args('-Penforce-%s-input' % tkn, interfaces), 
                    **opts)
 
-def peval(input_file, output_file, log=None, trail=None, **opts):
+
+def peval(input_file, output_file, llpe_analysis, log=None, trail=None, **opts):
     "intra module previrtualization"
     if not trail:
         opt  = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
@@ -98,9 +99,18 @@ def peval(input_file, output_file, log=None, trail=None, **opts):
         pre.close()
         done.close()
         
-        pre_args=[config.LLVM['opt'], '-load=%s' % config.OCCAM_LIB,
-                  opt.name, '-o=%s' % done.name,
-                  '-Ppeval']
+        
+        if llpe_analysis:
+	    args=['-load=%s' % config.LLPE_MAIN, '-load=%s' % config.LLPE_DRIVER,              
+                  '-loop-simplify', '-lcssa', '-llpe', '-llpe-omit-checks', '-llpe-single-threaded', input_file, '-o=%s' % done.name]       
+	 
+	    run("opt", args)	
+	    shutil.copy(done.name, input_file)		
+	
+	
+        #pre_args=[config.LLVM['opt'], '-load=%s' % config.OCCAM_LIB,
+        #          opt.name, '-o=%s' % done.name,
+        #          '-Ppeval']
         
         out = ['']
         

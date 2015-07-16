@@ -9,7 +9,11 @@
 #
 
 # export LLVM_HOME=/usr/local
-# export OCCAM_HOME=~/occam
+# export OCCAM_HOME=/home/moore/occam
+
+#- Edited: Hashim Sharif (hashim.sharif@sri.com)
+#- Added LLPE installation
+
 
 ifneq (,)
 This Makefile requires GNU Make.
@@ -26,23 +30,34 @@ export OCCAM_LIB = $(OCCAM_HOME)/lib
 
 MKDIR_P = mkdir -p
 INSTALL = install
-# MAKE = gmake
+MAKE = gmake
+
 
 #
 # Build the libprevirt.so in src
 # and the config.py file in tools/occam/occam
 #
-all: check-occam-home
+all: 	
 	$(MAKE) -C src all
 	$(MAKE) -C tools/occam config
+	
+	if [ ! -d "llpe/build" ]; then \
+	  	git clone https://github.com/smowton/llpe.git; mkdir llpe/build; fi
 
+	cp LLPE/CMakeLists.txt llpe/llpe/driver/ 
+	cp LLPE/Integrator.cpp llpe/llpe/driver/
+	cp LLPE/Eval.cpp llpe/llpe/main/ 
+	cp LLPE/VFSCallModRef.cpp llpe/llpe/main/ 		
+	cp LLPE/PartialLoadForward.cpp llpe/llpe/main/ 		 		
+	cd llpe/build && cmake -D CMAKE_BUILD_TYPE:STRING=RelWithDebInfo ../llpe && gmake
+	
 #
 # Install all tools needed by occam in INSTALL_DIR
 # (may need sudo -E for this to work)
 #
-install: check-occam-home install-previrt install-occam install-tools
+install: install-previrt install-occam install-tools install-llpe
 
-install-dirs: check-occam-home
+install-dirs:
 	$(MKDIR_P) $(OCCAM_BIN)
 	$(MKDIR_P) $(OCCAM_PBIN)
 	$(MKDIR_P) $(OCCAM_ROOT)
@@ -54,27 +69,23 @@ install-previrt: install-dirs
 install-occam: install-dirs
 	$(MAKE) -C tools/occam install
 
-install-tools: check-occam-home
+install-tools:
 	$(INSTALL) -m 775 tools/bin/clean-all.sh $(OCCAM_BIN)
 
+install-llpe:
+	mv llpe/build/main/libLLVMLLPEMain.so $(OCCAM_HOME)/lib
+	mv llpe/build/driver/libLLVMLLPEDriver.so $(OCCAM_HOME)/lib
+	
 #
 # Remove the INSTALL_DIR directory and everything in it
 # (may need sudo for this)
 #
-uninstall: check-occam-home
+uninstall:
 	$(MAKE) -C tools/occam uninstall
 
 #
 # Delete the object files from src
 #
-clean: 
+clean:
 	$(MAKE) -C src clean
 	$(MAKE) -C tools/occam clean
-
-#
-# Check for OCCAM_HOME
-#
-check-occam-home:
-ifeq ($(OCCAM_HOME),)
-	$(error OCCAM_HOME is undefined)
-endif
