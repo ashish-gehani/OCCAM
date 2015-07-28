@@ -136,11 +136,10 @@ Now finish the build and install:
 Note that the FreeBSD 10.0 base includes Clang 3.3 (but does not include 
 the complete LLVM framework).
 
-4. Checkout the 'llvm3.5-on-freebsd10' branch of the code:
+4. Checkout out the code:
 
    git clone https://github.com/SRI-CSL/application-specialization.git
    cd application-specialization
-   git checkout llvm3.5-on-freebsd10
    export OCCAM_SRC=`pwd`/application-specialization
 
 -- Installing OCCAM ------------------------------------------------------------
