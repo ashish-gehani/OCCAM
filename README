@@ -138,9 +138,9 @@ the complete LLVM framework).
 
 4. Checkout out the code:
 
-   git clone https://github.com/SRI-CSL/application-specialization.git
-   cd application-specialization
-   export OCCAM_SRC=`pwd`/application-specialization
+   git clone https://github.com/ashish-gehani/OCCAM.git
+   cd OCCAM
+   export OCCAM_SRC=`pwd`/OCCAM
 
 -- Installing OCCAM ------------------------------------------------------------
 
