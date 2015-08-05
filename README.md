@@ -1,12 +1,11 @@
 # Occam Toolchain (BSD)
 
 
---------------------------------------------------------------------------------
 This package includes OCCAM software, available from:
 https://github.com/ashish-gehani/OCCAM/
 
 The following terms apply to OCCAM:
-
+```
 Redistribution and use in source and binary forms, with or without 
 modification, are permitted provided that the following conditions are met:
 
@@ -32,7 +31,7 @@ PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
 LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
---------------------------------------------------------------------------------
+```
 
 ## Installation / Getting Started 
 
@@ -42,7 +41,7 @@ have been tested with FreeBSD 10.0 amd64.
 
 ### Prerequisites: 
 
-1. FreeBSD
+#### 1. FreeBSD
 
 The ideal way to start is with a clean install of FreeBSD 10.0 with 
 sources installed. The simplest way to do this is to install from the 
@@ -57,7 +56,7 @@ If you are on an existing system that has either an old version of the
 source tree or is missing source, you can follow the instructions in the 
 FreeBSD Handbook Chapter 24 to get the relevant sources.
 
-2. Necessary ports
+#### 2. Necessary ports
 
 Upgrade the ports collection (as 'root'):
 ```
@@ -104,7 +103,7 @@ We suggest installing 'sudo' and setting up your account as a sudoer, to
 make installing programs easier. You can do this, or modify the commands 
 that use 'sudo' below.
 
-3. LLVM and Clang 3.5
+#### 3. LLVM and Clang 3.5
 
 Install LLVM and Clang version 3.5. (These instructions adapted from 
 http://llvm.org/docs/GettingStarted.html) Decide where you want to 
@@ -136,7 +135,7 @@ Now finish the build and install:
 Note that the FreeBSD 10.0 base includes Clang 3.3 (but does not include 
 the complete LLVM framework).
 
-4. Checkout out the code:
+#### 4. Checkout out the code:
 ```
    git clone https://github.com/ashish-gehani/OCCAM.git
    cd OCCAM
@@ -229,7 +228,7 @@ in this case:
 At this point, you have a few options. We have tested option 1 below,
 but the others should also work.
 
-Option 1) Actually install your new "world"
+#### Option 1) Actually install your new "world"
 
   To be really safe, we'll build a new kernel with this source as well. You
   *may* be able to skip this step, along with 'mergemaster', but we haven't
@@ -266,7 +265,7 @@ Option 1) Actually install your new "world"
   When the machine comes back up, you should have a full FreeBSD system with bitcode
   versions of all of the core libraries and executables.
 
-Option 2) Install your new "world" somewhere else, chroot into it, and set up a
+#### Option 2) Install your new "world" somewhere else, chroot into it, and set up a
 development environment.
 
   Choose somewhere to install everything to $WORLD_DIR.
@@ -276,7 +275,7 @@ development environment.
   !Note, you cannot (according to the Handbook) use -j when using installworld.
   chroot into $WORLD_DIR and reinstall LLVM, Clang, and OCCAM.
 
-Option 3) Extract all the libraries and store them somewhere else.
+#### Option 3) Extract all the libraries and store them somewhere else.
 
   Choose a folder to store all of your libraries, $LIB_DIR. Extract all the
   libraries you built into it.
@@ -346,15 +345,18 @@ configure options for building or using static libraries rather than shared ones
 For apache, you'll first need to compile and install libpcre, libapr, and 
 libapr-util. The configurations I used for each of these are:
 
-  libpcre: built from pcre-8.31.tar.gz
+*  libpcre: built from pcre-8.31.tar.gz
+```
      occam ./configure --enable-shared=no
-
-  libapr: built from apr-1.4.6.tar.gz
+```
+*  libapr: built from apr-1.4.6.tar.gz
+```
      occam ./configure --enable-shared=no
-
-  libapr-util:
+```
+*  libapr-util:
+```
      occam ./configure --with-apr=/usr/local/apr --disable-util-dso --with-crypto
-
+```
 You may be able to drop --with-crypto, which could fix the configure issue for
 apache that I describe below. For apache, I used the following configure:
 ```
