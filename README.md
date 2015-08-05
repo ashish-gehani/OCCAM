@@ -165,7 +165,7 @@ environment). Change the paths to your choices. Now build and install
 the tool.
 ```
   gmake
-  gmake install		(Note: 'sudo' is used for non-root Python setup)
+  gmake install		#Note: 'sudo' is used for non-root Python setup
 ```
 If you make modifications to the Python scripts and want to install the
 new ones without rebuilding the C++ library, use "gmake install-occam".
@@ -242,8 +242,8 @@ but the others should also work.
 ```
      cd /usr/src
      make buildkernel
-     sudo shutdown now              (drops into single user mode)
-     make installkernel                            (don't use -j)
+     sudo shutdown now              # drops into single user mode
+     make installkernel             # don't use -j
      mergemaster -p
 ```
   Switching to single user mode results in a new shell, where environment
@@ -258,7 +258,7 @@ but the others should also work.
   The new world can now be installed:
 ```
      cd /usr/src
-     occam make installworld                       (don't use -j)
+     occam make installworld       # don't use -j
      mergemaster -iU
      shutdown -r now
 ```
@@ -315,13 +315,13 @@ You should now be able to compile most well-behaved projects with:
 ```
 Occam has a few configuration options, set via environmental variables.
 
-   OCCAM_LOGFILE        Absolute path of file to log to
-   OCCAM_LOGLEVEL       Logging detail, may be one of INFO, WARNING, or ERROR
-   OCCAM_LIB_PATH       Additional directories to include in the search path for 
+*  `OCCAM_LOGFILE`        Absolute path of file to log to
+*  `OCCAM_LOGLEVEL`       Logging detail, may be one of INFO, WARNING, or ERROR
+*  `OCCAM_LIB_PATH`       Additional directories to include in the search path for 
    			finding bitcode versions of libraries. Not necessary if
 			libraries are installed next to their native versions
 			(e.g., /path/to/libs:/morelibs)
-   OCCAM_PROTECT_PATH	Set/unset flag. If set, OCCAM will remove all non-OCCAM
+*  `OCCAM_PROTECT_PATH`	Set/unset flag. If set, OCCAM will remove all non-OCCAM
    			items from the path and intercept calls to common 
 			executables so that they can be logged at level INFO.
 			Can be useful for debugging a build that isn't working
@@ -334,7 +334,7 @@ and executables. Install WLLVM:
 ```
     https://github.com/SRI-CSL/whole-program-llvm/blob/master/wllvm
 ```
-Make sure the WLLVM tools are added to the PATH variable
+Make sure the WLLVM tools are added to the PATH variable.
 
 
 To compile as much code as possible to bitcode, you should choose any available
