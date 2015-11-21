@@ -1,0 +1,37 @@
+export HOME=/home/vagrant
+
+export REPOS=${HOME}/Repositories
+
+export WLLVM_HOME=${REPOS}/whole-program-llvm
+
+export LLVM_COMPILER=clang
+
+export WLLVM_OUTPUT=WARNING
+
+export LLVM_CC_NAME=clang-3.5
+
+export LLVM_CXX_NAME=clang++-3.5
+
+export OCCAM_SRC=${REPOS}/OCCAM/occam
+
+export OCCAM_HOME=${HOME}/occam
+
+export LLVM_HOME=/usr
+
+export CC=clang-3.5
+
+export CXX=clang++-3.5
+
+export CPP='clang-3.5 -E'
+
+export LLVM_CONFIG=llvm-config-3.5
+
+export PATH=${WLLVM_HOME}:${PATH}
+
+alias occam=${OCCAM_HOME}/bin/occam
+
+
+
+
+
+
