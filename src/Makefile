@@ -1,6 +1,13 @@
 # Ian's Makefile -- point to the llvm-config of the version you want
 # to build against (using the LLVM_CONFIG environment variable) and
-# type make. Simple!
+# type make.
+#
+# Simple!
+#
+# but set the default if there is no environment version there...
+ifeq ($(LLVM_CONFIG),)
+	LLVM_CONFIG=llvm-config
+endif
 
 # BD: made all things dependent on LLVM_HOME
 # (set in .bashrc)
