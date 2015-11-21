@@ -13,5 +13,8 @@ mkdir Repositories  && \
     git clone https://github.com/SRI-CSL/whole-program-llvm.git && \
     cp /vagrant/bash_profile  /home/vagrant/.bash_profile && \
     cd OCCAM && \
-    git checkout dos 
+    make
+
+       
+
 
