@@ -1,23 +1,24 @@
-#Ian's Makefile -- point to the llvm-config of the version you want
-# to build against and type make. Simple!
+# Ian's Makefile -- point to the llvm-config of the version you want
+# to build against (using the LLVM_CONFIG environment variable) and
+# type make. Simple!
 
 # BD: made all things dependent on LLVM_HOME
 # (set in .bashrc)
 
-LLVM_CONFIG = $(LLVM_HOME)/bin/llvm-config
+LLVM_CFG = $(LLVM_HOME)/bin/$(LLVM_CONFIG)
 
 #binaries version: /usr/local/llvm/bin/llvm-config
 #built from source:
 #debug    /usr/local/llvm-debug/bin/llvm-config
 #release  /usr/local/llvm-release/bin/llvm-config
 
-LLVM_INCLUDE = $(shell ${LLVM_CONFIG} --includedir)   
+LLVM_INCLUDE = $(shell ${LLVM_CFG} --includedir)
 
-CXX_FLAGS = $(shell  ${LLVM_CONFIG} --cxxflags)  -I../include -I/usr/local/include
+CXX_FLAGS = $(shell  ${LLVM_CFG} --cxxflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include
 
-C_FLAGS = $(shell  ${LLVM_CONFIG} --cflags)
+C_FLAGS = $(shell  ${LLVM_CFG} --cflags)
 
-CPP_FLAGS = $(shell  ${LLVM_CONFIG} --cppflags)
+CPP_FLAGS = $(shell  ${LLVM_CFG} --cppflags)
 
 PROTOC = $(shell which protoc)
 
