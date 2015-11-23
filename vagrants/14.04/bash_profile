@@ -2,6 +2,10 @@ export HOME=/home/vagrant
 
 export REPOS=${HOME}/Repositories
 
+####
+
+## OCCAM needs to know opt and llc and clang++ too.
+
 ######## whole-program-llvm configuration #############
 
 export WLLVM_HOME=${REPOS}/whole-program-llvm
