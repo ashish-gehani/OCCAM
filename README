@@ -334,7 +334,7 @@ Occam has a few configuration options, set via environmental variables.
 Occam leverages WLLVM bitcode generation for building bitcode equivalents for libraries
 and executables. Install WLLVM:
 
-    https://github.com/travitch/whole-program-llvm/blob/master/wllvm
+git clone https://github.com/SRI-CSL/whole-program-llvm.git
 
 Make sure the WLLVM tools are added to the PATH variable
 

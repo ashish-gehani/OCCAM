@@ -14,14 +14,14 @@ cat > nweb.manifest <<EOF
 }
 EOF
 
-
-
 #make the bitcode
 wllvm nweb.c -o nweb
 extract-bc nweb
 
 # Previrutalize
-${OCCAM_HOME}/bin/occam occam2 previrt --no-strip --work-dir previrt nweb.manifest
+${OCCAM_HOME}/bin/occam previrt --work-dir=previrt nweb.manifest
+
+#${OCCAM_HOME}/bin/occam occam2 previrt --no-strip --work-dir previrt nweb.manifest
 
 
 # Link link the binary into the current directory
