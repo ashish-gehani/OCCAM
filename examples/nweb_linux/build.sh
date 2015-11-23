@@ -6,9 +6,9 @@ ROOT=`pwd`/root
 cat > nweb.manifest <<EOF
 { "modules" : ["nweb.bc"]
 , "binary"  : "nweb"
-, "libs"    : ["-lc"]
-, "native_libs" : ["-lpthread"]
-, "search"  : ["/usr/lib", "/usr/local/lib"]
+, "libs"    : []
+, "native_libs" : ["-lc", "-lpthread"]
+, "search"  : ["/usr/lib", "/usr/local/lib", "/usr/lib/x86_64-linux-gnu/"]
 , "args"    : ["8181", "${ROOT}"]
 , "name"    : "nweb"
 }
