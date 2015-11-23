@@ -175,7 +175,7 @@ def setEnvironment():
 
 def register(name, tool):
     assert not TOOLS.has_key(name)    
-    print "target.py registering name '%s' to tool '%s'" % (name, tool)
+    #print "target.py registering name '%s' to tool '%s'" % (name, tool)
     tool.name = name
     TOOLS[name] = tool
 
