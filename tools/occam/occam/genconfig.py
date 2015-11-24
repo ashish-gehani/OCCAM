@@ -55,9 +55,30 @@ def occam(name):
         proc = subprocess.Popen(['which', name], stdout=subprocess.PIPE)
         return proc.stdout.read().strip()
 
-def std(name):
+ENV = {
+    'clang'      :  'LLVM_CC_NAME',
+    'clang++'    :  'LLVM_CXX_NAME',  
+    'llvm-link'  :  'LLVM_LINK_NAME',    
+    'llvm-ar'    :  'LLVM_AR_NAME',    
+    'llvm-as'    :  'LLVM_AS_NAME',    
+    'llvm-ld'    :  'LLVM_LD_NAME',    
+    'llc'        :  'LLVM_LLC_NAME',    
+    'opt'        :  'LLVM_OPT_NAME',    
+    'llvm-nm'    :  'LLVM_NM_NAME',    
+    'clang-cpp'  :  'LLVM_CPP_NAME',  
+}
+
+
+def env_version(name):
+    env_name = None
+    if name in ENV:
+        env_name = os.getenv(ENV[name])
+    if env_name:
+        name = env_name
     return name
-#    return which(name)
+
+def std(name):
+    return env_version(name)
 
 if __name__ == '__main__':
     print """LOGFILE='%s/../log'""" % os.path.abspath(os.path.dirname(__file__))
