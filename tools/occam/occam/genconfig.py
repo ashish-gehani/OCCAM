@@ -34,7 +34,7 @@
 # ------------------------------------------------------------------------------
 
 # this is the simplified genconfig.
-# the globals will be replaced soon
+# unclear at present what is being done with the log file, if anything.
 
 import os
 
