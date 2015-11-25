@@ -42,12 +42,12 @@ import collections
 import sys
 
 def assemble(input_file, output_file, args):
-    return driver.run(config.LLVM['as'],
+    return driver.run(config.getLLVMTool('as'),
                       [input_file, '-o=%s' % output_file])
 
 
 def compile(input_files, output_file, args, tool='clang'):
-    ok = driver.run(config.LLVM[tool],
+    ok = driver.run(config.getLLVMTool(tool),
                     ['-emit-llvm'] + args + ['-c'] + input_files +
                     ['-o', output_file])
     return ok
@@ -144,7 +144,7 @@ def archive_to_module(input_file, output_file, minimal=None):
     output_file = os.path.abspath(output_file)
     (d, contents) = extract_archive(input_file, minimal)
     if len(contents) > 0:
-        driver.run(config.LLVM['link'], ['-o=%s' % output_file] + \
+        driver.run(config.getLLVMTool('link'), ['-o=%s' % output_file] + \
                [os.path.join(d, x) for x in contents])
         shutil.rmtree(d)
         return True
@@ -158,7 +158,7 @@ def llvmLDWrapper(output, inputs, found_libs, searchflags, shared, xlinker_start
         tout = tempfile.NamedTemporaryFile(suffix='.o', delete=False)
         tout.close()
         tout = tout.name
-        driver.run(config.LLVM['llc'], ['-filetype=obj', '-o=%s' % tout, input])
+        driver.run(config.getLLVMTool('llc'), ['-filetype=obj', '-o=%s' % tout, input])
         new_inputs.append(tout)
     inputs_in_bc_a = [i for i in inputs if i.endswith('.bc.a')]
     for input in inputs_in_bc_a:
@@ -168,7 +168,7 @@ def llvmLDWrapper(output, inputs, found_libs, searchflags, shared, xlinker_start
             tout = tempfile.NamedTemporaryFile(suffix='.o', delete=False)
             tout.close()
             tout = tout.name
-            driver.run(config.LLVM['llc'], ['-filetype=obj', '-o=%s' % tout, os.path.join(d, c)])
+            driver.run(config.getLLVMTool('llc'), ['-filetype=obj', '-o=%s' % tout, os.path.join(d, c)])
             new_contents.append(tout)
         archive('rcs', new_contents, '%s_bc.a' % input[:-5])
         new_inputs.append('%s_bc.a' % input[:-5])
@@ -181,7 +181,7 @@ def llvmLDWrapper(output, inputs, found_libs, searchflags, shared, xlinker_start
         if a == '-O':
             args += ['-O%s' % b]
     args += ['-o%s' % output]
-    return driver.run(config.LLVM['clang++'], args)
+    return driver.run(config.getLLVMTool('clang++'), args)
 
 class LibNotFound (Exception):
     def __init__(self, lib, path):
@@ -192,7 +192,7 @@ class LibNotFound (Exception):
         return "Could not find library %s on path %s" % (self._lib, ':'.join(self._path))
 
 def getSearchPath():
-    args = [config.LLVM['clang'], '-print-search-dirs']
+    args = [config.getLLVMTool('clang'), '-print-search-dirs']
     proc = subprocess.Popen(args, 
                             stderr=subprocess.PIPE,
                             stdout=subprocess.PIPE,
@@ -243,7 +243,7 @@ def bundle(output, inputs, libs, paths):
         tout = tempfile.NamedTemporaryFile(suffix='.o', delete=False)
         tout.close()
         tout = tout.name
-        driver.run(config.LLVM['llc'], ['-filetype=obj', '-o=%s' % tout, input])
+        driver.run(config.getLLVMTool('llc'), ['-filetype=obj', '-o=%s' % tout, input])
         args.append(tout)
     libinputs = [x for x in [findlib(x, paths) for x in libs] if not (x is None)]
     inputs_in_bc_a = [i for i in (inputs + libinputs) if i.endswith('.bc.a')]
@@ -254,7 +254,7 @@ def bundle(output, inputs, libs, paths):
             tout = tempfile.NamedTemporaryFile(suffix='.o', delete=False)
             tout.close()
             tout = tout.name
-            driver.run(config.LLVM['llc'], ['-filetype=obj', '-o=%s' % tout, os.path.join(d, c)])
+            driver.run(config.getLLVMTool('llc'), ['-filetype=obj', '-o=%s' % tout, os.path.join(d, c)])
             new_contents.append(tout)
         archive('rcs', new_contents, '%s_bc.a' % input[:-5])
         args.append('%s_bc.a' % input[:-5])
@@ -266,7 +266,7 @@ def bundle(output, inputs, libs, paths):
         if lib not in args:
             args.append(lib)
     args += ['-L%s' % path for path in paths]
-    return driver.run(config.LLVM['clang++'], args)
+    return driver.run(config.getLLVMTool('clang++'), args)
 
 def bundle_bc(output, inputs):
     inputs_in_bc = [i for i in inputs if i.endswith('.bc') or i.endswith('.bc.o')]
@@ -278,7 +278,7 @@ def bundle_bc(output, inputs):
         archive_to_module(input, tout, None)
         inputs_in_bc.append(tout)
     if len(inputs_in_bc) > 0:
-        return driver.run(config.LLVM['link'], ['-o=%s' % output] + inputs_in_bc)
+        return driver.run(config.getLLVMTool('link'), ['-o=%s' % output] + inputs_in_bc)
 
 def clean(input_file, output_file):
     # TODO: I shouldn't need to do this, but I'm getting \01 characters
@@ -399,7 +399,7 @@ def link(inputs, output_file, args, save=None, link=True):
 #              [linker_option(x) for x in args
 #               if not (linker_option(x) is None)]
 #    
-#        retcode = driver.run(config.LLVM['ld'], cmd)
+#        retcode = driver.run(config.getLLVMTool('ld'), cmd)
     #if temporary:
     #    os.unlink(tout)
     return retcode
