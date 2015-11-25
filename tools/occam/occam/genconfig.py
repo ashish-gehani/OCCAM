@@ -34,17 +34,16 @@
 # ------------------------------------------------------------------------------
 
 # this is the simplified genconfig.
-# the globals will be replaced soon
+# not sure why we need this any more. seems overkill.
 
 import os
 
 if __name__ == '__main__':
-    logfile = '/tmp/logfile.txt'  #iam: don't see any logging; where should this go?
     libprevirt = os.getenv('OCCAM_LIB') + '/libprevirt.so'
     print """
 from occam import configobj
 
-theConfig = configobj.cfgObj('%s', '%s')
+theConfig = configobj.cfgObj('%s')
 
 def getOccamLib():
     return theConfig.getOccamLib()
@@ -58,4 +57,4 @@ def getStdTool(tool):
 def getLLVMTool(tool):
     return theConfig.getLLVMTool(tool)
 
-    """ % (libprevirt, logfile)
+    """ % (libprevirt)

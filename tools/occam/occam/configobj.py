@@ -13,9 +13,8 @@ import os
 
 class cfgObj(object):
 
-    def  __init__(self, libfile, logfile):
+    def  __init__(self, libfile):
         self._occamlib = libfile
-        self._logfile = logfile
         self._llvm = { 'link'        : 'llvm-link'
                        , 'as'        : 'llvm-as'
                        , 'ar'        : 'llvm-ar'
@@ -69,7 +68,10 @@ class cfgObj(object):
         return self._occamlib
 
     def getLogfile(self):
-        return self._logfile
+        logfile = os.getenv('OCCAM_LOGFILE'):
+        if not logfile:
+            logfile = '/tmp/occam.log'
+        return logfile
 
     def getStdTool(self, tool):
         candidate = tool
