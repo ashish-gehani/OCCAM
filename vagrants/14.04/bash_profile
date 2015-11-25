@@ -41,6 +41,8 @@ export OCCAM_SRC=${REPOS}/OCCAM/occam
 
 export OCCAM_HOME=${HOME}/occam
 
+export OCCAM_LOGFILE=${HOME}/.occam.log
+
 export LLVM_HOME=/usr
 
 export CC=clang-3.5

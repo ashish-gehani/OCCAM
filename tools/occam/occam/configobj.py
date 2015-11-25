@@ -68,7 +68,7 @@ class cfgObj(object):
         return self._occamlib
 
     def getLogfile(self):
-        logfile = os.getenv('OCCAM_LOGFILE'):
+        logfile = os.getenv('OCCAM_LOGFILE')
         if not logfile:
             logfile = '/tmp/occam.log'
         return logfile

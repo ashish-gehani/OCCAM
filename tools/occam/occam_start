@@ -81,7 +81,7 @@ class Configuration:
     def getLLVMTool(self, n):
         return config.getLLVMTool(n)
     def log(self, msg, args):
-        logging.getLogger(filename=config.getLogfile()).info(msg, args)
+        logging.getLogger().info(msg, args)
 
 
 def flag(flags, f, default=None):
@@ -136,15 +136,11 @@ def run(args, tool=None):
 
 
 def setLogger():
+    logfile = config.getLogfile()
     logger = logging.getLogger()
-    hdlr = logging.FileHandler('/tmp/.log')
+    hdlr = logging.FileHandler(logfile)
     hdlr.setFormatter(logging.Formatter("%(message)s"))
     logger.addHandler(hdlr)
-    if os.environ.has_key('OCCAM_LOGFILE'):
-        hdlr = logging.FileHandler(os.environ['OCCAM_LOGFILE'])
-        hdlr.setFormatter(logging.Formatter("%(message)s"))
-        logger.addHandler(hdlr)
-
     
     levels = {'CRITICAL' : logging.CRITICAL,
               'ERROR' : logging.ERROR,
