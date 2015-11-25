@@ -76,7 +76,7 @@ def strip(input_file, output_file, **opts):
           '-globalopt',
           '-strip-dead-prototypes',
           ]
-    return run(config.LLVM['opt'], args, **opts)
+    return run(config.getLLVMTool('opt'), args, **opts)
 
 def enforce(input_file, output_file, interfaces, inside, **opts):
     if inside:
@@ -98,7 +98,7 @@ def peval(input_file, output_file, log=None, trail=None, **opts):
         pre.close()
         done.close()
         
-        pre_args=[config.LLVM['opt'], '-load=%s' % config.OCCAM_LIB,
+        pre_args=[config.getLLVMTool('opt'), '-load=%s' % config.getOccamLib(),
                   opt.name, '-o=%s' % done.name,
                   '-Ppeval']
         
@@ -131,13 +131,13 @@ def peval(input_file, output_file, log=None, trail=None, **opts):
 
 def callgraph(input_file, output_file, **opts):
     args=[input_file, '-o', '/dev/null', '-dot-callgraph']
-    x = run(config.LLVM['opt'], args, **opts)
+    x = run(config.getLLVMTool('opt'), args, **opts)
     if x == 0:
         shutil.move('callgraph.dot', output_file)
     return x
 
 def optimize(input_file, output_file, **opts):
-    return run(config.LLVM['opt'],
+    return run(config.getLLVMTool('opt'),
                ['-disable-simplify-libcalls', input_file, '-o', output_file, '-O3'], **opts)
 
 def specialize_program_args(input_file, output_file, args, fn=None, name=None):
