@@ -69,8 +69,8 @@ clean:
 	rm -rf ${OBJECTS} proto ${LIB}
 
 
-install: check-occam-lib $(LIBRARYNAME).so
-	$(INSTALL) -m 664 $(LIBRARYNAME).so $(OCCAM_LIB)
+install: check-occam-lib ${LIB}
+	$(INSTALL) -m 664 ${LIB} $(OCCAM_LIB)
 
 #
 # Check for OCCAM_LIB
