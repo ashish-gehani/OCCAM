@@ -23,8 +23,8 @@ LIBS =  -lpthread -lprotobuf -lcurses
 else
 # LINUX
 LIB = ${LIBRARYNAME}.so
-LIBS = -shared -Wl,-soname,${LIB}
-LINK =  -lpthread -lprotobuf 
+LIBFLAGS = -shared -Wl,-soname,${LIB}
+LIBS =  -lpthread -lprotobuf 
 endif
 
 # BD: made all things dependent on LLVM_HOME
