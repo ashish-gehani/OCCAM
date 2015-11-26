@@ -37,9 +37,35 @@
 # not sure why we need this any more. seems overkill.
 
 import os
+import platform
+
+
+def getOccamLibPath():
+
+    library_extension = None
+
+    # The environment here is coming from the Makefile.
+    library_path = os.getenv('OCCAM_LIB')
+
+    # Ensure library_path has trailing slash
+    if library_path[-1] != os.path.sep:
+        library_path = library_path + os.path.sep
+    
+    if platform.system() == 'Darwin':
+        library_extension = '.dylib'
+    else:
+        library_extension = '.so'
+
+
+
+    return '%s%s%s' % ( library_path, 'libprevirt', library_extension)
+
+    
 
 if __name__ == '__main__':
-    libprevirt = os.getenv('OCCAM_LIB') + '/libprevirt.so'
+
+    libprevirt = getOccamLibPath()
+    
     print """
 from occam import configobj
 
