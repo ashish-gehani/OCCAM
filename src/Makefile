@@ -29,7 +29,7 @@ LIBRARYNAME=libprevirt
 
 ifeq (Darwin, $(findstring Darwin, ${OS}))
 #  DARWIN
-LIB = ${LIBRARYNAME}.dynlib
+LIB = ${LIBRARYNAME}.dylib
 LIBFLAGS = -dynamiclib
 LIBS =  -lpthread -lprotobuf -lcurses 
 LIBFILES = $(shell  ${LLVM_CFG} --libfiles)
