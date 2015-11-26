@@ -19,10 +19,12 @@ ifeq (Darwin, $(findstring Darwin, ${OS}))
 #  DARWIN
 LIB = ${LIBRARYNAME}.dynlib
 LIBFLAGS = -dynamiclib
+LIBS =  -lpthread -lprotobuf -lcurses 
 else
 # LINUX
 LIB = ${LIBRARYNAME}.so
-LIBFLAGS = -shared -Wl,-soname,${LIB}
+LIBS = -shared -Wl,-soname,${LIB}
+LINK =  -lpthread -lprotobuf 
 endif
 
 # BD: made all things dependent on LLVM_HOME
@@ -52,7 +54,7 @@ ${LIB}:
 	$(MAKE) lib
 
 lib: ${OBJECTS}
-	$(CXX) ${OBJECTS} ${LIBFLAGS} -o ${LIB} ${CXX_FLAGS} ${LIBFILES} -lpthread -lprotobuf -lcurses 
+	$(CXX) ${OBJECTS} ${LIBFLAGS} -o ${LIB} ${CXX_FLAGS} ${LIBFILES} ${LIBS}
 
 %.o: %.cpp
 	$(CXX) -I. ${CXX_FLAGS} $< -c 
