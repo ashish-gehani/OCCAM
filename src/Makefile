@@ -9,24 +9,6 @@ ifeq ($(LLVM_CONFIG),)
 	LLVM_CONFIG=llvm-config
 endif
 
-
-#iam: producing the library varies from OS to OS
-OS   =  $(shell uname)
-
-LIBRARYNAME=libprevirt
-
-ifeq (Darwin, $(findstring Darwin, ${OS}))
-#  DARWIN
-LIB = ${LIBRARYNAME}.dynlib
-LIBFLAGS = -dynamiclib
-LIBS =  -lpthread -lprotobuf -lcurses 
-else
-# LINUX
-LIB = ${LIBRARYNAME}.so
-LIBFLAGS = -shared -Wl,-soname,${LIB}
-LIBS =  -lpthread -lprotobuf 
-endif
-
 # BD: made all things dependent on LLVM_HOME
 
 LLVM_CFG = $(LLVM_HOME)/bin/$(LLVM_CONFIG)
@@ -39,7 +21,26 @@ C_FLAGS = $(shell  ${LLVM_CFG} --cflags)
 
 CPP_FLAGS = $(shell  ${LLVM_CFG} --cppflags)
 
+
+#iam: producing the library varies from OS to OS
+OS   =  $(shell uname)
+
+LIBRARYNAME=libprevirt
+
+ifeq (Darwin, $(findstring Darwin, ${OS}))
+#  DARWIN
+LIB = ${LIBRARYNAME}.dynlib
+LIBFLAGS = -dynamiclib
+LIBS =  -lpthread -lprotobuf -lcurses 
 LIBFILES = $(shell  ${LLVM_CFG} --libfiles)
+else
+# LINUX
+LIB = ${LIBRARYNAME}.so
+LIBFLAGS = -shared -Wl,-soname,${LIB}
+LIBS =  -lpthread -lprotobuf 
+LIBFILES = 
+#$(shell  ${LLVM_CFG} --libfiles)
+endif
 
 PROTOC = $(shell which protoc)
 
