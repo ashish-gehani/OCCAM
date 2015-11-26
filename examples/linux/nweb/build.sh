@@ -21,16 +21,19 @@ extract-bc nweb
 # Previrutalize
 ${OCCAM_HOME}/bin/occam previrt --work-dir=previrt nweb.manifest
 
-#${OCCAM_HOME}/bin/occam occam2 previrt --no-strip --work-dir previrt nweb.manifest
-
 
 # Link link the binary into the current directory
 # (it was created in previrt)
-#iam rm -f nweb
-#iam ln -s previrt/nweb .
+echo "linking nweb to previrt/nweb"
+rm -f nweb
+ln -s previrt/nweb .
 
 # Now build the non-previrt application
-#iam opt -O3 nweb.bc -o nweb.opt.bc
+echo "building the non-previrt application bitcode"
+${LLVM_OPT_NAME} -O3 nweb.bc -o nweb.opt.bc
 
-#iam llc -filetype=obj -o nweb.opt.o nweb.opt.bc
-#iam clang nweb.opt.o -o nweb-base 
+echo "creating the non-previrt application object file"
+${LLVM_LLC_NAME} -filetype=obj -o nweb.opt.o nweb.opt.bc
+
+echo "producing the non-previrt executable: nweb-base"
+${LLVM_CC_NAME} nweb.opt.o -o nweb-base 
