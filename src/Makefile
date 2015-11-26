@@ -9,15 +9,25 @@ ifeq ($(LLVM_CONFIG),)
 	LLVM_CONFIG=llvm-config
 endif
 
+
+#iam: producing the library varies from OS to OS
+OS   =  $(shell uname)
+
+LIBRARYNAME=libprevirt
+
+ifeq (Darwin, $(findstring Darwin, ${OS}))
+#  DARWIN
+LIB = ${LIBRARYNAME}.dynlib
+LIBFLAGS = -dynamiclib
+else
+# LINUX
+LIB = ${LIBRARYNAME}.so
+LIBFLAGS = -shared -Wl,-soname,${LIB}
+endif
+
 # BD: made all things dependent on LLVM_HOME
-# (set in .bashrc)
 
 LLVM_CFG = $(LLVM_HOME)/bin/$(LLVM_CONFIG)
-
-#binaries version: /usr/local/llvm/bin/llvm-config
-#built from source:
-#debug    /usr/local/llvm-debug/bin/llvm-config
-#release  /usr/local/llvm-release/bin/llvm-config
 
 LLVM_INCLUDE = $(shell ${LLVM_CFG} --includedir)
 
@@ -27,22 +37,22 @@ C_FLAGS = $(shell  ${LLVM_CFG} --cflags)
 
 CPP_FLAGS = $(shell  ${LLVM_CFG} --cppflags)
 
-PROTOC = $(shell which protoc)
+LIBFILES = $(shell  ${LLVM_CFG} --libfiles)
 
-LIBRARYNAME=libprevirt
+PROTOC = $(shell which protoc)
 
 OBJECTS := proto/Previrt.pb.o proto/Watch.pb.o $(patsubst %.cpp,%.o,$(wildcard *.cpp)) 
 
 INSTALL = install
 
-all: ${LIBRARYNAME}.so
+all: ${LIB}
 
-${LIBRARYNAME}.so: 
+${LIB}: 
 	$(MAKE) protoc 
 	$(MAKE) lib
 
 lib: ${OBJECTS}
-	$(CXX) ${OBJECTS} -shared -Wl,-soname,${LIBRARYNAME}.so -o ${LIBRARYNAME}.so ${CXX_FLAGS} ${LDFLAGS} -lpthread -lprotobuf
+	$(CXX) ${OBJECTS} ${LIBFLAGS} -o ${LIB} ${CXX_FLAGS} ${LIBFILES} -lpthread -lprotobuf -lcurses 
 
 %.o: %.cpp
 	$(CXX) -I. ${CXX_FLAGS} $< -c 
@@ -56,7 +66,7 @@ protoc: Watch.proto Previrt.proto
 	${PROTOC} Previrt.proto --cpp_out=proto
 
 clean: 
-	rm -rf ${OBJECTS} proto ${LIBRARYNAME}.so
+	rm -rf ${OBJECTS} proto ${LIB}
 
 
 install: check-occam-lib $(LIBRARYNAME).so
