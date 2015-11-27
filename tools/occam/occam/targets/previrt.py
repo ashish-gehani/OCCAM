@@ -38,7 +38,7 @@ from occam import driver, config
 from occam.target import ArgError
 import getopt
 import json
-import os, shutil, tempfile, sys
+import os, shutil, tempfile, sys, platform
 
 
 def get_flag(flags, flag, default=None):
@@ -374,9 +374,15 @@ class PrevirtTool (target.Target):
         searchflags = [x for x in map(toLflag,search) if x is not None]
 
         xlinker_start = ['-Wl,-static']
+        xlinker_end = ['-Wl,-call_shared']
+
+        if platform.system() == 'Darwin':
+            xlinker_start = ['']
+            xlinker_end = ['']
+
         if '-lpthread' in native_libs:
             shared.append('-pthread')
-        xlinker_end = ['-Wl,-call_shared']
+
         # Link everything together
         sys.stderr.write("linking...")
         if binary.endswith('.bc'):

@@ -24,7 +24,7 @@ ${OCCAM_HOME}/bin/occam previrt --work-dir=previrt nweb.manifest
 
 # Link link the binary into the current directory
 # (it was created in previrt)
-#iam rm -f nweb
+# rm -f nweb
 #iam ln -s previrt/nweb .
 
 # Now build the non-previrt application
