@@ -31,15 +31,17 @@ ifeq (Darwin, $(findstring Darwin, ${OS}))
 #  DARWIN
 LIB = ${LIBRARYNAME}.dylib
 LIBFLAGS = -dynamiclib
-LIBS =  -lpthread -lprotobuf -lcurses 
-LIBFILES = $(shell  ${LLVM_CFG} --libfiles)
+LIBS =  -lpthread -lprotobuf -lcurses
+LIBDIR=$(shell  ${LLVM_CFG} --libdir)
+LLVMLIB=${LIBDIR}/libLLVM-3.5.1.dylib
+
 else
 # LINUX
 LIB = ${LIBRARYNAME}.so
 LIBFLAGS = -shared -Wl,-soname,${LIB}
 LIBS =  -lpthread -lprotobuf 
 LIBFILES = 
-#$(shell  ${LLVM_CFG} --libfiles)
+LLVMLIB=
 endif
 
 PROTOC = $(shell which protoc)
@@ -55,7 +57,7 @@ ${LIB}:
 	$(MAKE) lib
 
 lib: ${OBJECTS}
-	$(CXX) ${OBJECTS} ${LIBFLAGS} -o ${LIB} ${CXX_FLAGS} ${LIBFILES} ${LIBS}
+	$(CXX) ${OBJECTS} ${LIBFLAGS} -o ${LIB} ${CXX_FLAGS} ${LLVMLIB} ${LIBS}
 
 %.o: %.cpp
 	$(CXX) -I. ${CXX_FLAGS} $< -c 
