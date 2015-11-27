@@ -376,6 +376,7 @@ class PrevirtTool (target.Target):
         xlinker_start = ['-Wl,-static']
         xlinker_end = ['-Wl,-call_shared']
 
+        #iam: these two flags are not for Darwin.
         if platform.system() == 'Darwin':
             xlinker_start = ['']
             xlinker_end = ['']
