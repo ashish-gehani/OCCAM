@@ -8,7 +8,7 @@ cat > nweb.manifest <<EOF
 , "binary"  : "nweb"
 , "libs"    : []
 , "native_libs" : ["-lc", "-lpthread"]
-, "search"  : ["/usr/lib", "/usr/local/lib", "/usr/lib/x86_64-linux-gnu/"]
+, "search"  : ["/usr/lib", "/usr/local/lib"]
 , "args"    : ["8181", "${ROOT}"]
 , "name"    : "nweb"
 }
