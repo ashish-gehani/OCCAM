@@ -7,8 +7,6 @@ mkdir -p travis_build/Repositories
 
 export OCCAM_HOME=${BUILD_HOME}/travis_build/occam
 
-export OCCAM_SRC=${BUILD_HOME}/occam
-
 export OCCAM_LOGFILE=${BUILD_HOME}/travis_build/.occam.log
 
 export REPOS=${BUILD_HOME}/travis_build/Repositories

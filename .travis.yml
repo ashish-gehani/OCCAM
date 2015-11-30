@@ -7,7 +7,6 @@ compiler:
 sudo: required
 dist: trusty
 
-# until travis moves to 14.04 this doesn nothing...
 #dependencies 
 install:
   - sudo apt-get update
