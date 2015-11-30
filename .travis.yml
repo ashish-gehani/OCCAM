@@ -1,0 +1,20 @@
+language: c
+
+compiler:
+  - clang
+
+
+#dependencies
+install:
+  - sudo apt-get update
+  - sudo apt-get install -y wget libprotobuf-dev python-protobuf protobuf-compiler
+  - sudo apt-get install -y llvm-3.5 libclang-3.5-dev clang-3.5
+  - sudo apt-get install autoconf libtool libjpeg-dev
+  - export OCCAM_HOME=`pwd`
+
+#tests
+script:
+  - ${OCCAM_HOME}/.travis/build.sh
+
+  
+
