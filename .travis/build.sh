@@ -5,7 +5,10 @@ set -e
 mkdir occam
 mkdir Repositories
 
+echo "TRAVIS_HOME=${TRAVIS_HOME}"
 export HOME=`pwd`
+echo "HOME=${HOME}"
+
 export OCCAM_HOME=${HOME}/occam
 export REPOS=${HOME}/Repositories
 
