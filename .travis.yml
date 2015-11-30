@@ -3,12 +3,16 @@ language: c
 compiler:
   - clang
 
+#https://docs.travis-ci.com/user/trusty-ci-environment/
+sudo: required
+dist: trusty
+
 # until travis moves to 14.04 this doesn nothing...
 #dependencies 
 install:
   - sudo apt-get update
   - sudo apt-get install -y wget libprotobuf-dev python-protobuf protobuf-compiler
-#  - sudo apt-get install -y git llvm-3.5 libclang-3.5-dev clang-3.5
+  - sudo apt-get install -y git llvm-3.5 libclang-3.5-dev clang-3.5
   - export OCCAM_HOME=`pwd`
 
 #tests
