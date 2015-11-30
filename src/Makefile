@@ -32,6 +32,7 @@ ifeq (Darwin, $(findstring Darwin, ${OS}))
 LIB = ${LIBRARYNAME}.dylib
 LIBFLAGS = -dynamiclib
 LIBS =  -lpthread -lprotobuf -lcurses
+###iam: fix me
 LIBDIR=$(shell  ${LLVM_CFG} --libdir)
 LLVMLIB=${LIBDIR}/libLLVM-3.5.1.dylib
 

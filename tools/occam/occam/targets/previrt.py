@@ -91,7 +91,7 @@ def defaultPool():
     return POOL
 
 def InParallel(f, args, pool=None):
-    sys.stderr.write("Starting %s..." % f.func_doc)
+    sys.stderr.write("Starting %s...\n" % f.func_doc)
     pool = defaultPool()
     result = pool.map(f, args)
     sys.stderr.write("done\n")
