@@ -13,11 +13,11 @@ install:
   - sudo apt-get update
   - sudo apt-get install -y wget libprotobuf-dev python-protobuf protobuf-compiler
   - sudo apt-get install -y git llvm-3.5 libclang-3.5-dev clang-3.5
-  - export TRAVIS_HOME=`pwd`
+  - export BUILD_HOME=`pwd`
 
 #tests
 script:
-  - ${TRAVIS_HOME}/.travis/build.sh
+  - ${BUILD_HOME}/.travis/build.sh
 
   
 
