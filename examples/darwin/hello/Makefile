@@ -3,8 +3,8 @@
 #then make llvm2
 
 all:
-	gcc -v --sysroot=/opt/occam/root hello.c -c 
-	gcc -v --sysroot=/opt/occam/root hello.o -o hello -static 
+	wllvm hello.c -o  hello
+
 
 #
 # can't pass --native to llvm-ld because it doesn't understand --sysroot so we split it up and
