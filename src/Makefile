@@ -15,11 +15,11 @@ LLVM_CFG = $(LLVM_HOME)/bin/$(LLVM_CONFIG)
 
 LLVM_INCLUDE = $(shell ${LLVM_CFG} --includedir)
 
-CXX_FLAGS = $(shell  ${LLVM_CFG} --cxxflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include
+CXX_FLAGS += $(shell  ${LLVM_CFG} --cxxflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include
 
 C_FLAGS = $(shell  ${LLVM_CFG} --cflags)
 
-CPP_FLAGS = $(shell  ${LLVM_CFG} --cppflags)
+CPP_FLAGS += $(shell  ${LLVM_CFG} --cppflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include
 
 LIBDIR = $(shell  ${LLVM_CFG} --libdir)
 
@@ -56,7 +56,7 @@ ${LIB}:
 	$(MAKE) lib
 
 lib: ${OBJECTS}
-	$(CXX) ${OBJECTS} ${LIBFLAGS} -o ${LIB} ${CXX_FLAGS} -L${LIBDIR} ${LLVMLIB} ${LLVMLIBS} ${OTHERLIBS}
+	$(CXX) ${OBJECTS} ${LIBFLAGS} -o ${LIB} ${CXX_FLAGS} -L${LIBDIR} ${LLVMLIB} ${LLVMLIBS} ${LD_FLAGS} ${OTHERLIBS}
 
 %.o: %.cpp
 	$(CXX) -I. ${CXX_FLAGS} $< -c 

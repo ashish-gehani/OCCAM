@@ -17,3 +17,5 @@ export LLVM_OPT_NAME=opt${LLVM_SUFFIX}
 export LLVM_NM_NAME=llvm-nm${LLVM_SUFFIX}
 
 export LLVM_CPP_NAME=clang-cpp${LLVM_SUFFIX}
+
+export LLVM_CONFIG=llvm-config${LLVM_SUFFIX}

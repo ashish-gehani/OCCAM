@@ -17,3 +17,5 @@ setenv LLVM_OPT_NAME opt${LLVM_SUFFIX}
 setenv LLVM_NM_NAME llvm-nm${LLVM_SUFFIX}
 
 setenv LLVM_CPP_NAME clang-cpp${LLVM_SUFFIX}
+
+setenv LLVM_CONFIG llvm-config${LLVM_SUFFIX}
