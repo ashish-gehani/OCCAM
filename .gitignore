@@ -1,0 +1,7 @@
+*.o
+*.bc
+*~
+*.so
+*.so.*
+*.dylib
+*.DS_Store
