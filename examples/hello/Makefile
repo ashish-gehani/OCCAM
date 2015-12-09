@@ -1,19 +1,19 @@
-ifeq ($(LVM_OPT_NAME),)
+ifeq ($(LLVM_OPT_NAME),)
   OPT = opt
 else
-  OPT = $(LVM_OPT_NAME)
+  OPT = $(LLVM_OPT_NAME)
 endif
 
-ifeq ($(LVM_LLC_NAME),)
+ifeq ($(LLVM_LLC_NAME),)
   LLC = llc
 else
-  LLC = $(LVM_LLC_NAME)
+  LLC = $(LLVM_LLC_NAME)
 endif
 
-ifeq ($(LVM_CLANG_NAME),)
+ifeq ($(LLVM_CC_NAME),)
   CLANG = clang
 else
-  CLANG = $(LVM_CLANG_NAME)
+  CLANG = $(LLVM_CC_NAME)
 endif
 
 
