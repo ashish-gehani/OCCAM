@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 
 #unzip the bitcode
-gunzip -k yices_main.bc.gz
-gunzip -k libpoly.so.bc.gz 
+rm -f yices_smt2.bc
+rm -f libpoly.so.bc
+gunzip -k -q yices_smt2.bc.gz
+gunzip -k -q libpoly.so.bc.gz 
 
 # Build the manifest file
 cat > yices_smt2.manifest <<EOF
 { "modules" : ["yices_smt2.bc"]
 , "binary"  : "yices_smt2"
 , "libs"    : ["libpoly.so.bc"]
-, "native_libs" : ["-lc", "-lgmp"]
+, "native-libs" : ["-lgmp"]
 , "search"  : ["/usr/lib", "/usr/local/lib", "/usr/lib/x86_64-linux-gnu/"]
 , "args"    : ["--mcsat"]
 , "name"    : "yices_smt2"
