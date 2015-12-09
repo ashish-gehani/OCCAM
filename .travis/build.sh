@@ -25,7 +25,10 @@ cd ${REPOS}
 git clone https://github.com/SRI-CSL/whole-program-llvm.git 
 cd ${BUILD_HOME}
 make 
-make install 
+make install
+cd examples/hello
+make clean
+make
 RETURN="$?"
 
 
