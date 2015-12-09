@@ -11,6 +11,5 @@ export CC=${LLVM_CC_NAME}
 export CXX=${LLVM_CXX_NAME}
 #why not LLVM_CPP_NAME?
 export CPP='clang-3.5 -E'
-export LLVM_CONFIG=${LLVM_CONFIG_NAME}
 export PATH=${WLLVM_HOME}:${PATH}
 alias occam=${OCCAM_HOME}/bin/occam
