@@ -19,7 +19,7 @@ cd ${REPOS}
 git clone https://github.com/SRI-CSL/whole-program-llvm.git 
 cd ${BUILD_HOME}
 make 
-sudo make install
+make install
 cd examples/hello
 #make clean
 make
