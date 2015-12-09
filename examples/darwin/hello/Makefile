@@ -20,7 +20,6 @@ endif
 all: hello_previrt hello_O3
 
 
-
 hello.bc:
 	wllvm hello.c -o  hello
 	extract-bc hello
