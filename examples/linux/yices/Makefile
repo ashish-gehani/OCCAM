@@ -15,5 +15,6 @@ run:
 
 
 clean:
-	rm -rf previrt ${BITCODE}
+	rm -rf previrt ${BITCODE} *.manifest
+
 
