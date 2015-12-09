@@ -4,7 +4,7 @@ export REPOS=${HOME}/Repositories
 
 ####
 
-## Ubuntu adds suffixes
+## Ubuntu adds suffixes to the LLVM tools that we rely on.
 
 #export the suffix	    
 export LLVM_SUFFIX=-3.5
