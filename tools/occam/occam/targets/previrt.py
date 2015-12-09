@@ -185,7 +185,7 @@ class PrevirtTool (target.Target):
 
 
         llvm_libs = [x for (x,y) in found_libs if y]
-        print "\n\nLLVM libs: ", llvm_libs, "\n\n"
+        #print "\n\nLLVM libs: ", llvm_libs, "\n\n"
         
         temp_llvm_libs = []
         files = {}
@@ -372,12 +372,11 @@ class PrevirtTool (target.Target):
 
         #+ final_libs contains the native and bitcode libraries in a list
         final_libs = [files[x].get() for x in llvm_libs] + [x for x in archive_libs]
-#        final_libs = [files[x].get() for x in llvm_libs] + [x for x in archive_libs]
 
-        print "\n\nFiles: ", files, "\n\n"
-        print "\n\nArchive libs: ", archive_libs, "\n\n"
-        print "\n\nLLVM libs: ", llvm_libs, "\n\n"
-        print "\n\nFinal libs: ", final_libs, "\n\n"
+        #print "\n\nFiles: ", files, "\n\n"
+        #print "\n\nArchive libs: ", archive_libs, "\n\n"
+        #print "\n\nLLVM libs: ", llvm_libs, "\n\n"
+        #print "\n\nFinal libs: ", final_libs, "\n\n"
 
         def toLflag(path):
             if os.path.exists(path):
