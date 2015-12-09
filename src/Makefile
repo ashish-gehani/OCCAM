@@ -47,7 +47,8 @@ INSTALL = install
 
 all: ${LIB}
 
-${LIB}: 
+${LIB}:
+	echo "The source is being built according to ${LLVM_CFG}"
 	$(MAKE) protoc 
 	$(MAKE) lib
 
