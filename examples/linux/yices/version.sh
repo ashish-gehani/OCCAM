@@ -6,13 +6,13 @@ gunzip -k libpoly.so.bc.gz
 
 # Build the manifest file
 cat > yices_smt2.manifest <<EOF
-{ "modules" : ["yices_smt2.bc"]
+{ "modules" : ["yices_smt2_static.bc"]
 , "binary"  : "yices_smt2"
-, "libs"    : ["libpoly.so.bc"]
+, "libs"    : []
 , "native_libs" : ["-lc", "-lgmp"]
 , "search"  : ["/usr/lib", "/usr/local/lib", "/usr/lib/x86_64-linux-gnu/"]
-, "args"    : ["--mcsat"]
-, "name"    : "yices_smt2"
+, "args"    : ["--version"]
+, "name"    : "yices_smt2_version"
 }
 EOF
 
