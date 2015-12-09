@@ -21,11 +21,6 @@ C_FLAGS = $(shell  ${LLVM_CFG} --cflags)
 
 CPP_FLAGS += $(shell  ${LLVM_CFG} --cppflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include
 
-LIBDIR = $(shell  ${LLVM_CFG} --libdir)
-
-LLVMLIBS = $(shell  ${LLVM_CFG} --libs)
-
-
 #iam: producing the library varies from OS to OS
 OS   =  $(shell uname)
 
@@ -36,11 +31,15 @@ ifeq (Darwin, $(findstring Darwin, ${OS}))
 LIB = ${LIBRARYNAME}.dylib
 LIBFLAGS = -dynamiclib
 OTHERLIBS =  -lpthread -lprotobuf -lcurses
+LIBDIR = $(shell  ${LLVM_CFG} --libdir)
+LLVMLIBS = $(shell  ${LLVM_CFG} --libs)
 else
 # LINUX
 LIB = ${LIBRARYNAME}.so
 LIBFLAGS = -shared -Wl,-soname,${LIB}
-OTHERLIBS =  -lpthread -lprotobuf 
+OTHERLIBS =  -lpthread -lprotobuf
+LIBDIR = 
+LLVMLIBS = 
 endif
 
 PROTOC = $(shell which protoc)
