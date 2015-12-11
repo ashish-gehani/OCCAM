@@ -17,27 +17,23 @@ else
 endif
 
 
-all: hello_previrt hello_O3
+all: ls_previrt ls_O3
 
 
-hello.bc:
-	wllvm hello.c -o  hello
-	extract-bc hello
+previrtualize: ls.bc
+	${OCCAM_HOME}/bin/occam previrt --work-dir=previrt ls.manifest
 
-previrtualize: hello.bc
-	${OCCAM_HOME}/bin/occam previrt --work-dir=previrt hello.manifest
+ls_previrt: previrtualize
+	cp previrt/ls ls_previrt
 
-hello_previrt: previrtualize
-	cp previrt/hello hello_previrt
-
-hello_O3:
-	${OPT} -O3 hello.bc -o hello.opt.bc
-	${LLC} -filetype=obj -o hello.opt.o hello.opt.bc
-	${CLANG} hello.opt.o -o hello_O3 
+ls_O3:
+	${OPT} -O3 ls.bc -o ls.opt.bc
+	${LLC} -filetype=obj -o ls.opt.o ls.opt.bc
+	${CLANG} ls.opt.o -o ls_O3 
 
 
 clean:
-	rm -f *.o *~ *.bc .*.bc hello hello_O3 hello_previrt 
+	rm -f *.o *~ ls.opt.bc ls ls_O3 ls_previrt 
 	rm -rf previrt
 
 
