@@ -35,7 +35,8 @@ export CC=${LLVM_CC_NAME}
 
 export CXX=${LLVM_CXX_NAME}
 
-export CPP=${LLVM_CPP_NAME}
+#things like coreutils don't like clang-cpp-3.5
+export CPP="${LLVM_CC_NAME} -E"
 
 export PATH=${WLLVM_HOME}:${PATH}
 

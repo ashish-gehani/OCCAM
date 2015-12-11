@@ -161,7 +161,7 @@ class PrevirtTool (target.Target):
             sys.stderr.write('\n'.join(search))
             return 1
 
-        print "\n\nFound libraries: ", found_libs, "\n\n"
+        #print "\n\nFound libraries: ", found_libs, "\n\n"
 
         if not all(map(lambda x:x[1], found_libs)):
             sys.stderr.write("LLVM versions could not be found for all libraries\n")
@@ -226,7 +226,7 @@ class PrevirtTool (target.Target):
                 all_my_modules += [files[x].get()]
             llvm_libs = temp_llvm_libs
 
-        print "\n\nLLVM libs after: ", llvm_libs, "\n\n"
+        #print "\n\nLLVM libs after: ", llvm_libs, "\n\n"
 
         # Change directory
         os.chdir(work_dir)
