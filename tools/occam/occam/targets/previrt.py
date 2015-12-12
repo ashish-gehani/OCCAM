@@ -385,8 +385,11 @@ class PrevirtTool (target.Target):
                 return None
         searchflags = [x for x in map(toLflag,search) if x is not None]
 
-        xlinker_start = ['-Wl,-static']
-        xlinker_end = ['-Wl,-call_shared']
+        #removed these in the apache build. are they ever needed?
+        xlinker_start = ['']
+        xlinker_end = ['']
+        #xlinker_start = ['-Wl,-static']
+        #xlinker_end = ['-Wl,-call_shared']
 
         #iam: these two flags are not for Darwin.
         if platform.system() == 'Darwin':

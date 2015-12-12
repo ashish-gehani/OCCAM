@@ -8,9 +8,9 @@ pcre:
 	wget ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.38.tar.gz
 	tar xvfz pcre-8.38.tar.gz
 
-pcre_build:
+pcre_build: pcre
 	mkdir pcre_build; cd pcre_build; CC=wllvm ../pcre-8.38/configure --prefix=/vagrant/pcre; CC=wllvm make
-	cd  pcre_build/.libs; extract-bc libpcre.so; cp libpcre.so ../../
+	cd  pcre_build/.libs; extract-bc libpcre.so; cp libpcre.so.bc ../../
 	cd  pcre_build; make install
 
 
@@ -38,9 +38,11 @@ httpd:
 httpd_build:
 	mkdir httpd_build; cd  httpd_build; CC=wllvm ../httpd-2.4.17/configure --prefix=/vagrant/httpd --with-pcre=/vagrant/pcre/bin/pcre-config --with-apr=/vagrant/apr --with-apr-util=/vagrant/apr_util
 	cd httpd_build; CC=wllvm make; extract-bc httpd; cp httpd.bc ../
+	cd httpd_build; make install
+
 
 clean:
-	rm -rf *~ *.gz *_build 
+	rm -rf *~ *.gz *_build  previrt
 
 very_clean: clean
 	rm -rf httpd-2.4.17 apr-util-1.5.4 apr-1.5.2 pcre-8.38
