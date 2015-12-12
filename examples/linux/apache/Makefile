@@ -4,6 +4,7 @@ APR=apr-1.5.2
 APR_UTIL=apr-util-1.5.4
 HTTPD=httpd-2.4.17
 
+#the urls (if the versions change you should check these)
 PCRE_URL=ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/${PCRE}.tar.gz
 APR_URL=http://download.nextag.com/apache/apr/${APR}.tar.gz
 APR_UTIL_URL=http://shinyfeather.com/apr/${APR_UTIL}.tar.gz
@@ -14,11 +15,11 @@ all: build
 
 build: pcre_build apr_build apr_util_build httpd_build
 
-pcre_src: 
+${PCRE}: 
 	wget ${PCRE_URL}
 	tar xvfz ${PCRE}.tar.gz
 
-pcre_build: pcre_src
+pcre_build: ${PCRE}
 	mkdir -p pcre_build                                    && \
 	cd pcre_build                                          && \
 	CC=wllvm ../${PCRE}/configure --prefix=/vagrant/pcre   && \
@@ -30,11 +31,11 @@ pcre_build: pcre_src
 	make install
 
 
-apr_src:
+${APR}:
 	wget ${APR_URL}
 	tar xvfz ${APR}.tar.gz
 
-apr_build: apr_src
+apr_build: ${APR}
 	mkdir -p apr_build                                  && \
 	cd apr_build                                        && \
 	CC=wllvm ../${APR}/configure --prefix=/vagrant/apr  && \
@@ -45,11 +46,11 @@ apr_build: apr_src
 	cd ..                                               && \
 	make install
 
-apr_util_src:
+${APR_UTIL}:
 	wget ${APR_UTIL_URL}
 	tar xvfz ${APR_UTIL}.tar.gz
 
-apr_util_build: apr_util_src
+apr_util_build: ${APR_UTIL}
 	mkdir -p apr_util_build                                            && \
 	cd apr_util_build                                                  && \
 	CC=wllvm ../${APR_UTIL}/configure --prefix=/vagrant/apr_util          \
@@ -61,11 +62,11 @@ apr_util_build: apr_util_src
 	cd ..                                                              && \
 	make install
 
-httpd_src:
+${HTTPD}:
 	wget ${HTTPD_URL}
 	tar xvfz ${HTTPD}.tar.gz
 
-httpd_build: httpd_src
+httpd_build: ${HTTPD}
 	mkdir -p httpd_build                                                     && \
 	cd  httpd_build                                                          && \
 	CC=wllvm ../${HTTPD}/configure --prefix=/vagrant/httpd                      \
