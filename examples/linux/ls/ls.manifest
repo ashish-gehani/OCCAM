@@ -1,0 +1,8 @@
+{ "modules" : ["ls.bc"]
+, "binary"  : "ls"
+, "libs"    : []
+, "native_libs" : []
+, "search"  : []
+, "args"    : ["-laSr", "/bin"]
+, "name"    : "ls"
+}

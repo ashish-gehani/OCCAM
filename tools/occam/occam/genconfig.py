@@ -33,99 +33,54 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # ------------------------------------------------------------------------------
 
-import subprocess, os
+# this is the simplified genconfig.
+# not sure why we need this any more. seems overkill.
 
-def which(name):
-    proc = subprocess.Popen(['which', name], stdout=subprocess.PIPE)
-    return proc.stdout.read().strip()
+import os
+import platform
 
-def llvm(name):
-    llvmdir = os.getenv('LLVM_HOME')
-    if llvmdir is not None:
-        return os.path.join(llvmdir, 'bin', name)
+
+def getOccamLibPath():
+
+    library_extension = None
+
+    # The environment here is coming from the Makefile.
+    library_path = os.getenv('OCCAM_LIB')
+
+    # Ensure library_path has trailing slash
+    if library_path[-1] != os.path.sep:
+        library_path = library_path + os.path.sep
+    
+    if platform.system() == 'Darwin':
+        library_extension = '.dylib'
     else:
-        proc = subprocess.Popen(['which', name], stdout=subprocess.PIPE)
-        return proc.stdout.read().strip()
+        library_extension = '.so'
 
-def occam(name):
-    occamdir = os.getenv('OCCAM_HOME')
-    if occamdir is not None:
-        return os.path.join(occamdir, 'bin', name)
-    else:
-        proc = subprocess.Popen(['which', name], stdout=subprocess.PIPE)
-        return proc.stdout.read().strip()
 
-def std(name):
-    return name
-#    return which(name)
+
+    return '%s%s%s' % ( library_path, 'libprevirt', library_extension)
+
+    
 
 if __name__ == '__main__':
-    print """LOGFILE='%s/../log'""" % os.path.abspath(os.path.dirname(__file__))
-    libprevirt = os.getenv('OCCAM_LIB') + '/libprevirt.so'
-    print "OCCAM_LIB='%s'" % libprevirt
-#    dragonegg = os.getenv('DRAGONEGG')
-#    print "DRAGONEGG='%s'" % dragonegg
+
+    libprevirt = getOccamLibPath()
+    
     print """
-LLVM = { 'link'    : "%s"
-       , 'as'      : "%s"
-       , 'ar'      : "%s"
-       , 'ld'      : "%s"
-       , 'opt'     : "%s"
-       , 'clang'   : "%s"
-       , 'clang++' : "%s"
-       , 'clang-cpp' : "%s"
-       , 'nm'      : "%s"
-       , 'llc'     : "%s"
-       }""" % (std('llvm-link'), std('llvm-as'), std('llvm-ar'), 
-               std('llvm-ld'), std('opt'), std('clang'),
-               std('clang++'), std('clang-cpp'), std('llvm-nm'),
-               std('llc'))
-#% (llvm('llvm-link'), llvm('llvm-as'), llvm('llvm-ar'), 
-#               llvm('llvm-ld'), llvm('opt'), llvm('clang'),
-#               llvm('clang++'), llvm('llvm-nm'))
-    print """
-STD =  { 'as'   : "%s"
-       , 'ar'   : "%s"
-       , 'nm'   : "%s"
-       , 'ld'   : "%s"
-       , 'clang'  : "%s"
-       , 'clang++'  : "%s"
-       , 'clang-cpp' : "%s"
-       , 'install' : "%s"
-       , 'ranlib' : "%s"
-       , 'cp' : "%s"
-       , 'mv' : "%s"
-       , 'cpp' : "%s"
-       , 'file' : "%s"
-       , 'chmod' : "%s"
-       , 'ln' : "%s"
-       , 'rm' : "%s"
-       , 'unlink' : "%s"
-       }""" % (std("as"),
-               std("ar"),
-               std("nm"),
-               std("ld"),
-               std("clang"),
-               std("clang++"),
-               std("clang-cpp"),
-               std('install'),
-               std("ranlib"),
-               std('cp'),
-               std('mv'),
-               std("cpp"),
-               std('file'),
-               std('chmod'),
-               std('ln'),
-               std('rm'),
-               std('unlink'))
-    print """
+from occam import configobj
+
+theConfig = configobj.cfgObj('%s')
+
+def getOccamLib():
+    return theConfig.getOccamLib()
+
+def getLogfile():
+    return theConfig.getLogfile()
+
 def getStdTool(tool):
-    if STD.has_key(tool):
-        return STD[tool]
-    return tool
+    return theConfig.getStdTool(tool)
 
 def getLLVMTool(tool):
-    if LLVM.has_key(tool):
-        return LLVM[tool]
-    return tool
-"""
+    return theConfig.getLLVMTool(tool)
+
+    """ % (libprevirt)

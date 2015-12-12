@@ -1,0 +1,8 @@
+{ "modules" : ["hello.bc"]
+, "binary"  : "hello"
+, "libs"    : []
+, "native_libs" : []
+, "search"  : []
+, "args"    : []
+, "name"    : "hello"
+}

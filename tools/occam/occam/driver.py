@@ -31,7 +31,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # ------------------------------------------------------------------------------
 
-from . import config #LLVM, OCCAM_LIB, getStdTool
+from . import config 
 import subprocess, sys, os
 import logging, tempfile
 import shutil
@@ -100,8 +100,8 @@ def run(prog, args, quiet=False, inp=None,pipe=True, wd=None, resetPath=True):
     info = ("\nPROG ", prog, "\nPATH ", lenv["PATH"], "\nresetPath ", str(resetPath), "\n")
     log.warn("run %s", ' '.join(info))
  
-    sys.stderr.write("prog %s \n" %prog)
-    sys.stderr.write("args %s" %args)	   
+    sys.stderr.write("driver.run: prog %s\n" %prog)
+    sys.stderr.write("driver.run: args %s\n" %args)	   
 
     if pipe:
         proc = subprocess.Popen([prog] + args, 
@@ -143,12 +143,12 @@ def all_args(opt, args):
     return result
 
 def previrt(fin, fout, args, **opts):
-    args = ['-load=%s' % config.OCCAM_LIB, 
+    args = ['-load=%s' % config.getOccamLib(), 
             fin, '-o=%s' % fout] + args
-    return run(config.LLVM['opt'], args, **opts)
+    return run(config.getLLVMTool('opt'), args, **opts)
 
 def previrt_progress(fin, fout, args, output=None, **opts):
-    args = [config.LLVM['opt'], '-load=%s' % config.OCCAM_LIB, 
+    args = [config.getLLVMTool('opt'), '-load=%s' % config.getOccamLib(), 
             fin, '-o=%s' % fout] + args
     proc = subprocess.Popen(args, 
                             stderr=subprocess.PIPE,

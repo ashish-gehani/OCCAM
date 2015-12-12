@@ -278,19 +278,21 @@ namespace previrt
   ComponentInterface::call_begin(StringRef n) const
   {
     FunctionIterator i = this->calls.find(n);
-    if (i == this->calls.end())
+    if (i == this->calls.end()){
       assert(false && "no such call");
-    else
+    } else {
       return i->second.begin();
+    }
   }
   ComponentInterface::CallIterator
   ComponentInterface::call_end(StringRef n) const
   {
     FunctionIterator i = this->calls.find(n);
-    if (i == this->calls.end())
+    if (i == this->calls.end()){
       assert(false && "no such call");
-    else
+    } else {
       return i->second.end();
+    }
   }
 
   ComponentInterface::CallIterator

@@ -1,37 +1,46 @@
-#start with occam make
-#then make llvm
-#then make llvm2
+ifeq ($(LLVM_OPT_NAME),)
+  OPT = opt
+else
+  OPT = $(LLVM_OPT_NAME)
+endif
 
-all:
-	gcc -v --sysroot=/opt/occam/root hello.c -c 
-	gcc -v --sysroot=/opt/occam/root hello.o -o hello -static 
+ifeq ($(LLVM_LLC_NAME),)
+  LLC = llc
+else
+  LLC = $(LLVM_LLC_NAME)
+endif
 
-#
-# can't pass --native to llvm-ld because it doesn't understand --sysroot so we split it up and
-# let gcc do the final part. To figure out what to do:
-# use llvm-ld --native -v ... 
-#
-llvm:
-	llvm-ld hello_main.bc -o hello_main_step_1
-	llc hello_main_step_1.bc -x86-asm-syntax=att -o  hello_main_step_2.s
-	gcc -v --sysroot=/opt/occam/root -fno-strict-aliasing -O3 -c -o hello_main_step_3.o hello_main_step_2.s 
-#	gcc -v --sysroot=/opt/occam/root -fno-strict-aliasing -O3 -o hello_main_step_3 hello_main_step_2.s  -static 
-# now do make llvm2
-
-llvm2:
-	ld --sysroot=/opt/occam/root -m elf_x86_64 -static -o hello_main_step_4 /opt/occam/root/usr/lib/crt1.o /opt/occam/root/usr/lib/crti.o   -L/opt/occam/root/usr/lib  hello_main_step_3.o  /opt/occam/root/usr/lib/crtn.o -lc
+ifeq ($(LLVM_CC_NAME),)
+  CLANG = clang
+else
+  CLANG = $(LLVM_CC_NAME)
+endif
 
 
-#
-# SUPERIOR, ALTERNATIVE TECHNIQUE: For the last step,
-# pass the right options to ld with llvm-ld's -Xlinker argument
-#
-better:
-	llvm-ld -native -Xlinker=--sysroot=/opt/occam/root -Xlinker=-static \
-          hello_main.bc -o hello_direct
+all: hello_previrt hello_O3
+
+
+hello.bc:
+	wllvm hello.c -o  hello
+	extract-bc hello
+
+previrtualize: hello.bc
+	${OCCAM_HOME}/bin/occam previrt --work-dir=previrt hello.manifest
+
+hello_previrt: previrtualize
+	cp previrt/hello hello_previrt
+
+hello_O3:
+	${OPT} -O3 hello.bc -o hello.opt.bc
+	${LLC} -filetype=obj -o hello.opt.o hello.opt.bc
+	${CLANG} hello.opt.o -o hello_O3 
 
 
 clean:
-	rm -f *.o *.bc *.ll *.s hello hello_main.bc.manifest hello_main_step_* hello_direct
+	rm -f *.o *~ *.bc .*.bc hello hello_O3 hello_previrt 
+	rm -rf previrt
+
+
+
 
 

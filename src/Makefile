@@ -10,39 +10,50 @@ ifeq ($(LLVM_CONFIG),)
 endif
 
 # BD: made all things dependent on LLVM_HOME
-# (set in .bashrc)
 
 LLVM_CFG = $(LLVM_HOME)/bin/$(LLVM_CONFIG)
 
-#binaries version: /usr/local/llvm/bin/llvm-config
-#built from source:
-#debug    /usr/local/llvm-debug/bin/llvm-config
-#release  /usr/local/llvm-release/bin/llvm-config
-
 LLVM_INCLUDE = $(shell ${LLVM_CFG} --includedir)
 
-CXX_FLAGS = $(shell  ${LLVM_CFG} --cxxflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include
+CXX_FLAGS += $(shell  ${LLVM_CFG} --cxxflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include
 
 C_FLAGS = $(shell  ${LLVM_CFG} --cflags)
 
-CPP_FLAGS = $(shell  ${LLVM_CFG} --cppflags)
+CPP_FLAGS += $(shell  ${LLVM_CFG} --cppflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include
 
-PROTOC = $(shell which protoc)
+#iam: producing the library varies from OS to OS
+OS   =  $(shell uname)
 
 LIBRARYNAME=libprevirt
+
+ifeq (Darwin, $(findstring Darwin, ${OS}))
+#  DARWIN
+LIB = ${LIBRARYNAME}.dylib
+LIBFLAGS = -dynamiclib
+OTHERLIBS =  -lpthread -lprotobuf -lcurses
+LD_FLAGS += -undefined suppress -flat_namespace
+else
+# LINUX
+LIB = ${LIBRARYNAME}.so
+LIBFLAGS = -shared -Wl,-soname,${LIB}
+OTHERLIBS =  -lpthread -lprotobuf
+endif
+
+PROTOC = $(shell which protoc)
 
 OBJECTS := proto/Previrt.pb.o proto/Watch.pb.o $(patsubst %.cpp,%.o,$(wildcard *.cpp)) 
 
 INSTALL = install
 
-all: ${LIBRARYNAME}.so
+all: ${LIB}
 
-${LIBRARYNAME}.so: 
+${LIB}:
+	echo "The source is being built according to ${LLVM_CFG}"
 	$(MAKE) protoc 
 	$(MAKE) lib
 
 lib: ${OBJECTS}
-	$(CXX) ${OBJECTS} -shared -Wl,-soname,${LIBRARYNAME}.so -o ${LIBRARYNAME}.so ${CXX_FLAGS} ${LDFLAGS} -lpthread -lprotobuf
+	$(CXX) ${OBJECTS} ${LIBFLAGS} -o ${LIB} ${CXX_FLAGS} ${LD_FLAGS} ${OTHERLIBS}
 
 %.o: %.cpp
 	$(CXX) -I. ${CXX_FLAGS} $< -c 
@@ -56,11 +67,11 @@ protoc: Watch.proto Previrt.proto
 	${PROTOC} Previrt.proto --cpp_out=proto
 
 clean: 
-	rm -rf ${OBJECTS} proto ${LIBRARYNAME}.so
+	rm -rf ${OBJECTS} proto ${LIB}
 
 
-install: check-occam-lib $(LIBRARYNAME).so
-	$(INSTALL) -m 664 $(LIBRARYNAME).so $(OCCAM_LIB)
+install: check-occam-lib ${LIB}
+	$(INSTALL) -m 664 ${LIB} $(OCCAM_LIB)
 
 #
 # Check for OCCAM_LIB

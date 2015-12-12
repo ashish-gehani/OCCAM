@@ -38,7 +38,7 @@ from occam import driver, config
 from occam.target import ArgError
 import getopt
 import json
-import os, shutil, tempfile, sys
+import os, shutil, tempfile, sys, platform
 
 
 def get_flag(flags, flag, default=None):
@@ -91,7 +91,7 @@ def defaultPool():
     return POOL
 
 def InParallel(f, args, pool=None):
-    sys.stderr.write("Starting %s..." % f.func_doc)
+    sys.stderr.write("Starting %s...\n" % f.func_doc)
     pool = defaultPool()
     result = pool.map(f, args)
     sys.stderr.write("done\n")
@@ -161,6 +161,8 @@ class PrevirtTool (target.Target):
             sys.stderr.write('\n'.join(search))
             return 1
 
+        #print "\n\nFound libraries: ", found_libs, "\n\n"
+
         if not all(map(lambda x:x[1], found_libs)):
             sys.stderr.write("LLVM versions could not be found for all libraries\n")
             ok = True
@@ -182,7 +184,9 @@ class PrevirtTool (target.Target):
                     return 1
 
 
-        llvm_libs = [x for (x,y) in found_libs if y]     
+        llvm_libs = [x for (x,y) in found_libs if y]
+        #print "\n\nLLVM libs: ", llvm_libs, "\n\n"
+        
         temp_llvm_libs = []
         files = {}
         all_my_modules = [] + modules
@@ -216,9 +220,13 @@ class PrevirtTool (target.Target):
                 if target[idx:] != '.bc':
                     shutil.copyfile(target, target[:idx] + '.bc')
                 files[x] = FileStream(target[:idx], 'bc')
+                if x not in modules:
+                    temp_llvm_libs.append(x)
             if libCreated:
                 all_my_modules += [files[x].get()]
             llvm_libs = temp_llvm_libs
+
+        #print "\n\nLLVM libs after: ", llvm_libs, "\n\n"
 
         # Change directory
         os.chdir(work_dir)
@@ -363,8 +371,12 @@ class PrevirtTool (target.Target):
             os.symlink(x.get(), trg)
 
         #+ final_libs contains the native and bitcode libraries in a list
-        final_libs = [files[x].get() for x in llvm_libs] + \
-            [x for x in archive_libs]
+        final_libs = [files[x].get() for x in llvm_libs] + [x for x in archive_libs]
+
+        #print "\n\nFiles: ", files, "\n\n"
+        #print "\n\nArchive libs: ", archive_libs, "\n\n"
+        #print "\n\nLLVM libs: ", llvm_libs, "\n\n"
+        #print "\n\nFinal libs: ", final_libs, "\n\n"
 
         def toLflag(path):
             if os.path.exists(path):
@@ -373,10 +385,20 @@ class PrevirtTool (target.Target):
                 return None
         searchflags = [x for x in map(toLflag,search) if x is not None]
 
-        xlinker_start = ['-Wl,-static']
+        #removed these in the apache build. are they ever needed?
+        xlinker_start = ['']
+        xlinker_end = ['']
+        #xlinker_start = ['-Wl,-static']
+        #xlinker_end = ['-Wl,-call_shared']
+
+        #iam: these two flags are not for Darwin.
+        if platform.system() == 'Darwin':
+            xlinker_start = ['']
+            xlinker_end = ['']
+
         if '-lpthread' in native_libs:
             shared.append('-pthread')
-        xlinker_end = ['-Wl,-call_shared']
+
         # Link everything together
         sys.stderr.write("linking...")
         if binary.endswith('.bc'):

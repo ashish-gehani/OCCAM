@@ -2,6 +2,17 @@ export HOME=/home/vagrant
 
 export REPOS=${HOME}/Repositories
 
+####
+
+## Ubuntu adds suffixes to the LLVM tools that we rely on.
+
+#export the suffix	    
+export LLVM_SUFFIX=-3.5
+
+#run the suffix additions script
+. /vagrant/env.sh
+
+
 ######## whole-program-llvm configuration #############
 
 export WLLVM_HOME=${REPOS}/whole-program-llvm
@@ -10,29 +21,22 @@ export LLVM_COMPILER=clang
 
 export WLLVM_OUTPUT=WARNING
 
-export LLVM_CC_NAME=clang-3.5
-
-export LLVM_CXX_NAME=clang++-3.5
-
-export LLVM_LINK_NAME=llvm-link-3.5
-
-export LLVM_AR_NAME=llvm-ar-3.5
-
 ########  Occam configuration ################
 
 export OCCAM_SRC=${REPOS}/OCCAM/occam
 
 export OCCAM_HOME=${HOME}/occam
 
+export OCCAM_LOGFILE=${HOME}/.occam.log
+
 export LLVM_HOME=/usr
 
-export CC=clang-3.5
+export CC=${LLVM_CC_NAME}
 
-export CXX=clang++-3.5
+export CXX=${LLVM_CXX_NAME}
 
-export CPP='clang-3.5 -E'
-
-export LLVM_CONFIG=llvm-config-3.5
+#things like coreutils don't like clang-cpp-3.5
+export CPP="${LLVM_CC_NAME} -E"
 
 export PATH=${WLLVM_HOME}:${PATH}
 

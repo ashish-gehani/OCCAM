@@ -67,9 +67,9 @@ class Target:
 
 class Configuration:
     def getStdTool(self, n):
-        return config.STD[n]
+        return config.getStdTool(n)
     def getLLVMTool(self, n):
-        return config.LLVM[n]
+        return config.getLLVMTool(n)
     def log(self, msg, args):
         logging.getLogger().info(msg, args)
 

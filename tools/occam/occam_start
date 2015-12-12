@@ -77,9 +77,9 @@ class Target:
 
 class Configuration:
     def getStdTool(self, n):
-        return config.STD[n]
+        return config.getStdTool(n)
     def getLLVMTool(self, n):
-        return config.LLVM[n]
+        return config.getLLVMTool(n)
     def log(self, msg, args):
         logging.getLogger().info(msg, args)
 
@@ -136,15 +136,11 @@ def run(args, tool=None):
 
 
 def setLogger():
+    logfile = config.getLogfile()
     logger = logging.getLogger()
-    hdlr = logging.FileHandler('/tmp/.log')
+    hdlr = logging.FileHandler(logfile)
     hdlr.setFormatter(logging.Formatter("%(message)s"))
     logger.addHandler(hdlr)
-    if os.environ.has_key('OCCAM_LOGFILE'):
-        hdlr = logging.FileHandler(os.environ['OCCAM_LOGFILE'])
-        hdlr.setFormatter(logging.Formatter("%(message)s"))
-        logger.addHandler(hdlr)
-
     
     levels = {'CRITICAL' : logging.CRITICAL,
               'ERROR' : logging.ERROR,
@@ -175,7 +171,7 @@ def setEnvironment():
 
 def register(name, tool):
     assert not TOOLS.has_key(name)    
-    print "target.py registering name '%s' to tool '%s'" % (name, tool)
+    #print "target.py registering name '%s' to tool '%s'" % (name, tool)
     tool.name = name
     TOOLS[name] = tool
 
