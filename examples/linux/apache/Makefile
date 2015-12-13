@@ -11,7 +11,7 @@ APR_UTIL_URL=http://shinyfeather.com/apr/${APR_UTIL}.tar.gz
 HTTPD_URL=http://apache.claz.org/httpd/${HTTPD}.tar.gz
 
 
-all: build
+all: check_sanity build
 
 build: pcre_build apr_build apr_util_build httpd_build
 
@@ -85,3 +85,9 @@ clean:
 
 very_clean: clean
 	rm -rf ${HTTPD} ${APR_UTIL} ${APR} ${PCRE}
+
+
+check_sanity:
+ifneq ($(shell whoami),vagrant)
+	$(error you are not running in a vagrant box the install directories will not make sense)
+endif
