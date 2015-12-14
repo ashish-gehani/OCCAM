@@ -14,18 +14,16 @@ ${COREUTILS}: ${COREUTILS}.tar
 	tar xvf ${COREUTILS}.tar
 
 ${COREUTILS}_build: ${COREUTILS}
-	mkdir -p coreutils_build                                         && \
-	cd coreutils_build                                               && \
+	mkdir -p ${COREUTILS}_build                                      && \
+	cd ${COREUTILS}_build                                            && \
 	CC=wllvm ../${COREUTILS}/configure --prefix=/vagrant/coreutils   && \
-	CC=wllvm make 	                                                 && \
-	touch ${COREUTILS}_build
-
+	CC=wllvm make 	                                                 
 
 clean:
-	rm -f ${COREUTILS}_build 
+	rm -rf ${COREUTILS}_build 
 
 very_clean: clean
-	rm -rf coreutils_build ${COREUTILS}
+	rm -rf ${COREUTILS}
 
 
 spotless: very_clean

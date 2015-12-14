@@ -29,8 +29,8 @@ ${PCRE}: ${PCRE}.tar
 	tar xvf ${PCRE}.tar
 
 ${PCRE}_build: ${PCRE}
-	mkdir -p pcre_build                                         && \
-	cd pcre_build                                               && \
+	mkdir -p ${PCRE}_build                                      && \
+	cd ${PCRE}_build                                            && \
 	CC=wllvm ../${PCRE}/configure --prefix=${INSTALL}/${PCRE}   && \
 	CC=wllvm make 	                                            && \
 	cd  .libs                                                   && \
@@ -50,8 +50,8 @@ ${APR}: ${APR}.tar
 	tar xvf ${APR}.tar
 
 ${APR}_build: ${APR}
-	mkdir -p apr_build                                       && \
-	cd apr_build                                             && \
+	mkdir -p ${APR}_build                                    && \
+	cd ${APR}_build                                          && \
 	CC=wllvm ../${APR}/configure --prefix=${INSTALL}/${APR}  && \
 	CC=wllvm make                                            && \
 	cd .libs                                                 && \
@@ -70,8 +70,8 @@ ${APR_UTIL}: ${APR_UTIL}.tar
 	tar xvf ${APR_UTIL}.tar
 
 ${APR_UTIL}_build: ${APR_UTIL}
-	mkdir -p apr_util_build                                            && \
-	cd apr_util_build                                                  && \
+	mkdir -p ${APR_UTIL}_build                                         && \
+	cd ${APR_UTIL}_build                                               && \
 	CC=wllvm ../${APR_UTIL}/configure --prefix=${INSTALL}/${APR_UTIL}     \
                                           --with-apr=${INSTALL}/${APR}     && \
 	CC=wllvm make                                                      && \
@@ -92,8 +92,8 @@ ${HTTPD}: ${HTTPD}.tar
 	tar xvf ${HTTPD}.tar
 
 ${HTTPD}_build: ${HTTPD}
-	mkdir -p httpd_build                                                          && \
-	cd  httpd_build                                                               && \
+	mkdir -p ${HTTPD}_build                                                       && \
+	cd  ${HTTPD}_build                                                            && \
 	CC=wllvm ../${HTTPD}/configure --prefix=${INSTALL}/${HTTPD}                      \
                                        --with-pcre=${INSTALL}/${PCRE}/bin/pcre-config    \
                                        --with-apr=${INSTALL}/${APR}                      \
