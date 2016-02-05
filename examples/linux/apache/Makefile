@@ -6,7 +6,7 @@ INSTALL=/vagrant
 PCRE=pcre-8.38
 APR=apr-1.5.2
 APR_UTIL=apr-util-1.5.4
-HTTPD=httpd-2.4.17
+HTTPD=httpd-2.4.18
 
 #the urls (if the versions change you should check these)
 PCRE_URL=ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/${PCRE}.tar.gz
