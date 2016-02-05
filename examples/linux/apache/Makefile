@@ -79,6 +79,10 @@ ${APR_UTIL}_build: ${APR_UTIL}
 	extract-bc libaprutil-1.so                                         && \
 	cp libaprutil-1.so.bc ../../                                       && \
 	cd ..                                                              && \
+	cd xml/expat/.libs                                                 && \
+	extract-bc libexpat.so                                             && \
+	mv libexpat.so.bc ../../../../                                     && \
+	cd ../../..                                                        && \
 	make install                                                          
 
 
