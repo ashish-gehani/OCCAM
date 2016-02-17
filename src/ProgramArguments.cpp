@@ -51,6 +51,8 @@
 #include "Specializer.h"
 #include "CommandLineArguments.h"
 
+#include "Logging.h"
+
 using namespace llvm;
 
 namespace previrt
@@ -62,9 +64,12 @@ namespace previrt
   {
     char str[1024];
     FILE* f = fopen(filename, "r");
+
+    Logging oclog ("SpecializeArguments::SpecializeArguments");
+
     if (f == NULL)
     {
-      errs() << "Failed to open file '" << filename << "'\n";
+      oclog << Logging::level::ERROR << "Failed to open file '" << filename << "'\n";
       this->argc = -1;
       this->argv = NULL;
       return;
@@ -85,13 +90,13 @@ namespace previrt
     this->argv = new char*[this->argc];
     int i = 0;
 
-    errs() << "Read " << this->argc << " command line arguments:\n";
+    oclog << Logging::level::INFO << "Read " << this->argc << " command line arguments:\n";
 
     for (std::vector<char*>::iterator itr = args.begin(), end = args.end(); itr
         != end; ++itr, ++i)
     {
       this->argv[i] = *itr;
-      errs() << this->argv[i] << "\n";
+      oclog << "\t" << this->argv[i] << "\n";
     }
 
     this->progName = name;
@@ -111,17 +116,18 @@ namespace previrt
   SpecializeArguments::runOnModule(Module& M)
   {
     Function* f = M.getFunction("main");
-
+    Logging oclog ("SpecializeArguments::runOnModule");
+    
     if (f == NULL)
-    {
-      errs() << "Running on module without 'main' function.\n"
-          << "Ignoring...\n";
-      return false;
-    }
+      {
+	oclog << Logging::level::INFO << "Running on module without 'main' function.\n"
+	      << "Ignoring...\n";
+	return false;
+      }
 
     if (f->getArgumentList().size() != 2)
     {
-      errs() << "Main module has incorrect signature\n" << f->getFunctionType();
+      oclog << Logging::level::ERROR << "Main module has incorrect signature\n" << f->getFunctionType();
       return false;
     }
 
