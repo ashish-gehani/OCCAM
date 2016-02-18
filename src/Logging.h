@@ -9,7 +9,7 @@
 /*
 Ian's simple logging.
 
-Note we are creating a loging object per LLVM function call, not ideal
+Note we are currently creating a logging object per LLVM function call, not ideal
 but will do for now. We should be able to restrict this to once per pass.
 
 
@@ -54,7 +54,7 @@ class Logging {
 
   enum level { ERROR, WARNING, INFO };
 
-  explicit Logging (const char *loc, const char *fname = "occam_log.txt")
+  explicit Logging (const char *loc, const char *fname = "occam_llvm_log.txt")
   {
     std::string ecode;
     
