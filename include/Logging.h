@@ -129,6 +129,16 @@ class Logging {
     return logger;
   }
 
+  friend Logging &operator << (Logging &logger, llvm::Constant &value) {
+    *(logger.raw_os) << value;
+    return logger;
+  }
+
+  friend Logging &operator << (Logging &logger, llvm::Module &M) {
+    *(logger.raw_os) << M;
+    return logger;
+  }
+
   friend Logging &operator << (Logging &logger, const char *text) {
     *(logger.raw_os) << text ;
     return logger;
@@ -136,6 +146,11 @@ class Logging {
 
   friend Logging &operator << (Logging &logger, const int num) {
     *(logger.raw_os) << num;
+    return logger;
+  }
+
+  friend Logging &operator << (Logging &logger, const std::string str) {
+    *(logger.raw_os) << str;
     return logger;
   }
 

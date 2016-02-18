@@ -400,7 +400,7 @@ class PrevirtTool (target.Target):
             shared.append('-pthread')
 
         # Link everything together
-        sys.stderr.write("linking...")
+        sys.stderr.write("linking...\n")
         if binary.endswith('.bc'):
             binary = binary[:-3]
         toolchain.llvmLDWrapper(binary, [files[m].get() for m in modules], final_libs, searchflags, shared, xlinker_start, native_libs, xlinker_end, [])
