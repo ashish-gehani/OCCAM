@@ -60,12 +60,10 @@ namespace previrt
   char SpecializeArguments::ID;
 
   SpecializeArguments::SpecializeArguments(const char* filename, const char* name) :
-    ModulePass(SpecializeArguments::ID)
+    ModulePass(SpecializeArguments::ID), oclog("SpecializeArguments")
   {
     char str[1024];
     FILE* f = fopen(filename, "r");
-
-    Logging oclog ("SpecializeArguments::SpecializeArguments");
 
     if (f == NULL)
     {
@@ -104,7 +102,7 @@ namespace previrt
     fclose(f);
   }
   SpecializeArguments::SpecializeArguments(int _argc, char* _argv[], const char* name) :
-    ModulePass(SpecializeArguments::ID), argc(_argc), argv(_argv), progName(name)
+    ModulePass(SpecializeArguments::ID), argc(_argc), argv(_argv), progName(name), oclog("SpecializeArguments")
   {
   }
   SpecializeArguments::~SpecializeArguments()
@@ -116,7 +114,6 @@ namespace previrt
   SpecializeArguments::runOnModule(Module& M)
   {
     Function* f = M.getFunction("main");
-    Logging oclog ("SpecializeArguments::runOnModule");
     
     if (f == NULL)
       {
