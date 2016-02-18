@@ -105,6 +105,8 @@ class Logging {
     delete raw_os;
   }
 
+  raw_ostream& os(){ return *raw_os; }
+
   // Overload << operator using log type
   friend Logging &operator << (Logging &logger, const level lvl) {
     
@@ -130,6 +132,11 @@ class Logging {
   }
 
   friend Logging &operator << (Logging &logger, llvm::Constant &value) {
+    *(logger.raw_os) << value;
+    return logger;
+  }
+
+  friend Logging &operator << (Logging &logger, llvm::Value &value) {
     *(logger.raw_os) << value;
     return logger;
   }

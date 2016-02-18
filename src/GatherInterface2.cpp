@@ -204,10 +204,10 @@ namespace previrt
     std::set<CallGraphNode*> visited;
 
 /*      oclog << "calls external...\n";
-    cg.getCallsExternalNode()->print(oclog);
+    cg.getCallsExternalNode()->print(oclog.os());
 
     oclog << "external calls...\n";
-    cg.getExternalCallingNode()->print(oclog);*/
+    cg.getExternalCallingNode()->print(oclog.os());*/
 
     while (!queue.empty()) {
       CallGraphNode* cgn = queue.front();

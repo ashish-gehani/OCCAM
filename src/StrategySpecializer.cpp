@@ -231,7 +231,7 @@ namespace previrt
   char SpecializerPass::ID;
 
   SpecializerPass::SpecializerPass(bool _opt) :
-    ModulePass(SpecializerPass::ID), optimize(_opt)
+    ModulePass(SpecializerPass::ID), optimize(_opt), oclog("SpecializerPass")
   {
   }
 
