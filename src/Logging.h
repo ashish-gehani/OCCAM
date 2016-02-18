@@ -1,3 +1,4 @@
+
 #ifndef _LOGGING_H_
 #define _LOGGING_H_
 
@@ -7,6 +8,10 @@
 
 /*
 Ian's simple logging.
+
+Note we are creating a loging object per LLVM function call, not ideal
+but will do for now. We should be able to restrict this to once per pass.
+
 
 Don't be surprised if you have to add a 
 
@@ -23,12 +28,13 @@ The logging gets used thusly:
 
 #include "Logging.h"
 
-int main() {
+int CrazyAssedPass::foo() {
 
     // Create object
-    //          location    optional destination
-    //             V             V
-    Logging log ("main()", "testfile.txt");
+    //
+    //            location                optional destination
+    //               V                          V
+    Logging log ("CrazyAssedPass::foo()", "testfile.txt");
 
     // Writing warnings or errors to file is very easy and C++ style
     log << Logging::level::LOG_WARNING << "A warning (location gets added)";
