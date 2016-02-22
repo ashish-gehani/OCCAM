@@ -60,6 +60,9 @@
 
 #include "proto/Previrt.pb.h"
 
+#include "llvm/Support/Debug.h"
+#define DEBUG_TYPE "occam"
+
 using namespace llvm;
 
 namespace previrt
@@ -373,6 +376,8 @@ namespace previrt
     virtual bool
     runOnModule(Module& M)
     {
+     DLOG("Running on Module: " + M.getModuleIdentifier() + " \n");
+
       CallGraphWrapperPass& cg = this->getAnalysis<CallGraphWrapperPass> ();
 
       bool checked = false;
