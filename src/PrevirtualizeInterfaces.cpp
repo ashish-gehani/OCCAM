@@ -185,9 +185,11 @@ namespace previrt
       CallInfo* ci = CallInfo::Create(f->getArgumentList().size(), 1);
       ci->args.resize(f->getArgumentList().size(), PrevirtType::unknown());
       calls.push_back(ci);
+      DLOG(std::string("Inserting ") + fname + " to calls map");
       this->calls[fname] = calls;
     } else {
       std::vector<CallInfo*>& calls = this->calls[fname];
+      DLOG("Found " + std::to_string(calls.size()) + " calls to " + fname + ", adding another one");
       for (std::vector<CallInfo*>::const_iterator begin = calls.begin(), end =
           calls.end(); begin != end; ++begin) {
         for (std::vector<PrevirtType>::const_iterator i =

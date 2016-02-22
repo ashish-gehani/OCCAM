@@ -419,17 +419,20 @@ namespace previrt
       std::queue<CallGraphNode*> queue;
 
       // Compute the calls set
+      DLOG(std::string("GatherInterfaceMain.empty(): ") + (GatherInterfaceMain.empty() ? "1":"0"));
       if (!GatherInterfaceMain.empty()) {
         checked = true;
         for (cl::list<std::string>::const_iterator i = GatherInterfaceMain.begin(), e = GatherInterfaceMain.end(); i != e; ++i) {
           Function* f = M.getFunction(*i);
           if (f != NULL) {
+        	  DLOG("Inserting " + f->getName());
             queue.push(cg.getOrInsertFunction(f));
           } else {
             assert(false && "got null");
           }
         }
       }
+      DLOG(std::string("GatherInterfaceEntry.empty(): ") + (GatherInterfaceEntry.empty() ? "1":"0"));
       if (!GatherInterfaceEntry.empty()) {
         checked = true;
         ComponentInterface ci;
@@ -451,6 +454,7 @@ namespace previrt
 
       // Only check the external calling node once
       if (!checked) {
+    	DLOG("Entry Node not found so far, adding cg.getExternalCallingNode() to the queue");
         queue.push(cg.getExternalCallingNode());
       }
 
@@ -484,6 +488,7 @@ namespace previrt
           Value* instr = (Value*)i->first;
           if (instr == NULL) {
             assert (i->second->getFunction() != NULL);
+            DLOG(std::string("Adding reference to function: ") + i->second->getFunction()->getName());
             this->interface.callAny(i->second->getFunction());
           } else {
 
@@ -516,16 +521,19 @@ namespace previrt
       // A little bit simpler, compute the references set
       for (Module::const_iterator i = M.begin(), e = M.end(); i != e; ++i) {
         if (i->isDeclaration()) {
+          DLOG(std::string("Add reference to declaration: ") + i->getName());
           this->interface.reference(i->getName());
         }
       }
       for (Module::global_iterator i = M.global_begin(), e = M.global_end(); i != e; ++i) {
         if (i->isDeclaration()) {
+          DLOG(std::string("Add reference to global_declaration: ") + i->getName());
           this->interface.reference(i->getName());
         }
       }
 
       if (GatherInterfaceOutput != "") {
+    	DLOG("Writing interface pass output to " + GatherInterfaceOutput);
         proto::ComponentInterface ci;
         codeInto<ComponentInterface, proto::ComponentInterface> (
             this->interface, ci);
