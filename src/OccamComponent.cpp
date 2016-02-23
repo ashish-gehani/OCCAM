@@ -79,6 +79,8 @@ namespace previrt
   MinimizeComponent(Module& M, ComponentInterface& I, Logging& oclog)
   {
     bool modified = false;
+    int hidden = 0;
+    int internalized = 0;
 
     oclog << "interface!\n";
     I.dump();
@@ -92,6 +94,7 @@ namespace previrt
           I.references.find(f->getName()) == I.references.end()) {
         oclog << "Hiding '" << f->getName() << "'\n";
         f->setLinkage(GlobalValue::InternalLinkage);
+	hidden++;
         modified = true;
       }
     }
@@ -101,6 +104,7 @@ namespace previrt
           I.references.find(i->getName()) == I.references.end()) {
         oclog << "internalizing '" << i->getName() << "'\n";
         i->setLinkage(localizeLinkage(i->getLinkage()));
+	internalized++;
         modified = true;
       }
     }
@@ -143,7 +147,7 @@ namespace previrt
     }
 
     if (modified) {
-      oclog << "...progress...\n";
+      oclog << "Progress: hidden = " << hidden << " internalized " << internalized << "\n";
     }
 
     return modified;
