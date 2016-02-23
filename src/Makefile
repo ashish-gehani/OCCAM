@@ -32,6 +32,11 @@ LIB = ${LIBRARYNAME}.dylib
 LIBFLAGS = -dynamiclib
 OTHERLIBS =  -lpthread -lprotobuf -lcurses
 LD_FLAGS += -undefined suppress -flat_namespace
+else ifeq (FreeBSD, $(findstring FreeBSD, ${OS}))
+# FreeBSD
+LIB = ${LIBRARYNAME}.so
+LIBFLAGS = -shared -Wl,-soname,${LIB}
+OTHERLIBS = -L/usr/local/lib -lpthread -lprotobuf
 else
 # LINUX
 LIB = ${LIBRARYNAME}.so
