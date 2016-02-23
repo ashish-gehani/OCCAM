@@ -1,6 +1,6 @@
 
 
-BITCODE = libpoly.so.bc yices_main.bc yices_smt2.bc
+BITCODE = libpoly.so.bc yices_main.bc yices_smt2.bc  yices_smt2_mcsat.bc
 
 
 

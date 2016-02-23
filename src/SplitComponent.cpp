@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2012, SRI International
+// Copyright (c) 2011-2016, SRI International
 //
 //  All rights reserved.
 //
@@ -47,6 +47,7 @@
 
 #include "PrevirtualizeInterfaces.h"
 #include "Previrtualize.h"
+#include "Logging.h"
 
 #include <vector>
 #include <string>
@@ -140,7 +141,7 @@ namespace previrt
    * Split the code in Module M into two pieces based on the policy
    */
   bool
-  sliceComponent(Module& M, const SplitPolicy& policy)
+  sliceComponent(Module& M, const SplitPolicy& policy, Logging& oclog)
   {
     bool modified = false;
 
@@ -173,9 +174,11 @@ namespace previrt
   {
   public:
     static char ID;
+  private:
+    Logging oclog;
   public:
     SplitLowPass() :
-      ModulePass(ID)
+      ModulePass(ID), oclog("SplitLowPass")
     {
     }
     virtual
@@ -195,9 +198,11 @@ namespace previrt
   {
   public:
     static char ID;
+  private:
+    Logging oclog;
   public:
     SplitHighPass() :
-      ModulePass(ID)
+      ModulePass(ID), oclog("SplitHighPass")
     {
     }
     virtual
@@ -208,7 +213,10 @@ namespace previrt
     virtual bool
     runOnModule(Module& M)
     {
-      return sliceComponent(M, AssemblyPolicy::HIGH);
+
+      oclog << Logging::level::INFO << "runOnModule: " << M.getModuleIdentifier() << "\n";
+      
+      return sliceComponent(M, AssemblyPolicy::HIGH, oclog);
     }
   };
   char SplitHighPass::ID;
