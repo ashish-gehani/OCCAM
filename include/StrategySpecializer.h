@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2012, SRI International
+// Copyright (c) 2011-2016, SRI International
 //
 //  All rights reserved.
 //
@@ -35,6 +35,7 @@
 
 #include "PrevirtualizeInterfaces.h"
 #include "SpecializationTable.h"
+#include "Logging.h"
 
 namespace llvm {
   class AnalysisUsage;
@@ -48,7 +49,8 @@ namespace previrt
   {
   private:
     bool optimize;
-
+    Logging oclog;
+    
   public:
     static char ID;
 

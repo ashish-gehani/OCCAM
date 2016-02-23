@@ -1,48 +1,124 @@
+#change these to something suitable if you are not running in a vagrant box.
+USER=vagrant
+INSTALL=/vagrant
+
+#current versions as of 12/2015
+PCRE=pcre-8.38
+APR=apr-1.5.2
+APR_UTIL=apr-util-1.5.4
+HTTPD=httpd-2.4.18
+
+#the urls (if the versions change you should check these)
+PCRE_URL=ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/${PCRE}.tar.gz
+APR_URL=http://download.nextag.com/apache/apr/${APR}.tar.gz
+APR_UTIL_URL=http://shinyfeather.com/apr/${APR_UTIL}.tar.gz
+HTTPD_URL=http://apache.claz.org/httpd/${HTTPD}.tar.gz
 
 
-all: src
+all: check_sanity build
 
-src: apr apr_util httpd pcre
+build: ${PCRE}_build ${APR}_build ${APR_UTIL}_build ${HTTPD}_build
 
-pcre: 
-	wget ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.38.tar.gz
-	tar xvfz pcre-8.38.tar.gz
+${PCRE}.tar.gz:
+	wget ${PCRE_URL}
 
-pcre_build: pcre
-	mkdir pcre_build; cd pcre_build; CC=wllvm ../pcre-8.38/configure --prefix=/vagrant/pcre; CC=wllvm make
-	cd  pcre_build/.libs; extract-bc libpcre.so; cp libpcre.so.bc ../../
-	cd  pcre_build; make install
+${PCRE}.tar: ${PCRE}.tar.gz
+	gunzip -k ${PCRE}.tar.gz
+
+${PCRE}: ${PCRE}.tar
+	tar xvf ${PCRE}.tar
+
+${PCRE}_build: ${PCRE}
+	mkdir -p ${PCRE}_build                                      && \
+	cd ${PCRE}_build                                            && \
+	CC=wllvm ../${PCRE}/configure --prefix=${INSTALL}/${PCRE}   && \
+	CC=wllvm make 	                                            && \
+	cd  .libs                                                   && \
+	extract-bc libpcre.so                                       && \
+	cp libpcre.so.bc ../../                                     && \
+	cd  ..                                                      && \
+	make install                                                   
 
 
-apr:
-	wget http://download.nextag.com/apache/apr/apr-1.5.2.tar.gz
-	tar xvfz apr-1.5.2.tar.gz
+${APR}.tar.gz:
+	wget ${APR_URL}
 
-apr_build:
-	mkdir apr_build; cd apr_build; CC=wllvm ../apr-1.5.2/configure --prefix=/vagrant/apr; CC=wllvm make
-	cd  apr_build/.libs; extract-bc libapr-1.so; cp libapr-1.so.bc ../../
-	cd  apr_build; make install
+${APR}.tar: ${APR}.tar.gz
+	gunzip -k ${APR}.tar.gz
 
-apr_util:
-	wget http://shinyfeather.com//apr/apr-util-1.5.4.tar.gz
-	tar xvfz apr-util-1.5.4.tar.gz
+${APR}: ${APR}.tar
+	tar xvf ${APR}.tar
 
-apr_util_build:
-	mkdir apr_util_build; cd apr_util_build; CC=wllvm ../apr-util-1.5.4/configure --prefix=/vagrant/apr_util --with-apr=/vagrant/apr; CC=wllvm make
-	cd  apr_util_build/.libs; extract-bc libaprutil-1.so; cp libaprutil-1.so.bc ../../
+${APR}_build: ${APR}
+	mkdir -p ${APR}_build                                    && \
+	cd ${APR}_build                                          && \
+	CC=wllvm ../${APR}/configure --prefix=${INSTALL}/${APR}  && \
+	CC=wllvm make                                            && \
+	cd .libs                                                 && \
+	extract-bc libapr-1.so                                   && \
+	cp libapr-1.so.bc ../../                                 && \
+	cd ..                                                    && \
+	make install                                                
 
-httpd:
-	wget http://apache.claz.org/httpd/httpd-2.4.17.tar.gz
-	tar xvfz httpd-2.4.17.tar.gz
+${APR_UTIL}.tar.gz:
+	wget ${APR_UTIL_URL}
 
-httpd_build:
-	mkdir httpd_build; cd  httpd_build; CC=wllvm ../httpd-2.4.17/configure --prefix=/vagrant/httpd --with-pcre=/vagrant/pcre/bin/pcre-config --with-apr=/vagrant/apr --with-apr-util=/vagrant/apr_util
-	cd httpd_build; CC=wllvm make; extract-bc httpd; cp httpd.bc ../
-	cd httpd_build; make install
+${APR_UTIL}.tar: ${APR_UTIL}.tar.gz
+	gunzip -k ${APR_UTIL}.tar.gz
+
+${APR_UTIL}: ${APR_UTIL}.tar
+	tar xvf ${APR_UTIL}.tar
+
+${APR_UTIL}_build: ${APR_UTIL}
+	mkdir -p ${APR_UTIL}_build                                         && \
+	cd ${APR_UTIL}_build                                               && \
+	CC=wllvm ../${APR_UTIL}/configure --prefix=${INSTALL}/${APR_UTIL}     \
+                                          --with-apr=${INSTALL}/${APR}     && \
+	CC=wllvm make                                                      && \
+	cd .libs                                                           && \
+	extract-bc libaprutil-1.so                                         && \
+	cp libaprutil-1.so.bc ../../                                       && \
+	cd ..                                                              && \
+	cd xml/expat/.libs                                                 && \
+	extract-bc libexpat.so                                             && \
+	mv libexpat.so.bc ../../../../                                     && \
+	cd ../../..                                                        && \
+	make install                                                          
+
+
+${HTTPD}.tar.gz:
+	wget ${HTTPD_URL}
+
+${HTTPD}.tar: ${HTTPD}.tar.gz
+	gunzip -k ${HTTPD}.tar.gz
+
+${HTTPD}: ${HTTPD}.tar
+	tar xvf ${HTTPD}.tar
+
+${HTTPD}_build: ${HTTPD}
+	mkdir -p ${HTTPD}_build                                                       && \
+	cd  ${HTTPD}_build                                                            && \
+	CC=wllvm ../${HTTPD}/configure --prefix=${INSTALL}/${HTTPD}                      \
+                                       --with-pcre=${INSTALL}/${PCRE}/bin/pcre-config    \
+                                       --with-apr=${INSTALL}/${APR}                      \
+				       --with-apr-util=${INSTALL}/${APR_UTIL}         && \
+	CC=wllvm make                                                                 && \
+	extract-bc httpd                                                              && \
+	cp httpd.bc ../                                                               && \
+	make install                                                                     
 
 
 clean:
-	rm -rf *~ *.gz *_build  previrt
+	rm -rf *~  *_build  previrt httpd
+
 
 very_clean: clean
-	rm -rf httpd-2.4.17 apr-util-1.5.4 apr-1.5.2 pcre-8.38
+	rm -rf ${HTTPD} ${APR_UTIL} ${APR} ${PCRE}
+
+spotless: very_clean
+	rm -f *.tar.gz *.tar
+
+check_sanity:
+ifneq ($(shell whoami),${USER})
+	$(error you are not running in a vagrant box, make sure the install directories make sense)
+endif

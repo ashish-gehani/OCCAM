@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2012, SRI International
+// Copyright (c) 2011-2016, SRI International
 //
 //  All rights reserved.
 //
@@ -44,6 +44,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include "PrevirtualizeInterfaces.h"
+#include "Logging.h"
 
 #include <vector>
 #include <string>
@@ -75,11 +76,11 @@ namespace previrt
    * implement the given interface.
    */
   bool
-  MinimizeComponent(Module& M, ComponentInterface& I)
+  MinimizeComponent(Module& M, ComponentInterface& I, Logging& oclog)
   {
     bool modified = false;
 
-    errs() << "interface!\n";
+    oclog << "interface!\n";
     I.dump();
 
     // Set all functions that are not in the interface to internal linkage only
@@ -89,7 +90,7 @@ namespace previrt
       if (!f->isDeclaration() && f->hasExternalLinkage() &&
           I.calls.find(f->getName()) == end &&
           I.references.find(f->getName()) == I.references.end()) {
-        errs() << "Hiding '" << f->getName() << "'\n";
+        oclog << "Hiding '" << f->getName() << "'\n";
         f->setLinkage(GlobalValue::InternalLinkage);
         modified = true;
       }
@@ -98,7 +99,7 @@ namespace previrt
     for (Module::global_iterator i = M.global_begin(), e = M.global_end(); i != e; ++i) {
       if (i->hasExternalLinkage() && i->hasInitializer() &&
           I.references.find(i->getName()) == I.references.end()) {
-        errs() << "internalizing '" << i->getName() << "'\n";
+        oclog << "internalizing '" << i->getName() << "'\n";
         i->setLinkage(localizeLinkage(i->getLinkage()));
         modified = true;
       }
@@ -108,7 +109,7 @@ namespace previrt
       if (i->hasExternalLinkage() &&
           I.references.find(i->getName()) == I.references.end() &&
           I.calls.find(i->getName()) == end) {
-        errs() << "internalizing '" << i->getName() << "'\n";
+        oclog << "internalizing '" << i->getName() << "'\n";
         i->setLinkage(localizeLinkage(i->getLinkage()));
         modified = true;
       }
@@ -136,13 +137,13 @@ namespace previrt
     }
 
     if (moreToDo) {
-      if (cdeMgr.run(M)) errs() << "GlobalDCE still had more to do\n";
-      //if (mfMgr.run(M)) errs() << "MergeFunctions still had more to do\n";
-      if (mcMgr.run(M)) errs() << "MergeConstants still had more to do\n";
+      if (cdeMgr.run(M)) oclog << "GlobalDCE still had more to do\n";
+      //if (mfMgr.run(M)) oclog << "MergeFunctions still had more to do\n";
+      if (mcMgr.run(M)) oclog << "MergeConstants still had more to do\n";
     }
 
     if (modified) {
-      errs() << "...progress...\n";
+      oclog << "...progress...\n";
     }
 
     return modified;
@@ -156,21 +157,26 @@ namespace previrt
   public:
     ComponentInterface interface;
     static char ID;
-  public:
+  private:
+    Logging oclog;
+      public:
     OccamPass() :
-      ModulePass(ID)
+      ModulePass(ID), oclog("OccamPass")
     {
+
+      oclog << Logging::level::INFO << "OccamPass()\n";
+
       for (cl::list<std::string>::const_iterator b =
           OccamComponentInput.begin(), e = OccamComponentInput.end(); b
           != e; ++b) {
-        errs() << "Reading file '" << *b << "'...";
+        oclog << "Reading file '" << *b << "'...";
         if (interface.readFromFile(*b)) {
-          errs() << "success\n";
+          oclog << "success\n";
         } else {
-          errs() << "failed\n";
+          oclog << "failed\n";
         }
       }
-      errs() << "Done reading.\n";
+      oclog << "Done reading.\n";
     }
     virtual
     ~OccamPass()
@@ -180,7 +186,8 @@ namespace previrt
     virtual bool
     runOnModule(Module& M)
     {
-      return MinimizeComponent(M, this->interface);
+      oclog << Logging::level::INFO << "runOnModule: " << M.getModuleIdentifier() << "\n";
+      return MinimizeComponent(M, this->interface, oclog);
     }
   };
   char OccamPass::ID;

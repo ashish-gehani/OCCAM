@@ -44,12 +44,12 @@ public:
     }
 
   // runOnModule - Compute the call graph for the specified module.
-  virtual bool runOnModule(Module &M) {
+  virtual bool runOnModule(Module &M) override {
     CallGraphWrapperPass::runOnModule(M);
     return false;
   }
 
-  virtual void getAnalysisUsage(AnalysisUsage &AU) const {
+  virtual void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.setPreservesAll();
   }
 
@@ -57,7 +57,7 @@ public:
     CallGraphWrapperPass::print(OS, 0);
   }
 
-  virtual void releaseMemory() {
+  virtual void releaseMemory() override  {
     CallGraphWrapperPass::releaseMemory();
   }
 

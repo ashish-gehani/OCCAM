@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2012, SRI International
+// Copyright (c) 2011-2016, SRI International
 //
 //  All rights reserved.
 //
@@ -45,6 +45,7 @@
 #include "Specializer.h"
 #include "PrevirtTypes.h"
 #include "PrevirtualizeInterfaces.h"
+#include "Logging.h"
 
 #include "proto/Previrt.pb.h"
 
@@ -88,7 +89,7 @@ namespace previrt
   }
 
   static Constant*
-  getExit(Module* M, const char* failureName, bool fancy)
+  getExit(Module* M, const char* failureName, bool fancy, Logging& oclog)
   {
     Function* failureFunction = M->getFunction(failureName);
     if (failureFunction != NULL) {
@@ -111,7 +112,7 @@ namespace previrt
       }
 
       if (badType) {
-        errs() << "Failure function already exists with bad type.\n";
+        oclog << "Failure function already exists with bad type.\n";
         typ->dump();
         return NULL;
       } else
@@ -161,9 +162,7 @@ namespace previrt
   }
 
   static BasicBlock*
-  watch(Function* inside, Function* const delegate,
-      const proto::ActionTree& policy, std::vector<Value*>& env,
-      BasicBlock* failure)
+  watch(Function* inside, Function* const delegate, const proto::ActionTree& policy, std::vector<Value*>& env, BasicBlock* failure, Logging& oclog)
   {
     LLVMContext& ctx = inside->getContext();
 
@@ -178,21 +177,18 @@ namespace previrt
       PrevirtType pt(policy.case_().test());
       Function* eq = pt.getEqualityFunction(inside->getParent());
       if (eq == NULL) {
-        errs() << "No equality function, defaulting to false\n";
-        BasicBlock* trg = watch(inside, delegate, policy.case_()._else(), env,
-            failure);
+        oclog << "No equality function, defaulting to false\n";
+        BasicBlock* trg = watch(inside, delegate, policy.case_()._else(), env, failure, oclog);
         return trg;
       } else {
         Value* compLeft = env[policy.case_().var()];
         Value* compRight = pt.concretize(*inside->getParent(), compLeft->getType());
         env[policy.case_().var()] = compRight;
-        BasicBlock* _then = watch(inside, delegate, policy.case_()._then(),
-            env, failure);
+        BasicBlock* _then = watch(inside, delegate, policy.case_()._then(), env, failure, oclog);
         env[policy.case_().var()] = compLeft;
         if (_then == NULL)
           return NULL;
-        BasicBlock* _else = watch(inside, delegate, policy.case_()._else(),
-            env, failure);
+        BasicBlock* _else = watch(inside, delegate, policy.case_()._else(), env, failure, oclog);
         if (_else == NULL)
           return NULL;
 
@@ -214,7 +210,7 @@ namespace previrt
       assert(policy.has_event());
       std::vector<Value*> args;
       if (!getArguments(env, policy.event().args(), args)) {
-        errs() << "index out of bounds\n";
+        oclog << "index out of bounds\n";
         return NULL;
       }
       BasicBlock* bb = BasicBlock::Create(ctx);
@@ -223,8 +219,7 @@ namespace previrt
           policy.event().handler().c_str(), args);
       builder.CreateCall(evt, ArrayRef<Value*> (args));
       if (policy.event().has_then()) {
-        BasicBlock* then = watch(inside, delegate, policy.event().then(), env,
-            failure);
+        BasicBlock* then = watch(inside, delegate, policy.event().then(), env, failure, oclog);
         builder.CreateBr(then);
       } else {
         builder.CreateBr(failure);
@@ -250,8 +245,7 @@ namespace previrt
   }
 
   bool
-  watchFunction(Function* inside, Function* const delegate,
-      const proto::ActionTree& policy, Constant* policyError, bool fancyFail)
+  watchFunction(Function* inside, Function* const delegate, const proto::ActionTree& policy, Constant* policyError, bool fancyFail, Logging& oclog)
   {
     std::vector<Value*> env;
     env.reserve(inside->getArgumentList().size());
@@ -264,7 +258,7 @@ namespace previrt
 
     BasicBlock* failure = BasicBlock::Create(ctx, "failure", inside);
 
-    BasicBlock* result = watch(inside, delegate, policy, env, failure);
+    BasicBlock* result = watch(inside, delegate, policy, env, failure, oclog);
     if (result == NULL) {
       inside->deleteBody();
       return false;
@@ -311,33 +305,33 @@ namespace previrt
     bool fancy;
     bool allowLocal;
     std::string failureName;
+    Logging oclog;
+    
   public:
     static char ID;
 
   public:
     WatchPass() :
-      ModulePass(ID), fancy(WatchFancy.getValue()), allowLocal(
-          WatchAllowLocal.getValue()),
-          failureName(WatchFailFunction.getValue())
+      ModulePass(ID), fancy(WatchFancy.getValue()), allowLocal(WatchAllowLocal.getValue()), failureName(WatchFailFunction.getValue()), oclog("WatchPass")
     {
       for (cl::list<std::string>::const_iterator b = WatchInput.begin(), e =
           WatchInput.end(); b != e; ++b) {
-        errs() << "Reading file '" << *b << "'...";
+        oclog << "Reading file '" << *b << "'...";
         std::ifstream input(b->c_str(), std::ios::binary);
         if (input.fail()) {
-          errs() << "failed: file not found\n";
+          oclog << "failed: file not found\n";
           continue;
         } else {
           proto::EnforceInterface buf;
           if (!buf.ParseFromIstream(&input)) {
-            errs() << "failed: reading\n";
+            oclog << "failed: reading\n";
             input.close();
             continue;
           }
           interface.MergeFrom(buf);
         }
       }
-      errs() << "Done reading.\n";
+      oclog << "Done reading.\n";
     }
     virtual
     ~WatchPass()
@@ -348,8 +342,12 @@ namespace previrt
     runOnModule(Module& M)
     {
       bool modified = false;
-      Constant* failureFunction = getExit(&M, failureName.c_str(), fancy);
 
+      oclog << Logging::level::INFO << "runOnModule: " << M.getModuleIdentifier() << "\n";
+
+      Constant* failureFunction = getExit(&M, failureName.c_str(), fancy, oclog);
+
+      
       for (::google::protobuf::RepeatedPtrField<
           proto::EnforceInterface_Functions>::const_iterator i =
           interface.functions().begin(), e = interface.functions().end(); i
@@ -374,12 +372,11 @@ namespace previrt
           inside->deleteBody();
         }
 
-        if (watchFunction(inside, delegate, i->actions(), failureFunction,
-            fancy)) {
+        if (watchFunction(inside, delegate, i->actions(), failureFunction, fancy, oclog)) {
           delegate->setLinkage(GlobalValue::InternalLinkage);
-          errs() << "rewrote function '" << i->name() << "'\n";
+          oclog << "rewrote function '" << i->name() << "'\n";
         } else {
-          errs() << "failed to rewrite '" << i->name() << "'\n";
+          oclog << "failed to rewrite '" << i->name() << "'\n";
         }
 
         modified = true;

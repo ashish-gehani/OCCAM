@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2012, SRI International
+// Copyright (c) 2011-2016, SRI International
 //
 //  All rights reserved.
 //
@@ -47,6 +47,7 @@
 
 #include "PrevirtualizeInterfaces.h"
 #include "Previrtualize.h"
+#include "Logging.h"
 
 #include <vector>
 #include <string>
@@ -59,46 +60,48 @@ namespace previrt
   class StripGccComment : public ModulePass
   {
   public:
-	  static char ID;
+    static char ID;
+  private:
+    Logging oclog;
   public:
-	  StripGccComment() :
-		ModulePass(ID)
-	  {
-	  }
-	  virtual ~StripGccComment()
-	  {
-	  }
+    StripGccComment() :
+      ModulePass(ID), oclog("StripGccComment")
+    {
+    }
+    virtual ~StripGccComment()
+    {
+    }
   public:
-	  virtual bool
-	  runOnModule(Module &m)
-	  {
-		  const std::string &assembly = m.getModuleInlineAsm();
-		  if (assembly.empty()) return false;
-
-		  size_t at = assembly.find("\09.ident");
-		  if (at == std::string::npos) return false;
-
-		  std::string nassembly;
-		  nassembly.reserve(assembly.length());
-		  errs() << "reserving " << assembly.length() << " characters\n";
-		  size_t from = 0;
-		  while ((at = assembly.find(".ident", from)) != std::string::npos) {
-			  size_t to = at - 1;
-			  while (to > 0 && assembly.at(to) != '\n') to--;
-			  errs() << "copying " << from << " - " << to << "\n";
-			  nassembly.append(assembly.begin() + from, assembly.begin() + to);
-			  from = assembly.find("\n", at);
-		  }
-		  errs() << "done\n";
-		  if (from != std::string::npos)
-			  nassembly.append(assembly.begin() + from, assembly.end());
-
-		  m.setModuleInlineAsm(nassembly);
-		  return true;
-	  }
+    virtual bool
+    runOnModule(Module &m)
+    {
+      const std::string &assembly = m.getModuleInlineAsm();
+      if (assembly.empty()) return false;
+      
+      size_t at = assembly.find("\09.ident");
+      if (at == std::string::npos) return false;
+      
+      std::string nassembly;
+      nassembly.reserve(assembly.length());
+      errs() << "reserving " << assembly.length() << " characters\n";
+      size_t from = 0;
+      while ((at = assembly.find(".ident", from)) != std::string::npos) {
+	size_t to = at - 1;
+	while (to > 0 && assembly.at(to) != '\n') to--;
+	errs() << "copying " << from << " - " << to << "\n";
+	nassembly.append(assembly.begin() + from, assembly.begin() + to);
+	from = assembly.find("\n", at);
+      }
+      errs() << "done\n";
+      if (from != std::string::npos)
+	nassembly.append(assembly.begin() + from, assembly.end());
+      
+      m.setModuleInlineAsm(nassembly);
+      return true;
+    }
   };
   char StripGccComment::ID;
-
+  
   static RegisterPass<StripGccComment> X("Pstrip-asm-ident",
-        "remove .ident... from module assembly", false, false);
+					 "remove .ident... from module assembly", false, false);
 }

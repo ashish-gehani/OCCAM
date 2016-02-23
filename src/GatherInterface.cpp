@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2012, SRI International
+// Copyright (c) 2011-2016, SRI International
 //
 //  All rights reserved.
 //
@@ -55,6 +55,7 @@
 #include <fstream>
 
 #include "proto/Previrt.pb.h"
+#include "Logging.h"
 
 using namespace llvm;
 
@@ -171,10 +172,10 @@ namespace previrt
   }
 
   bool
-  GatherInterface(Function& F, ComponentInterface& C, AliasAnalysis* aa)
+  GatherInterface(Function& F, ComponentInterface& C, AliasAnalysis* aa, Logging& oclog)
   {
     if (F.isDeclaration()) {
-      errs() << "Gather interface of undefined function '" << F.getName() << "'\n";
+      oclog << "Gather interface of undefined function '" << F.getName() << "'\n";
       return true;
     }
 
@@ -219,9 +220,11 @@ namespace previrt
   public:
     ComponentInterface interface;
     static char ID;
+  private:
+    Logging oclog;
   public:
     GatherInterfacePass() :
-      ModulePass(ID)
+      ModulePass(ID), oclog("GatherInterfacePass")
     {
     }
     virtual
@@ -239,21 +242,24 @@ namespace previrt
     {
       AliasAnalysis& aa = this->getAnalysis<AliasAnalysis>();
       bool checked = false;
+
+      oclog << Logging::level::INFO << "runOnModule: " << M.getModuleIdentifier() << "\n";
+      
       if (!GatherInterfaceMain.empty()) {
         checked = true;
         for (cl::list<std::string>::const_iterator i = GatherInterfaceMain.begin(), e = GatherInterfaceMain.end();
             i != e; ++i) {
           Function* f = M.getFunction(*i);
           if (f == NULL) {
-            errs() << "Function '" << *i << "' not found, skipping\n";
+            oclog << "Function '" << *i << "' not found, skipping\n";
             continue;
           }
           if (f->isDeclaration()) {
-            errs() << "Function '" << *i << "' is declaration, skipping\n";
+            oclog << "Function '" << *i << "' is declaration, skipping\n";
             continue;
           }
-          errs() << "Gathering from: " << *f << "\n";
-          GatherInterface(*f, this->interface, &aa);
+          oclog << "Gathering from: " << *f << "\n";
+          GatherInterface(*f, this->interface, &aa, oclog);
         }
       }
       if (!GatherInterfaceEntry.empty()) {
@@ -261,18 +267,18 @@ namespace previrt
         ComponentInterface ci;
         for (cl::list<std::string>::const_iterator i = GatherInterfaceEntry.begin(), e = GatherInterfaceEntry.end();
               i != e; ++i) {
-          errs() << "Reading interface from '" << *i << "'...";
+          oclog << "Reading interface from '" << *i << "'...";
           if (ci.readFromFile(*i)) {
-            errs() << "success\n";
+            oclog << "success\n";
           } else {
-            errs() << "failed\n";
+            oclog << "failed\n";
             continue;
           }
         }
         for (ComponentInterface::FunctionIterator i = ci.begin(), e = ci.end(); i != e; ++i) {
           Function* f = M.getFunction(i->first());
           if (f == NULL) continue;
-          if (!GatherInterface(*f, this->interface, &aa)) break;
+          if (!GatherInterface(*f, this->interface, &aa, oclog)) break;
         }
       }
       if (!checked) {

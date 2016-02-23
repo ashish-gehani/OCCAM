@@ -48,6 +48,8 @@
 #include "PrevirtTypes.h"
 #include "Specializer.h"
 
+#include <fstream>
+
 using namespace llvm;
 
 namespace previrt
@@ -58,6 +60,7 @@ namespace previrt
     args.clear();
     //iam    std::string fn = f->getNameStr();
     std::string fn = f->getName().str();
+
     int idx = fn.find('(');
     if (idx != -1 && fn[fn.length()-1] == ')') {
       std::string base = fn.substr(0, idx);
@@ -107,6 +110,7 @@ namespace previrt
     unsigned int i = 0;
     unsigned int j = 0;
     std::vector<std::string> argNames;
+
     std::string baseName = specializeName(f, argNames);
 
     for (Function::arg_iterator itr = f->arg_begin(); itr != f->arg_end(); itr++, i++) {

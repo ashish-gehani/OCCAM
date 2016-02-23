@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2012, SRI International
+// Copyright (c) 2011-2016, SRI International
 //
 //  All rights reserved.
 //
@@ -47,6 +47,7 @@
 #include "PrevirtualizeInterfaces.h"
 #include "Specializer.h"
 #include "ArgIterator.h"
+#include "Logging.h"
 
 #include <vector>
 #include <string>
@@ -94,7 +95,7 @@ namespace previrt
   }
 
   bool
-  TransformComponentWithUse(Module& M, ComponentInterfaceTransform& T)
+  TransformComponentWithUse(Module& M, ComponentInterfaceTransform& T, Logging& oclog)
   {
     bool modified = false;
     for (ComponentInterfaceTransform::FMap::const_iterator i = T.rewrites.begin(), e = T.rewrites.end(); i != e; ++i) {
@@ -115,17 +116,17 @@ namespace previrt
 
 #if DUMP
           BasicBlock* owner = cs.getInstruction()->getParent();
-          errs() << "Specializing (inter-module) call to '" << cs.getCalledFunction()->getName()
+          oclog << "Specializing (inter-module) call to '" << cs.getCalledFunction()->getName()
                  << "' in function '" << (owner == NULL ? "??" : owner->getParent()->getName())
                  << "' on arguments [";
           for (unsigned int i = 0, cnt = 0; i < cs.arg_size(); ++i) {
             if (!vector_in(rw->args, i)) {
               if (cnt++ != 0)
-                errs() << ",";
-              errs() << i << "=(" << *cs.getArgument(i) << ")";
+                oclog << ",";
+              oclog << i << "=(" << *cs.getArgument(i) << ")";
             }
           }
-          errs() << "]\n";
+          oclog << "]\n";
 #endif
 
           Instruction* newInst = applyRewriteToCall(M, rw, cs);
@@ -208,9 +209,9 @@ namespace previrt
   }
 
   bool
-  TransformComponent(Module& M, ComponentInterfaceTransform& T)
+  TransformComponent(Module& M, ComponentInterfaceTransform& T, Logging& oclog)
   {
-    return TransformComponentWithUse(M, T);
+    return TransformComponentWithUse(M, T, oclog);
   }
 
 
@@ -223,23 +224,29 @@ namespace previrt
   public:
     ComponentInterfaceTransform transform;
     static char ID;
+  private:
+    Logging oclog;
+    
   public:
     RewriteComponentPass() :
-      ModulePass(ID), transform()
+      ModulePass(ID), transform(), oclog("RewriteComponentPass")
     {
+
+      oclog << Logging::level::INFO << "RewriteComponentPass()\n";
+
       for (cl::list<std::string>::const_iterator b = RewriteComponentInput.begin(), e = RewriteComponentInput.end();
            b != e; ++b) {
-        errs() << "Reading file '" << *b << "'...";
+        oclog << "Reading file '" << *b << "'...";
         if (transform.readTransformFromFile(*b)) {
-          errs() << "success\n";
+          oclog << "success\n";
         } else {
-          errs() << "failed\n";
+          oclog << "failed\n";
         }
       }
 
       transform.dump();
 
-      errs() << "Done reading (" << transform.rewriteCount() << " rewrites)\n";
+      oclog << "Done reading (" << transform.rewriteCount() << " rewrites)\n";
     }
     virtual
     ~RewriteComponentPass()
@@ -252,10 +259,13 @@ namespace previrt
       if (this->transform.interface == NULL) {
         return false;
       }
+      
+      oclog << Logging::level::INFO << "runOnModule: " << M.getModuleIdentifier() << "\n";
 
-      bool modified = TransformComponent(M, this->transform);
+
+      bool modified = TransformComponent(M, this->transform, oclog);
       if (modified) {
-        errs() << "...progress...\n";
+        oclog << "...progress...\n";
       }
       return modified;
     }

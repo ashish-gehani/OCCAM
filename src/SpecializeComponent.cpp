@@ -44,6 +44,7 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include "Logging.h"
 #include "Specializer.h"
 #include "SpecializationPolicy.h"
 
@@ -173,24 +174,28 @@ namespace {
   public:
     ComponentInterfaceTransform transform;
     static char ID;
+
+  private:
+    Logging oclog;
+    
   public:
     SpecializeComponentPass() :
-      ModulePass(ID)
+      ModulePass(ID), oclog("SpecializeComponentPass")
     {
       for (cl::list<std::string>::const_iterator b = SpecializeComponentInput.begin(), e = SpecializeComponentInput.end();
            b != e; ++b) {
-        errs() << "Reading file '" << *b << "'...";
+        oclog << "Reading file '" << *b << "'...";
         if (transform.readInterfaceFromFile(*b)) {
-          errs() << "success\n";
+          oclog << "success\n";
         } else {
-          errs() << "failed\n";
+          oclog << "failed\n";
         }
       }
-      errs() << "Done reading.\n";
+      oclog << "Done reading.\n";
       if (transform.interface != NULL) {
-        errs() << transform.interface->calls.size() << " calls\n";
+        oclog << transform.interface->calls.size() << " calls\n";
       } else {
-        errs() << "No interfaces read.\n";
+        oclog << "No interfaces read.\n";
       }
     }
     virtual
@@ -202,6 +207,9 @@ namespace {
     runOnModule(Module& M)
     {
       if (transform.interface == NULL) return false;
+      
+      oclog << Logging::level::INFO << "runOnModule: " << M.getModuleIdentifier() << "\n";
+      
 
       std::list<Function*> to_add;
       CallGraphWrapperPass& CG = getAnalysis<CallGraphWrapperPass> ();
