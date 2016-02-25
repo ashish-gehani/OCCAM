@@ -44,7 +44,6 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "Logging.h"
 #include "Specializer.h"
 #include "SpecializationPolicy.h"
 
@@ -175,27 +174,24 @@ namespace {
     ComponentInterfaceTransform transform;
     static char ID;
 
-  private:
-    Logging oclog;
-    
   public:
     SpecializeComponentPass() :
-      ModulePass(ID), oclog("SpecializeComponentPass")
+      ModulePass(ID)
     {
       for (cl::list<std::string>::const_iterator b = SpecializeComponentInput.begin(), e = SpecializeComponentInput.end();
            b != e; ++b) {
-        oclog << "Reading file '" << *b << "'...";
+        errs() << "Reading file '" << *b << "'...";
         if (transform.readInterfaceFromFile(*b)) {
-          oclog << "success\n";
+          errs() << "success\n";
         } else {
-          oclog << "failed\n";
+          errs() << "failed\n";
         }
       }
-      oclog << "Done reading.\n";
+      errs() << "Done reading.\n";
       if (transform.interface != NULL) {
-        oclog << transform.interface->calls.size() << " calls\n";
+        errs() << transform.interface->calls.size() << " calls\n";
       } else {
-        oclog << "No interfaces read.\n";
+        errs() << "No interfaces read.\n";
       }
     }
     virtual
@@ -208,7 +204,7 @@ namespace {
     {
       if (transform.interface == NULL) return false;
       
-      oclog << Logging::level::INFO << "runOnModule: " << M.getModuleIdentifier() << "\n";
+      errs() << "SpecializeComponentPass::runOnModule: " << M.getModuleIdentifier() << "\n";
       
 
       std::list<Function*> to_add;

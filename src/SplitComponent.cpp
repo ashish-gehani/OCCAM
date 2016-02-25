@@ -47,7 +47,6 @@
 
 #include "PrevirtualizeInterfaces.h"
 #include "Previrtualize.h"
-#include "Logging.h"
 
 #include <vector>
 #include <string>
@@ -141,7 +140,7 @@ namespace previrt
    * Split the code in Module M into two pieces based on the policy
    */
   bool
-  sliceComponent(Module& M, const SplitPolicy& policy, Logging& oclog)
+  sliceComponent(Module& M, const SplitPolicy& policy)
   {
     bool modified = false;
 
@@ -174,11 +173,9 @@ namespace previrt
   {
   public:
     static char ID;
-  private:
-    Logging oclog;
   public:
     SplitLowPass() :
-      ModulePass(ID), oclog("SplitLowPass")
+      ModulePass(ID)
     {
     }
     virtual
@@ -198,11 +195,9 @@ namespace previrt
   {
   public:
     static char ID;
-  private:
-    Logging oclog;
   public:
     SplitHighPass() :
-      ModulePass(ID), oclog("SplitHighPass")
+      ModulePass(ID)
     {
     }
     virtual
@@ -214,9 +209,9 @@ namespace previrt
     runOnModule(Module& M)
     {
 
-      oclog << Logging::level::INFO << "runOnModule: " << M.getModuleIdentifier() << "\n";
+      errs() << "SplitHighPass::runOnModule: " << M.getModuleIdentifier() << "\n";
       
-      return sliceComponent(M, AssemblyPolicy::HIGH, oclog);
+      return sliceComponent(M, AssemblyPolicy::HIGH);
     }
   };
   char SplitHighPass::ID;
