@@ -99,6 +99,7 @@ namespace previrt
       }
     }
 
+    // Set all initialized global variables that are not referenced in the interface to "localized linkage" only
     for (Module::global_iterator i = M.global_begin(), e = M.global_end(); i != e; ++i) {
       if (i->hasExternalLinkage() && i->hasInitializer() &&
           I.references.find(i->getName()) == I.references.end()) {
