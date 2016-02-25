@@ -50,8 +50,6 @@
 #include "PrevirtualizeInterfaces.h"
 #include "ArgIterator.h"
 
-#include "Logging.h"
-
 #include <vector>
 #include <set>
 #include <list>
@@ -183,11 +181,11 @@ namespace previrt
       ComponentInterface ci;
       for (cl::list<std::string>::const_iterator i = GatherInterfaceEntry.begin(), e = GatherInterfaceEntry.end();
             i != e; ++i) {
-        oclog << "Reading interface from '" << *i << "'...";
+        errs() << "Reading interface from '" << *i << "'...";
         if (ci.readFromFile(*i)) {
-          oclog << "success\n";
+          errs() << "success\n";
         } else {
-          oclog << "failed\n";
+          errs() << "failed\n";
         }
       }
       for (ComponentInterface::FunctionIterator i = ci.begin(), e = ci.end(); i != e; ++i) {
@@ -203,18 +201,18 @@ namespace previrt
 
     std::set<CallGraphNode*> visited;
 
-/*      oclog << "calls external...\n";
-    cg.getCallsExternalNode()->print(oclog.os());
+/*      errs() << "calls external...\n";
+    cg.getCallsExternalNode()->print(errs());
 
-    oclog << "external calls...\n";
-    cg.getExternalCallingNode()->print(oclog.os());*/
+    errs() << "external calls...\n";
+    cg.getExternalCallingNode()->print(errs());*/
 
     while (!queue.empty()) {
       CallGraphNode* cgn = queue.front();
       queue.pop();
 
       if (cgn->getFunction() != NULL && !isInternal(cgn->getFunction())) {
-        //oclog << "skipping...\n";
+        //errs() << "skipping...\n";
         continue;
       }
 
@@ -235,7 +233,7 @@ namespace previrt
 
       for (CallGraphNode::const_iterator i = cgn->begin(), e = cgn->end(); i != e; ++i) {
         Value* instr = (Value*)i->first;
-        /*oclog << "considering....\n";
+        /*errs() << "considering....\n";
         instr->dump();*/
 
         if (instr == NULL) {
@@ -253,9 +251,9 @@ namespace previrt
           }
 
           Function* called = i->second->getFunction();
-          //oclog << "Called = " << called << "\n";
+          //errs() << "Called = " << called << "\n";
           if (called != NULL && !isInternal(called)) {
-            //oclog << called->getName() << "\n";
+            //errs() << called->getName() << "\n";
             this->interface.call(called->getName(), cs.arg_begin(), cs.arg_end());
             continue;
           }
@@ -264,7 +262,7 @@ namespace previrt
         if (visited.find(cgn) == visited.end()) {
           visited.insert(cgn);
           queue.push(i->second);
-          //oclog << "adding...\n";
+          //errs() << "adding...\n";
         }
       }
     }
@@ -301,12 +299,12 @@ namespace previrt
   dfs(CallGraphNode* cgn, std::set<Function*>& visited, Twine indent)
   {
     if (cgn->getFunction() == NULL) {
-      oclog << indent << "< ??? >\n";
+      errs() << indent << "< ??? >\n";
     } else if (cgn->getFunction()->isDeclaration()) {
-      oclog << indent << cgn->getFunction()->getName() << " -- external\n";
+      errs() << indent << cgn->getFunction()->getName() << " -- external\n";
       return;
     } else {
-      oclog << indent << cgn->getFunction()->getName() << "\n";
+      errs() << indent << cgn->getFunction()->getName() << "\n";
     }
     for (CallGraphNode::const_iterator i = cgn->begin(), e = cgn->end(); i != e; ++i) {
       Function* f = i->second->getFunction();
@@ -355,12 +353,10 @@ namespace previrt
   public:
     ComponentInterface interface;
     static char ID;
-  private:
-    Logging oclog;
     
   public:
     GatherInterface2Pass() :
-      ModulePass(ID), oclog("GatherInterface2Pass")
+      ModulePass(ID)
     {
     }
     virtual
@@ -382,7 +378,7 @@ namespace previrt
 
       bool checked = false;
 
-      oclog << Logging::level::INFO << "runOnModule: " << M.getModuleIdentifier() << "\n";
+      errs() << "GatherInterface2Pass::runOnModule: " << M.getModuleIdentifier() << "\n";
       
       // Add all nodes in llvm.compiler.used and llvm.used
       // *** This is very important for correctly compiling libc
@@ -404,9 +400,9 @@ namespace previrt
 	      GlobalValue* gv = getGlobal(value->getAggregateElement(i));
               if (gv == NULL || gv->hasInternalLinkage()) continue;
               this->interface.reference(gv->getName());
-              oclog << "adding reference to '" << gv->getName() << "'\n";
+              errs() << "adding reference to '" << gv->getName() << "'\n";
             }
-            oclog << "vector!";
+            errs() << "vector!";
           } else if (ConstantArray* ary = dyn_cast<ConstantArray>(value)) {
             for (ConstantArray::op_iterator begin = ary->op_begin(), end = ary->op_end(); begin != end; ++begin) {
               if (GlobalValue* gv = getGlobal(begin->get())) {
@@ -414,7 +410,7 @@ namespace previrt
               }
             }
           } else {
-            oclog << used_vars[i] << " = \n" << *value << "\n";
+            errs() << used_vars[i] << " = \n" << *value << "\n";
           }
         }
       }
@@ -439,11 +435,11 @@ namespace previrt
         ComponentInterface ci;
         for (cl::list<std::string>::const_iterator i = GatherInterfaceEntry.begin(), e = GatherInterfaceEntry.end();
               i != e; ++i) {
-          oclog << "Reading interface from '" << *i << "'...";
+          errs() << "Reading interface from '" << *i << "'...";
           if (ci.readFromFile(*i)) {
-            oclog << "success\n";
+            errs() << "success\n";
           } else {
-            oclog << "failed\n";
+            errs() << "failed\n";
           }
         }
         for (ComponentInterface::FunctionIterator i = ci.begin(), e = ci.end(); i != e; ++i) {
@@ -466,7 +462,7 @@ namespace previrt
 
         if (cgn->getFunction() != NULL && !isInternal(cgn->getFunction())) {
           // this is a declaration and doesn't have any calls
-          //oclog << "skipping...\n";
+          //errs() << "skipping...\n";
           continue;
         }
 
@@ -512,7 +508,7 @@ namespace previrt
           if (visited.find(cgn) == visited.end()) {
             visited.insert(cgn);
             queue.push(i->second);
-            //oclog << "adding...\n";
+            //errs() << "adding...\n";
           }
         }
       }

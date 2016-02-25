@@ -37,8 +37,6 @@
 
 #include "llvm/Support/raw_ostream.h"
 
-#include "Logging.h"
-
 
 
 namespace previrt
@@ -52,7 +50,6 @@ namespace previrt
     int argc;
     char** argv;
     const char* progName;
-    Logging oclog;
       
   public:
     SpecializeArguments(const char*, const char* name=NULL);
