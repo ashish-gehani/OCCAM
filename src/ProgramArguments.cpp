@@ -51,8 +51,6 @@
 #include "Specializer.h"
 #include "CommandLineArguments.h"
 
-#include "Logging.h"
-
 using namespace llvm;
 
 namespace previrt
@@ -60,14 +58,14 @@ namespace previrt
   char SpecializeArguments::ID;
 
   SpecializeArguments::SpecializeArguments(const char* filename, const char* name) :
-    ModulePass(SpecializeArguments::ID), oclog("SpecializeArguments")
+    ModulePass(SpecializeArguments::ID)
   {
     char str[1024];
     FILE* f = fopen(filename, "r");
 
     if (f == NULL)
     {
-      oclog << Logging::level::ERROR << "Failed to open file '" << filename << "'\n";
+      errs() << "SpecializeArguments(): Failed to open file '" << filename << "'\n";
       this->argc = -1;
       this->argv = NULL;
       return;
@@ -88,13 +86,13 @@ namespace previrt
     this->argv = new char*[this->argc];
     int i = 0;
 
-    oclog << Logging::level::INFO << "Read " << this->argc << " command line arguments:\n";
+    errs() << "Read " << this->argc << " command line arguments:\n";
 
     for (std::vector<char*>::iterator itr = args.begin(), end = args.end(); itr
         != end; ++itr, ++i)
     {
       this->argv[i] = *itr;
-      oclog << "\t" << this->argv[i] << "\n";
+      errs() << "\t" << this->argv[i] << "\n";
     }
 
     this->progName = name;
@@ -102,7 +100,7 @@ namespace previrt
     fclose(f);
   }
   SpecializeArguments::SpecializeArguments(int _argc, char* _argv[], const char* name) :
-    ModulePass(SpecializeArguments::ID), argc(_argc), argv(_argv), progName(name), oclog("SpecializeArguments")
+    ModulePass(SpecializeArguments::ID), argc(_argc), argv(_argv), progName(name)
   {
   }
   SpecializeArguments::~SpecializeArguments()
@@ -117,14 +115,14 @@ namespace previrt
     
     if (f == NULL)
       {
-	oclog << Logging::level::INFO << "Running on module without 'main' function.\n"
+	errs() << "SpecializeArguments::runOnModule: running on module without 'main' function.\n"
 	      << "Ignoring...\n";
 	return false;
       }
 
     if (f->getArgumentList().size() != 2)
     {
-      oclog << Logging::level::ERROR << "Main module has incorrect signature\n" << f->getFunctionType();
+      errs() << "SpecializeArguments::runOnModule: main module has incorrect signature\n" << f->getFunctionType();
       return false;
     }
 

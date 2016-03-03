@@ -47,7 +47,6 @@
 #include "Specializer.h"
 #include "PrevirtTypes.h"
 #include "PrevirtualizeInterfaces.h"
-#include "Logging.h"
 
 #include "proto/Watch.pb.h"
 
@@ -69,10 +68,10 @@ namespace previrt
   {
     std::list<Function*> added_functions;
     Module* const module;
-    Logging* oclogp;
+
   public:
-    WatchContext(Module* m, Logging* log) :
-      module(m), oclogp(log)
+    WatchContext(Module* m) :
+      module(m)
     {
     }
     virtual
@@ -103,10 +102,9 @@ namespace previrt
     mutable std::vector<GlobalVariable*> matchCache;
     int argCount;
     WatchContext* const context;
-    Logging* oclogp;
   public:
-    WatchEnv(WatchContext* ctx, Logging* log) :
-      context(ctx), oclogp(log)
+    WatchEnv(WatchContext* ctx) :
+      context(ctx)
     {
     }
     virtual
@@ -139,7 +137,7 @@ namespace previrt
       if (idx < 0)
         idx = this->valueEnv.size() + idx;
       if (idx >= (int) this->valueEnv.size() || idx < 0) {
-        *oclogp << "Looking up bad variable: %" << orig << " (%0 - %" << this->matchEnv.size() - 1 << ")\n";
+        errs() << "Looking up bad variable: %" << orig << " (%0 - %" << this->matchEnv.size() - 1 << ")\n";
         return NULL;
       }
       return this->valueEnv[idx];
@@ -151,7 +149,7 @@ namespace previrt
       if (idx < 0)
         idx = this->matchEnv.size() + idx;
       if (idx >= (int) this->matchEnv.size() || idx < 0) {
-        *oclogp << "Looking up bad match variable: $" << orig << " ($0 - $"
+        errs() << "Looking up bad match variable: $" << orig << " ($0 - $"
             << this->matchEnv.size() - 1 << ")\n";
         return false;
       }
@@ -165,7 +163,7 @@ namespace previrt
       if (idx < 0)
         idx = this->matchEnv.size() + idx;
       if (idx >= (int) this->matchEnv.size() || idx < 0) {
-        *oclogp << "Looking up bad match variable: $" << orig << " ($0 - $"
+        errs() << "Looking up bad match variable: $" << orig << " ($0 - $"
             << this->matchEnv.size() - 1 << ")\n";
         return NULL;
       }
@@ -224,7 +222,7 @@ namespace previrt
       const std::vector<Type*>& types)
   {
     if (exprs.size() == 0) {
-      *oclogp << "No target given!\n";
+      errs() << "No target given!\n";
       return NULL;
     }
 
@@ -240,7 +238,7 @@ namespace previrt
         }
         type = dyn_cast<FunctionType> (v->getType());
         if (type == NULL) {
-          *oclogp << "Trying to call non-function!\n";
+          errs() << "Trying to call non-function!\n";
           return NULL;
         }
 
@@ -259,7 +257,7 @@ namespace previrt
       if (i->has_match()) {
         std::string res;
         if (!env.lookupMatch(i->match(), res)) {
-          *oclogp << "didn't find! " << i->match() << "\n";
+          errs() << "didn't find! " << i->match() << "\n";
           return NULL;
         }
         names.push_back(names.back().concat(res));
@@ -277,9 +275,9 @@ namespace previrt
     for (std::list<Function*>::iterator i = added_functions.begin(), e =
         added_functions.end(); i != e; ++i) {
       //iam      if (fullName == (*i)->getNameStr()) {
-      //iam        *oclogp << "early match '" << fullName << "'  '" << (*i)->getNameStr()
+      //iam        errs() << "early match '" << fullName << "'  '" << (*i)->getNameStr()
       if (fullName == (*i)->getName().str()) {
-        *oclogp << "early match '" << fullName << "'  '" << (*i)->getName().str()
+        errs() << "early match '" << fullName << "'  '" << (*i)->getName().str()
                << "'\n";
         return *i;
       }
@@ -311,7 +309,7 @@ namespace previrt
   }
 
   static Constant*
-  getExit(WatchContext* ctx, const char* failureName, bool fancy, Logging& oclog)
+  getExit(WatchContext* ctx, const char* failureName, bool fancy)
   {
     Function* failureFunction = ctx->module->getFunction(failureName);
     if (failureFunction != NULL) {
@@ -334,7 +332,7 @@ namespace previrt
       }
 
       if (badType) {
-        oclog << "Failure function already exists with bad type.\n";
+        errs() << "Failure function already exists with bad type.\n";
         typ->dump();
         return NULL;
       } else
@@ -357,7 +355,7 @@ namespace previrt
   }
 
   static Value*
-  getValue(WatchEnv& env, IRBuilder<>& irb, const watch::proto::PrimExpr& expr, Logging& oclog)
+  getValue(WatchEnv& env, IRBuilder<>& irb, const watch::proto::PrimExpr& expr)
   {
     if (expr.has_var()) {
       return env.lookupValue(expr.var());
@@ -369,7 +367,7 @@ namespace previrt
         return PrevirtType(expr.lit()).concretize(m, type);
       } else {
         // TODO: literals not implemented!
-        oclog << "Only integer literals are implemented!\n";
+        errs() << "Only integer literals are implemented!\n";
         return NULL;
       }
     } else if (expr.has_match()) {
@@ -382,7 +380,7 @@ namespace previrt
           env.getContext()), 0, false);
       return ConstantExpr::getGetElementPtr(cnst, zero32, true);
     } else {
-      oclog << "Empty PrimExpr!\n";
+      errs() << "Empty PrimExpr!\n";
       return NULL;
     }
   }
@@ -392,14 +390,13 @@ namespace previrt
       WatchEnv& env,
       IRBuilder<>& irb,
       const google::protobuf::RepeatedPtrField<watch::proto::PrimExprs>& indicies,
-      std::vector<Value*>& result,
-      Logging& oclog)
+      std::vector<Value*>& result)
   {
     int count = 0;
     for (google::protobuf::RepeatedPtrField<watch::proto::PrimExprs>::const_iterator
         i = indicies.begin(), e = indicies.end(); i != e; ++i) {
       if (i->has_one() && i->has_args()) {
-        oclog << "Too many PrimExprs!\n";
+        errs() << "Too many PrimExprs!\n";
         return false;
       }
       if (i->has_one()) {
@@ -411,7 +408,7 @@ namespace previrt
         continue;
       }
 
-      oclog << "Empty PrimExprs!\n";
+      errs() << "Empty PrimExprs!\n";
       return false;
     }
     result.reserve(count);
@@ -419,7 +416,7 @@ namespace previrt
     for (google::protobuf::RepeatedPtrField<watch::proto::PrimExprs>::const_iterator
         i = indicies.begin(), e = indicies.end(); i != e; ++i) {
       if (i->has_one()) {
-        Value* val = getValue(env, irb, i->one(), oclog);
+        Value* val = getValue(env, irb, i->one());
         result.push_back(val);
       } else {
         assert(i->has_args());
@@ -456,7 +453,7 @@ namespace previrt
   static bool
   compileAction(Function* inside, const Function* const delegate,
       const watch::proto::ActionTree& policy, WatchContext& ctx, WatchEnv& env,
-		BasicBlock* result, BasicBlock* failure, BasicBlock* success, Logging& oclog)
+		BasicBlock* result, BasicBlock* failure, BasicBlock* success)
   {
     IRBuilder<> builder(result);
 
@@ -465,12 +462,12 @@ namespace previrt
       PrevirtType pt(policy.if_().test());
       Function* eq = pt.getEqualityFunction(inside->getParent());
       if (eq == NULL) {
-        oclog << "No equality function, defaulting to false\n";
+        errs() << "No equality function, defaulting to false\n";
         if (policy.if_().has__else()) {
-          return compileAction(inside, delegate, policy.if_()._else(), ctx, env, result, failure, success, oclog);
+          return compileAction(inside, delegate, policy.if_()._else(), ctx, env, result, failure, success);
 
         } else {
-          oclog
+          errs()
               << "No equality function, and no else. defaulting to failure\n";
           builder.CreateBr(failure);
           return true;
@@ -483,14 +480,14 @@ namespace previrt
             pt.concretize(*inside->getParent(), compLeft->getType());
         env.valueEnv[policy.if_().var()] = compRight;
         BasicBlock* _then = BasicBlock::Create(result->getContext());
-        if (!compileAction(inside, delegate, policy.if_()._then(), ctx, env, _then, failure, success, oclog)) {
+        if (!compileAction(inside, delegate, policy.if_()._then(), ctx, env, _then, failure, success)) {
           return false;
         }
         env.valueEnv[policy.if_().var()] = compLeft;
         BasicBlock* _else;
         if (policy.if_().has__else()) {
           _else = BasicBlock::Create(result->getContext());
-          if (!compileAction(inside, delegate, policy.if_()._else(), ctx, env, _else, failure, success, oclog)) {
+          if (!compileAction(inside, delegate, policy.if_()._else(), ctx, env, _else, failure, success)) {
             return false;
           }
         } else {
@@ -523,8 +520,8 @@ namespace previrt
       BasicBlock* def = BasicBlock::Create(ctx.getContext(), "defined", inside);
       IRBuilder<> dbuilder(def);
 
-      if (!getArguments(env, dbuilder, policy.call().args(), args, oclog)) {
-        oclog << "index out of bounds\n";
+      if (!getArguments(env, dbuilder, policy.call().args(), args)) {
+        errs() << "index out of bounds\n";
         return false;
       }
       Value* evt = ctx.getCallFunction(env, policy.call().target(), args);
@@ -561,7 +558,7 @@ namespace previrt
         if (inside->getReturnType()->isVoidTy()) {
           builder.CreateRetVoid();
         } else {
-          builder.CreateRet(getValue(env, builder, policy.return_().value(), oclog));
+          builder.CreateRet(getValue(env, builder, policy.return_().value()));
         }
         return result;
       } else {
@@ -588,7 +585,7 @@ namespace previrt
 
       for (int i = 0; i < policy.seq_size(); ++i) {
         const watch::proto::ActionTree& tr = policy.seq(i);
-        if (!compileAction(inside, delegate, tr, ctx, env, blocks[i], failure, blocks[i + 1], oclog)) {
+        if (!compileAction(inside, delegate, tr, ctx, env, blocks[i], failure, blocks[i + 1])) {
           // Don't delete the blocks because they were llvm allocated
           delete blocks;
           return false;
@@ -597,7 +594,7 @@ namespace previrt
       delete blocks;
       return true;
     } else {
-      oclog << "Empty ActionTree!\n";
+      errs() << "Empty ActionTree!\n";
       return false;
     }
 
@@ -606,7 +603,7 @@ namespace previrt
   bool
   watchFunction(WatchContext& ctx, WatchEnv& env, Function* inside,
       const Function* const delegate, const watch::proto::ActionTree& policy,
-		Constant* policyError, bool fancyFail, Logging& oclog)
+		Constant* policyError, bool fancyFail)
   {
     env.valueEnv.clear();
     env.valueEnv.reserve(inside->getArgumentList().size());
@@ -621,7 +618,7 @@ namespace previrt
     BasicBlock* failure = BasicBlock::Create(ctx.getContext(), "failure",
         inside);
 
-    if (!compileAction(inside, delegate, policy, ctx, env, result, failure, success, oclog)) {
+    if (!compileAction(inside, delegate, policy, ctx, env, result, failure, success)) {
       inside->deleteBody();
       return false;
     }
@@ -651,7 +648,7 @@ namespace previrt
   }
 
   static bool
-  patternMatches(const watch::proto::PatternExpr& ptrn, const std::string& fname, FunctionType* ft, WatchEnv& env, Logging& oclog)
+  patternMatches(const watch::proto::PatternExpr& ptrn, const std::string& fname, FunctionType* ft, WatchEnv& env)
   {
     for (google::protobuf::RepeatedPtrField<std::string>::const_iterator ex =
         ptrn.exclude().begin(), end = ptrn.exclude().end(); ex != end; ++ex) {
@@ -665,7 +662,7 @@ namespace previrt
     if (ptrn.has_function_name()) {
       regex_t reg;
       if (regcomp(&reg, ptrn.function_name().c_str(), REG_EXTENDED)) {
-        oclog << "Bad regular expression: '" << ptrn.function_name() << "'\n";
+        errs() << "Bad regular expression: '" << ptrn.function_name() << "'\n";
         return false;
       }
 
@@ -676,7 +673,7 @@ namespace previrt
         regfree(&reg);
         return false;
       }
-      oclog << "matched!\n";
+      errs() << "matched!\n";
 
       int count = MAX_MATCH - 1;
       while (count >= 0 && matches[count].rm_eo == -1) {
@@ -688,7 +685,7 @@ namespace previrt
       for (int i = 0; i < count; i++) {
         env.matchEnv.push_back(std::string(fname.c_str() + matches[i].rm_so,
             matches[i].rm_eo - matches[i].rm_so));
-        oclog << "Match captured: '" << env.matchEnv[i + 1] << "'\n";
+        errs() << "Match captured: '" << env.matchEnv[i + 1] << "'\n";
       }
     }
 
@@ -727,35 +724,35 @@ namespace previrt
     bool fancy;
     bool allowLocal;
     std::string failureName;
-    Logging oclog;
+
   public:
     static char ID;
 
   public:
     WatchPass2() :
-      ModulePass(ID), fancy(WatchFancy.getValue()), allowLocal(WatchAllowLocal.getValue()), failureName(WatchFailFunction.getValue()), oclog("WatchPass2")
+      ModulePass(ID), fancy(WatchFancy.getValue()), allowLocal(WatchAllowLocal.getValue()), failureName(WatchFailFunction.getValue())
     {
 
-      oclog << Logging::level::INFO << "WatchPass2()\n";
+      errs() << "WatchPass2()\n";
 
       for (cl::list<std::string>::const_iterator b = WatchInput.begin(), e =
           WatchInput.end(); b != e; ++b) {
-        oclog << "Reading file '" << *b << "'...";
+        errs() << "Reading file '" << *b << "'...";
         std::ifstream input(b->c_str(), std::ios::binary);
         if (input.fail()) {
-          oclog << "failed: file not found\n";
+          errs() << "failed: file not found\n";
           continue;
         } else {
           watch::proto::WatchInterface buf;
           if (!buf.ParseFromIstream(&input)) {
-            oclog << "failed: reading\n";
+            errs() << "failed: reading\n";
             input.close();
             continue;
           }
           interface.MergeFrom(buf);
         }
       }
-      oclog << "Done reading.\n";
+      errs() << "Done reading.\n";
     }
     virtual
     ~WatchPass2()
@@ -766,13 +763,13 @@ namespace previrt
     runOnModule(Module& M)
     {
       
-      oclog << Logging::level::INFO << "runOnModule: " << M.getModuleIdentifier() << "\n";
+      errs() << "WatchPass2::runOnModule: " << M.getModuleIdentifier() << "\n";
 
       bool modified = false;
 
-      WatchContext context(&M,  &oclog);
-      WatchEnv env(&context, &oclog);
-      Constant* failureFunction = getExit(&context, failureName.c_str(), fancy, oclog);
+      WatchContext context(&M);
+      WatchEnv env(&context);
+      Constant* failureFunction = getExit(&context, failureName.c_str(), fancy);
 
       for (Module::iterator fi = M.begin(), fe = M.end(); fi != fe; ++fi) {
         Function* delegate = &*fi;
@@ -789,7 +786,7 @@ namespace previrt
         for (::google::protobuf::RepeatedPtrField<
             watch::proto::WatchInterface_Hooks>::const_iterator i =
             interface.hooks().begin(), e = interface.hooks().end(); i != e; ++i) {
-          if (patternMatches(i->pattern(), name, delegate->getFunctionType(), env, oclog)) {
+          if (patternMatches(i->pattern(), name, delegate->getFunctionType(), env)) {
             Function* inside = NULL;
 
             if (allowLocal) {
@@ -806,12 +803,12 @@ namespace previrt
             }
 
             if (watchFunction(context, env, inside, delegate, i->action(),
-			      failureFunction, fancy, oclog)) {
+			      failureFunction, fancy)) {
               delegate->setLinkage(GlobalValue::InternalLinkage);
-              oclog << "rewrote function '" << name << "'\n";
+              errs() << "rewrote function '" << name << "'\n";
               modified = true;
             } else {
-              oclog << "failed to rewrite '" << name << "'\n";
+              errs() << "failed to rewrite '" << name << "'\n";
             }
           }
         }
@@ -842,7 +839,7 @@ namespace previrt
         for (::google::protobuf::RepeatedPtrField<
             watch::proto::WatchInterface_Hooks>::const_iterator i =
             interface.hooks().begin(), e = interface.hooks().end(); i != e; ++i) {
-          if (patternMatches(i->pattern(), name, ft, env, oclog)) {
+          if (patternMatches(i->pattern(), name, ft, env)) {
             Function* inside = NULL;
 
             if (allowLocal) {
@@ -859,12 +856,12 @@ namespace previrt
             }
 
             if (watchFunction(context, env, inside, delegate, i->action(),
-			      failureFunction, fancy, oclog)) {
+			      failureFunction, fancy)) {
               inside->setLinkage(GlobalValue::InternalLinkage);
-              oclog << "rewrote function '" << name << "'\n";
+              errs() << "rewrote function '" << name << "'\n";
               modified = true;
             } else {
-              oclog << "failed to rewrite '" << name << "'\n";
+              errs() << "failed to rewrite '" << name << "'\n";
             }
           }
         }
