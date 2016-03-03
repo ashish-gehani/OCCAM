@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2012, SRI International
+// Copyright (c) 2011-2016, SRI International
 //
 //  All rights reserved.
 //
@@ -219,6 +219,7 @@ namespace previrt
   public:
     ComponentInterface interface;
     static char ID;
+
   public:
     GatherInterfacePass() :
       ModulePass(ID)
@@ -239,6 +240,9 @@ namespace previrt
     {
       AliasAnalysis& aa = this->getAnalysis<AliasAnalysis>();
       bool checked = false;
+
+      errs() <<  "GatherInterfacePass::runOnModule: " << M.getModuleIdentifier() << "\n";
+      
       if (!GatherInterfaceMain.empty()) {
         checked = true;
         for (cl::list<std::string>::const_iterator i = GatherInterfaceMain.begin(), e = GatherInterfaceMain.end();

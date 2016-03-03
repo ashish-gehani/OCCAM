@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2012, SRI International
+// Copyright (c) 2011-2016, SRI International
 //
 //  All rights reserved.
 //
@@ -78,6 +78,8 @@ namespace previrt
   MinimizeComponent(Module& M, ComponentInterface& I)
   {
     bool modified = false;
+    int hidden = 0;
+    int internalized = 0;
 
     errs() << "interface!\n";
     I.dump();
@@ -91,6 +93,7 @@ namespace previrt
           I.references.find(f->getName()) == I.references.end()) {
         errs() << "Hiding '" << f->getName() << "'\n";
         f->setLinkage(GlobalValue::InternalLinkage);
+	hidden++;
         modified = true;
       }
     }
@@ -100,6 +103,7 @@ namespace previrt
           I.references.find(i->getName()) == I.references.end()) {
         errs() << "internalizing '" << i->getName() << "'\n";
         i->setLinkage(localizeLinkage(i->getLinkage()));
+	internalized++;
         modified = true;
       }
     }
@@ -142,7 +146,7 @@ namespace previrt
     }
 
     if (modified) {
-      errs() << "...progress...\n";
+      errs() << "Progress: hidden = " << hidden << " internalized " << internalized << "\n";
     }
 
     return modified;
@@ -160,6 +164,9 @@ namespace previrt
     OccamPass() :
       ModulePass(ID)
     {
+
+      errs() << "OccamPass()\n";
+
       for (cl::list<std::string>::const_iterator b =
           OccamComponentInput.begin(), e = OccamComponentInput.end(); b
           != e; ++b) {
@@ -180,6 +187,7 @@ namespace previrt
     virtual bool
     runOnModule(Module& M)
     {
+      errs() << "OccamPass::runOnModule: " << M.getModuleIdentifier() << "\n";
       return MinimizeComponent(M, this->interface);
     }
   };

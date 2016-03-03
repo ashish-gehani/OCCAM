@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2012, SRI International
+// Copyright (c) 2011-2016, SRI International
 //
 //  All rights reserved.
 //
@@ -48,7 +48,7 @@ namespace previrt
   {
   private:
     bool optimize;
-
+    
   public:
     static char ID;
 

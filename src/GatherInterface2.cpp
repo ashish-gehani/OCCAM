@@ -353,6 +353,7 @@ namespace previrt
   public:
     ComponentInterface interface;
     static char ID;
+    
   public:
     GatherInterface2Pass() :
       ModulePass(ID)
@@ -377,6 +378,8 @@ namespace previrt
 
       bool checked = false;
 
+      errs() << "GatherInterface2Pass::runOnModule: " << M.getModuleIdentifier() << "\n";
+      
       // Add all nodes in llvm.compiler.used and llvm.used
       // *** This is very important for correctly compiling libc
       static const char* used_vars[2] = {"llvm.compiler.used", "llvm.used"};
@@ -385,6 +388,8 @@ namespace previrt
         if (used != NULL) {
           Constant* value = used->getInitializer();
           assert(value != NULL);
+
+	  
           if (value->getType()->isVectorTy()) {
 // GM:            SmallVectorImpl<Constant*> elems(64);
 //            SmallVector<Constant*, 64> elems; // IAM, AG
