@@ -166,6 +166,7 @@ namespace previrt
             (*begin)->args.begin(), e = (*begin)->args.end(); i != e; ++i) {
           if (i->refines(cur->get()) == NO_MATCH)
             goto no;
+          ++cur;
         }
         (*begin)->count++;
         return;
