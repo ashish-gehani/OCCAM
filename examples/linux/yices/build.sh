@@ -3,7 +3,7 @@
 # Build the manifest file
 cat > yices_smt2.manifest <<EOF
 { "modules" : ["yices_smt2.bc"]
-, "binary"  : "yices_smt2"
+, "binary"  : "yices_smt2_previrt"
 , "libs"    : ["libpoly.so.bc"]
 , "native-libs" : ["-lgmp"]
 , "search"  : ["/usr/lib", "/usr/local/lib", "/usr/lib/x86_64-linux-gnu/"]
@@ -13,20 +13,20 @@ cat > yices_smt2.manifest <<EOF
 EOF
 
 # Build the manifest file
-cat > yices_smt2_mcsat.manifest <<EOF
-{ "modules" : ["yices_smt2_mcsat.bc"]
-, "binary"  : "yices_smt2_mcsat"
+cat > yices_smt2_release_mcsat.manifest <<EOF
+{ "modules" : ["yices_smt2_release_mcsat.bc"]
+, "binary"  : "yices_smt2_mcsat_previrt"
 , "libs"    : ["libpoly.so.bc"]
 , "native-libs" : ["-lgmp"]
 , "search"  : ["/usr/lib", "/usr/local/lib", "/usr/lib/x86_64-linux-gnu/"]
-, "name"    : "yices_smt2_mcsat"
+, "name"    : "yices_smt2_release_mcsat"
 }
 EOF
 
 # Build the manifest file
 cat > linked_yices_smt2_mcsat.manifest <<EOF
 { "modules" : ["linked_yices_smt2_mcsat.bc"]
-, "binary"  : "linked_yices_smt2_mcsat"
+, "binary"  : "linked_yices_smt2_mcsat_previrt"
 , "libs"    : []
 , "native-libs" : ["-lgmp"]
 , "search"  : ["/usr/lib", "/usr/local/lib", "/usr/lib/x86_64-linux-gnu/"]
@@ -35,6 +35,6 @@ cat > linked_yices_smt2_mcsat.manifest <<EOF
 EOF
 
 # Previrtualize
-${OCCAM_HOME}/bin/occam previrt --work-dir=previrt linked_yices_smt2_mcsat.manifest
+${OCCAM_HOME}/bin/occam previrt --work-dir=previrt yices_smt2_release_mcsat.manifest
 
 

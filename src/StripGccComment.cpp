@@ -47,7 +47,6 @@
 
 #include "PrevirtualizeInterfaces.h"
 #include "Previrtualize.h"
-#include "Logging.h"
 
 #include <vector>
 #include <string>
@@ -61,11 +60,9 @@ namespace previrt
   {
   public:
     static char ID;
-  private:
-    Logging oclog;
   public:
     StripGccComment() :
-      ModulePass(ID), oclog("StripGccComment")
+      ModulePass(ID)
     {
     }
     virtual ~StripGccComment()
