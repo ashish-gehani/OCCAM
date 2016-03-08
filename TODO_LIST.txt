@@ -1,0 +1,44 @@
+1. Examples
+
+2. Trim and simplify the python wrappers.
+
+3*. Adding instrumentation
+
+   - function retained; specialized; eliminated
+   - concrete arguments exploited
+   - summary
+
+   - keep the bloody function names...
+
+4. Partial specification of main's argv.
+   - could specialize a option parsing library?
+   - naive aproach:
+
+
+int main(int argc, char* argv[]){
+
+
+    argc = extend_args_with_mcsat_set(&argv);
+
+
+
+    assert( argv[1] == "--mcsat");
+
+...
+
+
+}
+
+
+
+foo [switch] <filename>
+
+
+assuming argc = 2
+
+ argc' = 3
+
+ argv'[0] = "foo"
+ argv'[1] = "switch"
+ argv'[2] = argv[1]
+ argv'[3] =  NULL	  

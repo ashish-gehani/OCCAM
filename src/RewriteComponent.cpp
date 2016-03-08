@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2012, SRI International
+// Copyright (c) 2011-2016, SRI International
 //
 //  All rights reserved.
 //
@@ -223,10 +223,14 @@ namespace previrt
   public:
     ComponentInterfaceTransform transform;
     static char ID;
+    
   public:
     RewriteComponentPass() :
       ModulePass(ID), transform()
     {
+
+      errs() << "RewriteComponentPass()\n";
+
       for (cl::list<std::string>::const_iterator b = RewriteComponentInput.begin(), e = RewriteComponentInput.end();
            b != e; ++b) {
         errs() << "Reading file '" << *b << "'...";
@@ -252,6 +256,9 @@ namespace previrt
       if (this->transform.interface == NULL) {
         return false;
       }
+      
+      errs() << "RewriteComponentPass:runOnModule: " << M.getModuleIdentifier() << "\n";
+
 
       bool modified = TransformComponent(M, this->transform);
       if (modified) {

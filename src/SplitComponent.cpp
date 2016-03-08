@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2012, SRI International
+// Copyright (c) 2011-2016, SRI International
 //
 //  All rights reserved.
 //
@@ -208,6 +208,9 @@ namespace previrt
     virtual bool
     runOnModule(Module& M)
     {
+
+      errs() << "SplitHighPass::runOnModule: " << M.getModuleIdentifier() << "\n";
+      
       return sliceComponent(M, AssemblyPolicy::HIGH);
     }
   };

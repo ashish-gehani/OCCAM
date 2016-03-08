@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2012, SRI International
+// Copyright (c) 2011-2016, SRI International
 //
 //  All rights reserved.
 //
@@ -161,9 +161,7 @@ namespace previrt
   }
 
   static BasicBlock*
-  watch(Function* inside, Function* const delegate,
-      const proto::ActionTree& policy, std::vector<Value*>& env,
-      BasicBlock* failure)
+  watch(Function* inside, Function* const delegate, const proto::ActionTree& policy, std::vector<Value*>& env, BasicBlock* failure)
   {
     LLVMContext& ctx = inside->getContext();
 
@@ -179,20 +177,17 @@ namespace previrt
       Function* eq = pt.getEqualityFunction(inside->getParent());
       if (eq == NULL) {
         errs() << "No equality function, defaulting to false\n";
-        BasicBlock* trg = watch(inside, delegate, policy.case_()._else(), env,
-            failure);
+        BasicBlock* trg = watch(inside, delegate, policy.case_()._else(), env, failure);
         return trg;
       } else {
         Value* compLeft = env[policy.case_().var()];
         Value* compRight = pt.concretize(*inside->getParent(), compLeft->getType());
         env[policy.case_().var()] = compRight;
-        BasicBlock* _then = watch(inside, delegate, policy.case_()._then(),
-            env, failure);
+        BasicBlock* _then = watch(inside, delegate, policy.case_()._then(), env, failure);
         env[policy.case_().var()] = compLeft;
         if (_then == NULL)
           return NULL;
-        BasicBlock* _else = watch(inside, delegate, policy.case_()._else(),
-            env, failure);
+        BasicBlock* _else = watch(inside, delegate, policy.case_()._else(), env, failure);
         if (_else == NULL)
           return NULL;
 
@@ -223,8 +218,7 @@ namespace previrt
           policy.event().handler().c_str(), args);
       builder.CreateCall(evt, ArrayRef<Value*> (args));
       if (policy.event().has_then()) {
-        BasicBlock* then = watch(inside, delegate, policy.event().then(), env,
-            failure);
+        BasicBlock* then = watch(inside, delegate, policy.event().then(), env, failure);
         builder.CreateBr(then);
       } else {
         builder.CreateBr(failure);
@@ -250,8 +244,7 @@ namespace previrt
   }
 
   bool
-  watchFunction(Function* inside, Function* const delegate,
-      const proto::ActionTree& policy, Constant* policyError, bool fancyFail)
+  watchFunction(Function* inside, Function* const delegate, const proto::ActionTree& policy, Constant* policyError, bool fancyFail)
   {
     std::vector<Value*> env;
     env.reserve(inside->getArgumentList().size());
@@ -311,14 +304,13 @@ namespace previrt
     bool fancy;
     bool allowLocal;
     std::string failureName;
+    
   public:
     static char ID;
 
   public:
     WatchPass() :
-      ModulePass(ID), fancy(WatchFancy.getValue()), allowLocal(
-          WatchAllowLocal.getValue()),
-          failureName(WatchFailFunction.getValue())
+      ModulePass(ID), fancy(WatchFancy.getValue()), allowLocal(WatchAllowLocal.getValue()), failureName(WatchFailFunction.getValue())
     {
       for (cl::list<std::string>::const_iterator b = WatchInput.begin(), e =
           WatchInput.end(); b != e; ++b) {
@@ -348,8 +340,12 @@ namespace previrt
     runOnModule(Module& M)
     {
       bool modified = false;
+
+      errs() << "WatchPass::runOnModule: " << M.getModuleIdentifier() << "\n";
+
       Constant* failureFunction = getExit(&M, failureName.c_str(), fancy);
 
+      
       for (::google::protobuf::RepeatedPtrField<
           proto::EnforceInterface_Functions>::const_iterator i =
           interface.functions().begin(), e = interface.functions().end(); i
@@ -374,8 +370,7 @@ namespace previrt
           inside->deleteBody();
         }
 
-        if (watchFunction(inside, delegate, i->actions(), failureFunction,
-            fancy)) {
+        if (watchFunction(inside, delegate, i->actions(), failureFunction, fancy)) {
           delegate->setLinkage(GlobalValue::InternalLinkage);
           errs() << "rewrote function '" << i->name() << "'\n";
         } else {

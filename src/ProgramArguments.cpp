@@ -62,9 +62,10 @@ namespace previrt
   {
     char str[1024];
     FILE* f = fopen(filename, "r");
+
     if (f == NULL)
     {
-      errs() << "Failed to open file '" << filename << "'\n";
+      errs() << "SpecializeArguments(): Failed to open file '" << filename << "'\n";
       this->argc = -1;
       this->argv = NULL;
       return;
@@ -91,7 +92,7 @@ namespace previrt
         != end; ++itr, ++i)
     {
       this->argv[i] = *itr;
-      errs() << this->argv[i] << "\n";
+      errs() << "\t" << this->argv[i] << "\n";
     }
 
     this->progName = name;
@@ -111,17 +112,17 @@ namespace previrt
   SpecializeArguments::runOnModule(Module& M)
   {
     Function* f = M.getFunction("main");
-
+    
     if (f == NULL)
-    {
-      errs() << "Running on module without 'main' function.\n"
-          << "Ignoring...\n";
-      return false;
-    }
+      {
+	errs() << "SpecializeArguments::runOnModule: running on module without 'main' function.\n"
+	      << "Ignoring...\n";
+	return false;
+      }
 
     if (f->getArgumentList().size() != 2)
     {
-      errs() << "Main module has incorrect signature\n" << f->getFunctionType();
+      errs() << "SpecializeArguments::runOnModule: main module has incorrect signature\n" << f->getFunctionType();
       return false;
     }
 

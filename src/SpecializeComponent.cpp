@@ -173,6 +173,7 @@ namespace {
   public:
     ComponentInterfaceTransform transform;
     static char ID;
+
   public:
     SpecializeComponentPass() :
       ModulePass(ID)
@@ -202,6 +203,9 @@ namespace {
     runOnModule(Module& M)
     {
       if (transform.interface == NULL) return false;
+      
+      errs() << "SpecializeComponentPass::runOnModule: " << M.getModuleIdentifier() << "\n";
+      
 
       std::list<Function*> to_add;
       CallGraphWrapperPass& CG = getAnalysis<CallGraphWrapperPass> ();

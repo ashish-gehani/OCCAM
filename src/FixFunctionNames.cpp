@@ -40,6 +40,7 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Pass.h"
+#include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
 
@@ -49,6 +50,7 @@ namespace previrt
   {
   public:
     static char ID;
+
   public:
     FixFunctions() :
       ModulePass(ID)
@@ -63,6 +65,9 @@ namespace previrt
     runOnModule(Module &m)
     {
       bool modified = false;
+
+      errs() << "FixFunctions::runOnModule: " << m.getModuleIdentifier() << "\n";
+      
       for (Module::iterator i = m.begin(), e = m.end(); i != e; ++i) {
         Function& f = *i;
         //iam       std::string name = f.getNameStr();

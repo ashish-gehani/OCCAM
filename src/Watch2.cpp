@@ -68,6 +68,7 @@ namespace previrt
   {
     std::list<Function*> added_functions;
     Module* const module;
+
   public:
     WatchContext(Module* m) :
       module(m)
@@ -136,8 +137,7 @@ namespace previrt
       if (idx < 0)
         idx = this->valueEnv.size() + idx;
       if (idx >= (int) this->valueEnv.size() || idx < 0) {
-        errs() << "Looking up bad variable: %" << orig << " (%0 - %"
-            << this->matchEnv.size() - 1 << ")\n";
+        errs() << "Looking up bad variable: %" << orig << " (%0 - %" << this->matchEnv.size() - 1 << ")\n";
         return NULL;
       }
       return this->valueEnv[idx];
@@ -453,7 +453,7 @@ namespace previrt
   static bool
   compileAction(Function* inside, const Function* const delegate,
       const watch::proto::ActionTree& policy, WatchContext& ctx, WatchEnv& env,
-      BasicBlock* result, BasicBlock* failure, BasicBlock* success)
+		BasicBlock* result, BasicBlock* failure, BasicBlock* success)
   {
     IRBuilder<> builder(result);
 
@@ -464,8 +464,7 @@ namespace previrt
       if (eq == NULL) {
         errs() << "No equality function, defaulting to false\n";
         if (policy.if_().has__else()) {
-          return compileAction(inside, delegate, policy.if_()._else(), ctx,
-              env, result, failure, success);
+          return compileAction(inside, delegate, policy.if_()._else(), ctx, env, result, failure, success);
 
         } else {
           errs()
@@ -481,16 +480,14 @@ namespace previrt
             pt.concretize(*inside->getParent(), compLeft->getType());
         env.valueEnv[policy.if_().var()] = compRight;
         BasicBlock* _then = BasicBlock::Create(result->getContext());
-        if (!compileAction(inside, delegate, policy.if_()._then(), ctx, env,
-            _then, failure, success)) {
+        if (!compileAction(inside, delegate, policy.if_()._then(), ctx, env, _then, failure, success)) {
           return false;
         }
         env.valueEnv[policy.if_().var()] = compLeft;
         BasicBlock* _else;
         if (policy.if_().has__else()) {
           _else = BasicBlock::Create(result->getContext());
-          if (!compileAction(inside, delegate, policy.if_()._else(), ctx, env,
-              _else, failure, success)) {
+          if (!compileAction(inside, delegate, policy.if_()._else(), ctx, env, _else, failure, success)) {
             return false;
           }
         } else {
@@ -588,8 +585,7 @@ namespace previrt
 
       for (int i = 0; i < policy.seq_size(); ++i) {
         const watch::proto::ActionTree& tr = policy.seq(i);
-        if (!compileAction(inside, delegate, tr, ctx, env, blocks[i], failure,
-            blocks[i + 1])) {
+        if (!compileAction(inside, delegate, tr, ctx, env, blocks[i], failure, blocks[i + 1])) {
           // Don't delete the blocks because they were llvm allocated
           delete blocks;
           return false;
@@ -607,7 +603,7 @@ namespace previrt
   bool
   watchFunction(WatchContext& ctx, WatchEnv& env, Function* inside,
       const Function* const delegate, const watch::proto::ActionTree& policy,
-      Constant* policyError, bool fancyFail)
+		Constant* policyError, bool fancyFail)
   {
     env.valueEnv.clear();
     env.valueEnv.reserve(inside->getArgumentList().size());
@@ -622,8 +618,7 @@ namespace previrt
     BasicBlock* failure = BasicBlock::Create(ctx.getContext(), "failure",
         inside);
 
-    if (!compileAction(inside, delegate, policy, ctx, env, result, failure,
-        success)) {
+    if (!compileAction(inside, delegate, policy, ctx, env, result, failure, success)) {
       inside->deleteBody();
       return false;
     }
@@ -653,8 +648,7 @@ namespace previrt
   }
 
   static bool
-  patternMatches(const watch::proto::PatternExpr& ptrn,
-      const std::string& fname, FunctionType* ft, WatchEnv& env)
+  patternMatches(const watch::proto::PatternExpr& ptrn, const std::string& fname, FunctionType* ft, WatchEnv& env)
   {
     for (google::protobuf::RepeatedPtrField<std::string>::const_iterator ex =
         ptrn.exclude().begin(), end = ptrn.exclude().end(); ex != end; ++ex) {
@@ -730,15 +724,17 @@ namespace previrt
     bool fancy;
     bool allowLocal;
     std::string failureName;
+
   public:
     static char ID;
 
   public:
     WatchPass2() :
-      ModulePass(ID), fancy(WatchFancy.getValue()), allowLocal(
-          WatchAllowLocal.getValue()),
-          failureName(WatchFailFunction.getValue())
+      ModulePass(ID), fancy(WatchFancy.getValue()), allowLocal(WatchAllowLocal.getValue()), failureName(WatchFailFunction.getValue())
     {
+
+      errs() << "WatchPass2()\n";
+
       for (cl::list<std::string>::const_iterator b = WatchInput.begin(), e =
           WatchInput.end(); b != e; ++b) {
         errs() << "Reading file '" << *b << "'...";
@@ -766,6 +762,9 @@ namespace previrt
     virtual bool
     runOnModule(Module& M)
     {
+      
+      errs() << "WatchPass2::runOnModule: " << M.getModuleIdentifier() << "\n";
+
       bool modified = false;
 
       WatchContext context(&M);
@@ -787,8 +786,7 @@ namespace previrt
         for (::google::protobuf::RepeatedPtrField<
             watch::proto::WatchInterface_Hooks>::const_iterator i =
             interface.hooks().begin(), e = interface.hooks().end(); i != e; ++i) {
-          if (patternMatches(i->pattern(), name, delegate->getFunctionType(),
-              env)) {
+          if (patternMatches(i->pattern(), name, delegate->getFunctionType(), env)) {
             Function* inside = NULL;
 
             if (allowLocal) {
@@ -805,7 +803,7 @@ namespace previrt
             }
 
             if (watchFunction(context, env, inside, delegate, i->action(),
-                failureFunction, fancy)) {
+			      failureFunction, fancy)) {
               delegate->setLinkage(GlobalValue::InternalLinkage);
               errs() << "rewrote function '" << name << "'\n";
               modified = true;
@@ -858,7 +856,7 @@ namespace previrt
             }
 
             if (watchFunction(context, env, inside, delegate, i->action(),
-                failureFunction, fancy)) {
+			      failureFunction, fancy)) {
               inside->setLinkage(GlobalValue::InternalLinkage);
               errs() << "rewrote function '" << name << "'\n";
               modified = true;

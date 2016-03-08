@@ -32,6 +32,11 @@ LIB = ${LIBRARYNAME}.dylib
 LIBFLAGS = -dynamiclib
 OTHERLIBS =  -lpthread -lprotobuf -lcurses
 LD_FLAGS += -undefined suppress -flat_namespace
+else ifeq (FreeBSD, $(findstring FreeBSD, ${OS}))
+# FreeBSD
+LIB = ${LIBRARYNAME}.so
+LIBFLAGS = -shared -Wl,-soname,${LIB}
+OTHERLIBS = -L/usr/local/lib -lpthread -lprotobuf
 else
 # LINUX
 LIB = ${LIBRARYNAME}.so
@@ -41,18 +46,20 @@ endif
 
 PROTOC = $(shell which protoc)
 
-OBJECTS := proto/Previrt.pb.o proto/Watch.pb.o $(patsubst %.cpp,%.o,$(wildcard *.cpp)) 
+SOURCES = $(wildcard *.cpp)
+
+OBJECTS := proto/Previrt.pb.o proto/Watch.pb.o $(patsubst %.cpp,%.o,${SOURCES}) 
 
 INSTALL = install
 
 all: ${LIB}
 
-${LIB}:
+${LIB}: ${SOURCES}
 	echo "The source is being built according to ${LLVM_CFG}"
 	$(MAKE) protoc 
 	$(MAKE) lib
 
-lib: ${OBJECTS}
+lib: ${OBJECTS} 
 	$(CXX) ${OBJECTS} ${LIBFLAGS} -o ${LIB} ${CXX_FLAGS} ${LD_FLAGS} ${OTHERLIBS}
 
 %.o: %.cpp
