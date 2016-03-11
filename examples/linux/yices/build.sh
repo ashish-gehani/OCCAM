@@ -2,9 +2,6 @@
 
 WORKDIR=previrt_nostrip
 
-export OCCAM_LOGFILE="${PWD}/${WORKDIR}/occam_log_file.txt"
-export OCCAM_LOGLEVEL=INFO
-
 mkdir -p ${WORKDIR}
 
 # Build the manifest file
@@ -22,7 +19,7 @@ EOF
 # Build the manifest file
 cat > yices_smt2_release_mcsat.manifest <<EOF
 { "modules" : ["yices_smt2_release_mcsat.bc"]
-, "binary"  : "yices_smt2_mcsat_previrt"
+, "binary"  : "yices_smt2_release_mcsat_previrt"
 , "libs"    : ["libpoly.so.bc"]
 , "native-libs" : ["-lgmp"]
 , "search"  : ["/usr/lib", "/usr/local/lib", "/usr/lib/x86_64-linux-gnu/"]
@@ -41,14 +38,13 @@ cat > linked_yices_smt2_mcsat.manifest <<EOF
 }
 EOF
 
-<<<<<<< HEAD
-# Previrtualize   [--work-dir=<dir>] [--force] [--no-strip] <manifest>
-${OCCAM_HOME}/bin/occam previrt --no-strip --work-dir=${WORKDIR} yices_smt2.manifest
+#WORKDIR=previrt_nostrip
+WORKDIR=previrt
 
-=======
-# Previrtualize
-${OCCAM_HOME}/bin/occam previrt --work-dir=previrt yices_smt2_release_mcsat.manifest
->>>>>>> 74e7c844a3324e11a4f66a8012a83d9cdfc48ca4
+# Previrtualize   [--work-dir=<dir>] [--force] [--no-strip] <manifest>
+#${OCCAM_HOME}/bin/occam previrt --no-strip --work-dir=${WORKDIR} yices_smt2_release_mcsat.manifest
+${OCCAM_HOME}/bin/occam previrt --work-dir=${WORKDIR} yices_smt2_release_mcsat.manifest
+
 
 # Build the manifest file
 cat > yices_smt2_release.manifest <<EOF

@@ -176,7 +176,7 @@ namespace previrt
     if (i == this->sccs.end()) {
       return true;
     } else {
-      errs() << "Skipping specialization of recursive function '" << F->getName() << "'\n";
+      //errs() << "Skipping specialization of recursive function '" << F->getName() << "'\n";
       return false;
     }
   }

@@ -83,8 +83,7 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
       if (callee == NULL || !canSpecialize(callee) || callee->isVarArg())
         continue;
       if (callee->hasFnAttribute(Attribute::NoInline)) {
-        errs() << "Function '" << callee->getName()
-            << "' has noinline, skipping.\n";
+        //errs() << "Function '" << callee->getName() << "' has noinline, skipping.\n";
         continue;
       }
       
@@ -93,16 +92,16 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
       bool break_the_nostrip_version = false;
 
       if(break_the_nostrip_version){
-
+	// This is too much traceing
 	if (callee->getName().equals("")) {
-	  errs() << "Skipping function with no name.\n";
+	  //errs() << "Skipping function with no name.\n";
 	  continue;
 	}
 	
       } else {
-
+	// This is too much traceing
 	if (callee->hasInternalLinkage()) {
-	  errs() << "Skipping function with internal linkage.\n";
+	  //errs() << "Skipping function with internal linkage.\n";
 	  continue;
 	}
 

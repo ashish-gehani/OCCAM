@@ -81,8 +81,11 @@ namespace previrt
     int hidden = 0;
     int internalized = 0;
 
-    errs() << "interface!\n";
+    /*
+    errs() << "<interface>\n";
     I.dump();
+    errs() << "</interface>\n";
+    */
 
     // Set all functions that are not in the interface to internal linkage only
     const StringMap<std::vector<CallInfo*> >::const_iterator end =
