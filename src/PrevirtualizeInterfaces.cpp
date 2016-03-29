@@ -86,6 +86,7 @@ namespace previrt
           ci.args.end(); i != e; ++i) {
         codeInto<PrevirtType, proto::PrevirtType> (*i, *buf.add_args());
       }
+      buf.set_instructions_count(ci.instructions_count);
     }
 
   template<>
@@ -100,36 +101,41 @@ namespace previrt
         codeInto<proto::PrevirtType, PrevirtType> (buf.args(i), info);
         ci.args.push_back(info);
       }
+      ci.instructions_count = buf.instructions_count();
     }
 
   CallInfo*
   CallInfo::Create(User::op_iterator args_begin, User::op_iterator args_end,
-      unsigned count)
+      unsigned count, unsigned instructions_count)
   {
     CallInfo* result = new CallInfo();
     result->count = count;
-
     for (int i = 0; args_begin != args_end; i++, args_begin++) {
       PrevirtType tmp = PrevirtType::abstract(*args_begin);
       result->args.push_back(tmp);
     }
+
+    result->instructions_count = instructions_count;
+
     return result;
   }
   CallInfo*
-  CallInfo::Create(unsigned len, unsigned count)
+  CallInfo::Create(unsigned len, unsigned count, unsigned instructions_count)
   {
     CallInfo* result = new CallInfo();
     result->count = count;
     result->args.reserve(len);
+    result->instructions_count = instructions_count;
     return result;
   }
 
   CallInfo*
-  CallInfo::Create(const std::vector<PrevirtType>& args, unsigned count)
+  CallInfo::Create(const std::vector<PrevirtType>& args, unsigned count, unsigned instructions_count)
   {
     CallInfo* result = new CallInfo();
     result->count = count;
     result->args = args;
+    result->instructions_count = instructions_count;
     return result;
   }
 
@@ -151,11 +157,11 @@ namespace previrt
 
   void
   ComponentInterface::call(FunctionHandle f, User::op_iterator args_begin,
-      User::op_iterator args_end)
+      User::op_iterator args_end, unsigned instructions_count)
   {
     if (this->calls.find(f) == this->calls.end()) {
       std::vector<CallInfo*> calls;
-      calls.push_back(CallInfo::Create(args_begin, args_end, 1));
+      calls.push_back(CallInfo::Create(args_begin, args_end, 1, instructions_count));
       this->calls[f] = calls;
     } else {
       std::vector<CallInfo*>& calls = this->calls[f];
@@ -172,7 +178,8 @@ namespace previrt
         no: continue;
       }
 
-      this->calls[f].push_back(CallInfo::Create(args_begin, args_end, 1));
+      // MI: TODO: add instructions count
+      this->calls[f].push_back(CallInfo::Create(args_begin, args_end, 1, instructions_count));
     }
   }
 
@@ -182,7 +189,7 @@ namespace previrt
     FunctionHandle fname = f->getName();
     if (this->calls.find(fname) == this->calls.end()) {
       std::vector<CallInfo*> calls;
-      CallInfo* ci = CallInfo::Create(f->getArgumentList().size(), 1);
+      CallInfo* ci = CallInfo::Create(f->getArgumentList().size(), 1, StatisticsUtility::GetInstructionsCount(f));
       ci->args.resize(f->getArgumentList().size(), PrevirtType::unknown());
       calls.push_back(ci);
       DLOG(std::string("Inserting ") + fname + " to calls map");
@@ -201,7 +208,7 @@ namespace previrt
         return;
         no: continue;
       }
-      CallInfo* ci = CallInfo::Create(f->getArgumentList().size(), 1);
+      CallInfo* ci = CallInfo::Create(f->getArgumentList().size(), 1, StatisticsUtility::GetInstructionsCount(f));
       ci->args.resize(f->getArgumentList().size(), PrevirtType::unknown());
       this->calls[fname].push_back(ci);
     }
@@ -215,13 +222,13 @@ namespace previrt
 
   CallInfo*
   ComponentInterface::getOrCreateCall(FunctionHandle f, const std::vector<
-      PrevirtType>& args)
+      PrevirtType>& args, unsigned instructions_count)
   {
     FunctionIterator itr = calls.find(f);
     CallInfo* result;
     if (itr == calls.end()) {
       std::vector<CallInfo*> infos;
-      result = CallInfo::Create(args, 0);
+      result = CallInfo::Create(args, 0, instructions_count);
       infos.push_back(result);
       calls[f] = infos;
       return result;
@@ -239,7 +246,8 @@ namespace previrt
           return *c;
         }
       }
-      result = CallInfo::Create(args, 0);
+
+      result = CallInfo::Create(args, 0, instructions_count);
       calls[f].push_back(result);
       return result;
     }
@@ -462,7 +470,7 @@ namespace previrt
         StringRef name = info.name();
         CallInfo res;
         codeInto<proto::CallInfo, CallInfo> (info, res);
-        CallInfo* result = ci.interface->getOrCreateCall(name, res.args);
+        CallInfo* result = ci.interface->getOrCreateCall(name, res.args, info.instructions_count());
         result->count += info.count();
 
         CallRewrite rewrite;
@@ -627,5 +635,16 @@ namespace previrt
         buf, *this);
     input.close();
     return true;
+  }
+
+  namespace StatisticsUtility {
+    unsigned
+    GetInstructionsCount(const llvm::Function *function) {
+      unsigned instructions_count = 0;
+      for(auto i = inst_begin(function), e = inst_end(function); i != e; ++i) {
+	  ++instructions_count;
+      }
+      return instructions_count;
+    }
   }
 }

@@ -257,7 +257,7 @@ namespace previrt
           //errs() << "Called = " << called << "\n";
           if (called != NULL && !isInternal(called)) {
             //errs() << called->getName() << "\n";
-            this->interface.call(called->getName(), cs.arg_begin(), cs.arg_end());
+            this->interface.call(called->getName(), cs.arg_begin(), cs.arg_end(), StatisticsUtility::GetInstructionsCount(called));
             continue;
           }
         }
@@ -510,7 +510,7 @@ namespace previrt
 
             Function* called = i->second->getFunction();
             if (called != NULL && !isInternal(called)) {
-              this->interface.call(called->getName(), cs.arg_begin(), cs.arg_end());
+              this->interface.call(called->getName(), cs.arg_begin(), cs.arg_end(), StatisticsUtility::GetInstructionsCount(called));
               continue;
             }
           }
