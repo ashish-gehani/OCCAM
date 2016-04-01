@@ -23,5 +23,35 @@ sudo apt-key adv --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-key 0xB0
 sudo apt-get update
 sudo apt-get install -y python-rosdep python-rosinstall-generator python-wstool python-rosinstall build-essential
 
+sudo rosdep init
+rosdep update
+mkdir /home/vagrant/ros_catkin_ws
+cd  /home/vagrant/ros_catkin_ws
+#ROS-Comm: (Bare Bones) ROS package, build, and communication libraries. No GUI tools.
+rosinstall_generator ros_comm --rosdistro jade --deps --wet-only --tar > jade-ros_comm-wet.rosinstall
+wstool init -j8 src jade-ros_comm-wet.rosinstall
 
+rosdep install --from-paths src --ignore-src --rosdistro jade -y
 
+CC=wllvm CXX=wllvm++ ./src/catkin/bin/catkin_make_isolated --install -DCMAKE_BUILD_TYPE=Release
+
+cd install_isolated/bin/
+extract-bc rospack
+extract-bc rosstack
+
+cd ../lib
+extract-bc libcpp_common.so
+extract-bc libmessage_filters.so
+extract-bc librosbag.so
+extract-bc librosbag_storage.so
+extract-bc librosconsole_backend_interface.so
+extract-bc librosconsole_log4cxx.so
+extract-bc librosconsole.so
+extract-bc libroscpp_serialization.so
+extract-bc libroscpp.so
+extract-bc libroslib.so
+extract-bc libroslz4.so
+extract-bc librospack.so
+extract-bc librostime.so
+extract-bc libtopic_tools.so
+extract-bc libxmlrpcpp.so
