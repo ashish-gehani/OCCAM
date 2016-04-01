@@ -17,6 +17,10 @@ mkdir Repositories  && \
     make install 
 
 #ros bootstrap dependencies
+sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) restricted universe multiverse"
+sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
+sudo apt-key adv --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-key 0xB01FA116
+sudo apt-get update
 sudo apt-get install -y python-rosdep python-rosinstall-generator python-wstool python-rosinstall build-essential
 
 
