@@ -38,6 +38,7 @@ CC=wllvm CXX=wllvm++ ./src/catkin/bin/catkin_make_isolated --install -DCMAKE_BUI
 cd install_isolated/bin/
 extract-bc rospack
 extract-bc rosstack
+cp *.bc /vagrant/bitcode/
 
 cd ../lib
 extract-bc libcpp_common.so
@@ -55,3 +56,4 @@ extract-bc librospack.so
 extract-bc librostime.so
 extract-bc libtopic_tools.so
 extract-bc libxmlrpcpp.so
+cp *.bc /vagrant/bitcode/
