@@ -7,11 +7,11 @@ LIBRARYNAME=library
 ifeq (Darwin, $(findstring Darwin, ${OS}))
 #  DARWIN
 LIB = ${LIBRARYNAME}.dylib
-LIBFLAGS = -Wall -dynamiclib
+LIBFLAGS = -Wall -fPIC -dynamiclib
 else
 # LINUX
 LIB = ${LIBRARYNAME}.so
-LIBFLAGS = -shared -Wl,-soname,${LIB}
+LIBFLAGS = -shared -fPIC  -Wl,-soname,${LIB}
 endif
 
 
