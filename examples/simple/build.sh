@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+make clean
+
 # Build the manifest file
 cat > simple.manifest <<EOF
 { "modules" : ["main.bc"]
@@ -13,7 +15,6 @@ cat > simple.manifest <<EOF
 EOF
 
 #make the bitcode
-make clean
 CC=wllvm make 
 extract-bc main
 extract-bc library.dylib
