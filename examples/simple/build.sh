@@ -26,4 +26,6 @@ ${OCCAM_HOME}/bin/occam previrt --work-dir=previrt simple.manifest
 
 llvm-dis previrt/main-final.bc -o main-final.ll
 
+llvm-dis previrt/library.dylib-final.bc -o library.dylib-final.ll
+
 

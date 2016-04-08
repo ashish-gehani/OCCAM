@@ -2,7 +2,6 @@
 #include <time.h>
 
 int libcall(int uno, int dos){
-  srand(time(NULL));
   
   if(dos == 0){ return 1; }
 
@@ -10,6 +9,9 @@ int libcall(int uno, int dos){
 
   if(dos == 2){ return 3; }
 
+  srand(time(NULL));
+
+  
   return rand() % (uno + dos);
 
 }
