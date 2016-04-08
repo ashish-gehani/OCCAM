@@ -21,7 +21,7 @@ all: main
 ${LIB}: library.c 
 	${CC} ${LIBFLAGS}  library.c -o ${LIB}
 
-main: main.c library.dylib  
+main: main.c ${LIB}
 	${CC} -Wall  main.c -o main ${LIB}
 
 
