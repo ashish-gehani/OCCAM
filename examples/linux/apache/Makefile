@@ -1,6 +1,9 @@
 #change these to something suitable if you are not running in a vagrant box.
-USER=vagrant
-INSTALL=/vagrant
+#USER=vagrant
+#INSTALL=/vagrant
+USER=iam
+INSTALL=/home/iam/Repositories/OCCAM/examples/linux/apache-install
+
 
 #current versions as of 12/2015
 PCRE=pcre-8.38

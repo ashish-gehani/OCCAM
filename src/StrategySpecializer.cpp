@@ -58,6 +58,7 @@ using namespace previrt;
 
 #define DUMP 1
 
+
 static bool
 trySpecializeFunction(Function* f, SpecializationTable& table,
     SpecializationPolicy* policy, std::list<Function*>& to_add)
@@ -82,20 +83,37 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
       if (callee == NULL || !canSpecialize(callee) || callee->isVarArg())
         continue;
       if (callee->hasFnAttribute(Attribute::NoInline)) {
-        errs() << "Function '" << callee->getName()
-            << "' has noinline, skipping.\n";
+        //errs() << "Function '" << callee->getName() << "' has noinline, skipping.\n";
         continue;
       }
-      if (callee->getName().equals("")) {
-	errs() << "Skipping function with no name.\n";
-	continue;
+      
+      // the old version is when this is true
+      // the current 3/2/2016 version has this false.
+      bool break_the_nostrip_version = false;
+
+      if(break_the_nostrip_version){
+	// This is too much traceing
+	if (callee->getName().equals("")) {
+	  //errs() << "Skipping function with no name.\n";
+	  continue;
+	}
+	
+      } else {
+	// This is too much traceing
+	if (callee->hasInternalLinkage()) {
+	  //errs() << "Skipping function with internal linkage.\n";
+	  continue;
+	}
+
       }
+
 
       Value* const * specScheme = policy->specializeOn(callee,
           call.arg_begin(), call.arg_end());
 
       if (specScheme == NULL)
         continue;
+      
 
       // == BEGIN DEBUGGING =============================================
 #if DUMP
@@ -157,6 +175,7 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
       modified = true;
     }
   }
+
   return modified;
 }
 
