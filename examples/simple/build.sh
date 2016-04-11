@@ -33,6 +33,6 @@ ${OCCAM_HOME}/bin/occam previrt --work-dir=previrt simple.manifest
 
 #debugging stuff below:
 for bitcode in previrt/*.bc; do
-    llvm-dis  "$bitcode" 
+    llvm-dis  "$bitcode" &> /dev/null
 done
 
