@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 
+
+
+export OCCAM_LOGFILE=${PWD}/previrt/occam.log
+
+
 make clean
+
+mkdir previrt
 
 # Build the manifest file
 cat > simple.manifest <<EOF
