@@ -9,7 +9,7 @@ make clean
 
 mkdir previrt
 
-# Build the manifest file
+# Build the manifest file  (FIXME: dylib not good for linux)
 cat > simple.manifest <<EOF
 { "modules" : ["main.bc"]
 , "binary"  : "main"
