@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
 
+
+
+export OCCAM_LOGFILE=${PWD}/previrt/occam.log
+export OCCAM_LOGLEVEL=INFO
+
 make clean
 
-# Build the manifest file
+mkdir previrt
+
+# Build the manifest file  (FIXME: dylib not good for linux)
 cat > simple.manifest <<EOF
 { "modules" : ["main.bc"]
 , "binary"  : "main"
@@ -24,8 +31,8 @@ extract-bc library.dylib
 ${OCCAM_HOME}/bin/occam previrt --work-dir=previrt simple.manifest
 
 
-llvm-dis previrt/main-final.bc -o main-final.ll
-
-llvm-dis previrt/library.dylib-final.bc -o library.dylib-final.ll
-
+#debugging stuff below:
+for bitcode in previrt/*.bc; do
+    llvm-dis  "$bitcode" &> /dev/null
+done
 
