@@ -133,7 +133,7 @@ namespace previrt
       if (isInternal(target)) {
         if (used != NULL) used->push(target);
       } else {
-        interface->call(target->getName(), arg_begin(I), arg_end(I));
+        interface->call(target->getName(), arg_begin(I), arg_end(I), StatisticsUtility::GetInstructionsCount(target));
       }
       this->visitInstruction(I);
     }
@@ -148,7 +148,7 @@ namespace previrt
       if (isInternal(target)) {
         if (used != NULL) used->push(target);
       } else {
-        interface->call(target->getName(), arg_begin(I), arg_end(I));
+        interface->call(target->getName(), arg_begin(I), arg_end(I), StatisticsUtility::GetInstructionsCount(target));
       }
       this->visitInstruction(I);
     }

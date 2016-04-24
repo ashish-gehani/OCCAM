@@ -41,6 +41,17 @@
 #ifndef __PREVIRT_TYPES_H__
 #define __PREVIRT_TYPES_H__
 
+
+#include "llvm/Support/Debug.h"
+
+#define DEBUG_TYPE "occam"
+
+// DLOG macro makes debug logging easier.
+// Include 1) llvm/Support/Debug.h and 2) define DEBUG_TYPE in the source file.
+// After that you can start using it like DLOG("message to log")
+#define DLOG(x) DEBUG(dbgs() << __FILE__ << "[Line: " << __LINE__ << "]: " << __func__ << " > " << (x) << "\n")
+
+
 #include "Serializer.h"
 #include "proto/Previrt.pb.h"
 

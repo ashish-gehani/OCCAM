@@ -101,6 +101,7 @@ message CallInfo {
   required bytes name = 1 ;
   optional uint32 count = 2 [default = 1] ;
   repeated PrevirtType args = 3 ;
+  optional uint32 instructions_count = 4 [default = 0];
 }
 
 message CallRewrite {

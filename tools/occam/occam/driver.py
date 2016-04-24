@@ -31,7 +31,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # ------------------------------------------------------------------------------
 
-from . import config 
+from . import config
 import subprocess, sys, os
 import logging, tempfile
 import shutil
@@ -96,22 +96,22 @@ def run(prog, args, quiet=False, inp=None,pipe=True, wd=None, resetPath=True):
             raise Exception("OCCAM_HOME not set properly in the environment")
         #pathelems = [e for e in lenv["PATH"].split(':') if e.find("occam") == -1]
         lenv["PATH"] = ':'.join(pathelems)
-        
+
     info = ("\nPROG ", prog, "\nPATH ", lenv["PATH"], "\nresetPath ", str(resetPath), "\n")
     log.warn("run %s", ' '.join(info))
- 
+
     sys.stderr.write("driver.run: prog %s\n" %prog)
-    sys.stderr.write("driver.run: args %s\n" %args)	   
+    sys.stderr.write("driver.run: args %s\n" %args)
 
     if pipe:
-        proc = subprocess.Popen([prog] + args, 
+        proc = subprocess.Popen([prog] + args,
                                 stderr=err,
                                 stdout=subprocess.PIPE,
                                 stdin=fd,
                                 cwd=wd,
                                 env=lenv)
     else:
-        proc = subprocess.Popen([prog] + args, 
+        proc = subprocess.Popen([prog] + args,
                                 stderr=sys.stderr,
                                 stdout=sys.stdout,
                                 stdin=fd,
@@ -121,12 +121,12 @@ def run(prog, args, quiet=False, inp=None,pipe=True, wd=None, resetPath=True):
     if inp is None:
         fd.close()
     if quiet:
-        log.log(logging.INFO, 'EXECUTING: %(cmd)s => %(code)d\n%(err)s', 
+        log.log(logging.INFO, 'EXECUTING: %(cmd)s => %(code)d\n%(err)s',
                 {'cmd'  : ' '.join([prog] + args),
                  'code' : retcode,
                  'err'  : proc.stderr.read()})
     else:
-        log.log(logging.INFO, 'EXECUTING: %(cmd)s => %(code)d', 
+        log.log(logging.INFO, 'EXECUTING: %(cmd)s => %(code)d',
                 {'cmd'  : ' '.join([prog] + args),
                  'code' : retcode})
 
@@ -143,23 +143,26 @@ def all_args(opt, args):
     return result
 
 def previrt(fin, fout, args, **opts):
-    args = ['-load=%s' % config.getOccamLib(), 
+    args = ['-load=%s' % config.getOccamLib(),
             fin, '-o=%s' % fout] + args
     return run(config.getLLVMTool('opt'), args, **opts)
 
 def previrt_progress(fin, fout, args, output=None, **opts):
-    args = [config.getLLVMTool('opt'), '-load=%s' % config.getOccamLib(), 
+    args = [config.getLLVMTool('opt'), '-load=%s' % config.getOccamLib(),
             fin, '-o=%s' % fout] + args
-    proc = subprocess.Popen(args, 
+    proc = subprocess.Popen(args,
                             stderr=subprocess.PIPE,
                             stdout=subprocess.PIPE,
                             stdin=subprocess.PIPE)
     progress = proc.stderr.read()
     retcode = proc.wait()
-    logging.getLogger().info('%(cmd)s => %(code)d\n%(progress)s', 
+    logging.getLogger().info('%(cmd)s => %(code)d\n%(progress)s',
                              {'cmd'  : ' '.join(args),
                               'code' : retcode,
                               'progress' : progress})
+
+    sys.stderr.write("driver.previrt_progress: command: %s\n" % ' '.join(args))
+
     if output != None:
         output[0] = progress
     return '...progress...' in progress
@@ -172,4 +175,3 @@ def isLLVM(f):
     out = proc.stdout.read()
     proc.wait()
     return 'LLVM' in out
-    

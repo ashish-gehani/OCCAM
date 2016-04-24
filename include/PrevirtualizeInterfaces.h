@@ -36,6 +36,7 @@
 
 #include "llvm/ADT/StringMap.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/InstIterator.h"
 
 #include <vector>
 #include <string>
@@ -56,6 +57,7 @@ namespace previrt
   {
     unsigned count;
     std::vector<PrevirtType> args;
+    unsigned instructions_count;
   public:
     int
     refines(llvm::User::op_iterator begin, llvm::User::op_iterator end);
@@ -65,11 +67,11 @@ namespace previrt
 
   public:
     static CallInfo*
-    Create(llvm::User::op_iterator, llvm::User::op_iterator, unsigned count = 0);
+    Create(llvm::User::op_iterator, llvm::User::op_iterator, unsigned count = 0, unsigned instructions_count = 0);
     static CallInfo*
-    Create(unsigned len, unsigned count = 0);
+    Create(unsigned len, unsigned count = 0, unsigned instructions_count = 0);
     static CallInfo*
-    Create(const std::vector<PrevirtType>&, unsigned count = 0);
+    Create(const std::vector<PrevirtType>&, unsigned count = 0, unsigned instructions_count = 0);
   };
 
   class ComponentInterface
@@ -92,7 +94,7 @@ namespace previrt
     // add a call to the interface
     void
     call(FunctionHandle f, llvm::User::op_iterator args_begin,
-        llvm::User::op_iterator args_end);
+        llvm::User::op_iterator args_end, unsigned instructions_count);
 
     void
     callAny(const llvm::Function* f);
@@ -101,7 +103,7 @@ namespace previrt
     reference(llvm::StringRef);
 
     CallInfo*
-    getOrCreateCall(FunctionHandle f, const std::vector<PrevirtType>& args);
+	getOrCreateCall(FunctionHandle f, const std::vector<PrevirtType>& args, unsigned instructions_count);
 
 //    void
 //    updateWith(ComponentInterface&);
@@ -207,6 +209,11 @@ namespace previrt
         ::previrt::codeInto<proto::ComponentInterface,
             ComponentInterfaceTransform>(const proto::ComponentInterface&,
             ComponentInterfaceTransform&);
+  };
+
+  namespace StatisticsUtility {
+    unsigned
+    GetInstructionsCount(const llvm::Function *function);
   };
 }
 

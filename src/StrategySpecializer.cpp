@@ -56,7 +56,8 @@
 using namespace llvm;
 using namespace previrt;
 
-#define DUMP 1
+#include "llvm/Support/Debug.h"
+#define DEBUG_TYPE "occam"
 
 
 static bool
@@ -116,7 +117,7 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
       
 
       // == BEGIN DEBUGGING =============================================
-#if DUMP
+      DEBUG(
       errs() << "Specializing call to '" << callee->getName()
           << "' in function '" << f->getName() << "' on arguments [";
       for (unsigned int i = 0, cnt = 0; i < callee->getArgumentList().size(); ++i) {
@@ -132,7 +133,7 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
         }
       }
       errs() << "]\n";
-#endif
+      );
       // == END DEBUGGING ===============================================
 
       std::vector<const SpecializationTable::Specialization*> versions;
@@ -205,6 +206,7 @@ SpecializerPass::runOnModule(Module &M)
 
   bool modified = false;
   for (Module::iterator f = M.begin(), fe = M.end(); f != fe; ++f) {
+	DLOG("Trying to specialize: " + f->getName());
     modified = trySpecializeFunction(&*f, table, policy, to_add)
         || modified;
   }
@@ -230,7 +232,7 @@ SpecializerPass::runOnModule(Module &M)
   }
 
   if (modified)
-    errs() << "...progress...\n";
+    DLOG("...progress...");
 
   policy->release();
   if (optimizer)

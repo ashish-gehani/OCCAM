@@ -73,7 +73,7 @@ def string_of_PrevirtType(pt, any_str):
 
 def showCall(c):
     args = [string_of_PrevirtType(x,'?') for x in c.args]
-    print "%s(%s) # %d times" % (c.name.__repr__(), ','.join(args), c.count)
+    print "%s(%s) [%d instructions] # %d times" % (c.name.__repr__(), ','.join(args), c.instructions_count, c.count)
 
 def showRewrite(rw):
     old_args = [string_of_PrevirtType(x,'?%d' % i)
@@ -82,14 +82,14 @@ def showRewrite(rw):
     print "%s(%s) --> %s(%s)" % (rw.call.name.__repr__(), ','.join(old_args),
                                  rw.new_function.__repr__(), ','.join(new_args))
 
-class InterfaceFormat (Format):    
+class InterfaceFormat (Format):
     def make(self):
         return proto.ComponentInterface()
     def show(self, iface):
         for c in iface.calls:
             showCall(c)
 
-class InterfaceTransformFormat (Format):    
+class InterfaceTransformFormat (Format):
     def make(self):
         return proto.ComponentInterfaceTransform()
     def show(self, xform):
@@ -106,4 +106,3 @@ class InterfaceTransformFormat (Format):
                 showRewrite(rw)
 
 FORMATS=[InterfaceFormat(),InterfaceTransformFormat()]
-         
