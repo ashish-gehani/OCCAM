@@ -9,3 +9,9 @@ To test the result, run
 and connect with
 
 	wget localhost:8181
+
+
+nweb-base needs to be called like so:
+
+	 ./nweb-base 8181 ./root
+

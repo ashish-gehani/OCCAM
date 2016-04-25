@@ -98,9 +98,9 @@ def peval(input_file, output_file, log=None, trail=None, **opts):
         pre.close()
         done.close()
         
-        pre_args=[config.getLLVMTool('opt'), '-load=%s' % config.getOccamLib(),
-                  opt.name, '-o=%s' % done.name,
-                  '-Ppeval']
+#        pre_args=[config.getLLVMTool('opt'), '-load=%s' % config.getOccamLib(),
+#                  opt.name, '-o=%s' % done.name,
+#                  '-Ppeval']
         
         out = ['']
         
@@ -112,13 +112,14 @@ def peval(input_file, output_file, log=None, trail=None, **opts):
                 shutil.copy(done.name, output_file)
                 return retcode
 
-            if previrt_progress(opt.name, done.name, ['-Ppeval'], 
-                                output=out):
+            if previrt_progress(opt.name, done.name, ['-Ppeval'], output=out):
                 print "previrt successful"
                 if log is not None:
                     log.write(out[0])
             else:
                 break
+
+        print "Moving %s to %s" % (opt.name, output_file)
         shutil.move(opt.name, output_file)
         try:
             os.unlink(done.name)

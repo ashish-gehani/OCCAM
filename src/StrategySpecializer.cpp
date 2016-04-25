@@ -87,8 +87,8 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
         continue;
       }
       
-      // the old version is when this is true
-      // the current 3/2/2016 version has this false.
+      //iam: the old version is when this is true
+      //iam: the current 3/2/2016 version has this false.
       bool break_the_nostrip_version = false;
 
       if(break_the_nostrip_version){
@@ -101,7 +101,7 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
       } else {
 	// This is too much traceing
 	if (callee->hasInternalLinkage()) {
-	  //errs() << "Skipping function with internal linkage.\n";
+	  //errs() << "Skipping function with internal linkage: " << callee->getName() << "\n";
 	  continue;
 	}
 
@@ -204,9 +204,9 @@ SpecializerPass::runOnModule(Module &M)
   }
 
   bool modified = false;
+
   for (Module::iterator f = M.begin(), fe = M.end(); f != fe; ++f) {
-    modified = trySpecializeFunction(&*f, table, policy, to_add)
-        || modified;
+    modified = trySpecializeFunction(&*f, table, policy, to_add) || modified;
   }
 
   while (!to_add.empty()) {
@@ -229,8 +229,11 @@ SpecializerPass::runOnModule(Module &M)
     M.getFunctionList().push_back(f);
   }
 
-  if (modified)
-    errs() << "...progress...\n";
+  if (modified){
+    errs() << "progress...\n";
+  } else {
+    errs() << "NO progress...\n";
+  }
 
   policy->release();
   if (optimizer)
@@ -252,6 +255,7 @@ namespace previrt
   SpecializerPass::SpecializerPass(bool _opt) :
     ModulePass(SpecializerPass::ID), optimize(_opt)
   {
+    errs() << "SpecializerPass(" << _opt << ")\n";
   }
 
   SpecializerPass::~SpecializerPass()

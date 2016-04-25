@@ -308,9 +308,11 @@ class PrevirtTool (target.Target):
                 # for m in files.values():
                 # intra-module previrt
                 pre = m.get()
+                pre_base = os.path.basename(pre)
                 post = m.new('p')
-                fn = 'previrt_%s-%s' % (os.path.basename(pre),
-                                        os.path.basename(post))
+                post_base = os.path.basename(post)
+                fn = 'previrt_%s-%s' % (pre_base, post_base)
+                print '%s === passes.peval ===> %s' % (pre_base, post_base)
                 passes.peval(pre, post, log=open(fn, 'w'))
             InParallel(intra, files.values())
 
