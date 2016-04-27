@@ -95,15 +95,18 @@ namespace previrt
     const ComponentInterface& I = T.getInterface();
     // TODO: What needs to be done?
     // - Should try to handle strings & arrays
+    // Iterate through all functions in the interface of T 
     for (ComponentInterface::FunctionIterator ff = I.begin(), fe = I.end(); ff
         != fe; ++ff) {
       StringRef name = ff->first();
       Function* func = resolveFunction(M, name);
+
       if (func == NULL || func->isDeclaration()) {
         // We don't specialize declarations because we don't own them
         continue;
       }
-
+      
+      // Now iterate through all calls to func in the interface of T
       for (ComponentInterface::CallIterator cc = I.call_begin(name), ce =
           I.call_end(name); cc != ce; ++cc) {
         const CallInfo* const call = *cc;
@@ -114,15 +117,19 @@ namespace previrt
           // TODO: I don't know how to specialize variable argument functions yet
           continue;
         }
+
         if (arg_count != func->getArgumentList().size()) {
           // Not referring to this function?
           // NOTE: I can't assert this equality because of the way that approximations occur
           continue;
         }
 
+	/*
+	  should we specialize? if yes then each bit in slice will indicate whether the argument is 
+	  a specializable constant
+	 */
         SmallBitVector slice(arg_count);
-        bool shouldSpecialize = policy.specializeOn(func, call->args.begin(),
-            call->args.end(), slice);
+        bool shouldSpecialize = policy.specializeOn(func, call->args.begin(), call->args.end(), slice);
 
         if (!shouldSpecialize)
           continue;
@@ -143,6 +150,16 @@ namespace previrt
             argPerm.push_back(i);
           }
         }
+	/*
+	  args is a list of pointers to values
+	   --  if the pointer is NULL then that argument is not specialized
+	   -- if the pointer is not NULL then the argument will be/has been specialized to that value
+	   
+	  argsPerm is a list on integers; the indices of the non-special arguments
+
+	  args[i] = NULL iff i is in argsPerm for i < arg_count.
+
+	*/
 
         Function* nfunc = specializeFunction(func, args);
         nfunc->setLinkage(GlobalValue::ExternalLinkage);
@@ -152,7 +169,23 @@ namespace previrt
         T.rewrite(name, call, rewriteTo, argPerm);
 
         to_add.push_back(nfunc);
-        rewrite_count++;
+	
+	
+	errs() << "Specialized  " << name << " to " << rewriteTo << "\n";
+
+#if 0
+	for (unsigned i = 0; i < arg_count; i++) {
+	  errs() << "i = " << i << ": slice[i] = " << slice[i] 
+		 << " args[i] = " << args.at(i) << "\n";
+	}
+	errs() << " argPerm = [";
+	for (unsigned i = 0; i < argPerm.size(); i++) {
+	  errs() << argPerm.at(i) << " ";
+	}
+	errs() << "]\n";
+#endif	
+
+       rewrite_count++;
       }
     }
     if (rewrite_count > 0) {
@@ -221,6 +254,10 @@ namespace {
 
       bool modified = SpecializeComponent(M, this->transform, *policy, to_add);
      
+      /* 
+	 adding the "new" specialized definitions (in to_add) to M; 
+	 opt will write out M to the -o argument to the "python call"
+      */
       Module::FunctionListType &functionList = M.getFunctionList();
       while (!to_add.empty()) {
 	Function *add = to_add.front();
@@ -229,10 +266,12 @@ namespace {
 	  // Already in module
 	  continue;
 	} else {
+	  errs() << "Adding \"" << add->getName() << "\" to the module.\n";
 	  functionList.push_back(add);
 	}
       }
 
+      /* writing the output ("rw" rewrite file) to the -Pspecialize-output argument (if there is one) */
       if (SpecializeComponentOutput != "") {
         proto::ComponentInterfaceTransform buf;
         codeInto(this->transform, buf);
