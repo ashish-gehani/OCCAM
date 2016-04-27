@@ -2,9 +2,7 @@
 
 
 all:
-	cp ../musllvm/libc.so.bc .
-	cp ../musllvm/libc.a .
-	./build.sh
+	@echo "Just type ./build.sh; this is here just for 'make clean'"
 
 
 

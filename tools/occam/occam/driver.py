@@ -68,7 +68,11 @@ def runUnknown(tool,args):
     logging.getLogger().info(' => %d', retcode)
     return retcode
 
-def run(prog, args, quiet=False, inp=None,pipe=True, wd=None, resetPath=True):
+# quiet being True here means(?) that in the C++ errs() goes to the logfile.
+# quiet being False here means(?) that in the C++ errs() goes to stderr.
+# we (iam & ashish)  like the logfile solution to be the default.
+# this may not be the best place to set this flag; we are open to suggestions...
+def run(prog, args, quiet=True, inp=None,pipe=True, wd=None, resetPath=True):
     log = logging.getLogger()
 
     # 0 = stdin

@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 
+export OCCAM_LOGFILE=${PWD}/previrt/occam.log
+export OCCAM_LOGLEVEL=INFO
+
+make clean
+
+mkdir previrt
+
 . ../../../scripts/env.sh
+
+cp ../musllvm/libc.so.bc .
+cp ../musllvm/libc.a .
 
 
 ROOT=`pwd`/root
@@ -40,3 +50,8 @@ ${LLVM_LLC_NAME} -filetype=obj -o nweb.opt.o nweb.opt.bc
 
 echo "producing the non-previrt executable: nweb-base"
 ${LLVM_CC_NAME} nweb.opt.o -o nweb-base 
+
+#debugging stuff below:
+for bitcode in previrt/*.bc; do
+    llvm-dis  "$bitcode" &> /dev/null
+done

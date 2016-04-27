@@ -50,8 +50,8 @@
 #include <vector>
 #include <list>
 #include <string>
-#include <stdio.h>
 #include <fstream>
+#include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
 
@@ -87,6 +87,10 @@ namespace previrt
   SpecializeComponent(Module& M, ComponentInterfaceTransform& T,
       SpecializationPolicy &policy, std::list<Function*>& to_add)
   {
+
+    errs() << "SpecializeComponent()\n";
+    
+
     int rewrite_count = 0;
     const ComponentInterface& I = T.getInterface();
     // TODO: What needs to be done?
@@ -178,6 +182,9 @@ namespace {
     SpecializeComponentPass() :
       ModulePass(ID)
     {
+
+      errs() << "SpecializeComponentPass():\n";
+
       for (cl::list<std::string>::const_iterator b = SpecializeComponentInput.begin(), e = SpecializeComponentInput.end();
            b != e; ++b) {
         errs() << "Reading file '" << *b << "'...";
@@ -204,7 +211,7 @@ namespace {
     {
       if (transform.interface == NULL) return false;
       
-      errs() << "SpecializeComponentPass::runOnModule: " << M.getModuleIdentifier() << "\n";
+      errs() << "SpecializeComponentPass::runOnModule(): " << M.getModuleIdentifier() << "\n";
       
 
       std::list<Function*> to_add;
