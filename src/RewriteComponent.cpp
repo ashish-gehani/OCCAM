@@ -98,20 +98,36 @@ namespace previrt
   {
     bool modified = false;
     for (ComponentInterfaceTransform::FMap::const_iterator i = T.rewrites.begin(), e = T.rewrites.end(); i != e; ++i) {
+
+      errs() << "Looking for calls to " << i->first << "\n";
+      
       Function* f = M.getFunction(i->first);
       if (f == NULL) continue;
 
       for (Function::use_iterator ui = f->use_begin(), ue = f->use_end(); ui != ue; ++ui) {
-        Use* U = &(*ui);
-        if ((!isa<CallInst>(U) && !isa<InvokeInst>(U))
-            || !CallSite(cast<Instruction>(U)).isCallee(U)) {
-          // Not a call, or being used as a parameter rather than as the callee.
+	//Use* U = &(*ui);
+	User* U = ui->getUser();
 
+	//<IAM>
+	CallInst *ci;
+	ci = dyn_cast<CallInst>(U);
+	if (ci != NULL){
+	  errs() << "ci = " << ci << "\n";
+	} else {
+	  errs() << "no luck with  " << U << "\n";
+	}
+	//</IAM>
+
+        if ((!isa<CallInst>(U) && !isa<InvokeInst>(U))
+	  // iam: prevents compilation currently || !CallSite(cast<Instruction>(U)).isCallee(U)
+	    ) {
+          // Not a call, or being used as a parameter rather than as the callee.
+	  
         } else {
-          // The instruction is a call site
-          CallSite cs(cast<Instruction>(U));
-          const CallRewrite* const rw = T.lookupRewrite(i->first, cs.arg_begin(), cs.arg_end());
-          if (rw == NULL) continue;
+	   // The instruction is a call site
+	   CallSite cs(cast<Instruction>(U));
+	   const CallRewrite* const rw = T.lookupRewrite(i->first, cs.arg_begin(), cs.arg_end());
+	   if (rw == NULL) continue;
 
 #if DUMP
           BasicBlock* owner = cs.getInstruction()->getParent();
@@ -135,6 +151,7 @@ namespace previrt
         }
       }
     }
+	
 
     return modified;
   }
@@ -198,8 +215,9 @@ namespace previrt
 
           assert(newTarget != NULL);
 
-          Instruction* newInst = specializeCallSite(I, newTarget, rw->args);
-          llvm::ReplaceInstWithInst(bb->getInstList(), I, newInst);
+          Instruction * inst = &*I;
+          Instruction* newInst = specializeCallSite(inst, newTarget, rw->args);
+          llvm::ReplaceInstWithInst(inst, newInst);
           modified = true;
         }
       }
@@ -263,6 +281,8 @@ namespace previrt
       bool modified = TransformComponent(M, this->transform);
       if (modified) {
         errs() << "...progress...\n";
+      } else {
+        errs() << "...no progress...\n";
       }
       return modified;
     }
