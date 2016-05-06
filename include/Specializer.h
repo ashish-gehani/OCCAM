@@ -32,6 +32,7 @@
 //
 
 #include <vector>
+#include "llvm/Analysis/AliasAnalysis.h"
 
 namespace llvm
 {
@@ -54,7 +55,7 @@ namespace previrt
       llvm::Function*, const std::vector<unsigned>&);
 
   bool
-  canSpecialize(llvm::Function* f);
+  canSpecialize(llvm::Function* f, llvm::AAResults & AA);
 
   llvm::GlobalVariable*
   materializeStringLiteral(llvm::Module& m, const char* data);

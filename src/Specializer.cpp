@@ -42,6 +42,7 @@
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Analysis/AliasAnalysis.h"
 
 #include "llvm/ADT/ArrayRef.h"
 
@@ -230,19 +231,45 @@ namespace previrt
     return newInst;
   }
 
+
+  bool checkAlias(Function * f, CallInst * ci, AAResults & AA){
+
+      bool debug = false;
+      if(debug) errs()<<"Checking Alias \n";     
+            
+      for(unsigned int i = 0; i < ci->getNumOperands(); i++){
+        Value * callArg = ci->getOperand(i);        
+        for(Function::arg_iterator itr = f->arg_begin(); itr != f->arg_end(); itr++, i++) {
+          Value * funcArg = (Value*) &(*itr);
+          if(!AA.isNoAlias(callArg, funcArg)) 
+          {
+             if(debug)
+               errs()<<*callArg<<" and "<<*funcArg<<" may ALIAS **** \n";
+             return true;
+          }   
+        }
+      }
+
+      return false;      
+  }
+
+
   bool
-  canSpecialize(Function* f)
+  canSpecialize(Function* f, AAResults & AA)
   {
     if (f->isDeclaration())
       return false;
+   
+    bool canSpec = true;
     for (inst_iterator I = inst_begin(f), E = inst_end(f); I != E; ++I) {
       if (CallInst* ci = dyn_cast<CallInst>(&*I)) {
         if (ci->isInlineAsm()) {
-          return false;
+          canSpec = canSpec & !checkAlias(f, ci, AA); 
         }
       }
     }
-    return true;
+
+    return canSpec;
   }
 
   GlobalVariable*
@@ -258,10 +285,13 @@ namespace previrt
   Constant*
   charStarFromStringConstant(llvm::Module& m, llvm::Constant* v)
   {
+    errs()<<"CHAR STAR \n\n\n\n\n" ;
     Constant* zero = ConstantInt::getSigned(IntegerType::getInt32Ty(m.getContext()), 0);
     Constant* args[2] = {zero, zero};
     ArrayRef<Constant*> ar_args(args, 2);
-    return ConstantExpr::getGetElementPtr(v, ar_args, false);
+    Type * constantType = cast<PointerType>(v->getType()->getScalarType())
+    ->getContainedType(0u);
+    return ConstantExpr::getGetElementPtr(constantType, v, ar_args, false);
   }
 
 }

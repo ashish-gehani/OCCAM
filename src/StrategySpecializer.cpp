@@ -35,8 +35,10 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Constants.h"
-#include "llvm/PassManager.h"
+#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Analysis/CallGraph.h"
+#include "llvm/Analysis/AliasAnalysis.h"
+#include "llvm/Analysis/BasicAliasAnalysis.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/CommandLine.h"
@@ -61,7 +63,7 @@ using namespace previrt;
 
 static bool
 trySpecializeFunction(Function* f, SpecializationTable& table,
-    SpecializationPolicy* policy, std::list<Function*>& to_add)
+    SpecializationPolicy* policy, std::list<Function*>& to_add, AAResults & AA)
 {
   bool modified = false;
   for (Function::iterator bb = f->begin(), bbe = f->end(); bb != bbe; ++bb) {
@@ -76,14 +78,25 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
       }
 
       Function* callee = call.getCalledFunction();
+      
       if (callee == NULL) { // dynamic call, can't resolve
         continue;
+      }      
+      
+      bool debug = false;
+      if(callee->getName().str() == "kern_writev"){
+        errs()<<"\n\n\n******* KERN_WRITEV called ******* \n\n\n";
+        debug = true;	     
       }
+
       const unsigned int callee_arg_count = callee->getArgumentList().size();
-      if (callee == NULL || !canSpecialize(callee) || callee->isVarArg())
+      if (callee == NULL || !canSpecialize(callee, AA) || callee->isVarArg())
+      {
         continue;
+      }
+
       if (callee->hasFnAttribute(Attribute::NoInline)) {
-        //errs() << "Function '" << callee->getName() << "' has noinline, skipping.\n";
+        
         continue;
       }
       
@@ -98,23 +111,24 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
 	  continue;
 	}
 	
-      } else {
+      } 
+      
+      // Hashim: Internal linkage functions skiping should be reconsidered
+      else {
 	// This is too much traceing
-	if (callee->hasInternalLinkage()) {
-	  //errs() << "Skipping function with internal linkage.\n";
-	  continue;
+	if (callee->hasInternalLinkage()) {	   
+          continue;
 	}
-
       }
-
 
       Value* const * specScheme = policy->specializeOn(callee,
           call.arg_begin(), call.arg_end());
 
       if (specScheme == NULL)
+      {
         continue;
+      }
       
-
       // == BEGIN DEBUGGING =============================================
 #if DUMP
       errs() << "Specializing call to '" << callee->getName()
@@ -169,7 +183,7 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
       }
       assert(specialized_arg_count == argPerm.size());
 
-      Instruction* newInst = specializeCallSite(I, specializedVersion, argPerm);
+      Instruction* newInst = specializeCallSite(&*I, specializedVersion, argPerm);
       llvm::ReplaceInstWithInst(bb->getInstList(), I, newInst);
 
       modified = true;
@@ -179,9 +193,12 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
   return modified;
 }
 
+
 bool
 SpecializerPass::runOnModule(Module &M)
 {
+  //AliasAnalysis & AA = getAnalysis<AAResultsWrapperPass>(M).getAAResults();
+    
   CallGraphWrapperPass& CG = this->getAnalysis<CallGraphWrapperPass> ();
 
   // Perform SCC analysis
@@ -194,10 +211,10 @@ SpecializerPass::runOnModule(Module &M)
   std::list<Function*> to_add;
   SpecializationTable table(&M);
 
-  FunctionPassManager* optimizer = NULL;
+  llvm::legacy::FunctionPassManager* optimizer = NULL;
 
   if (this->optimize) {
-    optimizer = new FunctionPassManager(&M);
+    optimizer = new llvm::legacy::FunctionPassManager(&M);
     PassManagerBuilder builder;
     builder.OptLevel = 3;
     builder.populateFunctionPassManager(*optimizer);
@@ -205,7 +222,13 @@ SpecializerPass::runOnModule(Module &M)
 
   bool modified = false;
   for (Module::iterator f = M.begin(), fe = M.end(); f != fe; ++f) {
-    modified = trySpecializeFunction(&*f, table, policy, to_add)
+    
+    Function * func = &*f;
+    if(func->isDeclaration() || func == NULL) continue; // Hashim: No Alias Analysis available for declarations
+    // Hashim: Using Alias analysis info for aggressive specialisation with inline asm
+    //errs()<<"func1 : "<<func->getName()<<"\n";
+    AliasAnalysis & AA = getAnalysis<AAResultsWrapperPass>(*func).getAAResults();
+    modified = trySpecializeFunction(&*f, table, policy, to_add, AA)
         || modified;
   }
 
@@ -213,7 +236,7 @@ SpecializerPass::runOnModule(Module &M)
     Function* f = to_add.front();
     to_add.pop_front();
 
-    if (f->getParent() == &M) {
+    if (f->getParent() == &M  || f->isDeclaration() || f == NULL) {
       // The function was already in the module or
       // has already been added in this round of
       // specialization, no need to add it twice
@@ -223,11 +246,14 @@ SpecializerPass::runOnModule(Module &M)
     if (optimizer) {
       optimizer->run(*f);
     }
-
-    trySpecializeFunction(f, table, policy, to_add);
+   
+    //errs()<<"func2: "<<f->getName()<<"\n";
+    //AliasAnalysis & AA = getAnalysis<AAResultsWrapperPass>(*f).getAAResults();
+    //trySpecializeFunction(f, table, policy, to_add, AA);
 
     M.getFunctionList().push_back(f);
   }
+
 
   if (modified)
     errs() << "...progress...\n";
@@ -240,15 +266,17 @@ SpecializerPass::runOnModule(Module &M)
 }
 
 void
-SpecializerPass::getAnalysisUsage(AnalysisUsage &AU) const
-{
-  AU.addRequired<CallGraphWrapperPass> ();
+SpecializerPass::getAnalysisUsage(AnalysisUsage &AU) const {
+ 
+  AU.addRequired<CallGraphWrapperPass>();
+  AU.addRequired<AAResultsWrapperPass>();
+  AU.setPreservesAll();
 }
 
 namespace previrt
 {
   char SpecializerPass::ID;
-
+  
   SpecializerPass::SpecializerPass(bool _opt) :
     ModulePass(SpecializerPass::ID), optimize(_opt)
   {
@@ -281,9 +309,11 @@ namespace
       SpecializerPass(OptSpecialized.getValue())
     {
     }
+   
     ~ParEvalOptPass()
     {
     }
+
   };
 
   static RegisterPass<ParEvalOptPass> X("Ppeval",
