@@ -50,7 +50,6 @@
 #include "SpecializationPolicy.h"
 #include "StrategySpecializer.h"
 #include "Specializer.h"
-#include "CallGraphConstruction.h"
 
 #include <list>
 #include <set>
@@ -84,12 +83,7 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
         continue;
       }      
       
-      bool debug = false;
-      if(callee->getName().str() == "kern_writev"){
-        errs()<<"\n\n\n******* KERN_WRITEV called ******* \n\n\n";
-        debug = true;	     
-      }
-
+      
       const unsigned int callee_arg_count = callee->getArgumentList().size();
       if (callee == NULL || !canSpecialize(callee, AA) || callee->isVarArg())
       {
@@ -198,6 +192,10 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
 bool
 SpecializerPass::runOnModule(Module &M)
 {
+  // Creating and initiazing an ExtendedCallGraph object
+  // This is an imprecise and incomplete callgraph for indirect function calls
+  ecg = new ExtendedCallGraph();
+  ecg->initializeCallGraph(M);
   CallGraphWrapperPass& CG = this->getAnalysis<CallGraphWrapperPass> ();
 
   // Perform SCC analysis
