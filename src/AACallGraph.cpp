@@ -73,4 +73,4 @@ INITIALIZE_AG_PASS(AACallGraph, CallGraphWrapperPass, "aliascg",
 char AACallGraph::ID = 0;
 
 // Enuse that users of CallGraph.h also link with this file
-DEFINING_FILE_FOR(AACallGraph)
+
