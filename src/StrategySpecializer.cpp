@@ -50,6 +50,7 @@
 #include "SpecializationPolicy.h"
 #include "StrategySpecializer.h"
 #include "Specializer.h"
+#include "CallGraphConstruction.h"
 
 #include <list>
 #include <set>
@@ -197,8 +198,6 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
 bool
 SpecializerPass::runOnModule(Module &M)
 {
-  //AliasAnalysis & AA = getAnalysis<AAResultsWrapperPass>(M).getAAResults();
-    
   CallGraphWrapperPass& CG = this->getAnalysis<CallGraphWrapperPass> ();
 
   // Perform SCC analysis
@@ -226,7 +225,6 @@ SpecializerPass::runOnModule(Module &M)
     Function * func = &*f;
     if(func->isDeclaration() || func == NULL) continue; // Hashim: No Alias Analysis available for declarations
     // Hashim: Using Alias analysis info for aggressive specialisation with inline asm
-    //errs()<<"func1 : "<<func->getName()<<"\n";
     AliasAnalysis & AA = getAnalysis<AAResultsWrapperPass>(*func).getAAResults();
     modified = trySpecializeFunction(&*f, table, policy, to_add, AA)
         || modified;
