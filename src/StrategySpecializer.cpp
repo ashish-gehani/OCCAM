@@ -63,13 +63,14 @@ using namespace previrt;
 
 static bool
 trySpecializeFunction(Function* f, SpecializationTable& table,
-    SpecializationPolicy* policy, std::list<Function*>& to_add, AAResults & AA)
+    SpecializationPolicy* policy, std::list<Function*>& to_add, AAResults & AA, ExtendedCallGraph * ecg)
 {
   bool modified = false;
   for (Function::iterator bb = f->begin(), bbe = f->end(); bb != bbe; ++bb) {
     for (BasicBlock::iterator I = bb->begin(), E = bb->end(); I != E; ++I) {
       CallSite call;
-      if (CallInst* ci = dyn_cast<CallInst>(&(*I))) {
+      CallInst * ci;
+      if ((ci = dyn_cast<CallInst>(&(*I)))) {
         call = CallSite(ci);
       } else if (InvokeInst* ii = dyn_cast<InvokeInst>(&(*I))) {
         call = CallSite(ii);
@@ -77,13 +78,23 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
         continue;
       }
 
-      Function* callee = call.getCalledFunction();
+      bool indirect = false;
+      map<Function*, bool> targetFuncs;
+      Function* calleeFunction = call.getCalledFunction();      
+      if (calleeFunction == NULL) { // dynamic call, can't resolve       
+         ecg->resolveCall(ci, *f->getParent(), targetFuncs);
+         indirect = true;
+      }
+      else{
+         targetFuncs[calleeFunction] = true;  
+      }    
+
+      if(targetFuncs.size() == 0) continue; // No function has been resolved        
       
-      if (callee == NULL) { // dynamic call, can't resolve
-        continue;
-      }      
+      for(map<Function*, bool>::iterator it = targetFuncs.begin(); it != targetFuncs.end(); it++)
+      {
       
-      
+      Function * callee = it->first;
       const unsigned int callee_arg_count = callee->getArgumentList().size();
       if (callee == NULL || !canSpecialize(callee, AA) || callee->isVarArg())
       {
@@ -160,7 +171,8 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
       if (NULL == specializedVersion) {
         // need to build a specialized version
         specializedVersion = specializeFunction(callee, specScheme);
-
+        if(specializedVersion == NULL) continue; // Hashim: hacking
+        
         table.addSpecialization(callee, specScheme, specializedVersion);
 
         to_add.push_back(specializedVersion);
@@ -177,11 +189,19 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
           argPerm.push_back(from);
       }
       assert(specialized_arg_count == argPerm.size());
-
-      Instruction* newInst = specializeCallSite(&*I, specializedVersion, argPerm);
-      llvm::ReplaceInstWithInst(bb->getInstList(), I, newInst);
+   
+      if(!indirect){      
+        Instruction* newInst = specializeCallSite(&*I, specializedVersion, argPerm);
+        llvm::ReplaceInstWithInst(bb->getInstList(), I, newInst);
+      }
+      else{
+       // errs()<<"****** INDIRECT SPECIALISED ******* \n";
+      }
 
       modified = true;
+
+      } // Hashim: End of looping functions
+
     }
   }
 
@@ -224,7 +244,7 @@ SpecializerPass::runOnModule(Module &M)
     if(func->isDeclaration() || func == NULL) continue; // Hashim: No Alias Analysis available for declarations
     // Hashim: Using Alias analysis info for aggressive specialisation with inline asm
     AliasAnalysis & AA = getAnalysis<AAResultsWrapperPass>(*func).getAAResults();
-    modified = trySpecializeFunction(&*f, table, policy, to_add, AA)
+    modified = trySpecializeFunction(&*f, table, policy, to_add, AA, ecg)
         || modified;
   }
 
@@ -245,7 +265,7 @@ SpecializerPass::runOnModule(Module &M)
    
     //errs()<<"func2: "<<f->getName()<<"\n";
     //AliasAnalysis & AA = getAnalysis<AAResultsWrapperPass>(*f).getAAResults();
-    //trySpecializeFunction(f, table, policy, to_add, AA);
+    //trySpecializeFunction(f, table, policy, to_add, AA, ecg);
 
     M.getFunctionList().push_back(f);
   }
