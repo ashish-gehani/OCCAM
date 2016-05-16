@@ -16,9 +16,9 @@ int main(int argc, char* argv[]){
     retval =
       libcall(atol(argv[1]), 1) *
       libcall(atol(argv[1]), 2) *
-      internal_api(3, argv[1], "Z") *
-      internal_api(4, NULL, argv[1]) *
-      internal_api(5, argv[1], argv[1])
+      internal_api(3, &main, "Z") *
+      internal_api(4, NULL, (char*)&main) *
+      internal_api(5, &main, (char*)&main)
       ;
   } 
 
