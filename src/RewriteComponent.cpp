@@ -105,53 +105,42 @@ namespace previrt
       if (f == NULL) continue;
 
       for (Function::use_iterator ui = f->use_begin(), ue = f->use_end(); ui != ue; ++ui) {
-	//Use* U = &(*ui);
-	User* U = ui->getUser();
+	Use* use = &(*ui);
+	User* user = ui->getUser();
 
-	//<IAM>
-	CallInst *ci;
-	ci = dyn_cast<CallInst>(U);
-	if (ci != NULL){
-	  errs() << "ci = " << ci << "\n";
-	} else {
-	  errs() << "no luck with  " << U << "\n";
-	}
-	//</IAM>
-
-        if ((!isa<CallInst>(U) && !isa<InvokeInst>(U))
-	  // iam: prevents compilation currently || !CallSite(cast<Instruction>(U)).isCallee(U)
-	    ) {
-          // Not a call, or being used as a parameter rather than as the callee.
+        if (isa<CallInst>(user) ||  isa<InvokeInst>(user)) { 
+	
+	  // The instruction is a call site
+	  CallSite cs(cast<Instruction>(user));
 	  
-        } else {
-	   // The instruction is a call site
-	   CallSite cs(cast<Instruction>(U));
-	   const CallRewrite* const rw = T.lookupRewrite(i->first, cs.arg_begin(), cs.arg_end());
-	   if (rw == NULL) continue;
-
+	  // If we are not the callee we should bail
+	  if( ! cs.isCallee(use)){ continue; }
+	  
+	  const CallRewrite* const rw = T.lookupRewrite(i->first, cs.arg_begin(), cs.arg_end());
+	  if (rw == NULL){ continue; }
+	  
 #if DUMP
-          BasicBlock* owner = cs.getInstruction()->getParent();
-          errs() << "Specializing (inter-module) call to '" << cs.getCalledFunction()->getName()
-                 << "' in function '" << (owner == NULL ? "??" : owner->getParent()->getName())
-                 << "' on arguments [";
-          for (unsigned int i = 0, cnt = 0; i < cs.arg_size(); ++i) {
-            if (!vector_in(rw->args, i)) {
-              if (cnt++ != 0)
-                errs() << ",";
-              errs() << i << "=(" << *cs.getArgument(i) << ")";
-            }
-          }
-          errs() << "]\n";
+	  BasicBlock* owner = cs.getInstruction()->getParent();
+	  errs() << "Specializing (inter-module) call to '" << cs.getCalledFunction()->getName()
+		 << "' in function '" << (owner == NULL ? "??" : owner->getParent()->getName())
+		 << "' on arguments [";
+	  for (unsigned int i = 0, cnt = 0; i < cs.arg_size(); ++i) {
+	    if (!vector_in(rw->args, i)) {
+	      if (cnt++ != 0)
+		errs() << ",";
+	      errs() << i << "=(" << *cs.getArgument(i) << ")";
+	    }
+	  }
+	  errs() << "]\n";
 #endif
-
-          Instruction* newInst = applyRewriteToCall(M, rw, cs);
-          llvm::ReplaceInstWithInst(cs.getInstruction(), newInst);
-
-          modified = true;
-        }
+	  
+	  Instruction* newInst = applyRewriteToCall(M, rw, cs);
+	  llvm::ReplaceInstWithInst(cs.getInstruction(), newInst);
+	  
+	  modified = true;
+	}
       }
     }
-	
 
     return modified;
   }

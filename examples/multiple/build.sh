@@ -18,7 +18,7 @@ fi
 
 
 # Build the manifest file  (FIXME: dylib not good for linux)
-cat > simple.manifest <<EOF
+cat > multiple.manifest <<EOF
 { "modules" : ["main.bc"]
 , "binary"  : "main"
 , "libs"    : ["${LIBRARY}.bc"]
@@ -36,7 +36,7 @@ extract-bc ${LIBRARY}
 
 
 # Previrtualize
-${OCCAM_HOME}/bin/occam previrt --work-dir=previrt simple.manifest
+${OCCAM_HOME}/bin/occam previrt --work-dir=previrt multiple.manifest
 
 
 #debugging stuff below:

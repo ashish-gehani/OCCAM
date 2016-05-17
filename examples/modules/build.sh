@@ -19,7 +19,7 @@ fi
 
 # Build the manifest file  (FIXME: dylib not good for linux)
 cat > simple.manifest <<EOF
-{ "modules" : ["main.bc"]
+{ "modules" : ["main.o.bc", "module.o.bc"]
 , "binary"  : "main"
 , "libs"    : ["${LIBRARY}.bc"]
 , "native_libs" : []
@@ -31,7 +31,8 @@ EOF
 
 #make the bitcode
 CC=wllvm make 
-extract-bc main
+extract-bc main.o
+extract-bc module.o
 extract-bc ${LIBRARY}
 
 

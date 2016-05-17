@@ -14,19 +14,26 @@ LIB = ${LIBRARYNAME}.so
 LIBFLAGS = -shared -fPIC  -Wl,-soname,${LIB}
 endif
 
+OBJS = main.o module.o
+
+CFLAGS = -Wall 
 
 all: main 
 
 
 ${LIB}: library.c 
-	${CC} ${LIBFLAGS}  library.c -o ${LIB}
+	${CC} ${CFLAGS} ${LIBFLAGS}  library.c -o ${LIB}
 
-main: main.c ${LIB}
-	${CC} -Wall  main.c -o main ${LIB}
+%.o: %.c
+	${CC} ${CFLAGS} $< -c 
+
+
+main:  ${OBJS} ${LIB}
+	${CC}  ${CFLAGS}  ${OBJS} -o main ${LIB}
 
 
 clean:
-	rm -f *~ ${LIB} .*.bc *.bc *.ll .*.o *.manifest main
+	rm -f *~ ${LIB} .*.bc *.bc *.ll *.o *.manifest main
 	rm -rf previrt
 
 

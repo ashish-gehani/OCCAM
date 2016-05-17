@@ -1,0 +1,35 @@
+
+In library.dylib.i.x.p.s.r.ll
+
+we see:
+
+define i32 @"libcall(?,0x1)"(i32) #0 { ... }
+define i32 @"libcall(?,0x2)"(i32) #0 { ... }
+
+which looks hopeful, but then in the next increment library.dylib.i.x.p.s.r.i.ll
+they are gone.
+
+I also note that doing an opt -O3 on library.dylib.i.x.p.s.r.bc reduces these new routines to:
+
+; Function Attrs: nounwind readnone ssp uwtable
+define i32 @"libcall(?,0x1)"(i32) #2 {
+switch.lookup:
+  ret i32 2
+}
+
+; Function Attrs: nounwind readnone ssp uwtable
+define i32 @"libcall(?,0x2)"(i32) #2 {
+switch.lookup:
+  ret i32 3
+}
+
+so there is hope. On the other hand in main.a.i.x.p.ll we have simplified main to the two calls:
+
+  %5 = tail call i32 @libcall(i32 %4, i32 1) #2
+  %8 = tail call i32 @libcall(i32 %7, i32 2) #2
+
+but I never see calls to either @"libcall(?,0x2)" or @"libcall(?,0x1)" appear in
+any main.*.bc
+
+
+

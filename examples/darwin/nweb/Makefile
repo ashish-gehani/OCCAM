@@ -2,10 +2,11 @@
 
 
 all:
-	./build.sh
+	@echo "Just type ./build.sh; this is here just for 'make clean'"
 
 
 
 clean:
-	rm -rf *.bc .*.bc .*.o *.s nweb nweb-base nweb.manifest nweb*.o previrt occam.log index.html* root/nweb.log
+	rm -f *.bc .*.bc .*.o *.s nweb nweb-base nweb.manifest nweb*.o index.html* 
+	rm -rf previrt index.html* root/nweb.log
 

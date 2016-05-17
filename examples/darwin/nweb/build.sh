@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+export OCCAM_LOGFILE=${PWD}/previrt/occam.log
+export OCCAM_LOGLEVEL=INFO
+
+make clean
+
+mkdir previrt
+
 ROOT=`pwd`/root
 
 # Build the manifest file
@@ -25,7 +32,7 @@ ${OCCAM_HOME}/bin/occam previrt --work-dir=previrt nweb.manifest
 # (it was created in previrt)
 echo "linking nweb to previrt/nweb"
 rm -f nweb
-ln -s previrt/nweb .
+mv previrt/nweb .
 
 # Now build the non-previrt application
 echo "building the non-previrt application bitcode"
@@ -36,4 +43,10 @@ llc -filetype=obj -o nweb.opt.o nweb.opt.bc
 
 echo "producing the non-previrt executable: nweb-base"
 clang nweb.opt.o -o nweb-base 
+
+
+#debugging stuff below:
+for bitcode in previrt/*.bc; do
+    llvm-dis  "$bitcode" &> /dev/null
+done
 
