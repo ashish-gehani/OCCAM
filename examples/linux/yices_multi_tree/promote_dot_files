@@ -1,0 +1,2 @@
+find . -type f -name \.*.bc -exec rename -n 's/\/\./\//' \{\} \;
+

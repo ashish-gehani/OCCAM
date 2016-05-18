@@ -82,6 +82,11 @@ def get_default(obj, key, default):
     else:
         return default
 
+#iam: used to be just os.path.basename; but now when we are processing trees
+# the leaf names are not necessarily unique.
+def prevent_collisions(x):
+    os.path.basename(x)
+
 POOL = None
 
 def defaultPool():
@@ -194,8 +199,8 @@ class PrevirtTool (target.Target):
 	archive_libs = []
         for x in modules + llvm_libs:            
 	    libCreated = False
-            bn = os.path.basename(x)
-            target = os.path.join(work_dir, os.path.basename(x))
+            bn = prevent_collisions(x)
+            target = os.path.join(work_dir, bn)
             if os.path.abspath(x) != target:
                 shutil.copyfile(x, target)
             if target.endswith('.a'):
@@ -230,7 +235,11 @@ class PrevirtTool (target.Target):
 
         # Change directory
         os.chdir(work_dir)
-        
+
+        #iam: stop here while debugging...
+        return 0
+
+
         if not (arguments is None):
             # We need to specialize main for program arguments
             main = files[modules[0]]
