@@ -92,15 +92,13 @@ def prevent_collisions(x):
 
         if folder != "":
             folders.append(folder)
-        else:
-            if path != "":
-                folders.append(path)
-        break
+
+        if path == "":
+            break
 
     folders.reverse()
-    unambiguous = "_".join(folders)
-    print unambiguous
-    os.path.basename(x)
+    return "_".join(folders)
+    #return os.path.basename(x)
 
 POOL = None
 
@@ -250,10 +248,6 @@ class PrevirtTool (target.Target):
 
         # Change directory
         os.chdir(work_dir)
-
-        #iam: stop here while debugging...
-        return 0
-
 
         if not (arguments is None):
             # We need to specialize main for program arguments
