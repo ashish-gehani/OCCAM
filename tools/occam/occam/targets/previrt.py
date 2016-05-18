@@ -85,6 +85,21 @@ def get_default(obj, key, default):
 #iam: used to be just os.path.basename; but now when we are processing trees
 # the leaf names are not necessarily unique.
 def prevent_collisions(x):
+    folders = []
+    path = x
+    while 1:
+        path, folder = os.path.split(path)
+
+        if folder != "":
+            folders.append(folder)
+        else:
+            if path != "":
+                folders.append(path)
+        break
+
+    folders.reverse()
+    unambiguous = "_".join(folders)
+    print unambiguous
     os.path.basename(x)
 
 POOL = None
