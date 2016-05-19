@@ -8,8 +8,9 @@
 # Then type gmake, followed gmake install (or sudo -E gmake install).
 #
 
-# export LLVM_HOME=/usr/local
-# export OCCAM_HOME=~/occam
+# Change these path variabless according to your choice
+# export LLVM_HOME=/usr/lib/llvm-3.5
+# export OCCAM_HOME=/home/user/occam
 
 ifneq (,)
 This Makefile requires GNU Make.
