@@ -14,11 +14,11 @@ for root in roots:
 
 manifest_template = """
 "modules" : [{0}]
-, "binary"  : "occam_yices"
+, "binary"  : "yices_smt2_release_mcsat_libpoly_previrt"
 , "libs"    : []
 , "native-libs" : ["-lgmp"]
 , "search"  : ["/usr/lib", "/usr/local/lib", "/usr/lib/x86_64-linux-gnu/"]
-, "name"    : "occam_yices"
+, "name"    : "yices_smt2_release_mcsat"
 """
 
 manifest =  '{ ' + manifest_template.format(", ".join(objs)) + ' }'

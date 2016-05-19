@@ -1,0 +1,8 @@
+Note that we need to edit the 'yices.manifest' to remove all but one objects with a main() in it.
+
+(Files to remove: "yices_obj/frontend/.yices_sat.o.bc", "yices_obj/frontend/.yices_smt.o.bc", "yices_obj/frontend/.yices_main.o.bc", "yices_obj/frontend/.yices_smtcomp.o.bc")
+
+
+Current state: bug in flattening files to the previrt dir.
+There are, for example, mutliple files called .output.c.o.bc
+and only the last one wins.
