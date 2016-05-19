@@ -1,4 +1,4 @@
-build yices and libpoly with wllvm as normal
+Build yices and libpoly with wllvm as normal
 
 cp -r libpoly/build/src/CMakeFiles/poly.dir libpoly_obj
 
@@ -7,6 +7,7 @@ cp -r yices2/build/x86_64-unknown-linux-gnu-release/obj yices_obj
 find libpoly_obj -type f -name *.o -exec rm  \{\} \;
 find libpoly_obj -type f -name *.make -exec rm  \{\} \;
 find libpoly_obj -type f -name *.cmake -exec rm  \{\} \;
+
 rm libpoly_obj/C.includecache
 rm libpoly_obj/depend.internal
 rm libpoly_obj/link.txt
