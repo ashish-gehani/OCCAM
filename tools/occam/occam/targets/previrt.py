@@ -93,12 +93,11 @@ def prevent_collisions(x):
         if folder != "":
             folders.append(folder)
 
-        if path == "":
+        if path == "" or path == os.sep:
             break
 
     folders.reverse()
     return "_".join(folders)
-    #return os.path.basename(x)
 
 POOL = None
 
@@ -278,7 +277,7 @@ class PrevirtTool (target.Target):
 
         # First compute the simple interfaces
         vals = files.items()
-        refs = dict([(k, VersionedFile(os.path.basename(k[:k.rfind('.bc')]), 'iface'))
+        refs = dict([(k, VersionedFile(prevent_collisions(k[:k.rfind('.bc')]), 'iface'))
                      for (k,_) in vals])
         def _references((m,f)):
             "Computing references"
@@ -314,7 +313,7 @@ class PrevirtTool (target.Target):
         progress = True
         rewrite_files = {}
         for m in files.keys():
-            base = os.path.basename(m[:m.rfind('.bc')])
+            base = prevent_collisions(m[:m.rfind('.bc')])
             rewrite_files[m] = VersionedFile(base, 'rw')
         iteration = 0
         while progress:
