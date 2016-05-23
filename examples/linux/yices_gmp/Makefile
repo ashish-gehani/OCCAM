@@ -4,7 +4,7 @@ BITCODE = yices_smt2.bc libgmp.so.bc
 
 all: ${BITCODE} run
 
-run:
+run: 
 	./build.sh
 
 %.bc: %.bc.gz
