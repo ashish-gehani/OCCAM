@@ -25,11 +25,25 @@ int libcall_int(int uno, int dos){
 
 
 
-int libcall_float(int uno, float dos, double tres){
+int libcall_float(int uno, float dos){
 
-  if(dos == 0.5 || tres == 0.5){
+  if(dos == 0.5F){
 
     return 7;
+
+  } else {
+
+    return (int)(mystery() * dos * uno);
+
+  }
+
+}
+
+int libcall_double(int uno, double dos){
+
+  if(dos == 0.75){
+
+    return 17;
 
   } else {
 
