@@ -1,0 +1,72 @@
+http://wiki.ros.org/indigo/Installation/Ubuntu
+
+sudo apt-get install ros-indigo-ros-base
+
+source /opt/ros/indigo/setup.bash
+
+  52  sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
+   53  sudo apt-key adv --keyserver hkp://ha.pool.sks-keyservers.net --recv-key 0xB01FA116
+   54  sudo apt-get update
+   55  more /etc/lsb-release
+   56  sudo apt-get install ros-indigo-ros-base
+   57  sudo rosdep init
+   58  ls
+   59  git
+   60  mkdir src
+   61  cd src/
+   62  got clone https://github.com/segwayrmp/libsegwayrmp
+   63  git clone https://github.com/segwayrmp/libsegwayrmp
+   64  https://github.com/segwayrmp/segway_rmp
+   65  git clone https://github.com/segwayrmp/segway_rmp
+   66  cd ..
+   67  wllvm-sanity-checker
+   68  source /opt/ros/indigo/setup.bash
+   69  pwd
+   70  cd src/
+   71  ls
+   72  cd ..
+   73  CC=wllvm CXX=wllvm++ catkin_make
+   74  mv src segway/
+   75  cd segway/
+   76  source /opt/ros/indigo/setup.bash
+   77  CC=wllvm CXX=wllvm++ catkin_make
+   78  ls
+   79  ls src/
+   80  ls
+   81  cd ..
+   82  ls
+   83  cd segway/
+   84  ls
+   85  mv src/libsegwayrmp ~/
+   86  cd
+   87  cd libsegwayrmp/
+   88  ls
+   89  mkdir build
+   90  cd build/
+   91  CC=wllvm CXX=wllvm++ cmake ..
+   92  make
+   93  tree -a
+   94  make install
+   95  ls li
+   96  cd ..
+   97  ls
+   98  tree -a
+   99  cd lib/
+  100  ls
+  101  extract-bc libsegwayrmp.a
+  102  ls
+  103  extract-bc libftd2xx.a
+  104  ls
+  105  cd ..
+  106  make install
+  107  sudo make install
+  108  cd ..
+  109  cd segway/
+  110  CC=wllvm CXX=wllvm++ catkin_make
+  111  sudo apt-get install serial
+  112  sudo apt-get install ros-indigo-serial
+  113  CC=wllvm CXX=wllvm++ catkin_make
+  114  sudo apt-get install ros-indigo-tf
+  115  CC=wllvm CXX=wllvm++ catkin_make
+  116  cd devel/lib/segway_rmp/
+  125  extract-bc segway_rmp_node
