@@ -1,0 +1,51 @@
+Build yices with wllvm as normal
+Build gmp with:
+
+CC=wllvm ./configure --disable-assembly
+make
+
+cp -r ../gmp/gmp-6.1.0 gmp_obj
+
+mv gmp_obj/.libs gmp_obj/libs 
+mv gmp_obj/mpn/.libs gmp_obj/mpn/libs 
+mv gmp_obj/mpf/.libs gmp_obj/mpf/libs 
+mv gmp_obj/mpq/.libs gmp_obj/mpq/libs 
+mv gmp_obj/mpz/.libs gmp_obj/mpz/libs 
+mv gmp_obj/printf/.libs gmp_obj/printf/libs 
+mv gmp_obj/scanf/.libs gmp_obj/scanf/libs 
+mv gmp_obj/rand/.libs gmp_obj/rand/libs 
+
+rm -rf gmp_obj/tests
+
+rm -f gmp_obj/conftest.o.bc
+rm -f gmp_obj/conftest2.o.bc
+rm -f gmp_obj/conftest.o.bc
+rm -f gmp_obj/conftest2.o.bc
+rm -f gmp_obj/gen-bases.o.bc
+rm -f gmp_obj/gen-fac.o.bc
+rm -f gmp_obj/gen-fib.o.bc
+rm -f gmp_obj/gen-jacobitab.o.bc
+rm -f gmp_obj/gen-psqr.o.bc
+rm -f gmp_obj/gen-trialdivtab.o.bc
+
+rm -f gmp_obj/mpn/add_n_sub_n.o.bc
+
+rm -rf gmp_obj/demos
+rm -rf gmp_ob/mini-gmp
+rm -rf gmp_obj/tune
+
+cp -r ../yices2/build/x86_64-unknown-linux-gnu-release/obj yices_obj
+
+find . -type f -name *.o -exec rm  \{\} \;
+find . -type f -name *.d -exec rm  \{\} \;
+find . -type f -name \.*.bc -exec rename 's/\/\./\//' \{\} \;
+
+cd yices_obj/frontend/
+rm yices_main.o.bc  yices_sat.o.bc  yices_smtcomp.o.bc  yices_smt.o.bc
+cd ../..
+
+
+./make_manifest
+./build
+
+

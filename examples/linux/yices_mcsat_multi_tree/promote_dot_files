@@ -1,0 +1,5 @@
+# -n is a fail safe 
+#find . -type f -name \.*.bc -exec rename -n 's/\/\./\//' \{\} \;
+
+find . -type f -name \.*.bc -exec rename 's/\/\./\//' \{\} \;
+

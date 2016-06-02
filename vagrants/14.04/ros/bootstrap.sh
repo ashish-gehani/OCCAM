@@ -28,6 +28,9 @@ rosdep update
 mkdir /home/vagrant/ros_catkin_ws
 cd  /home/vagrant/ros_catkin_ws
 #ROS-Comm: (Bare Bones) ROS package, build, and communication libraries. No GUI tools.
+#Leonard recommends ROS desktop
+#Turtlebot 2
+#segway looks a better bet than turtlebot (shankar has one)
 rosinstall_generator ros_comm --rosdistro jade --deps --wet-only --tar > jade-ros_comm-wet.rosinstall
 wstool init -j8 src jade-ros_comm-wet.rosinstall
 

@@ -82,6 +82,23 @@ def get_default(obj, key, default):
     else:
         return default
 
+#iam: used to be just os.path.basename; but now when we are processing trees
+# the leaf names are not necessarily unique.
+def prevent_collisions(x):
+    folders = []
+    path = x
+    while 1:
+        path, folder = os.path.split(path)
+
+        if folder != "":
+            folders.append(folder)
+
+        if path == "" or path == os.sep:
+            break
+
+    folders.reverse()
+    return "_".join(folders)
+
 POOL = None
 
 def defaultPool():
@@ -194,8 +211,8 @@ class PrevirtTool (target.Target):
 	archive_libs = []
         for x in modules + llvm_libs:            
 	    libCreated = False
-            bn = os.path.basename(x)
-            target = os.path.join(work_dir, os.path.basename(x))
+            bn = prevent_collisions(x)
+            target = os.path.join(work_dir, bn)
             if os.path.abspath(x) != target:
                 shutil.copyfile(x, target)
             if target.endswith('.a'):
@@ -230,7 +247,7 @@ class PrevirtTool (target.Target):
 
         # Change directory
         os.chdir(work_dir)
-        
+
         if not (arguments is None):
             # We need to specialize main for program arguments
             main = files[modules[0]]
@@ -260,7 +277,7 @@ class PrevirtTool (target.Target):
 
         # First compute the simple interfaces
         vals = files.items()
-        refs = dict([(k, VersionedFile(os.path.basename(k[:k.rfind('.bc')]), 'iface'))
+        refs = dict([(k, VersionedFile(prevent_collisions(k[:k.rfind('.bc')]), 'iface'))
                      for (k,_) in vals])
         def _references((m,f)):
             "Computing references"
@@ -296,7 +313,7 @@ class PrevirtTool (target.Target):
         progress = True
         rewrite_files = {}
         for m in files.keys():
-            base = os.path.basename(m[:m.rfind('.bc')])
+            base = prevent_collisions(m[:m.rfind('.bc')])
             rewrite_files[m] = VersionedFile(base, 'rw')
         iteration = 0
         while progress:
