@@ -11,7 +11,7 @@ Prerequisites
 
 OCCAM currently works fine on Linux, OS X, and FreeBSD. You will
 need an installation of llvm-3.5. If you want to generate application bitcode, 
-you will want an install of [wllvm.](https://github.com/SRI-CSL/whole-program-llvm.git)
+you will want an install of [WLLVM](https://github.com/SRI-CSL/whole-program-llvm.git).
 
 
 Building and Installing
