@@ -395,9 +395,11 @@ namespace previrt
   PrevirtType::isConcrete() const
   {
     // TODO: check which of these work
-    return buffer.type() == proto::I || buffer.type() == proto::G
-      || buffer.type() == proto::N || buffer.type() == proto::S;
-
+      
+    return buffer.type() == proto::I || // Integer
+      buffer.type() == proto::G || // Global
+      buffer.type() == proto::N || // Null
+      buffer.type() == proto::S; // String
   }
 
   bool

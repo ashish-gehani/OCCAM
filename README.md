@@ -17,9 +17,27 @@ an install of [wllvm.](https://github.com/SRI-CSL/whole-program-llvm.git)
 Building and Installing
 =======================
 
+Set where OCCAM's library will be stored:
 ```
-make
-make install
+  export OCCAM_HOME={path to location in your home directory}
+```
+
+Point to your LLVM's location, if non-standard:
+```
+  export LLVM_HOME=/usr/local/llvm-3.5
+  export LLVM_CONFIG=llvm-config-3.5
+```
+
+Set where system libraries, including Google Protocol Buffers, are located:
+```
+  export LD_FLAGS='-L/usr/local/lib'
+```
+
+Build and install OCCAM with:
+
+```
+  make
+  make install
 ```
 
 Using OCCAM

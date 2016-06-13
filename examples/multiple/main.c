@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "library.h"
 
@@ -16,12 +17,13 @@ int main(int argc, char* argv[]){
 
     /* retval =  2  *  3 */
     retval =
-      libcall_int(1, atol(argv[1]))    *         // 2
-      libcall_int(2, atol(argv[1]))    *         // 3
-      libcall_float(3, 0.5, 0.5)       *         // 7
-      libcall_null_pointer(4, NULL)    *         // 5
-      libcall_string(5, "Z")           *         // 11
-      libcall_global_pointer(6, &libcall_global_pointer);
+      libcall_int(1, atol(argv[1]))          *           // 2
+      libcall_int(2, atol(argv[1]))          *           // 3
+      libcall_float(strlen(argv[1]), 0.5F)   *           // 7
+      libcall_double(strlen(argv[1]), 0.75)  *           // 17
+      libcall_null_pointer(4, NULL)          *           // 5
+      libcall_string(5, "Z")                 *           // 11
+      libcall_global_pointer(6, &libcall_global_pointer); //13
 
   } else {
 

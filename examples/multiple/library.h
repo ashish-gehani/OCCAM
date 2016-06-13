@@ -2,7 +2,9 @@
 
 extern int libcall_int(int, int);
 
-extern int libcall_float(int, float, double);
+extern int libcall_float(int, float);
+
+extern int libcall_double(int, double);
 
 extern int libcall_string(int, const char*);
 
