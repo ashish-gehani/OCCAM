@@ -17,19 +17,25 @@ ROOT=`pwd`/root
 
 # Build the manifest file
 cat > nweb.manifest <<EOF
-{ "modules" : ["nweb.o.bc"]
+{ "modules" : ["nweb.bc"]
 , "binary"  : "nweb"
 , "libs"    : ["libc.so.bc"]
-, "native_libs" : ["-lc", "-lpthread"]
-, "search"  : ["/usr/lib", "/usr/local/lib", "/usr/lib/x86_64-linux-gnu/"]
+, "native_libs" : []
+, "search"  : []
 , "args"    : ["8181", "${ROOT}"]
 , "name"    : "nweb"
 }
 EOF
 
 #make the bitcode
-wllvm -nostdlib nweb.c -c
-extract-bc nweb.o
+
+wllvm nweb.c -o nweb
+extract-bc nweb
+
+#wllvm -nostdlib nweb.c -c -o nweb.o
+#extract-bc nweb.o
+#mv nweb.o.bc nweb.bc
+
 
 # Previrutalize
 ${OCCAM_HOME}/bin/occam previrt --work-dir=previrt nweb.manifest
