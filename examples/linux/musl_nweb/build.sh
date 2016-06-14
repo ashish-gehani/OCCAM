@@ -17,7 +17,7 @@ ROOT=`pwd`/root
 
 # Build the manifest file
 cat > nweb.manifest <<EOF
-{ "modules" : ["nweb.bc"]
+{ "modules" : ["nweb.o.bc"]
 , "binary"  : "nweb"
 , "libs"    : ["libc.so.bc"]
 , "native_libs" : ["-lc", "-lpthread"]
@@ -28,8 +28,8 @@ cat > nweb.manifest <<EOF
 EOF
 
 #make the bitcode
-wllvm nweb.c -o nweb
-extract-bc nweb
+wllvm -nostdlib nweb.c -c
+extract-bc nweb.o
 
 # Previrutalize
 ${OCCAM_HOME}/bin/occam previrt --work-dir=previrt nweb.manifest
@@ -43,7 +43,7 @@ ln -s previrt/nweb .
 
 # Now build the non-previrt application
 echo "building the non-previrt application bitcode"
-${LLVM_OPT_NAME} -O3 nweb.bc -o nweb.opt.bc
+${LLVM_OPT_NAME} -O3 nweb.o.bc -o nweb.opt.bc
 
 echo "creating the non-previrt application object file"
 ${LLVM_LLC_NAME} -filetype=obj -o nweb.opt.o nweb.opt.bc
