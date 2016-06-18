@@ -34,6 +34,8 @@ rm -rf gmp_obj/demos
 rm -rf gmp_ob/mini-gmp
 rm -rf gmp_obj/tune
 
+find gmp_obj -name libs -exec rm -rf \{\} \;
+
 cp -r ../yices2/build/x86_64-unknown-linux-gnu-release/obj yices_obj
 
 find . -type f -name *.o -exec rm  \{\} \;
@@ -47,5 +49,3 @@ cd ../..
 
 ./make_manifest
 ./build
-
-

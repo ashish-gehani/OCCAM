@@ -1,0 +1,42 @@
+Issues with assembly
+--------------------
+
+To get a working MUSL Libc, we need to handle call graph dependencies that are currently 
+opaque to OCCAM because they are either (i) in inline assembly (in the LLVM bitcode) or (ii) 
+in external assembly or native object files.
+
+Below are two instances that arise in 'examples/linux/musl_nweb', exemplifying (i) and (ii), 
+respectively:
+
+*  '_dlstart_c' is defined in 'libc.so'. It is called from '_dlstart' in 'libc.so', but 
+   '_dlstart' is defined by inline assembly and is hence currently invisible to OCCAM.
+
+*  '__cancel' is also defined in 'libc.so'. It is called from 'syscall_cp.s', which is an 
+   external assembly file.
+
+In both cases, the functions ('_dlstart_c' and '__cancel') are currently eliminated by OCCAM 
+(since they are not reachable from bitcode).
+
+Possible approach
+-----------------
+
+1. WLLVM has recently been extended to support generation of a manifest that lists all the LLVM 
+bitcode files that were created during a build. This functionality can be further extended 
+to record the list of assembly files used, and a list of all the resulting native object 
+files generated from these assembly files.
+
+2. 'nm' could then be used to extract a list of external symbols for each of the above 
+native objects (that was built from an external assembly file). The union of all such 
+symbols would be passed as a white list to OCCAM.
+
+OCCAM would then need to be augmented to consult the white list when changing the linkage of 
+LLVM bitcode functions to internal. Functions in the white list should not be marked as 
+internal, to prevent the LLVM 'opt' dce (dead code elimination) pass from removing them.
+
+3. ...
+
+Issues with LLVM 'intrinsics'
+-----------------------------
+
+In addition support for LLVM intrinsics will need to be added to the white list.
+
