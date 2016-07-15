@@ -4,8 +4,12 @@ The 'build.sh' script builds the nweb binary which serves files out of the subdi
 
 To test the result, run
 
-	./nweb 8181 ./root &
+	./nweb 8181 ./root
 
 and connect with
 
-	wget localhost:8181
+    wget localhost:8181
+
+or 
+
+   curl localhost:8181

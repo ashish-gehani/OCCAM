@@ -1,0 +1,34 @@
+================
+
+Ian & Bruno's hack:
+
+
+wllvm -g nweb.c -o nweb
+extract-bc nweb
+
+llvm-dis libc.so.bc
+
+edit libc.so.ll so that in @__init_libc we call @static_init_tls 
+rather than @__init_tls
+
+llvm-as libc.so.ll
+
+llvm-link nweb.bc libc.so.bc -o nweb_bruno.bc
+	
+llc -filetype=obj nweb_bruno.bc
+
+clang -static -nostdlib  nweb_bruno.o crt1.o libc.a -o nweb_direct
+
+${OCCAM_HOME}/bin/occam previrt --work-dir=previrt nweb.manifest
+
+llc -filetype=obj nweb_occam_linked.bc
+
+cp previrt/space_Repositories_OCCAM_examples_linux_ians_experiments_libc.so.i.x.p.s.r.i.occam.p.s.r.i.occam.bc libc_occam.so.bc
+cp previrt/nweb.a.i.x.p.s.r.i.occam.p.s.r.i.occam.bc nweb_occam.bc
+
+llvm-link  nweb_occam.bc  libc_occam.so.bc  -o nweb_occam_linked.bc
+
+clang -static -nostdlib  nweb_occam_linked.o crt1.o libc.a -o nweb_occam
+
+Both nweb_occam and nweb_direct work.
+ 
