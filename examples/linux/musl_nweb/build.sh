@@ -5,6 +5,8 @@ export OCCAM_LOGLEVEL=INFO
 
 make clean
 
+make libc.a.bc
+
 mkdir previrt
 
 . ../../../scripts/env.sh

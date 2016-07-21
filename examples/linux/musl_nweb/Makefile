@@ -1,8 +1,13 @@
 
 
 
-all:
+all: 
 	@echo "Just type ./build.sh; this is here just for 'make clean'"
+
+
+
+libc.a.bc:
+	make -C ../musllvm
 
 
 
