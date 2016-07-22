@@ -11,17 +11,14 @@ mkdir previrt
 
 . ../../../scripts/env.sh
 
-cp ../musllvm/libc.so.bc .
-cp ../musllvm/libc.a .
-
-
 ROOT=`pwd`/root
 
 # Build the manifest file
 cat > nweb.manifest <<EOF
-{ "modules" : ["nweb.bc"]
-, "binary"  : "nweb"
-, "libs"    : ["libc.so.bc"]
+{ "modules" : ["nweb.o.bc"]
+, "binary"  : "nweb_occam"
+, "libs"    : ["libc.a.bc", "crt1.o", "libc.a"]
+, "ldflags" : ["-static", "-nostdlib"]
 , "native_libs" : []
 , "search"  : []
 , "args"    : ["8181", "${ROOT}"]
@@ -29,35 +26,50 @@ cat > nweb.manifest <<EOF
 }
 EOF
 
-#make the bitcode
+# make the bitcode
 
-wllvm nweb.c -o nweb
-extract-bc nweb
+echo "wllvm nweb.c -c"
+wllvm nweb.c -c
 
-#wllvm -nostdlib nweb.c -c -o nweb.o
-#extract-bc nweb.o
-#mv nweb.o.bc nweb.bc
+echo "extract-bc nweb.o"
+extract-bc nweb.o
+
+# make libc.a.o
+echo "llc -filetype=obj  libc.a.bc"
+llc -filetype=obj libc.a.bc
+
+# make a reference executable
+echo "clang -static -nostdlib nweb.o libc.a.o crt1.o libc.a -o nweb_static"
+clang -static -nostdlib nweb.o libc.a.o crt1.o libc.a -o nweb_static
 
 
-# Previrutalize
+# Previrtualize
+echo "${OCCAM_HOME}/bin/occam previrt --work-dir=previrt nweb.manifest"
 ${OCCAM_HOME}/bin/occam previrt --work-dir=previrt nweb.manifest
 
+exit
 
 # Link link the binary into the current directory
 # (it was created in previrt)
 echo "linking nweb to previrt/nweb"
-rm -f nweb
-ln -s previrt/nweb .
+ln -s previrt/nweb_occam .
+
+
+exit
 
 # Now build the non-previrt application
-echo "building the non-previrt application bitcode"
-${LLVM_OPT_NAME} -O3 nweb.o.bc -o nweb.opt.bc
+echo "building the optimized non-previrt application bitcode"
+${LLVM_LINK_NAME} nweb.o.bc libc.a.bc -o nweb_opt.bc
+${LLVM_OPT_NAME} -O3 nweb_opt.bc -o nweb_opt_o3.bc
 
 echo "creating the non-previrt application object file"
-${LLVM_LLC_NAME} -filetype=obj -o nweb.opt.o nweb.opt.bc
+${LLVM_LLC_NAME} -filetype=obj nweb_opt_o3.bc -o nweb_opt_o3.o 
 
 echo "producing the non-previrt executable: nweb-base"
-${LLVM_CC_NAME} nweb.opt.o -o nweb-base 
+${LLVM_CC_NAME} -static -nostdlib  nweb_opt_o3.o crt1.o libc.a -o nweb_opt_o3 
+
+
+
 
 #debugging stuff below:
 for bitcode in previrt/*.bc; do

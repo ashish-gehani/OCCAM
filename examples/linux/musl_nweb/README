@@ -1,11 +1,22 @@
 Specialization of nweb with initial program arguments using the 'nweb.manifest'.
 
-The 'build.sh' script builds the nweb binary which serves files out of the subdirectory 'root'.
+The 'build.sh' script builds the nweb binary.
 
-To test the result, run
+This binary serves files out of the subdirectory 'root'.
 
-	./nweb 8181 ./root &
+To test the non occamed result:
+
+	./nweb_static 8181 ./root &
 
 and connect with
 
-	wget localhost:8181
+	curl localhost:8181
+
+To test the occamed result:
+
+	./nweb_occam 8181 ./root &
+
+and connect with
+
+	curl localhost:8181
+
