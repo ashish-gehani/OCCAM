@@ -1,7 +1,7 @@
 SRC="https://github.com/SRI-CSL/musllvm"
 
 
-all: libc.a.bc
+all: libc.a.bc libc.so.bc
 
 
 musllvm:
@@ -13,6 +13,10 @@ libc.a: musllvm
 
 libc.a.bc: libc.a
 	cd musllvm/lib; extract-bc -b libc.a; cp libc.a.bc ../../
+
+
+libc.so.bc: libc.a
+	cd musllvm/lib; extract-bc libc.so; cp libc.so.bc ../../
 
 
 

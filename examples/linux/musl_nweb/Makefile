@@ -8,7 +8,7 @@ all:
 
 libc.a.bc:
 	make -C ../musllvm
-	cp ../musllvm/libc.a.bc ../musllvm/libc.a ../musllvm/crt1.o .
+	cp ../musllvm/libc.a.bc ../musllvm/libc.so.bc ../musllvm/libc.a ../musllvm/crt1.o .
 
 
 clean:

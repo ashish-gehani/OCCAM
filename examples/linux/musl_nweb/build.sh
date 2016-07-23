@@ -17,10 +17,10 @@ ROOT=`pwd`/root
 cat > nweb.manifest <<EOF
 { "modules" : ["nweb.o.bc"]
 , "binary"  : "nweb_occam"
-, "libs"    : ["libc.a.bc", "crt1.o", "libc.a"]
+, "libs"    : ["libc.a.bc"]
 , "ldflags" : ["-static", "-nostdlib"]
-, "native_libs" : []
-, "search"  : []
+, "native_libs" : ["crt1.o", "libc.a"]
+, "search"  : ["${PWD}"]
 , "args"    : ["8181", "${ROOT}"]
 , "name"    : "nweb"
 }
