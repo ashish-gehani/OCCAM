@@ -19,4 +19,6 @@ libc.so.bc: libc.a
 	cd musllvm/lib; extract-bc libc.so; cp libc.so.bc ../../
 
 
+clean:
+	rm -rf musllvm
 
