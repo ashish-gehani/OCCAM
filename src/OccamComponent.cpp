@@ -94,22 +94,10 @@ namespace previrt
       if (!f->isDeclaration() && f->hasExternalLinkage() &&
           I.calls.find(f->getName()) == end &&
           I.references.find(f->getName()) == I.references.end()) {
-#if 0
-	StringRef name = f->getName();
-	if(name == "__cancel" || name == "_dlstart_c" || name == "__dls2" || name == "memset" || name == "memcpy"){
-	  errs() << "Skipping whitelisted '" << name << "'\n";
-	} else {
-	  errs() << "Hiding '" << name << "'\n";
-	  f->setLinkage(GlobalValue::InternalLinkage);
-	  hidden++;
-	  modified = true;
-	}
-#else
 	errs() << "Hiding '" << f->getName() << "'\n";
 	f->setLinkage(GlobalValue::InternalLinkage);
 	hidden++;
 	modified = true;
-#endif
       }
     }
 
