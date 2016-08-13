@@ -162,6 +162,7 @@ class PrevirtTool (target.Target):
             return 1
 
         libs = get_default(manifest, 'libs', [])
+        ldflags = get_default(manifest, 'ldflags', [])
         native_libs = get_default(manifest, 'native-libs', [])
         shared = get_default(manifest, 'shared', [])
         search = get_default(manifest, 'search', [])
@@ -178,7 +179,10 @@ class PrevirtTool (target.Target):
             sys.stderr.write('\n'.join(search))
             return 1
 
-        #print "\n\nFound libraries: ", found_libs, "\n\n"
+        print "\n\nldflags: ", ldflags, "\n\n"
+        print "\n\nFound libraries: ", found_libs, "\n\n"
+
+        non_llvm_libs = []
 
         if not all(map(lambda x:x[1], found_libs)):
             sys.stderr.write("LLVM versions could not be found for all libraries\n")
@@ -194,6 +198,7 @@ class PrevirtTool (target.Target):
                     sys.stderr.write("%s -- llvm\n" % x)
                 else:
                     sys.stderr.write("%s -- native\n" % x)
+                    non_llvm_libs.append(x)
 
             if not ok:
                 sys.stderr.write("If native libraries refer to llvm libraries, this is NOT safe!\n")
@@ -202,7 +207,10 @@ class PrevirtTool (target.Target):
 
 
         llvm_libs = [x for (x,y) in found_libs if y]
-        #print "\n\nLLVM libs: ", llvm_libs, "\n\n"
+
+        print "\n\nLLVM libs: ", llvm_libs, "\n\n"
+        print "\n\nnon LLVM libs: ", non_llvm_libs, "\n\n"
+        print "\n\nmodules: ", modules, "\n\n"
         
         temp_llvm_libs = []
         files = {}
@@ -392,10 +400,10 @@ class PrevirtTool (target.Target):
         #+ final_libs contains the native and bitcode libraries in a list
         final_libs = [files[x].get() for x in llvm_libs] + [x for x in archive_libs]
 
-        #print "\n\nFiles: ", files, "\n\n"
-        #print "\n\nArchive libs: ", archive_libs, "\n\n"
-        #print "\n\nLLVM libs: ", llvm_libs, "\n\n"
-        #print "\n\nFinal libs: ", final_libs, "\n\n"
+        print "\n\nFiles: ", files, "\n\n"
+        print "\n\nArchive libs: ", archive_libs, "\n\n"
+        print "\n\nLLVM libs: ", llvm_libs, "\n\n"
+        print "\n\nFinal libs: ", final_libs, "\n\n"
 
         def toLflag(path):
             if os.path.exists(path):
