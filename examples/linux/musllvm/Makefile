@@ -22,3 +22,9 @@ libc.so.bc: libc.a
 clean:
 	rm -rf musllvm
 
+distclean: clean
+	rm *.bc *.a
+
+.PHONY: clean distclean
+
+
