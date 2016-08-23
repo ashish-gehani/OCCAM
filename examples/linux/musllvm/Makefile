@@ -8,7 +8,7 @@ musllvm:
 	git clone ${SRC}
 
 libc.a: musllvm
-	cd musllvm; WLLVM_CONFIGURE_ONLY=1  CC=wllvm ./configure --target=LLVM
+	cd musllvm; WLLVM_CONFIGURE_ONLY=1  CC=wllvm ./configure  --target=LLVM --build=LLVM
 	cd musllvm; make; cp lib/libc.a ../; cp lib/crt1.o ../
 
 libc.a.bc: libc.a
