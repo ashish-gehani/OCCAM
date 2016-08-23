@@ -20,3 +20,35 @@ and connect with
 
 	curl localhost:8181
 
+
+
+======
+
+need a flag to indicate static vs dynamic linking.
+
+
+ldflags:  linker flags
+
+libs:   could either be a flag (i.e. -lsomething or else a path or a file)
+
+
+search could possibly be absorbed by ldflags
+
+
+------
+
+Bruno:
+
+* modules  (bc)  [no longer use libs]
+
+* module  (bc)
+
+* libs   (bc)  [DEPRECATED]
+
+* native libs
+
+* ldflags 
+
+* search  [DEPRECATED  use -L...  in ldflags if you MUST ]
+
+

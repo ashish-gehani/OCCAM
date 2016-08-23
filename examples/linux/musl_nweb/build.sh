@@ -14,17 +14,31 @@ mkdir previrt
 ROOT=`pwd`/root
 
 # Build the manifest file
+# cat > nweb.manifest <<EOF
+# { "modules" : ["nweb.o.bc"]
+# , "binary"  : "nweb_occam"
+# , "libs"    : ["libc.a.bc"]
+# , "native_libs" : ["crt1.o", "libc.a"]
+# , "search"  : ["${PWD}"]
+# , "args"    : ["8181", "${ROOT}"]
+# , "name"    : "nweb"
+# }
+# EOF
+
+
 cat > nweb.manifest <<EOF
-{ "modules" : ["nweb.o.bc"]
+{ "module" :  "nweb.o.bc"
 , "binary"  : "nweb_occam"
-, "libs"    : ["libc.a.bc"]
-, "ldflags" : ["-static", "-nostdlib"]
+, "modules"    : ["libc.a.bc"]
 , "native_libs" : ["crt1.o", "libc.a"]
-, "search"  : ["${PWD}"]
 , "args"    : ["8181", "${ROOT}"]
 , "name"    : "nweb"
 }
 EOF
+
+
+
+#, "ldflags" : ["-static", "-nostdlib"]
 
 # make the bitcode
 
