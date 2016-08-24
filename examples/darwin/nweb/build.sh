@@ -50,3 +50,5 @@ for bitcode in previrt/*.bc; do
     llvm-dis  "$bitcode" &> /dev/null
 done
 
+# for testing:
+# curl 127.0.0.1:8181
