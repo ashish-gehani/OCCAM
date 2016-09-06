@@ -2,13 +2,13 @@ The proposed new manifest for previrtualization:
 
 * modules  [list of paths to bc]  [no longer use libs]
 
-* module  single path to main bc
+* main  single path to main bc [used to be called module]
 
 * binary  name for binary
 
 * libs   (bc)  [DEPRECATED]
 
-* name  (huh?)
+* name  (the expected value of argv[0])
 
 * native libs [either paths to .o .a .so or flags like -lm -lc -lpthread]
 
@@ -20,26 +20,27 @@ The proposed new manifest for previrtualization:
 
 * arguments [list of specialized args to main ]
 
-* watch [ an examples would be nice ]
-
+* watch [ an examples would be nice: runtime monotoring; probably needs to be moved into a separate beast. ]
+        [ watch was useless; watch2 was functional circa 4 years ago. ]
+	
 So for example: musl_nweb would look like:
 
 
 
-{ "module"      :  "nweb.o.bc"
+{ "main"        :  "nweb.o.bc"
 , "binary"      : "nweb_occam"
 , "modules"     : ["libc.a.bc"]
-, "native_libs" : ["crt1.o", "libc.a"]
-, "ldflags"     : [ "--static", "-nostdlib" ]
+, "native_libs" : ["./crt1.o", "./libc.a"]           
+, "ldflags"     : [ "--static", "-nostdlib" ] 
 , "args"        : ["8181", "${ROOT}"]
-, "name"        : "nweb"
+, "name"        : "nweb"                # note that this is argv[0] and args describes argv[1:]
 }
 
 
 while yices would look like
 
 
-{ "module"      : "yices_smt2.bc"
+{ "main"        : "yices_smt2.bc"
 , "binary"      : "yices_smt2_previrt"
 , "modules"     : ["libpoly.so.bc"]
 , "native-libs" : ["-lgmp"]
@@ -50,7 +51,7 @@ while yices would look like
 
 or
 
-{ "module"      :  "yices_smt2.bc"
+{ "main"        :  "yices_smt2.bc"
 , "binary"      : "yices_smt2_gmp"
 , "modules"     : ["libpoly.so.bc", "libgmp.so.bc"]
 , "native-libs" : []
@@ -60,7 +61,7 @@ or
 
 or
 
-{ "module"      :  "yices_smt2.bc"
+{ "main"        : "yices_smt2.bc"
 , "binary"      : "yices_smt2_gmp_c"
 , "modules"     : ["libpoly.so.bc", "libgmp.so.bc", "libc.a.bc"]
 , "native-libs" : ["crt1.o", "libc.a"]
