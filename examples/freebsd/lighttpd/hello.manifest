@@ -1,0 +1,8 @@
+{ "modules" : ["lighttpd.bc"]
+, "binary"  : "lighttpd"
+, "libs"    : []
+, "native_libs" : []
+,"search": []
+, "args"    : ["-D", "-m", "/", "-f", "myconf.conf"]
+, "name"    : "lighttpd"
+}
