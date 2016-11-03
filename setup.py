@@ -16,7 +16,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 from razor.version import razor_version
     
 setup(
-    name='OccamsRazor',
+    name='razor',
     version=razor_version, 
     description='The OCCAM saga',
     long_description=long_description,
