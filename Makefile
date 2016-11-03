@@ -78,3 +78,13 @@ check-occam-home:
 ifeq ($(OCCAM_HOME),)
 	$(error OCCAM_HOME is undefined)
 endif
+
+
+############# razor stuff below ####################
+
+
+#iam: local editable install for developing
+develop: 
+	pip install -e .
+
+
