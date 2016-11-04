@@ -1,12 +1,11 @@
-import getopt, sys
+import getopt, sys, os
 
-from .utils import *
+from . import utils
 
-import passes
-
+from . import passes
 
 def main():
-    setLogger()
+    utils.setLogger()
     Slash(sys.argv).run()
     return 0
 
@@ -14,12 +13,12 @@ class Slash(object):
     
     def __init__(self, argv):
         (flags, args) = getopt.getopt(argv[1:], None, ['work-dir='])
-        self.manifest = get_manifest(args)
+        self.manifest = utils.get_manifest(args)
         if self.manifest is None:
             self.usage(argv[0])
             self.ok = False
             return
-        self.work_dir = get_work_dir(flags)
+        self.work_dir = utils.get_work_dir(flags)
         self.ok = True
         
     def  usage(self, exe):
@@ -30,13 +29,13 @@ class Slash(object):
         
         if not self.ok: return
 
-        if not make_work_dir(self.work_dir): return
+        if not utils.make_work_dir(self.work_dir): return
 
-        (ok, module, binary, libs, args, name) = check_manifest(self.manifest)
+        (ok, module, binary, libs, args, name) = utils.check_manifest(self.manifest)
 
         if not ok: return
 
-        files = populate_work_dir(module, libs, self.work_dir)
+        files = utils.populate_work_dir(module, libs, self.work_dir)
 
         os.chdir(self.work_dir)
 

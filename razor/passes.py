@@ -3,9 +3,9 @@
 
 import os, tempfile, shutil, logging, subprocess
 
-from .config import *
+from . import config
 
-import driver
+from . import driver
 
 def interface(input_file, output_file, wrt, **opts):
     return driver.previrt(input_file, '/dev/null',

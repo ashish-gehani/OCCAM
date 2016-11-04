@@ -1,6 +1,6 @@
 import subprocess, sys, os, logging, tempfile, shutil
 
-from .config import *
+from . import config
 
 
 class ReturnCode (Exception):
@@ -14,14 +14,14 @@ class ReturnCode (Exception):
 
 
 def previrt(fin, fout, args, **opts):
-    args = ['-load={0}'.format(getOccamLib()), 
+    args = ['-load={0}'.format(config.getOccamLib()), 
             fin, 
             '-o={0}'.format(fout)] + args
-    return run(getLLVMTool('opt'), args, **opts)
+    return run(config.getLLVMTool('opt'), args, **opts)
 
 def previrt_progress(fin, fout, args, output=None, **opts):
-    args = [getLLVMTool('opt'), 
-            '-load={0}'.format(getOccamLib()),
+    args = [config.getLLVMTool('opt'), 
+            '-load={0}'.format(config.getOccamLib()),
             fin,
             '-o={0}'.format(fout)] + args
     proc = subprocess.Popen(args, 

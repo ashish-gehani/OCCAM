@@ -1,8 +1,7 @@
-import json, os, re, sys, shutil
+import json, os, re, sys, shutil, logging
 
-from .files import FileStream
-from .passes import *
-from .config import *
+from . import provenance
+from . import config
 
 def get_flag(flags, flag, default=None):
     for (x,y) in flags:
@@ -104,7 +103,7 @@ def populate_work_dir(module, libs, work_dir):
             if os.path.abspath(x) != target:
                 shutil.copyfile(x, target)
             idx = target.rfind('.bc')
-            files[x] = FileStream(target[:idx], 'bc')
+            files[x] = provenance.FileStream(target[:idx], 'bc')
         else:
             sys.stderr.write('Ignoring {0}\n'.format(x))
             
@@ -120,7 +119,7 @@ def makeLogfile(logfile):
             os.mkdir(path)
 
 def setLogger():
-    logfile = getLogfile()
+    logfile = config.getLogfile()
     logger = logging.getLogger()
 
     makeLogfile(os.path.realpath(logfile))
