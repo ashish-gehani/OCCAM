@@ -33,6 +33,15 @@ class Slash(object):
 
         (ok, module, binary, libs, args, name) = utils.check_manifest(self.manifest)
 
+        #<delete this once done>
+        new_libs = []
+        for lib in libs:
+            new_libs.append(os.path.realpath(lib))
+                            
+        libs = new_libs
+        #</delete this once done>
+
+
         if not ok: return
 
         files = utils.populate_work_dir(module, libs, self.work_dir)

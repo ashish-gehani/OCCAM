@@ -44,7 +44,12 @@ export OCCAM_LOGLEVEL=INFO
 slash --work-dir=slash multiple.manifest
 
 #debugging stuff below:
-#for bitcode in previrt/*.bc; do
-#    llvm-dis  "$bitcode" &> /dev/null
-#done
+
+for bitcode in previrt/*.bc; do
+    llvm-dis  "$bitcode" &> /dev/null
+done
+
+for bitcode in slash/*.bc; do
+    llvm-dis  "$bitcode" &> /dev/null
+done
 
