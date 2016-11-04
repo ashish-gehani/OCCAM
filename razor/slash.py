@@ -1,6 +1,6 @@
 import getopt, sys
 
-from utils import get_work_dir, get_manifest
+from .utils import *
 
 def main():
     Slash(sys.argv).run()
@@ -11,7 +11,7 @@ def main():
 class Slash(object):
     
     def __init__(self, argv):
-        (flags, args) = getopt.getopt(argv[1:], ['work-dir='])
+        (flags, args) = getopt.getopt(argv[1:], None, ['work-dir='])
         self.manifest = get_manifest(args)
         if self.manifest is None:
             self.usage(argv[0])
@@ -25,6 +25,21 @@ class Slash(object):
 
 
     def run(self):
-        if self.ok:
-            print 'run'
+        
+        if not self.ok: return
+
+        if not make_work_dir(self.work_dir): return
+
+        (ok, module, binary, libs, args, name) = check_manifest(self.manifest)
+
+        if not ok: return
+
+        files = populate_work_dir(module, libs, self.work_dir)
+
+        print files
+
+
+        
+        
+        
 

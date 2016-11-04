@@ -59,6 +59,9 @@ class FileStream:
     def get(self):
         return self._base + '.' + '.'.join(self._versions + [self._suffix])
 
+    def __str__(self):
+        return self.get()
+
     def base(self, mod=None):
         if mod is None:
             return self._base + '.' + self._suffix

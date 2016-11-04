@@ -251,6 +251,12 @@ class PrevirtTool (target.Target):
                 all_my_modules += [files[x].get()]
             llvm_libs = temp_llvm_libs
 
+        print files
+
+        for k, v in files.iteritems():
+            print k, str(v)
+
+
         #print "\n\nLLVM libs after: ", llvm_libs, "\n\n"
 
         # Change directory
