@@ -1,6 +1,6 @@
 import json, os, re, sys, shutil
 
-from .filestream import FileStream
+from .files import FileStream
 from .passes import *
 from .config import *
 
