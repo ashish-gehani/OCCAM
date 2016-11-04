@@ -17,7 +17,7 @@ elif [[ "$unamestr" == 'Darwin' ]]; then
 fi
 
 
-# Build the manifest file  (FIXME: dylib not good for linux)
+# Build the manifest file
 cat > multiple.manifest <<EOF
 { "modules" : ["main.bc"]
 , "binary"  : "main"
@@ -39,6 +39,8 @@ extract-bc ${LIBRARY}
 ${OCCAM_HOME}/bin/occam previrt --work-dir=previrt multiple.manifest
 
 # Slash
+export OCCAM_LOGFILE=${PWD}/slash/occam.log
+export OCCAM_LOGLEVEL=INFO
 slash --work-dir=slash multiple.manifest
 
 #debugging stuff below:

@@ -2,12 +2,13 @@ import getopt, sys
 
 from .utils import *
 
+import passes
+
+
 def main():
     setLogger()
     Slash(sys.argv).run()
     return 0
-
-
 
 class Slash(object):
     
@@ -40,9 +41,12 @@ class Slash(object):
         os.chdir(self.work_dir)
 
         #specialize the arguments ...
-        specialize_args(files[module], args, name)
-
-        
+        if not (args is None):
+            main = files[module]
+            pre = main.get()
+            post = main.new('a')
+            passes.specialize_program_args(pre, post, args, 'arguments', name=name)
+            
         
         
 

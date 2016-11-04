@@ -27,7 +27,7 @@ main: main.c ${LIB}
 
 clean:
 	rm -f *~ ${LIB} .*.bc *.bc *.ll .*.o *.manifest main
-	rm -rf previrt
+	rm -rf previrt slash
 
 
 

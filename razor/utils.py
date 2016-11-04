@@ -111,18 +111,21 @@ def populate_work_dir(module, libs, work_dir):
 
     return files
 
-def specialize_args(main, args, name):
-    if not (args is None):
-        # We need to specialize main for program arguments
-        pre = main.get()
-        post = main.new('a')
-        specialize_program_args(pre, post, args, 'arguments', name=name)
 
 
+def makeLogfile(logfile):
+    if not os.path.exists(logfile):
+        drive, path_filename = os.path.splitdrive(logfile)
+        path, filename = os.path.split(path_filename)
+        if not os.path.exists(path):
+            os.mkdir(path)
 
 def setLogger():
     logfile = getLogfile()
     logger = logging.getLogger()
+
+    makeLogfile(os.path.realpath(logfile))
+
     hdlr = logging.FileHandler(logfile)
     hdlr.setFormatter(logging.Formatter("%(message)s"))
     logger.addHandler(hdlr)
