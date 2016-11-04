@@ -20,8 +20,10 @@ def previrt(fin, fout, args, **opts):
     return run(getLLVMTool('opt'), args, **opts)
 
 def previrt_progress(fin, fout, args, output=None, **opts):
-    args = [config.getLLVMTool('opt'), '-load=%s' % getOccamLib(), 
-            fin, '-o=%s' % fout] + args
+    args = [getLLVMTool('opt'), 
+            '-load={0}'.format(getOccamLib()),
+            fin,
+            '-o={0}'.format(fout)] + args
     proc = subprocess.Popen(args, 
                             stderr=subprocess.PIPE,
                             stdout=subprocess.PIPE,

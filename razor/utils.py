@@ -112,7 +112,6 @@ def populate_work_dir(module, libs, work_dir):
     return files
 
 
-
 def makeLogfile(logfile):
     if not os.path.exists(logfile):
         drive, path_filename = os.path.splitdrive(logfile)
