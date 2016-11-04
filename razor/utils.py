@@ -1,6 +1,8 @@
-import json, os, sys, shutil
+import json, os, re, sys, shutil
 
 from .filestream import FileStream
+from .passes import *
+from .config import *
 
 def get_flag(flags, flag, default=None):
     for (x,y) in flags:
@@ -89,18 +91,53 @@ def prevent_collisions(x):
     folders.reverse()
     return "_".join(folders)
 
+bit_code_pattern =  re.compile('\.bc$', re.IGNORECASE)
 
 
 def populate_work_dir(module, libs, work_dir):
     files = {}
 
     for x in [module] + libs:
-        bn = prevent_collisions(x)
-        target = os.path.join(work_dir, bn)
-        if os.path.abspath(x) != target:
-            shutil.copyfile(x, target)
-        idx = target.rfind('.bc')
-        files[x] = FileStream(target[:idx], 'bc')
+        if bit_code_pattern.search(x):
+            bn = prevent_collisions(x)
+            target = os.path.join(work_dir, bn)
+            if os.path.abspath(x) != target:
+                shutil.copyfile(x, target)
+            idx = target.rfind('.bc')
+            files[x] = FileStream(target[:idx], 'bc')
+        else:
+            sys.stderr.write('Ignoring {0}\n'.format(x))
+            
 
     return files
 
+def specialize_args(main, args, name):
+    if not (args is None):
+        # We need to specialize main for program arguments
+        pre = main.get()
+        post = main.new('a')
+        specialize_program_args(pre, post, args, 'arguments', name=name)
+
+
+
+def setLogger():
+    logfile = getLogfile()
+    logger = logging.getLogger()
+    hdlr = logging.FileHandler(logfile)
+    hdlr.setFormatter(logging.Formatter("%(message)s"))
+    logger.addHandler(hdlr)
+    
+    levels = {'CRITICAL' : logging.CRITICAL,
+              'ERROR' : logging.ERROR,
+              'WARNING' : logging.WARNING,
+              'INFO' : logging.INFO,
+              'DEBUG' : logging.DEBUG
+              }
+
+    level = None
+    if os.environ.has_key('OCCAM_LOGLEVEL'):
+        level = levels[os.environ['OCCAM_LOGLEVEL']]
+    if level is None:
+        level = logging.WARNING        
+    logger.setLevel(level)
+    logger.info(">> %s\n" % ' '.join(sys.argv))

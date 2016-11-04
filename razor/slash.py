@@ -3,6 +3,7 @@ import getopt, sys
 from .utils import *
 
 def main():
+    setLogger()
     Slash(sys.argv).run()
     return 0
 
@@ -36,8 +37,10 @@ class Slash(object):
 
         files = populate_work_dir(module, libs, self.work_dir)
 
-        print files
+        os.chdir(self.work_dir)
 
+        #specialize the arguments ...
+        specialize_args(files[module], args, name)
 
         
         

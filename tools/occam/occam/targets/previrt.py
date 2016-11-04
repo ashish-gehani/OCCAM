@@ -272,6 +272,8 @@ class PrevirtTool (target.Target):
                                            arguments, 'arguments',
                                            name=name)
 
+
+
         if watches != []:
             def _watch(m):
                 "Applying watches"

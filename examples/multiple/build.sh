@@ -42,7 +42,7 @@ ${OCCAM_HOME}/bin/occam previrt --work-dir=previrt multiple.manifest
 slash --work-dir=slash multiple.manifest
 
 #debugging stuff below:
-for bitcode in previrt/*.bc; do
-    llvm-dis  "$bitcode" &> /dev/null
-done
+#for bitcode in previrt/*.bc; do
+#    llvm-dis  "$bitcode" &> /dev/null
+#done
 
