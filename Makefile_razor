@@ -1,0 +1,36 @@
+#
+# Top-level OCCAM razor Makefile
+#
+
+ifneq (,)
+This Makefile requires GNU Make.
+endif
+
+PROTOC = $(shell which protoc)
+
+all: sanity_check proto
+
+#
+# Check for OCCAM_HOME
+#
+sanity_check:
+ifeq ($(OCCAM_HOME),)
+	$(error OCCAM_HOME is undefined)
+endif
+ifeq ($(PROTOC),)
+	$(error google protobuffer compiler "protoc" required)
+endif
+
+
+proto:
+	mkdir -p razor/proto
+	protoc --proto_path=src --python_out=razor/proto src/Previrt.proto
+
+#iam: local editable install of razor for developing
+develop: 
+	pip install -e .
+
+
+
+clean:
+	rm -rf razor/proto
