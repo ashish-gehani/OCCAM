@@ -3,6 +3,14 @@ import json, os, re, sys, shutil, logging
 from . import provenance
 from . import config
 
+def checkOccamLib():
+    occamlib = config.getOccamLib()
+    if occamlib is None  or not os.path.exists(occamlib):
+        sys.stderr.write('The occam library was not found. RTFM.\n')
+        return False
+    return True
+
+
 def get_flag(flags, flag, default=None):
     for (x,y) in flags:
         if x == '--{0}'.format(flag):

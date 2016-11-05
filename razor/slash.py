@@ -4,20 +4,15 @@ from . import utils
 
 from . import passes
 
-from . import config
-
 
 def main():
     """This is the main entry point
 
     razor [--work-dir=<dir>] <manifest>
+    
+    
     """
-    occamlib = config.getOccamLib()
-    if occamlib is None  or not os.path.exists(occamlib):
-        sys.stderr.write('The occam library was not found. RTFM.\n')
-        return 1
-    else:
-        return Slash(sys.argv).run()
+    return Slash(sys.argv).run() if utils.checkOccamLib() else 1
 
 class Slash(object):
     
