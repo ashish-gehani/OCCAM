@@ -1,6 +1,3 @@
-#from driver import previrt, previrt_progress, run, all_args
-#import interface as inter
-
 import os, tempfile, shutil, logging, subprocess
 
 from . import config

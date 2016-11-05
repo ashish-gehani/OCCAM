@@ -60,5 +60,11 @@ class Slash(object):
             passes.specialize_program_args(pre, post, args, 'arguments', name=name)
             
         
-        
+        #watches were inserted here ... 
+
+        # Internalize everything that we can
+        # We can never internalize main
+        interface.writeInterface(interface.mainInterface(), 'main.iface')
+
+
 

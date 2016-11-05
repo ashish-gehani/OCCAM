@@ -12,6 +12,12 @@ class ReturnCode (Exception):
     def __str__(self):
         return "{0}\nreturned {1}".format(' '.join(self._cmd), self._value)
 
+def all_args(opt, args):
+    result = []
+    for x in args:
+        result += [opt, x]
+    return result
+    
 
 def previrt(fin, fout, args, **opts):
     args = ['-load={0}'.format(config.getOccamLib()), 
