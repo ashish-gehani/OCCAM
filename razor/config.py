@@ -95,6 +95,7 @@ def getOccamLib():
     elif system == 'Darwin':
         return os.path.join(home, 'lib', 'libprevirt.dylib')
     else:
+        sys.stderr.write('Unsupported platform: {0}\n'.format(system))
         return None
     
 
