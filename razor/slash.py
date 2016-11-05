@@ -4,18 +4,25 @@ from . import utils
 
 from . import passes
 
+from . import config
+
+
 def main():
     """This is the main entry point
 
     razor [--work-dir=<dir>] <manifest>
     """
-    utils.setLogger()
-    Slash(sys.argv).run()
-    return 0
+    occamlib = config.getOccamLib()
+    if occamlib is None  or not os.path.exists(occamlib):
+        sys.stderr.write('The occam library was not found. RTFM.\n')
+        return 1
+    else:
+        return Slash(sys.argv).run()
 
 class Slash(object):
     
     def __init__(self, argv):
+        utils.setLogger()
         (flags, args) = getopt.getopt(argv[1:], None, ['work-dir='])
         self.manifest = utils.get_manifest(args)
         if self.manifest is None:
@@ -31,9 +38,9 @@ class Slash(object):
 
     def run(self):
         
-        if not self.ok: return
+        if not self.ok: return 1
 
-        if not utils.make_work_dir(self.work_dir): return
+        if not utils.make_work_dir(self.work_dir): return 1
 
         (ok, module, binary, libs, args, name) = utils.check_manifest(self.manifest)
 
@@ -46,7 +53,7 @@ class Slash(object):
         #</delete this once done>
 
 
-        if not ok: return
+        if not ok: return 1
 
         files = utils.populate_work_dir(module, libs, self.work_dir)
 
@@ -68,3 +75,5 @@ class Slash(object):
 
 
 
+
+        return 0
