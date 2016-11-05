@@ -4,6 +4,7 @@ from . import utils
 
 from . import passes
 
+from . import interface
 
 def main():
     """This is the main entry point

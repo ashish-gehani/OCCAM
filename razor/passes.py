@@ -4,10 +4,12 @@ from . import config
 
 from . import driver
 
+from . import interface as inter
+
 def interface(input_file, output_file, wrt, **opts):
     return driver.previrt(input_file, '/dev/null',
                           ['-Pinterface2', '-Pinterface2-output', output_file] +
-                          all_args('-Pinterface2-entry', wrt),
+                          driver.all_args('-Pinterface2-entry', wrt),
                           **opts)
 
 def specialize(input_file, output_file, rewrite_file, interfaces, **opts):
@@ -18,14 +20,14 @@ def specialize(input_file, output_file, rewrite_file, interfaces, **opts):
     if output_file is None:
         output_file = '/dev/null'
     return driver.previrt(input_file, output_file,
-                   args + all_args('-Pspecialize-input', interfaces), 
+                   args + driver.all_args('-Pspecialize-input', interfaces), 
                    **opts)
 
 def rewrite(input_file, output_file, rewrites, debug=None, **opts):
     "inter module rewriting"
     return driver.previrt_progress(input_file, output_file,
                             ['-Prewrite'] + 
-                            all_args('-Prewrite-input', rewrites), 
+                            driver.all_args('-Prewrite-input', rewrites), 
                             **opts)
 
 
@@ -33,7 +35,7 @@ def intern(input_file, output_file, interfaces, **opts):
     "strips unused symbols"
     return driver.previrt_progress(input_file, output_file,
                             ['-Poccam'] + 
-                            all_args('-Poccam-input', interfaces), 
+                            driver.all_args('-Poccam-input', interfaces), 
                             **opts)
 
 def strip(input_file, output_file, **opts):
@@ -43,7 +45,7 @@ def strip(input_file, output_file, **opts):
           '-globalopt',
           '-strip-dead-prototypes',
           ]
-    return run(config.getLLVMTool('opt'), args, **opts)
+    return driver.run(config.getLLVMTool('opt'), args, **opts)
 
 def enforce(input_file, output_file, interfaces, inside, **opts):
     if inside:
@@ -52,7 +54,7 @@ def enforce(input_file, output_file, interfaces, inside, **opts):
         tkn = 'outside'
     return driver.previrt(input_file, output_file,
                    ['-Penforce-%s' % tkn] +
-                   all_args('-Penforce-%s-input' % tkn, interfaces), 
+                   driver.all_args('-Penforce-%s-input' % tkn, interfaces), 
                    **opts)
 
 def peval(input_file, output_file, log=None, trail=None, **opts):
@@ -99,13 +101,13 @@ def peval(input_file, output_file, log=None, trail=None, **opts):
 
 def callgraph(input_file, output_file, **opts):
     args=[input_file, '-o', '/dev/null', '-dot-callgraph']
-    x = run(config.getLLVMTool('opt'), args, **opts)
+    x = driver.run(config.getLLVMTool('opt'), args, **opts)
     if x == 0:
         shutil.move('callgraph.dot', output_file)
     return x
 
 def optimize(input_file, output_file, **opts):
-    return run(config.getLLVMTool('opt'),
+    return driver.run(config.getLLVMTool('opt'),
                ['-disable-simplify-libcalls', input_file, '-o', output_file, '-O3'], **opts)
 
 def specialize_program_args(input_file, output_file, args, fn=None, name=None):

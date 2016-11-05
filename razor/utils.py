@@ -4,7 +4,7 @@ from . import provenance
 from . import config
 
 def checkOccamLib():
-    occamlib = config.getOccamLib()
+    occamlib = config.getOccamLibPath()
     if occamlib is None  or not os.path.exists(occamlib):
         sys.stderr.write('The occam library was not found. RTFM.\n')
         return False
@@ -47,7 +47,7 @@ def make_work_dir(d):
         sys.stderr.write('making working directory... "{0}"\n'.format(d))
         os.mkdir(d)
     if not os.path.isdir(d):
-        sys.stderr.write("working directory '%s' is not a directory\n" % work_dir)
+        sys.stderr.write('working directory  "{0}" is not a directory\n'.format(d))
         return False
     else:
         return True

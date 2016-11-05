@@ -1,4 +1,4 @@
-import os, platform
+import os, platform, sys
 
 #  All configuration requests should go through 'theConfig' object
 #  It belongs to the class below.
@@ -85,7 +85,7 @@ class cfgObj(object):
             candidate = self._llvm[tool]
         return self.env_version(tool)
 
-def getOccamLib():
+def getOccamLibPath():
     home = os.getenv('OCCAM_HOME')
     if home is None:
         return None
@@ -100,7 +100,7 @@ def getOccamLib():
     
 
 
-theConfig = cfgObj(getOccamLib())
+theConfig = cfgObj(getOccamLibPath())
 
 def getOccamLib():
     return theConfig.getOccamLib()

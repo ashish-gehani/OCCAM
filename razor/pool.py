@@ -61,12 +61,12 @@ def getDefaultPool():
 def InParallel(f, args, pool=None):
     sys.stderr.write("Starting %s...\n" % f.func_doc)
     if pool is None:
-        pool = defaultPool()
+        pool = getDefaultPool()
     result = pool.map(f, args)
     sys.stderr.write("done\n")
     return result
 
 
- def shutdownDefaultPool():       
-     if not (POOL is None):
-         POOL.shutdown()
+def shutdownDefaultPool():       
+    if not (POOL is None):
+        POOL.shutdown()
