@@ -80,11 +80,3 @@ ifeq ($(OCCAM_HOME),)
 endif
 
 
-############# razor stuff below ####################
-
-
-#iam: local editable install for developing
-develop: 
-	pip install -e .
-
-
