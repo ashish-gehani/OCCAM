@@ -1,4 +1,4 @@
-import os
+import os, platform
 
 #  All configuration requests should go through 'theConfig' object
 #  It belongs to the class below.
@@ -85,9 +85,21 @@ class cfgObj(object):
             candidate = self._llvm[tool]
         return self.env_version(tool)
 
+def getOccamLib():
+    home = os.getenv('OCCAM_HOME')
+    if home is None:
+        return None
+    system = platform.system()
+    if system == 'Linux':
+        return os.path.join(home, 'lib', 'libprevirt.so')
+    elif system == 'Darwin':
+        return os.path.join(home, 'lib', 'libprevirt.dylib')
+    else:
+        return None
+    
 
 
-theConfig = cfgObj('/home/iam/occam/lib/libprevirt.so')
+theConfig = cfgObj(getOccamLib())
 
 def getOccamLib():
     return theConfig.getOccamLib()

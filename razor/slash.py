@@ -5,6 +5,10 @@ from . import utils
 from . import passes
 
 def main():
+    """This is the main entry point
+
+    razor [--work-dir=<dir>] <manifest>
+    """
     utils.setLogger()
     Slash(sys.argv).run()
     return 0
