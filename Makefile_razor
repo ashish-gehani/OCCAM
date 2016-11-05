@@ -24,6 +24,7 @@ endif
 
 proto:
 	mkdir -p razor/proto
+	touch razor/proto/__init__.py	      
 	protoc --proto_path=src --python_out=razor/proto src/Previrt.proto
 
 #iam: local editable install of razor for developing

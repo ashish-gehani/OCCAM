@@ -1,8 +1,6 @@
 import re, sys
 
-#iam: will need to generate the  proto buffer stuff
 from proto import Previrt_pb2 as proto
-
 
 def emptyInterface():
     return proto.ComponentInterface()
