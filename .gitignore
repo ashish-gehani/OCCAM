@@ -2,6 +2,7 @@
 *~
 *.bc
 *.so
+*.pyc
 *.so.*
 *.dylib
 *.DS_Store
