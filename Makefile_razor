@@ -8,6 +8,7 @@ endif
 
 PROTOC = $(shell which protoc)
 PYLINT = $(shell which pylint)
+PIP    = $(shell which pip)
 
 all: sanity_check proto
 
@@ -30,11 +31,14 @@ endif
 proto:
 	mkdir -p razor/proto
 	touch razor/proto/__init__.py	      
-	protoc --proto_path=src --python_out=razor/proto src/Previrt.proto
+	$(PROTOC) --proto_path=src --python_out=razor/proto src/Previrt.proto
 
 #iam: local editable install of razor for developing
 develop: 
-	pip install -e .
+ifeq ($(PROTOC),)
+	$(error developing requires pip)
+endif
+	$(PIP) install -e .
 
 
 lint:
@@ -49,3 +53,5 @@ endif
 
 clean:
 	rm -rf razor/proto
+
+
