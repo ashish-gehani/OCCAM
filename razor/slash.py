@@ -15,7 +15,14 @@ def main():
     """This is the main entry point
 
     razor [--work-dir=<dir>] <manifest>
-    
+
+    Previrtualize a compilation unit based on its manifest.
+
+        --work-dir       : Output intermediate files to the given location
+        --no-strip       : Leave symbol information in the binary
+        --force          : Proceed after dependency warnings
+        --no-specialize  : Do not specialize any iter module calls
+   
     
     """
     return Slash(sys.argv).run() if utils.checkOccamLib() else 1
@@ -24,7 +31,7 @@ class Slash(object):
     
     def __init__(self, argv):
         utils.setLogger()
-        (self.flags, self.args) = getopt.getopt(argv[1:], None, ['work-dir='])
+        (self.flags, self.args) = getopt.getopt(argv[1:], None, ['work-dir=','force','no-strip', 'no-specialize'])
         self.manifest = utils.get_manifest(self.args)
         if self.manifest is None:
             self.usage(argv[0])
@@ -35,7 +42,7 @@ class Slash(object):
         self.ok = True
         
     def  usage(self, exe):
-        sys.stderr.write('{0} [--work-dir=<dir>] <manifest>\n'.format(exe))
+        sys.stderr.write('{0} [--work-dir=<dir>]  [--force] [--no-strip] [--no-specialize] <manifest>\n'.format(exe))
 
 
     def run(self):
