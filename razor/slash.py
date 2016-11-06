@@ -6,6 +6,11 @@ from . import passes
 
 from . import interface
 
+from . import provenance
+
+from . import pool
+
+
 def main():
     """This is the main entry point
 
@@ -19,13 +24,13 @@ class Slash(object):
     
     def __init__(self, argv):
         utils.setLogger()
-        (flags, args) = getopt.getopt(argv[1:], None, ['work-dir='])
-        self.manifest = utils.get_manifest(args)
+        (self.flags, self.args) = getopt.getopt(argv[1:], None, ['work-dir='])
+        self.manifest = utils.get_manifest(self.args)
         if self.manifest is None:
             self.usage(argv[0])
             self.ok = False
             return
-        self.work_dir = utils.get_work_dir(flags)
+        self.work_dir = utils.get_work_dir(self.flags)
         self.ok = True
         
     def  usage(self, exe):
@@ -70,6 +75,35 @@ class Slash(object):
         interface.writeInterface(interface.mainInterface(), 'main.iface')
 
 
+
+        # First compute the simple interfaces
+        vals = files.items()
+        refs = dict([(k, provenance.VersionedFile(utils.prevent_collisions(k[:k.rfind('.bc')]), 'iface'))
+                     for (k,_) in vals])
+        def _references((m,f)):
+            "Computing references"
+            name = refs[m].new()
+            passes.interface(f.get(), name, [])
+        pool.InParallel(_references, vals)
+        
+        def _internalize((m,i)):
+            "Internalizing from references"
+            pre = i.get()
+            post = i.new('i')
+            passes.intern(pre, post, 
+                         [refs[f].get() for f in refs.keys() if f != m] +
+                         ['main.iface'])
+        pool.InParallel(_internalize, vals)
+
+        # Strip everything
+        # This is safe because external names are not stripped
+        def _strip(m):
+            "Stripping symbols"
+            pre = m.get()
+            post = m.new('x')
+            passes.strip(pre, post)
+        if utils.get_flag(self.flags, 'no-strip', None) is None:
+            pool.InParallel(_strip, files.values())
 
 
         return 0

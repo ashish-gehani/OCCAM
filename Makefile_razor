@@ -15,7 +15,7 @@ all: sanity_check proto
 #
 # Sanity Checks (do not really need protoc if we add the generated code to the repo).
 #
-sanity_check:  occam_home protoc
+sanity_check:  occam_home
 
 occam_home:
 ifeq ($(OCCAM_HOME),)
@@ -28,7 +28,7 @@ ifeq ($(PROTOC),)
 endif
 
 
-proto:
+proto:  protoc
 	mkdir -p razor/proto
 	touch razor/proto/__init__.py	      
 	$(PROTOC) --proto_path=src --python_out=razor/proto src/Previrt.proto
