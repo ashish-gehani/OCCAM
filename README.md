@@ -71,4 +71,8 @@ instead of:
 occam previrt --work-dir=previrt multiple.manifest
 
 
-slash also accepts the following command line options:
+slash also accepts the following new command line option:
+
+--no-specialize
+
+which will prevent any inter-module specializations.
