@@ -16,7 +16,14 @@ def main():
     """This is the main entry point
 
     razor [--work-dir=<dir>] <manifest>
-    
+
+    Previrtualize a compilation unit based on its manifest.
+
+        --work-dir       : Output intermediate files to the given location
+        --no-strip       : Leave symbol information in the binary
+        --force          : Proceed after dependency warnings
+        --no-specialize  : Do not specialize any itermodule calls
+   
     
     """
     return Slash(sys.argv).run() if utils.checkOccamLib() else 1
@@ -25,7 +32,7 @@ class Slash(object):
     
     def __init__(self, argv):
         utils.setLogger()
-        (self.flags, self.args) = getopt.getopt(argv[1:], None, ['work-dir='])
+        (self.flags, self.args) = getopt.getopt(argv[1:], None, ['work-dir=','force','no-strip', 'no-specialize'])
         self.manifest = utils.get_manifest(self.args)
         if self.manifest is None:
             self.usage(argv[0])
@@ -36,7 +43,7 @@ class Slash(object):
         self.ok = True
         
     def  usage(self, exe):
-        sys.stderr.write('{0} [--work-dir=<dir>] <manifest>\n'.format(exe))
+        sys.stderr.write('{0} [--work-dir=<dir>]  [--force] [--no-strip] [--no-specialize] <manifest>\n'.format(exe))
 
 
     def run(self):
@@ -126,8 +133,10 @@ class Slash(object):
             rewrite_files[m] = provenance.VersionedFile(base, 'rw')
         iteration = 0
         while progress:
+
             iteration += 1
             progress = False
+
             # Intra-module previrt
             def intra(m):
                 "Intra-module previrtualization"
@@ -139,6 +148,7 @@ class Slash(object):
                 post_base = os.path.basename(post)
                 fn = 'previrt_%s-%s' % (pre_base, post_base)
                 passes.peval(pre, post, log=open(fn, 'w'))
+
             pool.InParallel(intra, files.values(), self.pool)
 
             # Inter-module previrt
@@ -153,6 +163,7 @@ class Slash(object):
                 post = m.new('s')
                 rw = rewrite_files[nm].new()
                 passes.specialize(pre, post, rw, [iface_before_file.get()])
+
             pool.InParallel(_spec, files.items(), self.pool)
 
             # Rewrite
@@ -170,6 +181,7 @@ class Slash(object):
                 dbg.write(out[0])
                 dbg.close()
                 return retcode
+
             rws = pool.InParallel(rewrite, files.items(), self.pool)
             progress = any(rws)
 
