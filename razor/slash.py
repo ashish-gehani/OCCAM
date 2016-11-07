@@ -57,7 +57,7 @@ class Slash(object):
 
         no_strip = utils.get_flag(self.flags, 'no-strip', None)
 
-        no_specialize = utils.get_flag(self.flags, 'no-strip', None)
+        no_specialize = utils.get_flag(self.flags, 'no-specialize', None)
 
         sys.stderr.write('\nslash working on {0} wrt {1} ...\n'.format(module, ' '.join(libs)))
 
