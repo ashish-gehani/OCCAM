@@ -41,9 +41,6 @@ llc -filetype=obj libc.a.bc
 echo "clang -static -nostdlib nweb.o libc.a.o crt1.o libc.a -o nweb_static"
 clang -static -nostdlib nweb.o libc.a.o crt1.o libc.a -o nweb_static
 
-# hack: need to process the native_libs.
-cp crt1.o libc.a slash/
-
 # Previrtualize
 slash --work-dir=slash nweb.manifest
 

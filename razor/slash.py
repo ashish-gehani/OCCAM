@@ -76,6 +76,14 @@ class Slash(object):
         libs = new_libs
         #</delete this once done>
 
+        #this is simplistic. we are assuming they are (possibly)
+        #relative paths, if we need to use a search path then this 
+        #will need to be beefed up.
+        new_native_libs = []
+        for lib in native_libs:
+            new_native_libs.append(os.path.realpath(lib))
+        native_libs = new_native_libs
+
         files = utils.populate_work_dir(module, libs, self.work_dir)
 
         os.chdir(self.work_dir)
@@ -227,11 +235,12 @@ class Slash(object):
 
         linker_args = final_libs + native_libs + ldflags
 
-        if False:
-            print '\nclang++ {0} -o {1} {2}\n'.format(module, binary, ' '.join(linker_args))
-
+        link_cmd = '\nclang++ {0} -o {1} {2}\n'.format(module, binary, ' '.join(linker_args))
+        
+        sys.stderr.write('\nLinking ...\n')
+        sys.stderr.write(link_cmd)
         driver.linker(final_module, binary, linker_args, quiet=False)
-
+        sys.stderr.write('\ndone.\n')
         pool.shutdownDefaultPool()
             
         return 0
