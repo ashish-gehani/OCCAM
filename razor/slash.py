@@ -10,6 +10,7 @@ from . import provenance
 
 from . import pool
 
+from . import driver
 
 def main():
     """This is the main entry point
@@ -44,7 +45,7 @@ class Slash(object):
 
         if not utils.make_work_dir(self.work_dir): return 1
 
-        (ok, module, binary, libs, args, name) = utils.check_manifest(self.manifest)
+        (ok, module, binary, libs, native_libs, ldflags, args, name) = utils.check_manifest(self.manifest)
 
         #<delete this once done>
         new_libs = []
@@ -192,6 +193,16 @@ class Slash(object):
                 os.unlink(trg)
             os.symlink(x.get(), trg)
 
+
+        final_libs = [files[x].get() for x in libs]
+        final_module = files[module].get()
+
+        print "\nFinal libs: ", final_libs, "\n"
+        print "\nFinal module: ", final_module, "\n"
+
+        linker_args = final_libs + native_libs + ldflags
+
+        driver.linker(final_module, binary, linker_args, quiet=False)
 
         pool.shutdownDefaultPool()
             

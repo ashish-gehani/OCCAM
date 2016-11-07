@@ -45,12 +45,16 @@ def previrt_progress(fin, fout, args, output=None, **opts):
     return '...progress...' in progress
 
 
+def linker(fin, fout, args, **opts):
+    args = [fin, '-o', fout] + args
+    return run(config.getLLVMTool('clang++'), args, **opts)
+
 
 # quiet being True here means(?) that in the C++ errs() goes to the logfile.
 # quiet being False here means(?) that in the C++ errs() goes to stderr.
 # we (iam & ashish)  like the logfile solution to be the default.
 # this may not be the best place to set this flag; we are open to suggestions...
-def run(prog, args, quiet=True, inp=None,pipe=True, wd=None, resetPath=True):
+def run(prog, args, quiet=True, inp=None, pipe=True, wd=None, resetPath=True):
     log = logging.getLogger()
 
     # 0 = stdin
