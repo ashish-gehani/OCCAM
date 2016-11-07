@@ -1,12 +1,12 @@
 import re, sys
 
-from proto import Previrt_pb2 as proto
+from .proto import Previrt_pb2 as pb
 
 def emptyInterface():
-    return proto.ComponentInterface()
+    return pb.ComponentInterface()
 
 def parseInterface(filename):
-    result = proto.ComponentInterface()
+    result = pb.ComponentInterface()
     if filename == '-':
         result.ParseFromString(sys.stdin.read())
     else:
@@ -25,21 +25,21 @@ def writeInterface(iface, filename):
     f.close()
 
 def mainInterface():
-    main = proto.ComponentInterface()
+    main = pb.ComponentInterface()
     c = main.calls.add(name='main', count=1)
-    c.args.add(type=proto.U)
-    c.args.add(type=proto.U)
+    c.args.add(type=pb.U)
+    c.args.add(type=pb.U)
     main.references.extend('main')
 
     atexit = main.calls.add(name='atexit', count=1)
-    atexit.args.add(type=proto.U)
+    atexit.args.add(type=pb.U)
     main.references.extend('atexit')
 
     inittls = main.calls.add(name='_init_tls', count=1)
     main.references.extend('_init_tls')
 
     exitr = main.calls.add(name='exit', count=1)
-    exitr.args.add(type=proto.U)
+    exitr.args.add(type=pb.U)
     main.references.extend('exit')
 
     return main
@@ -71,7 +71,7 @@ def readInterfaceFromText(f):
     ptrn_str  = re.compile(r'^"((?:[^"\\]|(?:\\"))+)"' + ptrn_rest)
     ptrn_unknown = re.compile(r'^\?' + ptrn_rest)
 
-    result = proto.ComponentInterface()
+    result = pb.ComponentInterface()
 
     for line in [x.strip() for x in f.readlines()]:
         if len(line) == 0:
@@ -88,19 +88,19 @@ def readInterfaceFromText(f):
                 args = args.strip()
                 m = ptrn_unknown.match(args)
                 if m:
-                    args.add(type=proto.U)
+                    args.add(type=pb.U)
                     args = m.group(1)
                 else:
                     m = ptrn_int.match(args)
                     if m:
-                        a = v.args.add(type=proto.I)
+                        a = v.args.add(type=pb.I)
                         a.int.value = hex(int(m.group(2)))[2:]
                         a.int.bits = int(m.group(1))
                         args = m.group(3)
                     else:
                         m = ptrn_str.match(args)
                         if m:
-                            a = v.args.add(type=proto.S)
+                            a = v.args.add(type=pb.S)
                             a.str.data = m.group(1)
                             args = m.group(2)
                         else:
