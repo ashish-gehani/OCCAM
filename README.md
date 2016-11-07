@@ -50,3 +50,25 @@ tool by setting the following variables:
   export OCCAM_LOGFILE={absolute path to log location}
   export OCCAM_LOGLEVEL={INFO, WARNING, or ERROR}
 ```
+
+
+Using razor
+===========
+
+razor is a pip package that relies on the same dynamic library as occam,
+so you should first build occam as described above. Then to install
+razor do:
+
+make -f Makefile_razor develop
+
+This may require sudo priviliges. Then you can use slash just like
+
+
+slash --work-dir=slash multiple.manifest
+
+instead of:
+
+occam previrt --work-dir=previrt multiple.manifest
+
+
+slash also accepts the following command line options:

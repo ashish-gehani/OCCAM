@@ -32,7 +32,13 @@ class Slash(object):
     
     def __init__(self, argv):
         utils.setLogger()
-        (self.flags, self.args) = getopt.getopt(argv[1:], None, ['work-dir=','force','no-strip', 'no-specialize'])
+        try:
+            (self.flags, self.args) = getopt.getopt(argv[1:], None, ['work-dir=','force','no-strip', 'no-specialize'])
+        except:
+            self.usage(argv[0])
+            self.ok = False
+            return
+
         self.manifest = utils.get_manifest(self.args)
         if self.manifest is None:
             self.usage(argv[0])
