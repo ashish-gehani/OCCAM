@@ -21,7 +21,7 @@ def main():
         --work-dir       : Output intermediate files to the given location
         --no-strip       : Leave symbol information in the binary
         --force          : Proceed after dependency warnings
-        --no-specialize  : Do not specialize any iter module calls
+        --no-specialize  : Do not specialize any itermodule calls
    
     
     """
@@ -127,8 +127,10 @@ class Slash(object):
             rewrite_files[m] = provenance.VersionedFile(base, 'rw')
         iteration = 0
         while progress:
+
             iteration += 1
             progress = False
+
             # Intra-module previrt
             def intra(m):
                 "Intra-module previrtualization"
@@ -141,6 +143,7 @@ class Slash(object):
                 fn = 'previrt_%s-%s' % (pre_base, post_base)
                 print '%s === passes.peval ===> %s' % (pre_base, post_base)
                 passes.peval(pre, post, log=open(fn, 'w'))
+
             pool.InParallel(intra, files.values(), self.pool)
 
             # Inter-module previrt
@@ -155,6 +158,7 @@ class Slash(object):
                 post = m.new('s')
                 rw = rewrite_files[nm].new()
                 passes.specialize(pre, post, rw, [iface_before_file.get()])
+
             pool.InParallel(_spec, files.items(), self.pool)
 
             # Rewrite
@@ -172,6 +176,7 @@ class Slash(object):
                 dbg.write(out[0])
                 dbg.close()
                 return retcode
+
             rws = pool.InParallel(rewrite, files.items(), self.pool)
             progress = any(rws)
 
