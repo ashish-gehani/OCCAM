@@ -49,6 +49,10 @@ class Slash(object):
 
         if not ok: return 1
 
+        no_strip = utils.get_flag(self.flags, 'no-strip', None)
+
+
+
         sys.stderr.write('\nslash working on {0} wrt {1} ...\n'.format(module, ' '.join(libs)))
 
         #<delete this once done>
