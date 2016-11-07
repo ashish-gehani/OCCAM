@@ -104,9 +104,6 @@ def run(prog, args, quiet=True, inp=None,pipe=True, wd=None, resetPath=True):
     info = ("\nPROG ", prog, "\nPATH ", lenv["PATH"], "\nresetPath ", str(resetPath), "\n")
     log.warn("run %s", ' '.join(info))
  
-    sys.stderr.write("driver.run: prog %s\n" %prog)
-    sys.stderr.write("driver.run: args %s\n" %args)	   
-
     if pipe:
         proc = subprocess.Popen([prog] + args, 
                                 stderr=err,

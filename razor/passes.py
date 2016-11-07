@@ -67,10 +67,6 @@ def peval(input_file, output_file, log=None, trail=None, **opts):
         pre.close()
         done.close()
         
-#        pre_args=[config.getLLVMTool('opt'), '-load=%s' % config.getOccamLib(),
-#                  opt.name, '-o=%s' % done.name,
-#                  '-Ppeval']
-        
         out = ['']
         
         shutil.copy(input_file, done.name)
@@ -88,8 +84,8 @@ def peval(input_file, output_file, log=None, trail=None, **opts):
             else:
                 break
 
-        print "Moving %s to %s" % (opt.name, output_file)
         shutil.move(opt.name, output_file)
+
         try:
             os.unlink(done.name)
             os.unlink(pre.name)
