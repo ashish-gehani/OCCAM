@@ -21,15 +21,13 @@ def all_args(opt, args):
 
 def previrt(fin, fout, args, **opts):
     args = ['-load={0}'.format(config.getOccamLib()), 
-            fin, 
-            '-o={0}'.format(fout)] + args
+            fin, '-o={0}'.format(fout)] + args
     return run(config.getLLVMTool('opt'), args, **opts)
 
 def previrt_progress(fin, fout, args, output=None, **opts):
     args = [config.getLLVMTool('opt'), 
             '-load={0}'.format(config.getOccamLib()),
-            fin,
-            '-o={0}'.format(fout)] + args
+            fin, '-o={0}'.format(fout)] + args
     proc = subprocess.Popen(args, 
                             stderr=subprocess.PIPE,
                             stdout=subprocess.PIPE,
@@ -45,12 +43,16 @@ def previrt_progress(fin, fout, args, output=None, **opts):
     return '...progress...' in progress
 
 
+def linker(fin, fout, args, **opts):
+    args = [fin, '-o', fout] + args
+    return run(config.getLLVMTool('clang++'), args, **opts)
+
 
 # quiet being True here means(?) that in the C++ errs() goes to the logfile.
 # quiet being False here means(?) that in the C++ errs() goes to stderr.
 # we (iam & ashish)  like the logfile solution to be the default.
 # this may not be the best place to set this flag; we are open to suggestions...
-def run(prog, args, quiet=True, inp=None,pipe=True, wd=None, resetPath=True):
+def run(prog, args, quiet=True, inp=None, pipe=True, wd=None, resetPath=True):
     log = logging.getLogger()
 
     # 0 = stdin
@@ -76,15 +78,11 @@ def run(prog, args, quiet=True, inp=None,pipe=True, wd=None, resetPath=True):
             pathelems = [e for e in lenv["PATH"].split(':') if os.path.abspath(occam_bin) != os.path.abspath(e)]
         else:
             raise Exception("OCCAM_HOME not set properly in the environment")
-        #pathelems = [e for e in lenv["PATH"].split(':') if e.find("occam") == -1]
         lenv["PATH"] = ':'.join(pathelems)
         
     info = ("\nPROG ", prog, "\nPATH ", lenv["PATH"], "\nresetPath ", str(resetPath), "\n")
     log.warn("run %s", ' '.join(info))
  
-    sys.stderr.write("driver.run: prog %s\n" %prog)
-    sys.stderr.write("driver.run: args %s\n" %args)	   
-
     if pipe:
         proc = subprocess.Popen([prog] + args, 
                                 stderr=err,

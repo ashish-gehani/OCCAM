@@ -59,6 +59,8 @@ def check_manifest(manifest):
     if modules is None: 
         sys.stderr.write('No modules in manifest\n')
         return (False, )
+
+    #stick with the old API for now.
     [module] = modules
 
     binary = manifest.get('binary')
@@ -71,6 +73,15 @@ def check_manifest(manifest):
         sys.stderr.write('No libs in manifest\n')
         return (False, )
 
+    native_libs = manifest.get('native_libs')
+    if native_libs is None:
+        native_libs = []
+
+    ldflags = manifest.get('ldflags')
+    if ldflags is None:
+        ldflags = []
+
+
     args = manifest.get('args')
 
     name = manifest.get('name')
@@ -78,7 +89,7 @@ def check_manifest(manifest):
         sys.stderr.write('No name in manifest\n')
         return (False, )
     
-    return (True, module, binary, libs, args, name)
+    return (True, module, binary, libs, native_libs, ldflags, args, name)
 
 
 #iam: used to be just os.path.basename; but now when we are processing trees

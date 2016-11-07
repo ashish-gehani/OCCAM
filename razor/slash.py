@@ -10,6 +10,7 @@ from . import provenance
 
 from . import pool
 
+from . import driver
 
 def main():
     """This is the main entry point
@@ -51,7 +52,11 @@ class Slash(object):
 
         if not utils.make_work_dir(self.work_dir): return 1
 
-        (ok, module, binary, libs, args, name) = utils.check_manifest(self.manifest)
+        (ok, module, binary, libs, native_libs, ldflags, args, name) = utils.check_manifest(self.manifest)
+
+        if not ok: return 1
+
+        sys.stderr.write('\nslash working on {0} wrt {1} ...\n'.format(module, ' '.join(libs)))
 
         #<delete this once done>
         new_libs = []
@@ -60,9 +65,6 @@ class Slash(object):
                             
         libs = new_libs
         #</delete this once done>
-
-
-        if not ok: return 1
 
         files = utils.populate_work_dir(module, libs, self.work_dir)
 
@@ -141,7 +143,6 @@ class Slash(object):
                 post = m.new('p')
                 post_base = os.path.basename(post)
                 fn = 'previrt_%s-%s' % (pre_base, post_base)
-                print '%s === passes.peval ===> %s' % (pre_base, post_base)
                 passes.peval(pre, post, log=open(fn, 'w'))
 
             pool.InParallel(intra, files.values(), self.pool)
@@ -204,6 +205,20 @@ class Slash(object):
                 os.unlink(trg)
             os.symlink(x.get(), trg)
 
+
+        final_libs = [files[x].get() for x in libs]
+        final_module = files[module].get()
+
+        if False:
+            print "\nFinal libs: ", final_libs, "\n"
+            print "\nFinal module: ", final_module, "\n"
+
+        linker_args = final_libs + native_libs + ldflags
+
+        if False:
+            print '\nclang++ {0} -o {1} {2}\n'.format(module, binary, ' '.join(linker_args))
+
+        driver.linker(final_module, binary, linker_args, quiet=False)
 
         pool.shutdownDefaultPool()
             
