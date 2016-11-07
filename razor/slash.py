@@ -19,10 +19,9 @@ def main():
 
     Previrtualize a compilation unit based on its manifest.
 
-        --work-dir       : Output intermediate files to the given location
-        --no-strip       : Leave symbol information in the binary
-        --force          : Proceed after dependency warnings
-        --no-specialize  : Do not specialize any itermodule calls
+        --work-dir <dir>  : Output intermediate files to the given location <dir>
+        --no-strip        : Leave symbol information in the binary
+        --no-specialize   : Do not specialize any itermodule calls
    
     
     """
@@ -32,7 +31,7 @@ class Slash(object):
     
     def __init__(self, argv):
         utils.setLogger()
-        (self.flags, self.args) = getopt.getopt(argv[1:], None, ['work-dir=','force','no-strip', 'no-specialize'])
+        (self.flags, self.args) = getopt.getopt(argv[1:], None, ['work-dir=','no-strip', 'no-specialize'])
         self.manifest = utils.get_manifest(self.args)
         if self.manifest is None:
             self.usage(argv[0])
@@ -58,7 +57,7 @@ class Slash(object):
 
         no_strip = utils.get_flag(self.flags, 'no-strip', None)
 
-
+        no_specialize = utils.get_flag(self.flags, 'no-strip', None)
 
         sys.stderr.write('\nslash working on {0} wrt {1} ...\n'.format(module, ' '.join(libs)))
 
@@ -114,13 +113,13 @@ class Slash(object):
 
         # Strip everything
         # This is safe because external names are not stripped
-        def _strip(m):
-            "Stripping symbols"
-            pre = m.get()
-            post = m.new('x')
-            passes.strip(pre, post)
+        if no_strip is None:
+            def _strip(m):
+                "Stripping symbols"
+                pre = m.get()
+                post = m.new('x')
+                passes.strip(pre, post)
 
-        if utils.get_flag(self.flags, 'no-strip', None) is None:
             pool.InParallel(_strip, files.values(), self.pool)
 
         # Begin main loop
@@ -156,15 +155,17 @@ class Slash(object):
                                 ['main.iface'])
             interface.writeInterface(iface, iface_before_file.new())
             
-            # Specialize
-            def _spec((nm, m)):
-                "Inter-module module specialization"
-                pre = m.get()
-                post = m.new('s')
-                rw = rewrite_files[nm].new()
-                passes.specialize(pre, post, rw, [iface_before_file.get()])
+            if no_specialize is None:
+                # Specialize
 
-            pool.InParallel(_spec, files.items(), self.pool)
+                def _spec((nm, m)):
+                    "Inter-module module specialization"
+                    pre = m.get()
+                    post = m.new('s')
+                    rw = rewrite_files[nm].new()
+                    passes.specialize(pre, post, rw, [iface_before_file.get()])
+
+                pool.InParallel(_spec, files.items(), self.pool)
 
             # Rewrite
             def rewrite((nm, m)):
