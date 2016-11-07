@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-export OCCAM_LOGFILE=${PWD}/previrt/occam.log
-export OCCAM_LOGLEVEL=INFO
 
 make clean
 
@@ -35,13 +33,20 @@ extract-bc main
 extract-bc ${LIBRARY}
 
 
-# Previrtualize
+export OCCAM_LOGLEVEL=INFO
+
+######### Previrtualize
+
+export OCCAM_LOGFILE=${PWD}/previrt/occam.log
+
+
 ${OCCAM_HOME}/bin/occam previrt --work-dir=previrt multiple.manifest
 
-# Slash
+######### Slash
+
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
-export OCCAM_LOGLEVEL=INFO
-slash --work-dir=slash multiple.manifest
+
+slash --work-dir=slash --no-specialize multiple.manifest
 
 #debugging stuff below:
 
