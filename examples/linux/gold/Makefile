@@ -15,7 +15,7 @@ build:  binutils
 clean: 
 	rm -rf build
 
-veryclean: clean
+spotless: clean
 	rm -rf binutils
 
 
