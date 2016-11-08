@@ -32,11 +32,6 @@ LIB = ${LIBRARYNAME}.dylib
 LIBFLAGS = -dynamiclib
 OTHERLIBS =  -lpthread -lprotobuf -lcurses
 LD_FLAGS += -undefined suppress -flat_namespace
-# google protobuffers won't compile with -fno-rtti on OS X
-#CXX_FLAGS:=$(filter-out -fno-rtti,$(CXX_FLAGS))
-#CXX_FLAGS += -v
-#this next line is needed to use the clang++ from the LLVM_HOME area as opposed to /usr/bin
-#CXX_FLAGS += -I /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include/c++/v1
 else ifeq (FreeBSD, $(findstring FreeBSD, ${OS}))
 # FreeBSD
 LIB = ${LIBRARYNAME}.so
