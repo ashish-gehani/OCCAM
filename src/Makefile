@@ -15,7 +15,7 @@ LLVM_CFG = $(LLVM_HOME)/bin/$(LLVM_CONFIG)
 
 LLVM_INCLUDE = $(shell ${LLVM_CFG} --includedir)
 
-CXX_FLAGS += $(shell  ${LLVM_CFG} --cxxflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include
+CXX_FLAGS += $(shell  ${LLVM_CFG} --cxxflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include  -DGOOGLE_PROTOBUF_NO_RTTI
 
 C_FLAGS = $(shell  ${LLVM_CFG} --cflags)
 
@@ -33,7 +33,7 @@ LIBFLAGS = -dynamiclib
 OTHERLIBS =  -lpthread -lprotobuf -lcurses
 LD_FLAGS += -undefined suppress -flat_namespace
 # google protobuffers won't compile with -fno-rtti on OS X
-CXX_FLAGS:=$(filter-out -fno-rtti,$(CXX_FLAGS))
+#CXX_FLAGS:=$(filter-out -fno-rtti,$(CXX_FLAGS))
 #CXX_FLAGS += -v
 #this next line is needed to use the clang++ from the LLVM_HOME area as opposed to /usr/bin
 #CXX_FLAGS += -I /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include/c++/v1
@@ -71,7 +71,7 @@ lib: ${OBJECTS}
 	$(CXX) -I. ${CXX_FLAGS} $< -c 
 
 proto/%.o: proto/%.cc proto/%.h 
-	$(CXX)   -DGOOGLE_PROTOBUF_NO_RTTI ${CXX_FLAGS} $< -c -o $@
+	$(CXX)  ${PROTO_CXX_FLAGS} $< -c -o $@
 
 protoc: Watch.proto Previrt.proto
 	mkdir -p proto
