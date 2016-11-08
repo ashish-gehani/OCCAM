@@ -81,7 +81,9 @@ class Slash(object):
         #will need to be beefed up.
         new_native_libs = []
         for lib in native_libs:
-            new_native_libs.append(os.path.realpath(lib))
+            if lib.startswith('-l'): continue
+            if os.path.exists(lib):
+                new_native_libs.append(os.path.realpath(lib))
         native_libs = new_native_libs
 
         files = utils.populate_work_dir(module, libs, self.work_dir)
