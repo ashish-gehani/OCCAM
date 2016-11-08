@@ -34,7 +34,7 @@ export OCCAM_LOGLEVEL=INFO
 
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
 
-slash --work-dir=slash --no-specialize multiple.manifest
+slash --work-dir=slash multiple.manifest
 
 #debugging stuff below:
 

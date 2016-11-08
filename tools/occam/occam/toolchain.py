@@ -180,7 +180,7 @@ def llvmLDWrapper(output, inputs, found_libs, searchflags, shared, xlinker_start
     for (a,b) in flags:
         if a == '-O':
             args += ['-O%s' % b]
-    args += ['-o %s' % output]
+    args += ['-o', output]
     return driver.run(config.getLLVMTool('clang++'), args)
 
 class LibNotFound (Exception):

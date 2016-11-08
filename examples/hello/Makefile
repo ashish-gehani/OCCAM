@@ -17,7 +17,7 @@ else
 endif
 
 
-all: hello_previrt hello_O3
+all: hello_previrt hello_slash hello_O3
 
 
 hello.bc:
@@ -27,8 +27,11 @@ hello.bc:
 previrtualize: hello.bc
 	${OCCAM_HOME}/bin/occam previrt --work-dir=previrt hello.manifest
 
-slash: hello.bc
+razor: hello.bc
 	slash --work-dir=slash hello.manifest
+
+hello_razor: razor
+	cp slash/hello hello_slash
 
 hello_previrt: previrtualize
 	cp previrt/hello hello_previrt
@@ -40,7 +43,7 @@ hello_O3:
 
 
 clean:
-	rm -f *.o *~ *.bc .*.bc hello hello_O3 hello_previrt 
+	rm -f *.o .*.o *~ *.bc .*.bc hello hello_O3 hello_previrt 
 	rm -rf previrt slash
 
 
