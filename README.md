@@ -1,17 +1,12 @@
 [![Build Status](https://travis-ci.org/SRI-CSL/OCCAM.svg?branch=master)](https://travis-ci.org/SRI-CSL/OCCAM)
 
 
-Introduction
-============
-
-
-
 Prerequisites
 ============
 
-Occam currently works fine on linux, mac os x, and freeBSD. You will
-need an installation of llvm-3.5 and if you want to generate bitcode
-an install of [wllvm.](https://github.com/SRI-CSL/whole-program-llvm.git)
+OCCAM currently works fine on Linux, OS X, and FreeBSD. You will
+need an installation of llvm-3.5. If you need to generate application bitcode, 
+you will want to install [WLLVM](https://github.com/SRI-CSL/whole-program-llvm.git).
 
 
 Building and Installing
