@@ -19,5 +19,5 @@ spotless: clean
 	rm -rf binutils
 
 
-.PHONY: clean veryclean
+.PHONY: clean spotless
 

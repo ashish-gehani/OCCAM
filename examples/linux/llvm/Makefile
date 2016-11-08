@@ -40,10 +40,10 @@ check:   build
 clean:
 	rm -rf build
 
-veryclean: clean
+spotless: clean
 	rm -rf llvm
 
 
-.PHONY: clean veryclean check theworks
+.PHONY: clean spotless check theworks
 
 
