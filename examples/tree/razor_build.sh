@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 
-export OCCAM_LOGFILE=${PWD}/previrt/occam.log
 export OCCAM_LOGLEVEL=INFO
-
-mkdir -p previrt
 
 LIBRARY='library'
 
@@ -17,9 +14,9 @@ fi
 
 # Build the manifest file  (FIXME: dylib not good for linux)
 cat > simple.manifest <<EOF
-{ "modules" : ["main.o.bc", "subdir/module.o.bc"]
+{ "modules" : ["main.o.bc"]
 , "binary"  : "main"
-, "libs"    : ["${LIBRARY}.bc"]
+, "libs"    : ["${LIBRARY}.bc", "subdir/module.o.bc"]
 , "native_libs" : []
 , "search"  : []
 , "args"    : ["8181"]
@@ -34,8 +31,9 @@ cd subdir; extract-bc module.o; cd ..
 extract-bc ${LIBRARY}
 
 
-# Previrtualize
-${OCCAM_HOME}/bin/occam previrt --work-dir=previrt simple.manifest
+export OCCAM_LOGFILE=${PWD}/previrt/occam.log
+
+slash --work-dir=slash simple.manifest
 
 
 #debugging stuff below:
