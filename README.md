@@ -61,19 +61,18 @@ so you should first build and install `occam` as described above. Then to instal
 
 ```
 make -f Makefile_razor develop
-
 ```
 
 This may require sudo priviliges. Then you can use slash just like
 
 ```
-slash --work-dir=slash multiple.manifest
+slash --work-dir=<dir> <manifest>
 ```
 
 instead of:
 
 ```
-occam previrt --work-dir=previrt multiple.manifest
+occam previrt --work-dir=<dir> <manifest>
 ```
 
 `slash` also accepts the following new command line option:
