@@ -22,4 +22,8 @@ cryptominisat4.bc: cryptominisat
 
 
 clean:
-	rm -rf *~ cryptominisat cryptominisat-5.0.0.tar
+	rm -rf *~ cryptominisat cryptominisat-5.0.0.tar 
+
+spotless:   clean
+	rm -f *.gz *.bc
+

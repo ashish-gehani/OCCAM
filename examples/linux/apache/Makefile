@@ -119,7 +119,7 @@ very_clean: clean
 	rm -rf ${HTTPD} ${APR_UTIL} ${APR} ${PCRE}
 
 spotless: very_clean
-	rm -f *.tar.gz *.tar
+	rm -f *.tar.gz *.tar *.bc
 
 check_sanity:
 ifneq ($(shell whoami),${USER})
