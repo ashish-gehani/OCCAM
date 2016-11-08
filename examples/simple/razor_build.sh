@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 
-export OCCAM_LOGFILE=${PWD}/previrt/occam.log
 export OCCAM_LOGLEVEL=INFO
-
-mkdir previrt
 
 LIBRARY='library'
 
@@ -33,12 +30,13 @@ extract-bc main
 extract-bc ${LIBRARY}
 
 
-# Previrtualize
-${OCCAM_HOME}/bin/occam previrt --work-dir=previrt simple.manifest
+export OCCAM_LOGFILE=${PWD}/slash/occam.log
+
+slash --work-dir=slash simple.manifest
 
 
 #debugging stuff below:
-for bitcode in previrt/*.bc; do
+for bitcode in slash/*.bc; do
     llvm-dis  "$bitcode" &> /dev/null
 done
 
