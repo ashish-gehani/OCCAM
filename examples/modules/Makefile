@@ -34,7 +34,8 @@ main:  ${OBJS} ${LIB}
 
 clean:
 	rm -f *~ ${LIB} .*.bc *.bc *.ll *.o *.manifest main
-	rm -rf previrt
+	rm -rf previrt slashp main_previrt main_slash
+
 
 
 
