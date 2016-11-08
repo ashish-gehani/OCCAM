@@ -47,16 +47,6 @@ def strip(input_file, output_file, **opts):
           ]
     return driver.run(config.getLLVMTool('opt'), args, **opts)
 
-def enforce(input_file, output_file, interfaces, inside, **opts):
-    if inside:
-        tkn = 'inside'
-    else:
-        tkn = 'outside'
-    return driver.previrt(input_file, output_file,
-                   ['-Penforce-%s' % tkn] +
-                   driver.all_args('-Penforce-%s-input' % tkn, interfaces), 
-                   **opts)
-
 def peval(input_file, output_file, log=None, trail=None, **opts):
     "intra module previrtualization"
     if not trail:
@@ -94,13 +84,6 @@ def peval(input_file, output_file, log=None, trail=None, **opts):
         return retcode
     else:
         assert False
-
-def callgraph(input_file, output_file, **opts):
-    args=[input_file, '-o', '/dev/null', '-dot-callgraph']
-    x = driver.run(config.getLLVMTool('opt'), args, **opts)
-    if x == 0:
-        shutil.move('callgraph.dot', output_file)
-    return x
 
 def optimize(input_file, output_file, **opts):
     return driver.run(config.getLLVMTool('opt'),
@@ -146,10 +129,6 @@ def deep(libs, ifaces):
             x = inter.parseInterface(tf.name)
             progress = inter.joinInterfaces(iface, x) or progress
             inter.writeInterface(iface, tf.name)
-            # print '-' * 30
-            # print "after reading %s" % l
-            # formats.InterfaceFormat().show(iface)
-
 
     os.unlink(tf.name)
     return iface
