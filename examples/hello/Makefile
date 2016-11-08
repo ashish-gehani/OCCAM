@@ -27,6 +27,9 @@ hello.bc:
 previrtualize: hello.bc
 	${OCCAM_HOME}/bin/occam previrt --work-dir=previrt hello.manifest
 
+slash: hello.bc
+	slash --work-dir=slash hello.manifest
+
 hello_previrt: previrtualize
 	cp previrt/hello hello_previrt
 
@@ -38,7 +41,7 @@ hello_O3:
 
 clean:
 	rm -f *.o *~ *.bc .*.bc hello hello_O3 hello_previrt 
-	rm -rf previrt
+	rm -rf previrt slash
 
 
 
