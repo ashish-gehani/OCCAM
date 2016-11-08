@@ -55,24 +55,30 @@ tool by setting the following variables:
 Using razor
 ===========
 
-razor is a pip package that relies on the same dynamic library as occam,
-so you should first build occam as described above. Then to install
-razor do:
+`razor` is a pip package that relies on the same dynamic library as `occam`,
+so you should first build and install `occam` as described above. Then to install
+`razor` do:
 
+```
 make -f Makefile_razor develop
+
+```
 
 This may require sudo priviliges. Then you can use slash just like
 
-
+```
 slash --work-dir=slash multiple.manifest
+```
 
 instead of:
 
+```
 occam previrt --work-dir=previrt multiple.manifest
+```
 
-
-slash also accepts the following new command line option:
-
+`slash` also accepts the following new command line option:
+```
 --no-specialize
+```
 
 which will prevent any inter-module specializations.
