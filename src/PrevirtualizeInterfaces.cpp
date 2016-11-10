@@ -46,6 +46,7 @@
 #include <fstream>
 
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/ErrorHandling.h"
 
 using namespace llvm;
 
@@ -279,7 +280,7 @@ namespace previrt
   {
     FunctionIterator i = this->calls.find(n);
     if (i == this->calls.end()){
-      assert(false && "no such call");
+      llvm_unreachable ("no such call");
     } else {
       return i->second.begin();
     }
@@ -289,7 +290,7 @@ namespace previrt
   {
     FunctionIterator i = this->calls.find(n);
     if (i == this->calls.end()){
-      assert(false && "no such call");
+      llvm_unreachable ("no such call");
     } else {
       return i->second.end();
     }
