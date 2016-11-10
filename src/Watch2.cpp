@@ -574,6 +574,7 @@ namespace previrt
 
     } else if (policy.seq_size() > 0) {
 
+      #if 1
       BasicBlock** blocks = new BasicBlock*[policy.seq_size() + 1];
       blocks[0] = result;
       for (int i = 1; i < policy.seq_size(); ++i) {
@@ -587,12 +588,44 @@ namespace previrt
         const watch::proto::ActionTree& tr = policy.seq(i);
         if (!compileAction(inside, delegate, tr, ctx, env, blocks[i], failure, blocks[i + 1])) {
           // Don't delete the blocks because they were llvm allocated
-          delete blocks;
+          delete[] blocks;
           return false;
         }
       }
-      delete blocks;
+      delete[] blocks;
       return true;
+      #else
+      // JN: this code is probably better but it assumes certain
+      // things that I am not sure about (see below).
+      std::vector<BasicBlock*> blocks;
+      blocks.reserve(policy.seq_size() + 1);
+      blocks.push_back(result);
+      for (int i = 1; i < policy.seq_size(); ++i) {
+        blocks.push_back(BasicBlock::Create(result->getContext(), "",
+					    result->getParent()));
+        assert(blocks[i] != NULL);
+      }
+      blocks.push_back(success);
+
+      for (int i = 0; i < policy.seq_size(); ++i) {
+        const watch::proto::ActionTree& tr = policy.seq(i);
+	/// JN: this assumes that if compileAction returns true then
+	/// blocks[i] is attached to a LLVM function so the function
+	/// destructor will free the block when the time
+	/// comes. Othewise, we need to free the block by ourselves
+	/// before we return from this function.
+        if (!compileAction(inside, delegate, tr, ctx, env, blocks[i], failure, blocks[i + 1])) {
+	  /// We need to free those blocks which have not been
+	  /// inserted in the function
+	  for (int j=i; i < policy.seq_size() + 1; ++j)
+	    delete blocks[j];
+	  
+          return false;
+        }
+      }
+      return true;
+      #endif 
+      
     } else {
       errs() << "Empty ActionTree!\n";
       return false;
