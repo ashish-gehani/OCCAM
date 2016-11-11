@@ -1,6 +1,4 @@
 import subprocess
-import sys
-import os
 import logging
 
 from . import config
@@ -52,48 +50,20 @@ def linker(fin, fout, args, **opts):
     return run(config.get_llvm_tool('clang++'), args, **opts)
 
 
-# quiet being True here means(?) that in the C++ errs() goes to the logfile.
-# quiet being False here means(?) that in the C++ errs() goes to stderr.
-# we (iam & ashish)  like the logfile solution to be the default.
-# this may not be the best place to set this flag; we are open to suggestions...
-def run(prog, args, quiet=True, inp=None, pipe=True, wd=None):
+def run(prog, args):
+
     log = logging.getLogger()
 
-    # 0 = stdin
-    if inp is None:
-        fd = os.fdopen(os.dup(0))
-    else:
-        fd = inp
-
-    if quiet:
-        err = subprocess.PIPE
-    else:
-        err = sys.stderr
-
-    if pipe:
-        proc = subprocess.Popen([prog] + args,
-                                stderr=err,
-                                stdout=subprocess.PIPE,
-                                stdin=fd,
-                                cwd=wd)
-    else:
-        proc = subprocess.Popen([prog] + args,
-                                stderr=sys.stderr,
-                                stdout=sys.stdout,
-                                stdin=fd,
-                                cwd=wd)
+    proc = subprocess.Popen([prog] + args,
+                            stderr=subprocess.PIPE,
+                            stdout=subprocess.PIPE,
+                            stdin=subprocess.PIPE)
     retcode = proc.wait()
-    if inp is None:
-        fd.close()
-    if quiet:
-        log.log(logging.INFO, 'EXECUTING: %(cmd)s => %(code)d\n%(err)s',
-                {'cmd'  : ' '.join([prog] + args),
-                 'code' : retcode,
-                 'err'  : proc.stderr.read()})
-    else:
-        log.log(logging.INFO, 'EXECUTING: %(cmd)s => %(code)d',
-                {'cmd'  : ' '.join([prog] + args),
-                 'code' : retcode})
+
+    log.log(logging.INFO, 'EXECUTING: %(cmd)s => %(code)d\n%(err)s',
+            {'cmd'  : ' '.join([prog] + args),
+             'code' : retcode,
+             'err'  : proc.stderr.read()})
 
     if retcode != 0:
         ex = ReturnCode(retcode, [prog] + args, proc)
