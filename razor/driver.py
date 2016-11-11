@@ -20,13 +20,13 @@ def all_args(opt, args):
     
 
 def previrt(fin, fout, args, **opts):
-    args = ['-load={0}'.format(config.getOccamLib()), 
+    args = ['-load={0}'.format(config.get_occamlib()), 
             fin, '-o={0}'.format(fout)] + args
-    return run(config.getLLVMTool('opt'), args, **opts)
+    return run(config.get_llvm_tool('opt'), args, **opts)
 
 def previrt_progress(fin, fout, args, output=None, **opts):
-    args = [config.getLLVMTool('opt'), 
-            '-load={0}'.format(config.getOccamLib()),
+    args = [config.get_llvm_tool('opt'), 
+            '-load={0}'.format(config.get_occamlib()),
             fin, '-o={0}'.format(fout)] + args
     proc = subprocess.Popen(args, 
                             stderr=subprocess.PIPE,
@@ -45,7 +45,7 @@ def previrt_progress(fin, fout, args, output=None, **opts):
 
 def linker(fin, fout, args, **opts):
     args = [fin, '-o', fout] + args
-    return run(config.getLLVMTool('clang++'), args, **opts)
+    return run(config.get_llvm_tool('clang++'), args, **opts)
 
 
 # quiet being True here means(?) that in the C++ errs() goes to the logfile.

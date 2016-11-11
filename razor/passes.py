@@ -45,7 +45,7 @@ def strip(input_file, output_file, **opts):
           '-globalopt',
           '-strip-dead-prototypes',
           ]
-    return driver.run(config.getLLVMTool('opt'), args, **opts)
+    return driver.run(config.get_llvm_tool('opt'), args, **opts)
 
 def peval(input_file, output_file, log=None, trail=None, **opts):
     "intra module previrtualization"
@@ -86,7 +86,7 @@ def peval(input_file, output_file, log=None, trail=None, **opts):
         assert False
 
 def optimize(input_file, output_file, **opts):
-    return driver.run(config.getLLVMTool('opt'),
+    return driver.run(config.get_llvm_tool('opt'),
                ['-disable-simplify-libcalls', input_file, '-o', output_file, '-O3'], **opts)
 
 def specialize_program_args(input_file, output_file, args, fn=None, name=None):

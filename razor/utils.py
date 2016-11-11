@@ -4,7 +4,7 @@ from . import provenance
 from . import config
 
 def checkOccamLib():
-    occamlib = config.getOccamLibPath()
+    occamlib = config.get_occamlib_path()
     if occamlib is None  or not os.path.exists(occamlib):
         sys.stderr.write('The occam library was not found. RTFM.\n')
         return False
@@ -138,7 +138,7 @@ def makeLogfile(logfile):
             os.mkdir(path)
 
 def setLogger():
-    logfile = config.getLogfile()
+    logfile = config.get_logfile()
     logger = logging.getLogger()
 
     makeLogfile(os.path.realpath(logfile))
