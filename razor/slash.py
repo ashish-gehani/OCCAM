@@ -122,7 +122,7 @@ class Slash(object):
             "Internalizing from references"
             pre = i.get()
             post = i.new('i')
-            passes.intern(pre, post,
+            passes.internalize(pre, post,
                          [refs[f].get() for f in refs.keys() if f != m] +
                          ['main.iface'])
 
@@ -217,7 +217,7 @@ class Slash(object):
                 "Pruning dead code/variables"
                 pre = m.get()
                 post = m.new('occam')
-                passes.intern(pre, post, [iface_after_file.get()])
+                passes.internalize(pre, post, [iface_after_file.get()])
             pool.InParallel(prune, files.values(), self.pool)
 
         # Make symlinks for the "final" versions
@@ -241,7 +241,7 @@ class Slash(object):
 
         sys.stderr.write('\nLinking ...\n')
         sys.stderr.write(link_cmd)
-        driver.linker(final_module, binary, linker_args, quiet=False)
+        driver.linker(final_module, binary, linker_args)
         sys.stderr.write('\ndone.\n')
         pool.shutdownDefaultPool()
 

@@ -45,9 +45,9 @@ def previrt_progress(fin, fout, args, output=None):
     return '...progress...' in progress
 
 
-def linker(fin, fout, args, **opts):
+def linker(fin, fout, args):
     args = [fin, '-o', fout] + args
-    return run(config.get_llvm_tool('clang++'), args, **opts)
+    return run(config.get_llvm_tool('clang++'), args)
 
 
 def run(prog, args):
