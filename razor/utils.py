@@ -23,7 +23,7 @@ def get_work_dir(flags):
         return os.getcwd()
     return os.path.abspath(d)
 
-    
+
 def get_manifest(args):
     manifest = None
     if not args:
@@ -40,7 +40,7 @@ def get_manifest(args):
     except:
         sys.stderr.write('\nReading and parsing the manifest file {0} failed\n\n'.format(args[0]))
     return manifest
-    
+
 
 def make_work_dir(d):
     if not os.path.exists(d):
@@ -56,7 +56,7 @@ def check_manifest(manifest):
 
     #assume we will only have one module (will be called module eventually)
     modules = manifest.get('modules')
-    if modules is None: 
+    if modules is None:
         sys.stderr.write('No modules in manifest\n')
         return (False, )
 
@@ -88,7 +88,7 @@ def check_manifest(manifest):
     if name is None:
         sys.stderr.write('No name in manifest\n')
         return (False, )
-    
+
     return (True, module, binary, libs, native_libs, ldflags, args, name)
 
 
@@ -125,7 +125,7 @@ def populate_work_dir(module, libs, work_dir):
             files[x] = provenance.FileStream(target[:idx], 'bc')
         else:
             sys.stderr.write('Ignoring {0}\n'.format(x))
-            
+
 
     return files
 
@@ -146,7 +146,7 @@ def setLogger():
     hdlr = logging.FileHandler(logfile)
     hdlr.setFormatter(logging.Formatter("%(message)s"))
     logger.addHandler(hdlr)
-    
+
     levels = {'CRITICAL' : logging.CRITICAL,
               'ERROR'    : logging.ERROR,
               'WARNING'  : logging.WARNING,
@@ -158,6 +158,6 @@ def setLogger():
     if os.environ.has_key('OCCAM_LOGLEVEL'):
         level = levels[os.environ['OCCAM_LOGLEVEL']]
     if level is None:
-        level = logging.WARNING        
+        level = logging.WARNING
     logger.setLevel(level)
     logger.info(">> %s\n" % ' '.join(sys.argv))

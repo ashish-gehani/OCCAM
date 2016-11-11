@@ -11,7 +11,7 @@ class VersionedFile:
         if self._version == 0:
             return "%s.%s" % (self._base, self._suffix)
         else:
-            return self._format % self._version   
+            return self._format % self._version
 
 class FileStream:
     def __init__(self, base, suffix):

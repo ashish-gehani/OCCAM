@@ -20,22 +20,22 @@ def specialize(input_file, output_file, rewrite_file, interfaces, **opts):
     if output_file is None:
         output_file = '/dev/null'
     return driver.previrt(input_file, output_file,
-                   args + driver.all_args('-Pspecialize-input', interfaces), 
+                   args + driver.all_args('-Pspecialize-input', interfaces),
                    **opts)
 
 def rewrite(input_file, output_file, rewrites, debug=None, **opts):
     "inter module rewriting"
     return driver.previrt_progress(input_file, output_file,
-                            ['-Prewrite'] + 
-                            driver.all_args('-Prewrite-input', rewrites), 
+                            ['-Prewrite'] +
+                            driver.all_args('-Prewrite-input', rewrites),
                             **opts)
 
 
 def intern(input_file, output_file, interfaces, **opts):
     "strips unused symbols"
     return driver.previrt_progress(input_file, output_file,
-                            ['-Poccam'] + 
-                            driver.all_args('-Poccam-input', interfaces), 
+                            ['-Poccam'] +
+                            driver.all_args('-Poccam-input', interfaces),
                             **opts)
 
 def strip(input_file, output_file, **opts):
@@ -56,9 +56,9 @@ def peval(input_file, output_file, log=None, trail=None, **opts):
         opt.close()
         pre.close()
         done.close()
-        
+
         out = ['']
-        
+
         shutil.copy(input_file, done.name)
         while True:
             retcode = optimize(done.name, opt.name, **opts)
@@ -101,11 +101,11 @@ def specialize_program_args(input_file, output_file, args, fn=None, name=None):
     for x in args:
         f.write(x + '\n')
     f.close()
-    
+
     extra_args = []
     if not (name is None):
         extra_args = ['-Parguments-name', name]
-    driver.previrt(input_file, output_file, 
+    driver.previrt(input_file, output_file,
             ['-Parguments', '-Parguments-input', arg_file] + extra_args)
 
     if fn is None:

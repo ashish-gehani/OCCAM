@@ -22,13 +22,13 @@ def main():
         --work-dir <dir>  : Output intermediate files to the given location <dir>
         --no-strip        : Leave symbol information in the binary
         --no-specialize   : Do not specialize any itermodule calls
-   
-    
+
+
     """
     return Slash(sys.argv).run() if utils.checkOccamLib() else 1
 
 class Slash(object):
-    
+
     def __init__(self, argv):
         utils.setLogger()
 
@@ -47,13 +47,13 @@ class Slash(object):
         self.work_dir = utils.get_work_dir(self.flags)
         self.pool = pool.getDefaultPool()
         self.ok = True
-        
+
     def  usage(self, exe):
         sys.stderr.write('{0} [--work-dir=<dir>]  [--force] [--no-strip] [--no-specialize] <manifest>\n'.format(exe))
 
 
     def run(self):
-        
+
         if not self.ok: return 1
 
         if not utils.make_work_dir(self.work_dir): return 1
@@ -72,12 +72,12 @@ class Slash(object):
         new_libs = []
         for lib in libs:
             new_libs.append(os.path.realpath(lib))
-                            
+
         libs = new_libs
         #</delete this once done>
 
         #this is simplistic. we are assuming they are (possibly)
-        #relative paths, if we need to use a search path then this 
+        #relative paths, if we need to use a search path then this
         #will need to be beefed up.
         new_native_libs = []
         for lib in native_libs:
@@ -96,9 +96,9 @@ class Slash(object):
             pre = main.get()
             post = main.new('a')
             passes.specialize_program_args(pre, post, args, 'arguments', name=name)
-            
-        
-        #watches were inserted here ... 
+
+
+        #watches were inserted here ...
 
         # Internalize everything that we can
         # We can never internalize main
@@ -117,12 +117,12 @@ class Slash(object):
             passes.interface(f.get(), name, [])
 
         pool.InParallel(_references, vals, self.pool)
-        
+
         def _internalize((m,i)):
             "Internalizing from references"
             pre = i.get()
             post = i.new('i')
-            passes.intern(pre, post, 
+            passes.intern(pre, post,
                          [refs[f].get() for f in refs.keys() if f != m] +
                          ['main.iface'])
 
@@ -171,7 +171,7 @@ class Slash(object):
             iface = passes.deep([x.get() for x in files.values()],
                                 ['main.iface'])
             interface.writeInterface(iface, iface_before_file.new())
-            
+
             if no_specialize is None:
                 # Specialize
 
@@ -219,7 +219,7 @@ class Slash(object):
                 post = m.new('occam')
                 passes.intern(pre, post, [iface_after_file.get()])
             pool.InParallel(prune, files.values(), self.pool)
-        
+
         # Make symlinks for the "final" versions
         for x in files.values():
             trg = x.base('-final')
@@ -238,11 +238,11 @@ class Slash(object):
         linker_args = final_libs + native_libs + ldflags
 
         link_cmd = '\nclang++ {0} -o {1} {2}\n'.format(module, binary, ' '.join(linker_args))
-        
+
         sys.stderr.write('\nLinking ...\n')
         sys.stderr.write(link_cmd)
         driver.linker(final_module, binary, linker_args, quiet=False)
         sys.stderr.write('\ndone.\n')
         pool.shutdownDefaultPool()
-            
+
         return 0

@@ -45,7 +45,7 @@ class ThreadPool:
             self._q.put(func(i))
         for _ in args:
             sem.acquire(True)
-        return result        
+        return result
 
     def shutdown(self):
         pass
@@ -67,6 +67,6 @@ def InParallel(f, args, pool=None):
     return result
 
 
-def shutdownDefaultPool():       
+def shutdownDefaultPool():
     if not (POOL is None):
         POOL.shutdown()
