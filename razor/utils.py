@@ -1,4 +1,9 @@
-import json, os, re, sys, shutil, logging
+import json
+import os
+import re
+import sys
+import shutil
+import logging
 
 from . import provenance
 from . import config
@@ -12,7 +17,7 @@ def checkOccamLib():
 
 
 def get_flag(flags, flag, default=None):
-    for (x,y) in flags:
+    for (x, y) in flags:
         if x == '--{0}'.format(flag):
             return y
     return default
@@ -109,7 +114,7 @@ def prevent_collisions(x):
     folders.reverse()
     return "_".join(folders)
 
-bit_code_pattern =  re.compile('\.bc$', re.IGNORECASE)
+bit_code_pattern = re.compile(r'\.bc$', re.IGNORECASE)
 
 
 def populate_work_dir(module, libs, work_dir):
@@ -132,8 +137,8 @@ def populate_work_dir(module, libs, work_dir):
 
 def makeLogfile(logfile):
     if not os.path.exists(logfile):
-        drive, path_filename = os.path.splitdrive(logfile)
-        path, filename = os.path.split(path_filename)
+        _, path_filename = os.path.splitdrive(logfile)
+        path, _ = os.path.split(path_filename)
         if not os.path.exists(path):
             os.mkdir(path)
 
@@ -151,8 +156,7 @@ def setLogger():
               'ERROR'    : logging.ERROR,
               'WARNING'  : logging.WARNING,
               'INFO'     : logging.INFO,
-              'DEBUG'    : logging.DEBUG
-              }
+              'DEBUG'    : logging.DEBUG}
 
     level = None
     if os.environ.has_key('OCCAM_LOGLEVEL'):
@@ -160,4 +164,4 @@ def setLogger():
     if level is None:
         level = logging.WARNING
     logger.setLevel(level)
-    logger.info(">> %s\n" % ' '.join(sys.argv))
+    logger.info(">> %s\n", ' '.join(sys.argv))

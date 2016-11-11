@@ -18,5 +18,5 @@ nweb:
 
 
 clean:
-	rm -rf *.a *.bc .*.bc .*.o *.s nweb nweb-base nweb.manifest nweb*.o previrt occam.log index.html* root/nweb.log
+	rm -rf *.a *.bc .*.bc .*.o *.s nweb nweb-base *.manifest nweb*.o previrt occam.log index.html* root/nweb.log
 

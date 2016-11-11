@@ -3,8 +3,6 @@
 export OCCAM_LOGFILE=${PWD}/previrt/occam.log
 export OCCAM_LOGLEVEL=INFO
 
-make clean
-
 make libc.a.bc
 
 mkdir previrt
@@ -26,7 +24,7 @@ ROOT=`pwd`/root
 # EOF
 
 
-cat > nweb.manifest <<EOF
+cat > nweb.occam.manifest <<EOF
 { "module" :  "nweb.o.bc"
 , "binary"  : "nweb_occam"
 , "modules"    : ["libc.a.bc"]
@@ -59,7 +57,7 @@ clang -static -nostdlib nweb.o libc.a.o crt1.o libc.a -o nweb_static
 
 # Previrtualize
 echo "${OCCAM_HOME}/bin/occam previrt --work-dir=previrt nweb.manifest"
-${OCCAM_HOME}/bin/occam previrt --work-dir=previrt nweb.manifest
+${OCCAM_HOME}/bin/occam previrt --work-dir=previrt nweb.occam.manifest
 
 exit
 

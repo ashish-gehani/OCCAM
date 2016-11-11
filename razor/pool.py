@@ -1,7 +1,10 @@
 from Queue import Queue
-import threading, os, traceback, sys
+import threading
+import os
+import traceback
+import sys
 
-class Worker (threading.Thread):
+class Worker(threading.Thread):
     def __init__(self, q):
         threading.Thread.__init__(self)
         self.daemon = True
@@ -12,7 +15,7 @@ class Worker (threading.Thread):
             f()
 
 
-class ThreadPool:
+class ThreadPool(object):
     def __init__(self, count=3):
         self._q = Queue()
         self._workers = None
@@ -32,7 +35,7 @@ class ThreadPool:
             def rf():
                 try:
                     result[i] = f(args[i])
-                except Exception,e:
+                except Exception:
                     print "Exception in worker for %s:" % f.func_doc
                     print '-'*60
                     traceback.print_exc(file=sys.stderr)
@@ -50,12 +53,9 @@ class ThreadPool:
     def shutdown(self):
         pass
 
-POOL = None
+POOL = ThreadPool(3)
 
 def getDefaultPool():
-    global POOL
-    if POOL is None:
-        POOL = ThreadPool(3)
     return POOL
 
 def InParallel(f, args, pool=None):
@@ -68,5 +68,4 @@ def InParallel(f, args, pool=None):
 
 
 def shutdownDefaultPool():
-    if not (POOL is None):
-        POOL.shutdown()
+    POOL.shutdown()

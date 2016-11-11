@@ -3,8 +3,6 @@
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
 export OCCAM_LOGLEVEL=INFO
 
-make clean
-
 make libc.a.bc
 
 . ../../../scripts/env.sh
@@ -12,7 +10,7 @@ make libc.a.bc
 ROOT=`pwd`/root
 
 
-cat > nweb.manifest <<EOF
+cat > nweb.razor.manifest <<EOF
 { "modules" :  ["nweb.o.bc"]
 , "binary"  : "nweb_occam"
 , "libs"    : ["libc.a.bc"]
@@ -42,7 +40,7 @@ echo "clang -static -nostdlib nweb.o libc.a.o crt1.o libc.a -o nweb_static"
 clang -static -nostdlib nweb.o libc.a.o crt1.o libc.a -o nweb_static
 
 # Previrtualize
-slash --work-dir=slash nweb.manifest
+slash --work-dir=slash nweb.razor.manifest
 
 #debugging stuff below:
 for bitcode in slash/*.bc; do
