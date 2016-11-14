@@ -124,7 +124,7 @@ class Slash(object):
         # First compute the simple interfaces
         vals = files.items()
         def mkvf(k):
-            provenance.VersionedFile(utils.prevent_collisions(k[:k.rfind('.bc')]), 'iface')
+            return provenance.VersionedFile(utils.prevent_collisions(k[:k.rfind('.bc')]), 'iface')
         refs = dict([(k, mkvf(k)) for (k, _) in vals])
 
         def _references((m, f)):

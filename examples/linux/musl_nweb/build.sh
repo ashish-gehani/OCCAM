@@ -81,8 +81,6 @@ echo "producing the non-previrt executable: nweb-base"
 ${LLVM_CC_NAME} -static -nostdlib  nweb_opt_o3.o crt1.o libc.a -o nweb_opt_o3 
 
 
-
-
 #debugging stuff below:
 for bitcode in previrt/*.bc; do
     llvm-dis  "$bitcode" &> /dev/null
