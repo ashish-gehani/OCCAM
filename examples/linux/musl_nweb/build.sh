@@ -25,9 +25,9 @@ ROOT=`pwd`/root
 
 
 cat > nweb.occam.manifest <<EOF
-{ "module" :  "nweb.o.bc"
+{ "modules" :  ["nweb.o.bc"]
 , "binary"  : "nweb_occam"
-, "modules"    : ["libc.a.bc"]
+, "libs"    : ["libc.a.bc"]
 , "native_libs" : ["crt1.o", "libc.a"]
 , "args"    : ["8181", "${ROOT}"]
 , "name"    : "nweb"
@@ -59,6 +59,11 @@ clang -static -nostdlib nweb.o libc.a.o crt1.o libc.a -o nweb_static
 echo "${OCCAM_HOME}/bin/occam previrt --work-dir=previrt nweb.manifest"
 ${OCCAM_HOME}/bin/occam previrt --work-dir=previrt nweb.occam.manifest
 
+#debugging stuff below:
+for bitcode in previrt/*.bc; do
+    llvm-dis  "$bitcode" &> /dev/null
+done
+
 exit
 
 # Link link the binary into the current directory
@@ -67,7 +72,6 @@ echo "linking nweb to previrt/nweb"
 ln -s previrt/nweb_occam .
 
 
-exit
 
 # Now build the non-previrt application
 echo "building the optimized non-previrt application bitcode"
@@ -81,7 +85,3 @@ echo "producing the non-previrt executable: nweb-base"
 ${LLVM_CC_NAME} -static -nostdlib  nweb_opt_o3.o crt1.o libc.a -o nweb_opt_o3 
 
 
-#debugging stuff below:
-for bitcode in previrt/*.bc; do
-    llvm-dis  "$bitcode" &> /dev/null
-done

@@ -12,7 +12,7 @@ ROOT=`pwd`/root
 
 cat > nweb.razor.manifest <<EOF
 { "modules" :  ["nweb.o.bc"]
-, "binary"  : "nweb_occam"
+, "binary"  : "nweb_razor"
 , "libs"    : ["libc.a.bc"]
 , "native_libs" : ["crt1.o", "libc.a"]
 , "ldflags" : ["-static", "-nostdlib"]

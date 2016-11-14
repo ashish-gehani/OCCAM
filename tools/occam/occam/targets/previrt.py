@@ -412,11 +412,11 @@ class PrevirtTool (target.Target):
         if '-lpthread' in native_libs:
             shared.append('-pthread')
 
-        # Link everything together
         sys.stderr.write("linking...\n")
         if binary.endswith('.bc'):
             binary = binary[:-3]
-        toolchain.llvmLDWrapper(binary, [files[m].get() for m in modules], final_libs, searchflags, shared, xlinker_start, native_libs, xlinker_end, [])
+            toolchain.llvmLDWrapper(binary, [files[m].get() for m in modules], final_libs, searchflags, shared, xlinker_start, native_libs, xlinker_end, [])
+
         sys.stderr.write("done\n")
         
         if not (POOL is None):
