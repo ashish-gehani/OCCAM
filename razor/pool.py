@@ -1,30 +1,41 @@
+""" Thread pool for processing modules in parallel.
+"""
 from Queue import Queue
 import threading
-import os
 import traceback
 import sys
 
 class Worker(threading.Thread):
+    """ A daemon worker thread.
+    """
     def __init__(self, q):
+        """ Initializes a thread in the queue q.
+        """
         threading.Thread.__init__(self)
         self.daemon = True
-        self._q = q
+        self.queue = q
     def run(self):
+        """ The thread main.
+        """
         while True:
-            f = self._q.get(True)
+            f = self.queue.get(True)
             f()
 
 
 class ThreadPool(object):
+    """ A pool of daemon worker threads.
+    """
     def __init__(self, count=3):
-        self._q = Queue()
-        self._workers = None
-        self._count = count
+        """ Initializes a pool queue.
+        """
+        self.queue = Queue()
+        self.workers = None
+        self.count = count
 
     def _start(self):
-        if self._workers is None:
-            self._workers = [Worker(self._q)]
-            for w in self._workers:
+        if self.workers is None:
+            self.workers = [Worker(self.queue)]
+            for w in self.workers:
                 w.start()
 
     def map(self, f, args):
@@ -40,12 +51,12 @@ class ThreadPool(object):
                     print '-'*60
                     traceback.print_exc(file=sys.stderr)
                     print '-'*60
-                    os._exit(1)
+                    sys.exit(1)  #iam: was _exit; but are we really that low level?
                 finally:
                     sem.release()
             return rf
         for i in range(0, len(args)):
-            self._q.put(func(i))
+            self.queue.put(func(i))
         for _ in args:
             sem.acquire(True)
         return result

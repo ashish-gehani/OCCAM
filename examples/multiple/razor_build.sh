@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-make clean
 
 LIBRARY='library'
 

@@ -84,11 +84,11 @@ endif
 
 proto:  protoc
 	mkdir -p razor/proto
-	touch razor/proto/__init__.py	      
+	touch razor/proto/__init__.py
 	$(PROTOC) --proto_path=src --python_out=razor/proto src/Previrt.proto
 
 #iam: local editable install of razor for developing
-develop: 
+develop:
 ifeq ($(PIP),)
 	$(error developing requires pip)
 endif
@@ -99,6 +99,8 @@ lint:
 ifeq ($(PYLINT),)
 	$(error lint target requires pylint)
 endif
+# for detecting more than just errors:
+#	@ $(PYLINT) --rcfile=.pylintrc razor/*.py
 	@ $(PYLINT) -E razor/*.py
 
 
@@ -108,5 +110,3 @@ clean:
 
 
 .PHONY: clean razor
-
-

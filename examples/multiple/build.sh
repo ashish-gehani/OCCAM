@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 
-make clean
-
-mkdir previrt
+mkdir -p previrt
 
 LIBRARY='library'
 

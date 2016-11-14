@@ -1,4 +1,4 @@
-class VersionedFile:
+class VersionedFile(object):
     def __init__(self, base, suffix, digits=2):
         self._base = base
         self._suffix = suffix
@@ -13,7 +13,7 @@ class VersionedFile:
         else:
             return self._format % self._version
 
-class FileStream:
+class FileStream(object):
     def __init__(self, base, suffix):
         self._base = base
         self._suffix = suffix

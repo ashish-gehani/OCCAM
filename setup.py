@@ -14,27 +14,27 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 # use the in house version number so we stay in synch with ourselves.
 from razor.version import razor_version
-    
+
 setup(
     name='razor',
-    version=razor_version, 
+    version=razor_version,
     description='The OCCAM saga',
     long_description=long_description,
     url='https://github.com/SRI-CSL/OCCAM',
     author='Ian A. Mason',
     author_email='iam@csl.sri.com',
-    
+
 
     packages=find_packages(exclude=['tests']),
-    
+
     entry_points = {
         'console_scripts': [
-            'slash = razor.slash:main',
+            'slash = razor.slash:entrypoint',
         ],
     },
 
     license='MIT',
-    
+
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Natural Language :: English',

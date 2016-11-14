@@ -42,7 +42,7 @@ def get_manifest(args):
             sys.stderr.write('\nManifest file {0} not a file\n\n'.format(manifest_file))
         else:
             manifest = json.load(open(manifest_file, 'r'))
-    except:
+    except Exception:
         sys.stderr.write('\nReading and parsing the manifest file {0} failed\n\n'.format(args[0]))
     return manifest
 

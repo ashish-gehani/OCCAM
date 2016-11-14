@@ -1,11 +1,19 @@
-import re, sys
+""" The API to the protobuffer interface.
+"""
+
+import re
+import sys
 
 from .proto import Previrt_pb2 as pb
 
 def emptyInterface():
+    """ Returns an empty interface.
+    """
     return pb.ComponentInterface()
 
 def parseInterface(filename):
+    """ Parses the filename as an interface.
+    """
     result = pb.ComponentInterface()
     if filename == '-':
         result.ParseFromString(sys.stdin.read())
@@ -14,7 +22,9 @@ def parseInterface(filename):
     return result
 
 def writeInterface(iface, filename):
-    if type(filename) == type(""):
+    """ Writes the innterface out to the file.
+    """
+    if isinstance(filename, basestring):
         if filename == '-':
             f = sys.stdout
         else:
@@ -25,6 +35,8 @@ def writeInterface(iface, filename):
     f.close()
 
 def mainInterface():
+    """ Returns the interface for main.
+    """
     main = pb.ComponentInterface()
     c = main.calls.add(name='main', count=1)
     c.args.add(type=pb.U)
@@ -36,6 +48,7 @@ def mainInterface():
     main.references.extend('atexit')
 
     inittls = main.calls.add(name='_init_tls', count=1)
+    #iam: no inittls.args.add ???
     main.references.extend('_init_tls')
 
     exitr = main.calls.add(name='exit', count=1)
@@ -45,6 +58,8 @@ def mainInterface():
     return main
 
 def joinInterfaces(into, merge):
+    """ Merges the first interface into the second.
+    """
     result = False
     for mc in merge.calls:
         for c in [c for c in into.calls if c.name == mc.name]:
@@ -54,7 +69,7 @@ def joinInterfaces(into, merge):
                 c.count += mc.count
                 break
         else:
-            into.calls.add(name=mc.name,args=mc.args,count=mc.count)
+            into.calls.add(name=mc.name, args=mc.args, count=mc.count)
             result = True
     for mr in merge.references:
         if mr in into.references:
@@ -65,10 +80,12 @@ def joinInterfaces(into, merge):
     return result
 
 def readInterfaceFromText(f):
+    """ parses the lines of f as an interface.
+    """
     ptrn_rest = r'(?:\s*,\s*(.*))?'
     ptrn_call = re.compile(r'([^(]+)\(([^)]*)\)\s*(?::\s*([0-9]+))?')
-    ptrn_int  = re.compile(r'i([0-9]+)\s+([0-9]+)' + ptrn_rest)
-    ptrn_str  = re.compile(r'^"((?:[^"\\]|(?:\\"))+)"' + ptrn_rest)
+    ptrn_int = re.compile(r'i([0-9]+)\s+([0-9]+)' + ptrn_rest)
+    ptrn_str = re.compile(r'^"((?:[^"\\]|(?:\\"))+)"' + ptrn_rest)
     ptrn_unknown = re.compile(r'^\?' + ptrn_rest)
 
     result = pb.ComponentInterface()
@@ -108,5 +125,3 @@ def readInterfaceFromText(f):
         else:
             print "skipping line '%s'" % line
     return result
-
-

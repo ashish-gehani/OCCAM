@@ -1,4 +1,6 @@
-import getopt, sys, os
+import getopt
+import sys
+import os
 
 from . import utils
 
@@ -12,7 +14,7 @@ from . import pool
 
 from . import driver
 
-def main():
+def entrypoint():
     """This is the main entry point
 
     razor [--work-dir=<dir>] <manifest>
@@ -27,40 +29,52 @@ def main():
     """
     return Slash(sys.argv).run() if utils.checkOccamLib() else 1
 
+
+def  usage(exe):
+    template = '{0} [--work-dir=<dir>]  [--force] [--no-strip] [--no-specialize] <manifest>\n'
+    sys.stderr.write(template.format(exe))
+
+
 class Slash(object):
 
     def __init__(self, argv):
         utils.setLogger()
 
         try:
-            (self.flags, self.args) = getopt.getopt(argv[1:], None, ['work-dir=','force','no-strip', 'no-specialize'])
-        except:
-            self.usage(argv[0])
-            self.ok = False
+            cmdflags = ['work-dir=', 'force', 'no-strip', 'no-specialize']
+            parsedargs = getopt.getopt(argv[1:], None, cmdflags)
+            (self.flags, self.args) = parsedargs
+
+        except Exception:
+            usage(argv[0])
+            self.valid = False
             return
 
         self.manifest = utils.get_manifest(self.args)
         if self.manifest is None:
-            self.usage(argv[0])
-            self.ok = False
+            usage(argv[0])
+            self.valid = False
             return
         self.work_dir = utils.get_work_dir(self.flags)
         self.pool = pool.getDefaultPool()
-        self.ok = True
+        self.valid = True
 
-    def  usage(self, exe):
-        sys.stderr.write('{0} [--work-dir=<dir>]  [--force] [--no-strip] [--no-specialize] <manifest>\n'.format(exe))
 
 
     def run(self):
 
-        if not self.ok: return 1
+        if not self.valid:
+            return 1
 
-        if not utils.make_work_dir(self.work_dir): return 1
+        if not utils.make_work_dir(self.work_dir):
+            return 1
 
-        (ok, module, binary, libs, native_libs, ldflags, args, name) = utils.check_manifest(self.manifest)
+        parsed = utils.check_manifest(self.manifest)
 
-        if not ok: return 1
+        (valid, module, binary, libs, native_libs, ldflags, args, name) = parsed
+
+        if not valid:
+            return 1
 
         no_strip = utils.get_flag(self.flags, 'no-strip', None)
 
@@ -81,7 +95,8 @@ class Slash(object):
         #will need to be beefed up.
         new_native_libs = []
         for lib in native_libs:
-            if lib.startswith('-l'): continue
+            if lib.startswith('-l'):
+                continue
             if os.path.exists(lib):
                 new_native_libs.append(os.path.realpath(lib))
         native_libs = new_native_libs
@@ -91,7 +106,7 @@ class Slash(object):
         os.chdir(self.work_dir)
 
         #specialize the arguments ...
-        if not (args is None):
+        if args is not None:
             main = files[module]
             pre = main.get()
             post = main.new('a')
@@ -108,23 +123,23 @@ class Slash(object):
 
         # First compute the simple interfaces
         vals = files.items()
-        refs = dict([(k, provenance.VersionedFile(utils.prevent_collisions(k[:k.rfind('.bc')]), 'iface'))
-                     for (k,_) in vals])
+        def mkvf(k):
+            provenance.VersionedFile(utils.prevent_collisions(k[:k.rfind('.bc')]), 'iface')
+        refs = dict([(k, mkvf(k)) for (k, _) in vals])
 
-        def _references((m,f)):
+        def _references((m, f)):
             "Computing references"
             name = refs[m].new()
             passes.interface(f.get(), name, [])
 
         pool.InParallel(_references, vals, self.pool)
 
-        def _internalize((m,i)):
+        def _internalize((m, i)):
             "Internalizing from references"
             pre = i.get()
             post = i.new('i')
-            passes.internalize(pre, post,
-                         [refs[f].get() for f in refs.keys() if f != m] +
-                         ['main.iface'])
+            ifaces = [refs[f].get() for f in refs.keys() if f != m] + ['main.iface']
+            passes.internalize(pre, post, ifaces)
 
         pool.InParallel(_internalize, vals, self.pool)
 
@@ -144,7 +159,7 @@ class Slash(object):
         iface_after_file = provenance.VersionedFile('interface_after', 'iface')
         progress = True
         rewrite_files = {}
-        for m in files.keys():
+        for m, _ in files.iteritems():
             base = utils.prevent_collisions(m[:m.rfind('.bc')])
             rewrite_files[m] = provenance.VersionedFile(base, 'rw')
         iteration = 0
@@ -208,8 +223,7 @@ class Slash(object):
             pool.InParallel(_internalize, vals, self.pool)
 
             # Compute the interface again
-            iface = passes.deep([x.get() for x in files.values()],
-                               ['main.iface'])
+            iface = passes.deep([x.get() for x in files.values()], ['main.iface'])
             interface.writeInterface(iface, iface_after_file.new())
 
             # Prune
@@ -230,10 +244,6 @@ class Slash(object):
 
         final_libs = [files[x].get() for x in libs]
         final_module = files[module].get()
-
-        if False:
-            print "\nFinal libs: ", final_libs, "\n"
-            print "\nFinal module: ", final_module, "\n"
 
         linker_args = final_libs + native_libs + ldflags
 
