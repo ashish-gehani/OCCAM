@@ -13,4 +13,4 @@ call.o.bc:
 
 
 clean:
-	rm -f .*.bc *.o.bc *.o
+	rm -rf .*.bc *.o.bc *.o slash

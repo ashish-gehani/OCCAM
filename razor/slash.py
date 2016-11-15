@@ -83,11 +83,11 @@ class Slash(object):
         sys.stderr.write('\nslash working on {0} wrt {1} ...\n'.format(module, ' '.join(libs)))
 
         #<delete this once done>
-        new_libs = []
-        for lib in libs:
-            new_libs.append(os.path.realpath(lib))
-
-        libs = new_libs
+        #new_libs = []
+        #for lib in libs:
+        #    new_libs.append(os.path.realpath(lib))
+        #
+        #libs = new_libs
         #</delete this once done>
 
         #this is simplistic. we are assuming they are (possibly)
