@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-mkdir -p previrt
 
 LIBRARY='library'
 
@@ -32,14 +31,13 @@ extract-bc ${LIBRARY}
 
 export OCCAM_LOGLEVEL=INFO
 
-export OCCAM_LOGFILE=${PWD}/previrt/occam.log
+export OCCAM_LOGFILE=${PWD}/slash/occam.log
 
-
-${OCCAM_HOME}/bin/occam previrt --work-dir=previrt multiple.manifest
+slash --work-dir=slash multiple.manifest
 
 #debugging stuff below:
 
-for bitcode in previrt/*.bc; do
+for bitcode in slash/*.bc; do
     llvm-dis  "$bitcode" &> /dev/null
 done
 
