@@ -1,82 +1,112 @@
 #
-# Top-level OCCAM Makefile
+# Top-level OCCAM razor Makefile
 #
-# To use: 
+# To use:
+#
 #  set LLVM_HOME to the install directory of LLVM
-#  set OCCAM_HOME to where you want the Occam tools to be installed
+#  set OCCAM_HOME to where you want the occam shared library to live.
 #
-# Then type gmake, followed gmake install (or sudo -E gmake install).
+# Then type make, followed make install (or sudo -E gmake install).
 #
-
-# export LLVM_HOME=/usr/local
-# export OCCAM_HOME=~/occam
 
 ifneq (,)
 This Makefile requires GNU Make.
 endif
 
-export LDFLAGS=-L/usr/local/lib
+# tools that are used
+PROTOC  = $(shell which protoc)
+PYLINT  = $(shell which pylint)
+PIP     = $(shell which pip)
+MKDIR_P = mkdir -p
+RM_F    = rm -f
 
-# subdirectories in OCCAM_HOME
-
-export OCCAM_ROOT = $(OCCAM_HOME)/root
-export OCCAM_BIN = $(OCCAM_HOME)/bin
-export OCCAM_PBIN = $(OCCAM_HOME)/pbin
 export OCCAM_LIB = $(OCCAM_HOME)/lib
 
-MKDIR_P = mkdir -p
-INSTALL = install
-# MAKE = gmake
+
+all: sanity_check occam_lib razor
 
 #
-# Build the libprevirt.so in src
-# and the config.py file in tools/occam/occam
+# Sanity Checks.
 #
-all: check-occam-home
-	$(MAKE) -C src all
-	$(MAKE) -C tools/occam config
+# iam: We do not really need protoc if we add the generated code to the repo.
+# But currently we do not do that in the python, but do do it in the  C++, so some
+# consistency would be good.
+#
+#
+sanity_check:  occam_home  llvm_home
 
-#
-# Install all tools needed by occam in INSTALL_DIR
-# (may need sudo -E for this to work)
-#
-install: check-occam-home install-previrt install-occam install-tools
-
-install-dirs: check-occam-home
-	$(MKDIR_P) $(OCCAM_BIN)
-	$(MKDIR_P) $(OCCAM_PBIN)
-	$(MKDIR_P) $(OCCAM_ROOT)
-	$(MKDIR_P) $(OCCAM_LIB)
-
-install-previrt: install-dirs
-	$(MAKE) -C src install
-
-install-occam: install-dirs
-	$(MAKE) -C tools/occam install
-
-install-tools: check-occam-home
-	$(INSTALL) -m 775 tools/bin/clean-all.sh $(OCCAM_BIN)
-
-#
-# Remove the INSTALL_DIR directory and everything in it
-# (may need sudo for this)
-#
-uninstall: check-occam-home
-	$(MAKE) -C tools/occam uninstall
-
-#
-# Delete the object files from src
-#
-clean: 
-	$(MAKE) -C src clean
-	$(MAKE) -C tools/occam clean
-
-#
-# Check for OCCAM_HOME
-#
-check-occam-home:
+occam_home:
 ifeq ($(OCCAM_HOME),)
 	$(error OCCAM_HOME is undefined)
 endif
+	$(MKDIR_P) $(OCCAM_LIB)
+
+llvm_home:
+ifeq ($(LLVM_HOME),)
+	$(error LLVM_HOME is undefined)
+endif
+
+occam_lib:
+	$(MAKE) -C src all
 
 
+install_occam_lib: occam_lib
+	$(MAKE) -C src install
+
+uninstall_occam_lib:
+	$(MAKE) -C src uninstall_occam_lib
+
+
+install_razor:  razor
+ifeq ($(PROTOC),)
+	$(error installing razor requires pip)
+endif
+	$(PIP) install .
+
+uninstall_razor:
+ifeq ($(PROTOC),)
+	$(error uninstalling razor requires pip)
+endif
+	$(PIP) uninstall razor
+
+
+uninstall: uninstall_razor uninstall_occam_lib
+
+install: install_occam_lib install_razor
+
+razor: proto
+
+protoc:
+ifeq ($(PROTOC),)
+	$(error google protobuffer compiler "protoc" required)
+endif
+
+
+proto:  protoc
+	mkdir -p razor/proto
+	touch razor/proto/__init__.py
+	$(PROTOC) --proto_path=src --python_out=razor/proto src/Previrt.proto
+
+#iam: local editable install of razor for developing
+develop:
+ifeq ($(PIP),)
+	$(error developing requires pip)
+endif
+	$(PIP) install -e .
+
+
+lint:
+ifeq ($(PYLINT),)
+	$(error lint target requires pylint)
+endif
+# for detecting more than just errors:
+	@ $(PYLINT) --rcfile=.pylintrc razor/*.py
+#	@ $(PYLINT) -E razor/*.py
+
+
+clean:
+	$(MAKE) -C src clean
+	rm -rf razor/proto
+
+
+.PHONY: clean razor
