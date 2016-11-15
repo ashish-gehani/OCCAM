@@ -100,8 +100,8 @@ ifeq ($(PYLINT),)
 	$(error lint target requires pylint)
 endif
 # for detecting more than just errors:
-#	@ $(PYLINT) --rcfile=.pylintrc razor/*.py
-	@ $(PYLINT) -E razor/*.py
+	@ $(PYLINT) --rcfile=.pylintrc razor/*.py
+#	@ $(PYLINT) -E razor/*.py
 
 
 clean:

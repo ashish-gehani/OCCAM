@@ -43,12 +43,16 @@ def mainInterface():
     c.args.add(type=pb.U)
     main.references.extend('main')
 
+    #iam 11/15/2016 these don't seem to be really necessary;
+    # or if they are necessary, then there probably should be
+    # a lot more, no?
     atexit = main.calls.add(name='atexit', count=1)
     atexit.args.add(type=pb.U)
     main.references.extend('atexit')
 
-    inittls = main.calls.add(name='_init_tls', count=1)
+    #inittls = main.calls.add(name='_init_tls', count=1)
     #iam: no inittls.args.add ???
+    main.calls.add(name='_init_tls', count=1)
     main.references.extend('_init_tls')
 
     exitr = main.calls.add(name='exit', count=1)
