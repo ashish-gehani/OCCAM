@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 
-export OCCAM_LOGFILE=${PWD}/previrt/occam.log
+export OCCAM_LOGFILE=${PWD}/slash/occam.log
 export OCCAM_LOGLEVEL=INFO
-
-mkdir -p previrt
 
 LIBRARY='library'
 
@@ -17,9 +15,9 @@ fi
 
 # Build the manifest file  (FIXME: dylib not good for linux)
 cat > simple.manifest <<EOF
-{ "modules" : ["main.o.bc", "module.o.bc"]
+{ "modules" : ["main.o.bc"]
 , "binary"  : "main"
-, "libs"    : ["${LIBRARY}.bc"]
+, "libs"    : ["${LIBRARY}.bc",  "module.o.bc"]
 , "native_libs" : []
 , "search"  : []
 , "args"    : ["8181"]
@@ -34,12 +32,12 @@ extract-bc module.o
 extract-bc ${LIBRARY}
 
 
-# Previrtualize
-${OCCAM_HOME}/bin/occam previrt --work-dir=previrt simple.manifest
-cp previrt/main main_previrt
+# slash
+slash --work-dir=slash simple.manifest
+cp slash/main main_slash
 
 #debugging stuff below:
-for bitcode in previrt/*.bc; do
+for bitcode in slash/*.bc; do
     llvm-dis  "$bitcode" &> /dev/null
 done
 
