@@ -58,25 +58,57 @@ def make_work_dir(d):
         return True
 
 
-old_manifest_keys = [ 'modules', 'binary', 'libs', 'native_libs', 'search', 'shared', 'ldflags', 'args', 'name']
-new_manifest_keys = [ 'main', 'binary', 'modules', 'native_libs', 'ldflags', 'args', 'name']
 
-def check_manifest(manifest):
-    
+
+def sanity_check_manifest(manifest):
+    """ Nurse maid the users.
+    """
+    manifest_keys = ['ldflags', 'args', 'name', 'native_libs', 'binary']
+
+    old_manifest_keys = ['modules', 'libs', 'search', 'shared', 'watch']
+
+    new_manifest_keys = ['main', 'binary', 'modules']
+
+    dodo_manifest_keys = ['watch']
+
+    already = [False]
+
+    def cr(already):
+        """ I like my warnings to stand out.
+        """
+        if not already[0]:
+            already[0] = True
+            sys.stderr.write('\n')
+
     if manifest is None:
-        sys.stderr.write('Manifest is None; this is not good.\n')
-        return (False, )
-        
+        sys.stderr.write('\nManifest is None.\n')
+        return False
+
     if not isinstance(manifest, dict):
-        sys.stderr.write('Manifest is not a dictionary: {0}; this is not good.\n'.format(type(manifest)))
-        return (False, )
+        sys.stderr.write('\nManifest is not a dictionary: {0}.\n'.format(type(manifest)))
+        return False
 
     for key in manifest:
+        if key in manifest_keys:
+            continue
+
+        if key in dodo_manifest_keys:
+            cr(already)
+            sys.stderr.write('Warning: "{0}" is no longer supported; ignoring.\n'.format(key))
+
         if not key in old_manifest_keys + new_manifest_keys:
-            sys.stderr.write('Warning: {0} is not a recognized key; ignoring.\n'.format(key))
-        
+            cr(already)
+            sys.stderr.write('Warning: "{0}" is not a recognized key; ignoring.\n'.format(key))
+
         if key in old_manifest_keys and key not in new_manifest_keys:
-            sys.stderr.write('Warning: old style key {0} is DEPRECATED.\n'.format(key))
+            cr(already)
+            sys.stderr.write('Warning: old style key "{0}" is DEPRECATED.\n'.format(key))
+
+    return True
+
+def check_manifest(manifest):
+
+    sanity_check_manifest(manifest)
 
     #assume we will only have one module (will be called module eventually)
     modules = manifest.get('modules')

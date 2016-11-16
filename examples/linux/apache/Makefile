@@ -110,7 +110,7 @@ ${HTTPD}_build: ${HTTPD}
 
 
 clean:
-	rm -rf *~  *_build  previrt httpd
+	rm -rf *~  *_build  slash linked_slash httpd *.manifest
 
 
 very_clean: clean
