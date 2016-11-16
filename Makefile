@@ -95,6 +95,25 @@ endif
 	$(PIP) install -e .
 
 
+dist: clean proto
+	python setup.py bdist_wheel
+
+# If you need to push your project again,
+# change the version number in plambda/eval/PLambda.py,
+# otherwise the server will give you an error.
+
+testpublish: dist
+	python setup.py register -r https://testpypi.python.org/pypi
+	python setup.py sdist upload -r https://testpypi.python.org/pypi
+
+testinstall:
+	pip install -i https://testpypi.python.org/pypi plambda
+
+publish: dist
+	python setup.py register -r https://pypi.python.org/pypi
+	python setup.py sdist upload -r https://pypi.python.org/pypi
+
+
 lint:
 ifeq ($(PYLINT),)
 	$(error lint target requires pylint)

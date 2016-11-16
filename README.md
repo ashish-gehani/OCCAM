@@ -1,3 +1,4 @@
+[![PyPI version](https://badge.fury.io/py/razor.svg)](https://badge.fury.io/py/razor)
 [![Build Status](https://travis-ci.org/SRI-CSL/OCCAM.svg?branch=master)](https://travis-ci.org/SRI-CSL/OCCAM)
 
 
@@ -5,7 +6,7 @@ Prerequisites
 ============
 
 OCCAM currently works fine on Linux, OS X, and FreeBSD. You will
-need an installation of llvm-3.5. If you need to generate application bitcode, 
+need an installation of llvm-3.5. If you need to generate application bitcode,
 you will want to install [WLLVM](https://github.com/SRI-CSL/whole-program-llvm.git).
 
 
@@ -38,7 +39,7 @@ Build and install OCCAM with:
 Using OCCAM
 ===========
 
-You can choose to record logs from the OCCAM 
+You can choose to record logs from the OCCAM
 tool by setting the following variables:
 
 ```
