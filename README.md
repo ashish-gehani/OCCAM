@@ -66,7 +66,7 @@ make -f Makefile develop
 This may require sudo priviliges. Either way you can now use slash:
 
 ```
-slash --work-dir=<dir> <manifest>
+slash [--work-dir=<dir>]  [--force] [--no-strip] [--no-specialize] <manifest>
 ```
 
 `slash` also accepts the following new command line option:
@@ -75,3 +75,22 @@ slash --work-dir=<dir> <manifest>
 ```
 
 which will prevent any inter-module specializations.
+
+The Manifest(o)
+===============
+
+The manifest for `slash` should be valid JSON. The following keys 
+have meaning:
+
++ `main` : a path to the bitcode module containing the `main` entry point.
+
++ `modules`: a list of paths to the other bitcode modules needed.
+
++ `binary` : the name of the desired executable.
+
++ `native_libs' : a list of flags ('-lm', '-lc', '-lpthread') or paths to native objects (`.o', '.a', '.so', '.dylib')
+
++ `ldflags`: a list of linker flags such as '--static', '--nostdlib'
+
++ args : the arguments you wish to specialize the main of `main` to.
+
