@@ -69,7 +69,7 @@ def sanity_check_manifest(manifest):
 
     dodo_manifest_keys = ['watch']
 
-    replaces = { 'modules': 'main', 'libs': 'modules', 'search': 'ldflags' }
+    replaces = {'modules': 'main', 'libs': 'modules', 'search': 'ldflags'}
 
     warnings = [False]
 
@@ -82,11 +82,11 @@ def sanity_check_manifest(manifest):
 
     if manifest is None:
         sys.stderr.write('\nManifest is None.\n')
-        return (False, )
+        return False
 
     if not isinstance(manifest, dict):
         sys.stderr.write('\nManifest is not a dictionary: {0}.\n'.format(type(manifest)))
-        return (False, )
+        return False
 
     for key in manifest:
         if key in manifest_keys:
@@ -108,11 +108,11 @@ def sanity_check_manifest(manifest):
             sys.stderr.write('Warning: "{0}" is not a recognized key; ignoring.\n'.format(key))
             continue 
 
-    return (True, warnings[0])
+    return True
 
 def check_manifest(manifest):
 
-    (ok, warnings) = sanity_check_manifest(manifest)
+    ok = sanity_check_manifest(manifest)
 
     if not ok:
         return (False, )
