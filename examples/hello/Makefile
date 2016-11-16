@@ -38,4 +38,4 @@ hello_O3:
 
 clean:
 	rm -f *.o .*.o *~ *.bc .*.bc hello hello_O3
-	rm -rf slash
+	rm -rf slash hello_slash
