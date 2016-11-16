@@ -7,7 +7,7 @@ Prerequisites
 
 OCCAM currently works fine on Linux, OS X, and FreeBSD. You will
 need an installation of llvm-3.5. If you need to generate application bitcode,
-you will want to install [WLLVM](https://github.com/SRI-CSL/whole-program-llvm.git).
+you will want to install the pip package [wllvm](https://github.com/SRI-CSL/whole-program-llvm.git).
 
 
 Building and Installing
@@ -52,14 +52,18 @@ Using razor
 ===========
 
 `razor` is a pip package that relies on the same dynamic library as `occam`,
-so you should first build and install `occam` as described above. Then to install
-`razor` do:
+so you should first build and install `occam` as described above.
+You can install it from this repository, or you can just do a
+```
+pip install razor
+```
+To install and editable version from this repository:
 
 ```
 make -f Makefile develop
 ```
 
-This may require sudo priviliges. Then you can use slash:
+This may require sudo priviliges. Either way you can now use slash:
 
 ```
 slash --work-dir=<dir> <manifest>
