@@ -88,9 +88,9 @@ have meaning:
 
 + `binary` : the name of the desired executable.
 
-+ `native_libs' : a list of flags ('-lm', '-lc', '-lpthread') or paths to native objects (`.o', '.a', '.so', '.dylib')
++ `native_libs` : a list of flags ('-lm', '-lc', '-lpthread') or paths to native objects (`.o', '.a', '.so', '.dylib')
 
 + `ldflags`: a list of linker flags such as '--static', '--nostdlib'
 
-+ args : the arguments you wish to specialize the main of `main` to.
++ `args` : the list of arguments you wish to specialize in the main of `main`.
 
