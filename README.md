@@ -107,3 +107,14 @@ As an example, (see `examples/linux/apache`), to previrtualize apache:
 }
 ```
 
+Another example, (see `examples/linux/musl_nweb`), specializes `nweb` with `musl libc.c`:
+```
+{ "main" :  "nweb.o.bc"
+, "binary"  : "nweb_razor"
+, "modules"    : ["libc.a.bc"]
+, "native_libs" : ["crt1.o", "libc.a"]
+, "ldflags" : ["-static", "-nostdlib"]
+, "args"    : ["8181", "./root"]
+, "name"    : "nweb"
+}
+```
