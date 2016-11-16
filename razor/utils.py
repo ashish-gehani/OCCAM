@@ -61,23 +61,23 @@ def make_work_dir(d):
 def sanity_check_manifest(manifest):
     """ Nurse maid the users.
     """
-    manifest_keys = ['ldflags', 'args', 'name', 'native_libs', 'binary']
+    manifest_keys = ['ldflags', 'args', 'name', 'native_libs', 'binary', 'modules']
 
     old_manifest_keys = ['modules', 'libs', 'search', 'shared']
 
-    new_manifest_keys = ['main', 'binary', 'modules']
+    new_manifest_keys = ['main', 'binary']
 
     dodo_manifest_keys = ['watch']
 
-    replaces = { 'modules': 'main', 'libs': 'modules', 'search': 'ldflags' }
+    replaces = {'modules': 'main', 'libs': 'modules', 'search': 'ldflags'}
 
-    already = [False]
+    warnings = [False]
 
-    def cr(already):
+    def cr(warnings):
         """ I like my warnings to stand out.
         """
-        if not already[0]:
-            already[0] = True
+        if not warnings[0]:
+            warnings[0] = True
             sys.stderr.write('\n')
 
     if manifest is None:
@@ -93,18 +93,18 @@ def sanity_check_manifest(manifest):
             continue
 
         if key in dodo_manifest_keys:
-            cr(already)
+            cr(warnings)
             sys.stderr.write('Warning: "{0}" is no longer supported; ignoring.\n'.format(key))
             continue
 
 
         if key in old_manifest_keys:
-            cr(already)
+            cr(warnings)
             sys.stderr.write('Warning: old style key "{0}" is DEPRECATED, use {1}.\n'.format(key, replaces[key]), )
             continue
 
         if not key in new_manifest_keys:
-            cr(already)
+            cr(warnings)
             sys.stderr.write('Warning: "{0}" is not a recognized key; ignoring.\n'.format(key))
             continue 
 
@@ -112,26 +112,25 @@ def sanity_check_manifest(manifest):
 
 def check_manifest(manifest):
 
-    sanity_check_manifest(manifest)
+    ok = sanity_check_manifest(manifest)
 
-    #assume we will only have one module (will be called module eventually)
-    modules = manifest.get('modules')
-    if modules is None:
-        sys.stderr.write('No modules in manifest\n')
+    if not ok:
         return (False, )
 
-    #stick with the old API for now.
-    [module] = modules
-
+    main = manifest.get('main')
+    if main is None:
+        sys.stderr.write('No modules in manifest\n')
+        return (False, )
+    
     binary = manifest.get('binary')
     if binary is None:
         sys.stderr.write('No binary in manifest\n')
         return (False, )
 
-    libs = manifest.get('libs')
-    if libs is None:
+    modules = manifest.get('modules')
+    if modules is None:
         sys.stderr.write('No libs in manifest\n')
-        return (False, )
+        modules = []
 
     native_libs = manifest.get('native_libs')
     if native_libs is None:
@@ -149,7 +148,7 @@ def check_manifest(manifest):
         sys.stderr.write('No name in manifest\n')
         return (False, )
 
-    return (True, module, binary, libs, native_libs, ldflags, args, name)
+    return (True, main, binary, modules, native_libs, ldflags, args, name)
 
 
 #iam: used to be just os.path.basename; but now when we are processing trees
