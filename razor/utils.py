@@ -58,18 +58,18 @@ def make_work_dir(d):
         return True
 
 
-
-
 def sanity_check_manifest(manifest):
     """ Nurse maid the users.
     """
     manifest_keys = ['ldflags', 'args', 'name', 'native_libs', 'binary']
 
-    old_manifest_keys = ['modules', 'libs', 'search', 'shared', 'watch']
+    old_manifest_keys = ['modules', 'libs', 'search', 'shared']
 
     new_manifest_keys = ['main', 'binary', 'modules']
 
     dodo_manifest_keys = ['watch']
+
+    replaces = { 'modules': 'main', 'libs': 'modules', 'search': 'ldflags' }
 
     already = [False]
 
@@ -95,14 +95,18 @@ def sanity_check_manifest(manifest):
         if key in dodo_manifest_keys:
             cr(already)
             sys.stderr.write('Warning: "{0}" is no longer supported; ignoring.\n'.format(key))
+            continue
 
-        if not key in old_manifest_keys + new_manifest_keys:
+
+        if key in old_manifest_keys:
+            cr(already)
+            sys.stderr.write('Warning: old style key "{0}" is DEPRECATED, use {1}.\n'.format(key, replaces[key]), )
+            continue
+
+        if not key in new_manifest_keys:
             cr(already)
             sys.stderr.write('Warning: "{0}" is not a recognized key; ignoring.\n'.format(key))
-
-        if key in old_manifest_keys and key not in new_manifest_keys:
-            cr(already)
-            sys.stderr.write('Warning: old style key "{0}" is DEPRECATED.\n'.format(key))
+            continue 
 
     return True
 
