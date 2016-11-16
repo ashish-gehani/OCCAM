@@ -25,7 +25,7 @@ setup(
     author_email='iam@csl.sri.com',
 
 
-    packages=find_packages(exclude=['tests']),
+    packages=find_packages(exclude=['examples']),
 
     entry_points = {
         'console_scripts': [

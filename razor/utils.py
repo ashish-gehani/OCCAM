@@ -57,7 +57,26 @@ def make_work_dir(d):
     else:
         return True
 
+
+old_manifest_keys = [ 'modules', 'binary', 'libs', 'native_libs', 'search', 'shared', 'ldflags', 'args', 'name']
+new_manifest_keys = [ 'main', 'binary', 'modules', 'native_libs', 'ldflags', 'args', 'name']
+
 def check_manifest(manifest):
+    
+    if manifest is None:
+        sys.stderr.write('Manifest is None; this is not good.\n')
+        return (False, )
+        
+    if not isinstance(manifest, dict):
+        sys.stderr.write('Manifest is not a dictionary: {0}; this is not good.\n'.format(type(manifest)))
+        return (False, )
+
+    for key in manifest:
+        if not key in old_manifest_keys + new_manifest_keys:
+            sys.stderr.write('Warning: {0} is not a recognized key; ignoring.\n'.format(key))
+        
+        if key in old_manifest_keys and key not in new_manifest_keys:
+            sys.stderr.write('Warning: old style key {0} is DEPRECATED.\n'.format(key))
 
     #assume we will only have one module (will be called module eventually)
     modules = manifest.get('modules')

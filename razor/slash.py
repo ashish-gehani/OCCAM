@@ -90,12 +90,15 @@ class Slash(object):
         #libs = new_libs
         #</delete this once done>
 
+        native_lib_flags = []
+
         #this is simplistic. we are assuming they are (possibly)
         #relative paths, if we need to use a search path then this
         #will need to be beefed up.
         new_native_libs = []
         for lib in native_libs:
             if lib.startswith('-l'):
+                native_lib_flags.append(lib)
                 continue
             if os.path.exists(lib):
                 new_native_libs.append(os.path.realpath(lib))
@@ -129,8 +132,8 @@ class Slash(object):
 
         def _references((m, f)):
             "Computing references"
-            name = refs[m].new()
-            passes.interface(f.get(), name, [])
+            nm = refs[m].new()
+            passes.interface(f.get(), nm, [])
 
         pool.InParallel(_references, vals, self.pool)
 
@@ -245,7 +248,7 @@ class Slash(object):
         final_libs = [files[x].get() for x in libs]
         final_module = files[module].get()
 
-        linker_args = final_libs + native_libs + ldflags
+        linker_args = final_libs + native_libs + native_lib_flags + ldflags
 
         link_cmd = '\nclang++ {0} -o {1} {2}\n'.format(module, binary, ' '.join(linker_args))
 
