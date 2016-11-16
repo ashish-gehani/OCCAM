@@ -56,7 +56,7 @@ so you should first build and install `occam` as described above. Then to instal
 `razor` do:
 
 ```
-make -f Makefile_razor develop
+make -f Makefile develop
 ```
 
 This may require sudo priviliges. Then you can use slash:
