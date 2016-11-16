@@ -9,10 +9,12 @@ Version History:
 
 1.0.1    - 11/16/2016 decided to enforce the new manifesto, now that it is documented.
 
+1.0.2    - 11/16/2016 forgot to pull before publishing. D'oh.
+
 
 
 
 """
 
 
-razor_version = '1.0.1'
+razor_version = '1.0.2'
