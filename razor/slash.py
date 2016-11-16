@@ -71,10 +71,13 @@ class Slash(object):
 
         parsed = utils.check_manifest(self.manifest)
 
-        (valid, module, binary, libs, native_libs, ldflags, args, name) = parsed
+        valid = parsed[0]
 
         if not valid:
             return 1
+        
+        (valid, module, binary, libs, native_libs, ldflags, args, name) = parsed
+
 
         no_strip = utils.get_flag(self.flags, 'no-strip', None)
 

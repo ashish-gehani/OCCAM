@@ -8,12 +8,11 @@ export OCCAM_LOGFILE=${PWD}/slash/occam.log
 
 # Build the manifest file
 cat > httpd.manifest <<EOF
-{ "modules" : ["httpd.bc"]
+{ "main" : "httpd.bc"
 , "binary"  : "httpd_slashed"
-, "libs"    : ["libapr-1.so.bc", "libaprutil-1.so.bc", "libpcre.so.bc"]
+, "modules"    : ["libapr-1.so.bc", "libaprutil-1.so.bc", "libpcre.so.bc"]
 , "native_libs" : ["-lcrypt", "-ldl", "-lpthread"]
 , "args"    : ["-d", "/vagrant/www"]
-, "search"  : ["/usr/lib/x86_64-linux-gnu/"]
 , "name"    : "httpd"
 }
 EOF
@@ -29,12 +28,11 @@ llvm-link httpd.bc libapr-1.so.bc libaprutil-1.so.bc libpcre.so.bc -o linked_htt
 
 # Build the manifest file
 cat > linked_httpd.manifest <<EOF
-{ "modules" : ["linked_httpd.bc"]
+{ "main" : "linked_httpd.bc"
 , "binary"  : "httpd_linked"
-, "libs"    : []
+, "modules"    : []
 , "native_libs" : ["-lcrypt", "-ldl", "-lpthread"]
 , "args"    : ["-d", "/vagrant/www"]
-, "search"  : ["/usr/lib/x86_64-linux-gnu/"]
 , "name"    : "httpd_linked"
 }
 EOF

@@ -94,3 +94,16 @@ have meaning:
 
 + `args` : the list of arguments you wish to specialize in the main of `main`.
 
+
+As an example, (see `examples/linux/apache`), to previrtualize apache:
+
+```
+{ "main" : "httpd.bc"
+, "binary"  : "httpd_slashed"
+, "modules"    : ["libapr-1.so.bc", "libaprutil-1.so.bc", "libpcre.so.bc"]
+, "native_libs" : ["-lcrypt", "-ldl", "-lpthread"]
+, "args"    : ["-d", "/var/www"]
+, "name"    : "httpd"
+}
+```
+
