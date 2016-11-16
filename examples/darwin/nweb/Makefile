@@ -8,5 +8,5 @@ all:
 
 clean:
 	rm -f *.ll *.bc .*.bc .*.o *.s nweb nweb-base nweb.manifest nweb*.o index.html* 
-	rm -rf previrt slash index.html* root/nweb.log
+	rm -rf slash index.html* root/nweb.log
 
