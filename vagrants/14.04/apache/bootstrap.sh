@@ -11,7 +11,7 @@ mkdir Repositories  && \
     cd Repositories &&  \
     git clone https://github.com/SRI-CSL/OCCAM.git && \
     cp /vagrant/bash_profile  /home/vagrant/.bash_profile && \
-    .  .bash_profile && \
+    .  /home/vagrant/.bash_profile && \
     cd OCCAM && \
     make && \
     sudo -E make install 
