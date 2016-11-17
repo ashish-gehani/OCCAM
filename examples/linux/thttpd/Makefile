@@ -24,7 +24,7 @@ thttpd: thttpd.bc
 clean:
 	rm -rf thttpd-2.27 thttpd-2.27.tar thttpd.bc thttpd
 
-distclean: clean
+spotless: clean
 	rm  -f thttpd-2.27.tar.gz libc.a.bc crt1.o libc.a
 
 .PHONY: clean distclean

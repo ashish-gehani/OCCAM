@@ -25,6 +25,6 @@ clean:
 spotless: clean
 	rm -f *.bc *.a
 
-.PHONY: clean distclean
+.PHONY: clean spotless
 
 

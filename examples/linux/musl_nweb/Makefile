@@ -18,5 +18,8 @@ nweb:
 
 
 clean:
-	rm -rf *.a *.bc .*.bc .*.o *.s nweb nweb-base *.manifest nweb*.o previrt occam.log index.html* root/nweb.log
+	rm -rf *.a *.bc .*.bc .*.o *.o *.s nweb nweb-base *.manifest nweb*.o slash occam.log index.html* root/nweb.log 
 
+
+spotless: clean
+	rm -rf libc.a musllvm

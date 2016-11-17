@@ -110,12 +110,12 @@ ${HTTPD}_build: ${HTTPD}
 
 
 clean:
-	rm -rf *~  *_build  slash linked_slash httpd *.manifest
+	rm -rf *~  *_build  slash linked_slash httpd *.manifest httpd_*
 
 
 very_clean: clean
 	rm -rf ${HTTPD} ${APR_UTIL} ${APR} ${PCRE}
 
 spotless: very_clean
-	rm -f *.tar.gz *.tar *.bc
+	rm -rf *.tar.gz *.tar *.bc build ${INSTALL}
 
