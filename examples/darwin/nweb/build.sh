@@ -6,11 +6,10 @@ ROOT=`pwd`/root
 
 # Build the manifest file
 cat > nweb.manifest <<EOF
-{ "modules" : ["nweb.bc"]
+{ "main" : "nweb.bc"
 , "binary"  : "nweb"
-, "libs"    : []
+, "modules"    : []
 , "native_libs" : ["-lc", "-lpthread"]
-, "search"  : ["/usr/lib", "/usr/local/lib"]
 , "args"    : ["8181", "${ROOT}"]
 , "name"    : "nweb"
 }
