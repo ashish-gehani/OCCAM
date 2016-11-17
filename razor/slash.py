@@ -75,7 +75,7 @@ class Slash(object):
 
         if not valid:
             return 1
-        
+
         (valid, module, binary, libs, native_libs, ldflags, args, name) = parsed
 
 

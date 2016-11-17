@@ -106,7 +106,7 @@ def sanity_check_manifest(manifest):
         if not key in new_manifest_keys:
             cr(warnings)
             sys.stderr.write('Warning: "{0}" is not a recognized key; ignoring.\n'.format(key))
-            continue 
+            continue
 
     return True
 
@@ -121,7 +121,7 @@ def check_manifest(manifest):
     if main is None:
         sys.stderr.write('No modules in manifest\n')
         return (False, )
-    
+
     binary = manifest.get('binary')
     if binary is None:
         sys.stderr.write('No binary in manifest\n')
