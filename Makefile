@@ -6,7 +6,7 @@
 #  set LLVM_HOME to the install directory of LLVM
 #  set OCCAM_HOME to where you want the occam shared library to live.
 #
-# Then type make, followed make install (or sudo -E gmake install).
+# Then type make, followed make install (or sudo -E make install).
 #
 
 ifneq (,)
@@ -23,7 +23,7 @@ RM_F    = rm -f
 export OCCAM_LIB = $(OCCAM_HOME)/lib
 
 
-all: sanity_check occam_lib razor
+all: sanity_check occam_lib dist
 
 #
 # Sanity Checks.
@@ -57,7 +57,7 @@ uninstall_occam_lib:
 	$(MAKE) -C src uninstall_occam_lib
 
 
-install_razor:  razor
+install_razor:  dist
 ifeq ($(PROTOC),)
 	$(error installing razor requires pip)
 endif
@@ -74,18 +74,19 @@ uninstall: uninstall_razor uninstall_occam_lib
 
 install: install_occam_lib install_razor
 
-razor: proto
+dist: proto
+	python setup.py bdist_wheel
+
+proto:  protoc
+	mkdir -p razor/proto
+	touch razor/proto/__init__.py
+	$(PROTOC) --proto_path=src --python_out=razor/proto src/Previrt.proto
 
 protoc:
 ifeq ($(PROTOC),)
 	$(error google protobuffer compiler "protoc" required)
 endif
 
-
-proto:  protoc
-	mkdir -p razor/proto
-	touch razor/proto/__init__.py
-	$(PROTOC) --proto_path=src --python_out=razor/proto src/Previrt.proto
 
 #iam: local editable install of razor for developing
 develop:
@@ -94,20 +95,16 @@ ifeq ($(PIP),)
 endif
 	$(PIP) install -e .
 
-
-dist: clean proto
-	python setup.py bdist_wheel
-
-# If you need to push your project again,
+#
+# Note Bene:
+#
+# If you need to publish a new pip version you must
 # change the version number in plambda/eval/PLambda.py,
 # otherwise the server will give you an error.
 
 testpublish: dist
 	python setup.py register -r https://testpypi.python.org/pypi
 	python setup.py sdist upload -r https://testpypi.python.org/pypi
-
-testinstall:
-	pip install -i https://testpypi.python.org/pypi plambda
 
 publish: dist
 	python setup.py register -r https://pypi.python.org/pypi
@@ -126,6 +123,6 @@ endif
 clean:
 	$(MAKE) -C src clean
 	rm -rf razor/proto
+	rm -rf dist
 
-
-.PHONY: clean razor
+.PHONY: clean
