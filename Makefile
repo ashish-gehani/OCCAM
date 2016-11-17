@@ -119,6 +119,8 @@ endif
 	@ $(PYLINT) --rcfile=.pylintrc razor/*.py
 #	@ $(PYLINT) -E razor/*.py
 
+md2rst:
+	pandoc --from=markdown --to=rst --output=README.rst README.md
 
 clean:
 	$(MAKE) -C src clean
