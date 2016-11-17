@@ -14,7 +14,7 @@ APR_UTIL_URL=http://shinyfeather.com/apr/${APR_UTIL}.tar.gz
 HTTPD_URL=http://apache.cs.utah.edu/httpd/${HTTPD}.tar.gz
 
 
-all: build
+all: check_sanity build
 
 build: ${PCRE}_build ${APR}_build ${APR_UTIL}_build ${HTTPD}_build
 
@@ -78,12 +78,11 @@ ${APR_UTIL}_build: ${APR_UTIL}
 	extract-bc libaprutil-1.so                                         && \
 	cp libaprutil-1.so.bc ../../                                       && \
 	cd ..                                                              && \
+	cd xml/expat/.libs                                                 && \
+	extract-bc libexpat.so                                             && \
+	mv libexpat.so.bc ../../../../                                     && \
+	cd ../../..                                                        && \
 	make install                                                          
-
-#	cd xml/expat/.libs                                                 && \
-#	extract-bc libexpat.so                                             && \
-#	mv libexpat.so.bc ../../../../                                     && \
-#	cd ../../..                                                        && \
 
 
 ${HTTPD}.tar.gz:
@@ -109,12 +108,12 @@ ${HTTPD}_build: ${HTTPD}
 
 
 clean:
-	rm -rf *~  *_build  slash linked_slash httpd *.manifest httpd_*
+	rm -rf *~  *_build  previrt httpd
 
 
 very_clean: clean
 	rm -rf ${HTTPD} ${APR_UTIL} ${APR} ${PCRE}
 
 spotless: very_clean
-	rm -rf *.tar.gz *.tar *.bc build ${INSTALL}
+	rm -f *.tar.gz *.tar
 
