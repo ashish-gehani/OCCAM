@@ -23,7 +23,7 @@ RM_F    = rm -f
 export OCCAM_LIB = $(OCCAM_HOME)/lib
 
 
-all: sanity_check occam_lib dist
+all: sanity_check dist occam_lib
 
 #
 # Sanity Checks.
@@ -75,6 +75,7 @@ uninstall: uninstall_razor uninstall_occam_lib
 install: install_occam_lib install_razor
 
 dist: proto
+	python setup.py --help-commands
 	python setup.py bdist_wheel
 
 proto:  protoc
