@@ -1,7 +1,0 @@
-{ "libs": ["-lm", "-lkvm", "-lc"]
-, "search": ["/usr/lib", "/usr/local/lib"]
-, "native_libs": []
-, "binary": "psau"
-, "modules": ["ps.bc"]
-, "args": ["au"]
-}
