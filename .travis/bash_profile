@@ -6,7 +6,7 @@ export WLLVM_OUTPUT=WARNING
 
 ########  Occam configuration ################
 
-export LLVM_HOME=/usr
+export LLVM_HOME=/usr/lib/llvm-3.5/
 export CC=${LLVM_CC_NAME}
 export CXX=${LLVM_CXX_NAME}
 #why not LLVM_CPP_NAME?
