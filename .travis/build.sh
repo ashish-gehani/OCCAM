@@ -13,10 +13,6 @@ git clone https://github.com/SRI-CSL/whole-program-llvm.git
 cd ${BUILD_HOME}
 make 
 make install
-#for some reason the install of occam is not being picked up...
-#cd examples/hello
-#make clean
-#make
 RETURN="$?"
 
 

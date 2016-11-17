@@ -1,8 +1,4 @@
-1. Examples
-
-2. Trim and simplify the python wrappers.
-
-3*. Adding instrumentation
+1*. Adding instrumentation
 
    - function retained; specialized; eliminated
    - concrete arguments exploited
@@ -10,7 +6,7 @@
 
    - keep the bloody function names...
 
-4. Partial specification of main's argv.
+2. Partial specification of main's argv.
    - could specialize a option parsing library?
    - naive aproach:
 
