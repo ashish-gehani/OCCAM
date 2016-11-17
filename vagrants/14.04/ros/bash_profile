@@ -2,16 +2,9 @@ export HOME=/home/vagrant
 
 export REPOS=${HOME}/Repositories
 
-####
+#### llvm 
 
-## Ubuntu adds suffixes to the LLVM tools that we rely on.
-
-#export the suffix	    
-export LLVM_SUFFIX=-3.5
-
-#run the suffix additions script
-. /vagrant/env.sh
-
+export LLVM_HOME=/usr/lib/llvm-3.5/
 
 ######## whole-program-llvm configuration #############
 
