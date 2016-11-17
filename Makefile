@@ -122,6 +122,11 @@ endif
 md2rst:
 	pandoc --from=markdown --to=rst --output=README.rst README.md
 
+zippity:
+	rm -rf doczip*; mkdir doczip;
+	cat README.md | pandoc -f markdown_github > doczip/index.html
+	zip -r -j doczip.zip doczip
+
 clean:
 	$(MAKE) -C src clean
 	rm -rf razor/proto
