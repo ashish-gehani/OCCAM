@@ -13,6 +13,8 @@ all:  libc++.a.bc
 llvm:
 	svn co ${LLVM} llvm
 
+../gold/binutils/include:
+	make -C ../gold 
 
 llvm/tools/clang: llvm
 	cd llvm/tools/; svn co ${CLANG} clang

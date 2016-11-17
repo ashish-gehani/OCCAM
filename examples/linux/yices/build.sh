@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-WORKDIR=previrt
+WORKDIR=slash
 
 
 export OCCAM_LOGFILE=${PWD}/${WORKDIR}/occam.log
