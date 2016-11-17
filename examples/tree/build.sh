@@ -14,11 +14,9 @@ fi
 
 # Build the manifest file  (FIXME: dylib not good for linux)
 cat > simple.manifest <<EOF
-{ "modules" : ["main.o.bc"]
+{ "main" : "main.o.bc"
 , "binary"  : "main"
-, "libs"    : ["${LIBRARY}.bc", "subdir/module.o.bc"]
-, "native_libs" : []
-, "search"  : []
+, "modules"    : ["${LIBRARY}.bc", "subdir/module.o.bc"]
 , "args"    : ["8181"]
 , "name"    : "main"
 }

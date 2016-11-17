@@ -17,7 +17,7 @@ else
 endif
 
 
-all: hello_slash hello_O3
+all: hello_razor hello_O3
 
 
 hello.bc:

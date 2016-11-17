@@ -13,11 +13,10 @@ fi
 
 # Build the manifest file
 cat > multiple.manifest <<EOF
-{ "modules" : ["main.bc"]
+{ "main" : "main.bc"
 , "binary"  : "main"
-, "libs"    : ["${LIBRARY}.bc"]
+, "modules"    : ["${LIBRARY}.bc"]
 , "native_libs" : []
-, "search"  : []
 , "args"    : ["8181"]
 , "name"    : "main"
 }
