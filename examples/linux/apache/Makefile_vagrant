@@ -14,7 +14,7 @@ APR_UTIL_URL=http://shinyfeather.com/apr/${APR_UTIL}.tar.gz
 HTTPD_URL=http://apache.cs.utah.edu/httpd/${HTTPD}.tar.gz
 
 
-all: check_sanity build
+all: build
 
 build: ${PCRE}_build ${APR}_build ${APR_UTIL}_build ${HTTPD}_build
 

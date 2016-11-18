@@ -16,6 +16,7 @@ mkdir Repositories  && \
     make && \
     sudo -E make install 
 
-       
+echo "Now login in and do 'cd Repositories/OCCAM/examples/linux/apache/;  make -f Makefile_vagrant"
+
 
 

@@ -29,6 +29,7 @@ export CXX=clang++
 #things like coreutils don't like clang-cpp-3.5
 export CPP="clang -E"
 
+export PATH=${LLVM_HOME}/bin:${PATH}
 
 
 
