@@ -20,8 +20,6 @@ export OCCAM_HOME=${HOME}/occam
 
 export OCCAM_LOGFILE=${HOME}/.occam.log
 
-export LLVM_HOME=/usr
-
 export CC=clang
 
 export CXX=clang++
