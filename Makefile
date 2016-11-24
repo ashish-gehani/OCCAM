@@ -74,7 +74,7 @@ uninstall: uninstall_razor uninstall_occam_lib
 
 install: install_occam_lib install_razor
 
-dist: proto md2rst
+dist: proto
 	python setup.py bdist_wheel
 
 proto:  protoc
@@ -102,11 +102,11 @@ endif
 # change the version number in razor/version.py,
 # otherwise the server will give you an error.
 
-testpublish: dist
+testpublish: md2rst dist
 	python setup.py register -r https://testpypi.python.org/pypi
 	python setup.py sdist upload -r https://testpypi.python.org/pypi
 
-publish: dist
+publish: md2rst dist
 	python setup.py register -r https://pypi.python.org/pypi
 	python setup.py sdist upload -r https://pypi.python.org/pypi
 
