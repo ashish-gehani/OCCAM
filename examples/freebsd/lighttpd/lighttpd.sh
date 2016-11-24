@@ -27,11 +27,8 @@ cp lighttpd.bc spec
 
 # set up manifests
  cat > lhttpd.manifest <<EOF
-{ "modules" : ["lighttpd.bc"]
-, "binary"  : "lighttpd"
-, "libs"    : []
-, "native_libs" : []
-,"search": []
+{ "main" : "lighttpd.bc"
+, "binary"  : "lighthttpd"
 , "args"    : ["-D", "-m", "/", "-f", "myconf.conf"]
 , "name"    : "lighttpd"
 }
