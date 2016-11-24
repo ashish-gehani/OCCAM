@@ -99,7 +99,7 @@ endif
 # Note Bene:
 #
 # If you need to publish a new pip version you must
-# change the version number in plambda/eval/PLambda.py,
+# change the version number in razor/version.py,
 # otherwise the server will give you an error.
 
 testpublish: dist
