@@ -74,7 +74,7 @@ uninstall: uninstall_razor uninstall_occam_lib
 
 install: install_occam_lib install_razor
 
-dist: proto
+dist: proto md2rst
 	python setup.py bdist_wheel
 
 proto:  protoc
