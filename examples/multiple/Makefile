@@ -15,10 +15,10 @@ LIBFLAGS = -shared -fPIC  -Wl,-soname,${LIB}
 endif
 
 
-all: main 
+all: main
 
 
-${LIB}: library.c 
+${LIB}: library.c
 	${CC} ${LIBFLAGS}  library.c -o ${LIB}
 
 main: main.c ${LIB}
@@ -27,9 +27,4 @@ main: main.c ${LIB}
 
 clean:
 	rm -f *~ ${LIB} .*.bc *.bc *.ll .*.o *.manifest main
-	rm -rf previrt
-
-
-
-
-
+	rm -rf slash

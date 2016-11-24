@@ -1,8 +1,6 @@
-export WLLVM_HOME=/vagrant/whole-program-llvm
-
 export LLVM_HOME=/usr/lib/llvm-3.5/
 
-export PATH=${WLLVM_HOME}:${LLVM_HOME}/bin:${PATH}
+export PATH=${LLVM_HOME}/bin:${PATH}
 
 export LLVM_COMPILER=clang
 
@@ -10,4 +8,4 @@ export WLLVM_OUTPUT=WARNING
 
 export LLVM_COMPILER_PATH=${LLVM_HOME}/bin
 
-export OCCAM_HOME=/home/vagrant/occam
+export OCCAM_HOME=/home/vagrant/occamlib

@@ -248,7 +248,7 @@ namespace previrt
 	  return result;
         }
       }
-    } else if (const ConstantExpr* gep = dyn_cast<const ConstantExpr>(cnst)) {
+    } else if (isa<const ConstantExpr>(cnst)) {
 	StringRef out;
 	// See if it's a string constant
 	if (StringFromValue(val, out)) {

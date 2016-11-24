@@ -15,7 +15,7 @@ LLVM_CFG = $(LLVM_HOME)/bin/$(LLVM_CONFIG)
 
 LLVM_INCLUDE = $(shell ${LLVM_CFG} --includedir)
 
-CXX_FLAGS += $(shell  ${LLVM_CFG} --cxxflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include
+CXX_FLAGS += $(shell  ${LLVM_CFG} --cxxflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include  -DGOOGLE_PROTOBUF_NO_RTTI -fPIC
 
 C_FLAGS = $(shell  ${LLVM_CFG} --cflags)
 
@@ -28,18 +28,18 @@ LIBRARYNAME=libprevirt
 
 ifeq (Darwin, $(findstring Darwin, ${OS}))
 #  DARWIN
-LIB = ${LIBRARYNAME}.dylib
+LIBRARY = ${LIBRARYNAME}.dylib
 LIBFLAGS = -dynamiclib
 OTHERLIBS =  -lpthread -lprotobuf -lcurses
 LD_FLAGS += -undefined suppress -flat_namespace
 else ifeq (FreeBSD, $(findstring FreeBSD, ${OS}))
 # FreeBSD
-LIB = ${LIBRARYNAME}.so
+LIBRARY = ${LIBRARYNAME}.so
 LIBFLAGS = -shared -Wl,-soname,${LIB}
 OTHERLIBS = -L/usr/local/lib -lpthread -lprotobuf
 else
 # LINUX
-LIB = ${LIBRARYNAME}.so
+LIBRARY = ${LIBRARYNAME}.so
 LIBFLAGS = -shared -Wl,-soname,${LIB}
 OTHERLIBS =  -lpthread -lprotobuf
 endif
@@ -52,21 +52,21 @@ OBJECTS := proto/Previrt.pb.o proto/Watch.pb.o $(patsubst %.cpp,%.o,${SOURCES})
 
 INSTALL = install
 
-all: ${LIB}
+all: ${LIBRARY}
 
-${LIB}: ${SOURCES}
+${LIBRARY}: ${SOURCES}
 	echo "The source is being built according to ${LLVM_CFG}"
 	$(MAKE) protoc 
 	$(MAKE) lib
 
 lib: ${OBJECTS} 
-	$(CXX) ${OBJECTS} ${LIBFLAGS} -o ${LIB} ${CXX_FLAGS} ${LD_FLAGS} ${OTHERLIBS}
+	$(CXX) ${OBJECTS} ${LIBFLAGS} -o ${LIBRARY} ${CXX_FLAGS} ${LD_FLAGS} ${OTHERLIBS}
 
 %.o: %.cpp
 	$(CXX) -I. ${CXX_FLAGS} $< -c 
 
 proto/%.o: proto/%.cc proto/%.h 
-	$(CXX)   -DGOOGLE_PROTOBUF_NO_RTTI ${CXX_FLAGS} $< -c -o $@
+	$(CXX)  ${CXX_FLAGS} $< -c -o $@
 
 protoc: Watch.proto Previrt.proto
 	mkdir -p proto
@@ -74,11 +74,14 @@ protoc: Watch.proto Previrt.proto
 	${PROTOC} Previrt.proto --cpp_out=proto
 
 clean: 
-	rm -rf ${OBJECTS} proto ${LIB}
+	rm -rf ${OBJECTS} proto ${LIBRARY}
 
 
-install: check-occam-lib ${LIB}
-	$(INSTALL) -m 664 ${LIB} $(OCCAM_LIB)
+install: check-occam-lib ${LIBRARY}
+	$(INSTALL) -m 664 ${LIBRARY} $(OCCAM_LIB)
+
+uninstall_occam_lib:
+	rm -f $(OCCAM_LIB)/${LIBRARY}
 
 #
 # Check for OCCAM_LIB

@@ -1,5 +1,5 @@
 
-BITCODE = libpoly.so.bc yices_main.bc yices_smt2_release.bc yices_smt2.bc  yices_smt2_release_mcsat.bc 
+BITCODE = libpoly.so.bc yices_main.bc yices_smt2_release.bc yices_smt2.bc  yices_smt2_release_mcsat.bc
 
 
 all: ${BITCODE} run
@@ -13,8 +13,7 @@ run:
 
 
 clean:
-	rm -rf previrt ${BITCODE} *.manifest
+	rm -rf slash ${BITCODE} *.manifest
 
 previrt/%.ll: previrt/%.bc
 	llvm-dis $<
-

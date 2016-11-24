@@ -24,3 +24,6 @@ libssl.bca: openssl
 clean:
 	rm -rf openssl-1.0.2h openssl-1.0.2h.tar *.bca
 
+
+spotless: clean
+	rm openssl-1.0.2h.tar.gz

@@ -4,7 +4,7 @@ BITCODE = yices_smt2.bc libgmp.so.bc
 
 all: ${BITCODE} run
 
-run: 
+run:
 	./build.sh
 
 %.bc: %.bc.gz
@@ -12,8 +12,7 @@ run:
 
 
 clean:
-	rm -rf previrt ${BITCODE} *.manifest
+	rm -rf slash ${BITCODE} *.manifest
 
-previrt/%.ll: previrt/%.bc
+previrt/%.ll: slash/%.bc
 	llvm-dis $<
-

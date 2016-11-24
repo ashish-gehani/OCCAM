@@ -27,9 +27,9 @@ check:   build
 clean:
 	rm -rf build
 
-veryclean: clean
+spotless: clean
 	rm -rf llvm
 
 
-.PHONY: clean check veryclean
+.PHONY: clean check spotless
 

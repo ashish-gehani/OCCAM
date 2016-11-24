@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-WORKDIR=previrt
+WORKDIR=slash
 
 
 export OCCAM_LOGFILE=${PWD}/${WORKDIR}/occam.log
@@ -10,17 +10,16 @@ mkdir -p ${WORKDIR}
 
 # Build the manifest file
 cat > yices_smt2_gmp.manifest <<EOF
-{ "modules" : ["yices_smt2.bc"]
+{ "main" : "yices_smt2.bc"
 , "binary"  : "yices_smt2_gmp"
-, "libs"    : ["libgmp.so.bc"]
+, "modules"    : ["libgmp.so.bc"]
 , "native-libs" : []
-, "search"  : ["/usr/lib", "/usr/local/lib", "/usr/lib/x86_64-linux-gnu/"]
 , "name"    : "yices_smt2_gmp"
 }
 EOF
 
 # Previrtualize
-${OCCAM_HOME}/bin/occam previrt --work-dir=previrt yices_smt2_gmp.manifest
+slash --work-dir=${WORKDIR} yices_smt2_gmp.manifest
 
 
 #debugging stuff below:

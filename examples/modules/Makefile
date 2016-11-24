@@ -16,16 +16,16 @@ endif
 
 OBJS = main.o module.o
 
-CFLAGS = -Wall 
+CFLAGS = -Wall
 
-all: main 
+all: main
 
 
-${LIB}: library.c 
+${LIB}: library.c
 	${CC} ${CFLAGS} ${LIBFLAGS}  library.c -o ${LIB}
 
 %.o: %.c
-	${CC} ${CFLAGS} $< -c 
+	${CC} ${CFLAGS} $< -c
 
 
 main:  ${OBJS} ${LIB}
@@ -34,9 +34,4 @@ main:  ${OBJS} ${LIB}
 
 clean:
 	rm -f *~ ${LIB} .*.bc *.bc *.ll *.o *.manifest main
-	rm -rf previrt
-
-
-
-
-
+	rm -rf slash main_slash

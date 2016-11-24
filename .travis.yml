@@ -7,11 +7,21 @@ compiler:
 sudo: required
 dist: trusty
 
-#dependencies 
+#dependencies
+#
+# what a fucking mess:
+#
+# https://github.com/travis-ci/travis-ci/issues/4989
+# http://stackoverflow.com/questions/34819221/why-is-python-setup-py-saying-invalid-command-bdist-wheel-on-travis-ci
+#
+#
 install:
   - sudo apt-get update
   - sudo apt-get install -y wget libprotobuf-dev python-protobuf protobuf-compiler
   - sudo apt-get install -y git llvm-3.5 libclang-3.5-dev clang-3.5
+  - sudo apt-get install -y python-pip
+  - pip install setuptools --upgrade
+  - pip install wheel
   - export BUILD_HOME=`pwd`
   - export OCCAM_HOME=${BUILD_HOME}/travis_build/occam
   - export OCCAM_LOGFILE=${BUILD_HOME}/travis_build/.occam.log
@@ -20,8 +30,3 @@ install:
 #tests
 script:
   - ${BUILD_HOME}/.travis/build.sh
-
-  
-
-  
-
