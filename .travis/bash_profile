@@ -1,9 +1,3 @@
-######## whole-program-llvm configuration #############
-
-export WLLVM_HOME=${REPOS}/whole-program-llvm
-export LLVM_COMPILER=clang
-export WLLVM_OUTPUT=WARNING
-
 ########  Occam configuration ################
 
 export LLVM_HOME=/usr/lib/llvm-3.5/

@@ -10,8 +10,6 @@ mkdir -p travis_build/Repositories
 #now set up the environment
 . ${BUILD_HOME}/.travis/bash_profile
 
-cd ${REPOS}
-git clone https://github.com/SRI-CSL/whole-program-llvm.git 
 cd ${BUILD_HOME}
 make 
 make install
@@ -22,6 +20,10 @@ if [ "${RETURN}" != "0" ]; then
     echo "Building OCCAM failed!"
     exit 1
 fi
+
+cd ${REPOS}/examples/multiple
+./build.sh
+##need to do a grep in the ll here ....
 
 
 ### down here we want to check that running slash on multiple actually works.
