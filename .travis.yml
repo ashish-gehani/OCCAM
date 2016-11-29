@@ -1,18 +1,18 @@
-#language: python
+language: python
 
-#sudo: required
-#dist: trusty
+sudo: required
+dist: trusty
 
 python:
 #  - "3.5"
 #  - "3.4"
 #  - "3.3"
-#  - "2.7"
+  - "2.7"
 
-language: c
+#language: c
 
-compiler:
-  - clang
+#compiler:
+#  - clang
 
 #https://docs.travis-ci.com/user/trusty-ci-environment/
 
@@ -35,7 +35,7 @@ install:
   - pip --version
   - pip install setuptools --upgrade
   - pip install wheel
-  - pip install -r requirements.txt
+#  - pip install -r requirements.txt
   - export PATH=/usr/lib/llvm-3.5/bin:${PATH}
   - export LLVM_COMPILER=clang
   - export WLLVM_OUTPUT=WARNING
