@@ -21,7 +21,7 @@ if [ "${RETURN}" != "0" ]; then
     exit 1
 fi
 
-cd ${REPOS}/examples/multiple
+cd ${BUILD_HOME}/examples/multiple
 ./build.sh
 ##need to do a grep in the ll here ....
 
