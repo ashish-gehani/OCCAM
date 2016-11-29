@@ -44,6 +44,8 @@ Version History:
 
 1.0.3    - 11/23/2016 push with an auto generated rst file.
 
+1.0.4    - 11/29/2016 razor requires protobuf.
+
 
 """
 
