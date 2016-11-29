@@ -20,8 +20,14 @@ install:
   - sudo apt-get install -y wget libprotobuf-dev python-protobuf protobuf-compiler
   - sudo apt-get install -y git llvm-3.5 libclang-3.5-dev clang-3.5
   - sudo apt-get install -y python-pip
+  - pip --version
   - pip install setuptools --upgrade
   - pip install wheel
+  - pip install wllvm
+  - export PATH=/usr/lib/llvm-3.5/bin:${PATH}
+  - export LLVM_COMPILER=clang
+  - export WLLVM_OUTPUT=WARNING
+  - export CC=clang
   - export BUILD_HOME=`pwd`
   - export OCCAM_HOME=${BUILD_HOME}/travis_build/occam
   - export OCCAM_LOGFILE=${BUILD_HOME}/travis_build/.occam.log
