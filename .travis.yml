@@ -32,8 +32,8 @@ install:
   - sudo apt-get install -y git llvm-3.5 libclang-3.5-dev clang-3.5
   - sudo apt-get install -y python-pip
   - pip --version
+  - pip install wllvm
   - pip install setuptools --upgrade
-  - pip install --user wllvm
   - pip install wheel
   - export PATH=/usr/lib/llvm-3.5/bin:${PATH}
   - export LLVM_COMPILER=clang
