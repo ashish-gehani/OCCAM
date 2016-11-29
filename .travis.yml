@@ -1,7 +1,18 @@
-language: c
+language: python
 
-compiler:
-  - clang
+sudo: required
+dist: trusty
+
+python:
+#  - "3.5"
+#  - "3.4"
+#  - "3.3"
+  - "2.7"
+
+#language: c
+
+#compiler:
+#  - clang
 
 #https://docs.travis-ci.com/user/trusty-ci-environment/
 sudo: required
