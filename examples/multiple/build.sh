@@ -23,7 +23,7 @@ cat > multiple.manifest <<EOF
 EOF
 
 #make the bitcode
-CC=wllvm make 
+CC=wllvm make
 extract-bc main
 extract-bc ${LIBRARY}
 
@@ -40,3 +40,6 @@ for bitcode in slash/*.bc; do
     llvm-dis  "$bitcode" &> /dev/null
 done
 
+
+
+exit 0

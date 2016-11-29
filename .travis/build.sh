@@ -11,7 +11,7 @@ mkdir -p travis_build/Repositories
 . ${BUILD_HOME}/.travis/bash_profile
 
 cd ${BUILD_HOME}
-make 
+make
 make install
 RETURN="$?"
 
@@ -28,6 +28,3 @@ cd ${BUILD_HOME}/examples/multiple
 
 ### down here we want to check that running slash on multiple actually works.
 ### AND specializes; so we do not go a year or so with a broken previrt AGAIN.
-
-
-exit 0
