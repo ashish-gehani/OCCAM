@@ -52,11 +52,11 @@ Using razor
 
 `razor` is a pip package that relies on the same dynamic library as `occam`,
 so you should first build and install `occam` as described above.
-You can install it from this repository, or you can just do a
+You can either install `razor` you can from this repository, or you can just do a
 ```
 pip install razor
 ```
-To install and editable version from this repository:
+To install an editable version from this repository:
 
 ```
 make -f Makefile develop
