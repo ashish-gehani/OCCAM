@@ -25,12 +25,11 @@ extract-bc nweb
 # Previrutalize
 slash --work-dir=slash nweb.manifest
 
-
-# Link link the binary into the current directory
-# (it was created in previrt)
-echo "linking nweb to previrt/nweb"
-rm -f nweb
-ln -s slash/nweb .
+# Copy the specialized binary into the current directory
+# (it was created in slash)
+echo "copying nweb_slash from slash/nweb"
+rm -f nweb_slash
+ln -s slash/nweb nweb_slash
 
 # Now build the non-previrt application
 echo "building the non-previrt application bitcode"
@@ -39,8 +38,8 @@ ${OPT} -O3 nweb.bc -o nweb.opt.bc
 echo "creating the non-previrt application object file"
 ${LLC} -filetype=obj -o nweb.opt.o nweb.opt.bc
 
-echo "producing the non-previrt executable: nweb-base"
-${CC} nweb.opt.o -o nweb-base
+echo "producing the non-previrt executable: nweb"
+${CC} nweb.opt.o -o nweb
 
 #debugging stuff below:
 for bitcode in previrt/*.bc; do
