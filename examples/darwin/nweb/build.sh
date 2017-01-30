@@ -23,10 +23,10 @@ extract-bc nweb
 # Previrutalize
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
 
-echo "specilizing nweb"
+echo "specializing nweb"
 slash --work-dir=slash nweb.manifest
 
-# Copy the specilized binary into the current directory
+# Copy the specialized binary into the current directory
 # (it was created in slash directory)
 rm -f nweb_slash
 mv slash/nweb nweb_slash
