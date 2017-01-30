@@ -5,10 +5,9 @@
 Prerequisites
 ============
 
-OCCAM currently works fine on Linux, OS X, and FreeBSD. You will
+[OCCAM](https://github.com/SRI-CSL/OCCAM) currently works fine on Linux, OS X, and FreeBSD. You will
 need an installation of llvm-3.5. If you need to generate application bitcode,
-you will want to install the pip package [wllvm](https://github.com/SRI-CSL/whole-program-llvm.git).
-
+you will want to install wllvm, either from the the pip [package](https://pypi.python.org/pypi/wllvm/) or the GitHub [repository](https://github.com/SRI-CSL/whole-program-llvm.git).
 
 Building and Installing
 =======================
@@ -53,11 +52,11 @@ Using razor
 
 `razor` is a pip package that relies on the same dynamic library as `occam`,
 so you should first build and install `occam` as described above.
-You can install it from this repository, or you can just do a
+You can either install `razor` you can from this repository, or you can just do a
 ```
 pip install razor
 ```
-To install and editable version from this repository:
+To install an editable version from this repository:
 
 ```
 make -f Makefile develop
@@ -79,7 +78,7 @@ which will prevent any inter-module specializations.
 The Manifest(o)
 ===============
 
-The manifest for `slash` should be valid JSON. The following keys 
+The manifest for `slash` should be valid JSON. The following keys
 have meaning:
 
 + `main` : a path to the bitcode module containing the `main` entry point.

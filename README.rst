@@ -3,10 +3,12 @@
 Prerequisites
 =============
 
-OCCAM currently works fine on Linux, OS X, and FreeBSD. You will need an
-installation of llvm-3.5. If you need to generate application bitcode,
-you will want to install the pip package
-`wllvm <https://github.com/SRI-CSL/whole-program-llvm.git>`__.
+`OCCAM <https://github.com/SRI-CSL/OCCAM>`__ currently works fine on
+Linux, OS X, and FreeBSD. You will need an installation of llvm-3.5. If
+you need to generate application bitcode, you will want to install
+wllvm, either from the the pip
+`package <https://pypi.python.org/pypi/wllvm/>`__ or the GitHub
+`repository <https://github.com/SRI-CSL/whole-program-llvm.git>`__.
 
 Building and Installing
 =======================

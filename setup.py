@@ -35,6 +35,11 @@ setup(
 
     license='MIT',
 
+    install_requires=[
+        "protobuf >= 3.0.0",
+    ],
+
+
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Natural Language :: English',
@@ -44,5 +49,8 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+
     ],
 )

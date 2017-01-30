@@ -99,14 +99,14 @@ endif
 # Note Bene:
 #
 # If you need to publish a new pip version you must
-# change the version number in plambda/eval/PLambda.py,
+# change the version number in razor/version.py,
 # otherwise the server will give you an error.
 
-testpublish: dist
+testpublish: md2rst dist
 	python setup.py register -r https://testpypi.python.org/pypi
 	python setup.py sdist upload -r https://testpypi.python.org/pypi
 
-publish: dist
+publish: md2rst dist
 	python setup.py register -r https://pypi.python.org/pypi
 	python setup.py sdist upload -r https://pypi.python.org/pypi
 
