@@ -23,13 +23,13 @@ extract-bc nweb
 # Previrutalize
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
 
+echo "specilizing nweb"
 slash --work-dir=slash nweb.manifest
 
-# Link link the binary into the current directory
-# (it was created in previrt)
-echo "linking nweb to slash/nweb"
-rm -f nweb
-mv slash/nweb .
+# Copy the specilized binary into the current directory
+# (it was created in slash directory)
+rm -f nweb_slash
+mv slash/nweb nweb_slash
 
 # Now build the non-previrt application
 echo "building the non-previrt application bitcode"
@@ -38,9 +38,8 @@ opt -O3 nweb.bc -o nweb.opt.bc
 echo "creating the non-previrt application object file"
 llc -filetype=obj -o nweb.opt.o nweb.opt.bc
 
-echo "producing the non-previrt executable: nweb-base"
-clang nweb.opt.o -o nweb-base 
-
+echo "producing the non-previrt executable: nweb"
+clang nweb.opt.o -o nweb
 
 #debugging stuff below:
 for bitcode in slash/*.bc; do

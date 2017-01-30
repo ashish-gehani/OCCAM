@@ -29,13 +29,14 @@ cd subdir; extract-bc module.o; cd ..
 extract-bc ${LIBRARY}
 
 
-export OCCAM_LOGFILE=${PWD}/previrt/occam.log
+export OCCAM_LOGFILE=${PWD}/slash/occam.log
 
 slash --work-dir=slash simple.manifest
 
+cp slash/main main_slash
 
 #debugging stuff below:
-for bitcode in previrt/*.bc; do
+for bitcode in slash/*.bc; do
     llvm-dis  "$bitcode" &> /dev/null
 done
 

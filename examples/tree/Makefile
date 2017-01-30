@@ -1,7 +1,6 @@
 
 #iam: producing the library varies from OS to OS
 OS   =  $(shell uname)
-
 LIBRARYNAME=library
 
 ifeq (Darwin, $(findstring Darwin, ${OS}))
@@ -36,11 +35,6 @@ main:  ${OBJS} ${LIB}
 
 
 clean:
-	rm -f *~ ${LIB} .*.bc *.bc *.ll *.o .*.o *.manifest main
+	rm -f *~ ${LIB} .*.bc *.bc *.ll *.o .*.o *.manifest main main_slash
 	cd subdir; rm -f *~  .*.bc *.bc *.ll *.o *.o 
-	rm -rf previrt
-
-
-
-
-
+	rm -rf slash
