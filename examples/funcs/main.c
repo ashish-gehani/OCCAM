@@ -4,10 +4,10 @@ extern int call(int (*fn)(int, char *), int, char *);
 
 static int test(int i, char *str) {
   if (i == 1) {
-    printf("No command line arguments for %s\n", str);
+    printf("%s\n", str);
     return 0;
   } else {
-    printf("Number of command line arguments: %d\n",i);
+    printf("Nope!\n");
     return -1;
   }
 }
