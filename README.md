@@ -35,6 +35,8 @@ Build and install OCCAM with:
   make install
 ```
 
+Detailed instructions for Ubuntu 14.04 can be gleaned from [bootstrap.sh](https://github.com/SRI-CSL/OCCAM/blob/master/vagrants/14.04/basic/bootstrap.sh).
+
 Using OCCAM
 ===========
 
