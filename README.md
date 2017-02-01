@@ -77,6 +77,13 @@ slash [--work-dir=<dir>]  [--force] [--no-strip] [--no-specialize] <manifest>
 
 which will prevent any inter-module specializations.
 
+
+To function correctly razor calls LLVM tools such as opt. These should be available in
+your PATH, and be the currently supported version (3.5). Like `wllvm`, `slash`, will pay attention to
+the environment variables `LLVM_LINK_NAME`  `LLVM_OPT_NAME` and `LLVM_AR_NAME`
+if your version of these tools are adorned with suffixes.
+
+
 The Manifest(o)
 ===============
 
