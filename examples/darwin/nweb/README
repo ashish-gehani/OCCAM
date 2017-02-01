@@ -1,17 +1,17 @@
 Specialization of nweb with initial program arguments using the 'nweb.manifest'.
 
-The 'build.sh' script builds the nweb binary which serves files out of the subdirectory 'root'.
+The 'build.sh' script builds the nweb binary which run at port 8181 and serves files out of the subdirectory 'root'.
 
 To test the result, run
 
-	./nweb
+	./nweb_slash
 
 and connect with
 
 	wget localhost:8181
 
 
-nweb-base needs to be called like so:
+nweb needs to be called with aguments like:
 
-	 ./nweb-base 8181 ./root
+	 ./nweb 8181 ./root
 

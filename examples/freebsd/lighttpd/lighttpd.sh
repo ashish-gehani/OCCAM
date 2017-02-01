@@ -6,24 +6,18 @@ export LLVM_COMPILER=clang
 export WLLVM_OUTPUT=WARNING
 
 # download and fetch source
-mkdir tmp
 wget http://lighttpd.net/download/lighttpd-1.4.13.tar.gz
-tar -zxvf lighttpd-1.4.13.tar.gz
+tar -zxf lighttpd-1.4.13.tar.gz
 cd lighttpd-1.4.13
 
 # configure without shared libs...will save headaches
-CC=wllvm .configure --without-openssl --without-pcre --without-zlib --without-bzip2 
+CC=wllvm ./configure --without-openssl --without-pcre --without-zlib --without-bzip2 
 
 CC=wllvm make
 
 # extract bitcode
 cd src
 extract-bc lighttpd
-
-## now to specialize
-mkdir spec && cd spec
-cd ..
-cp lighttpd.bc spec
 
 # set up manifests
  cat > lhttpd.manifest <<EOF
@@ -35,9 +29,12 @@ cp lighttpd.bc spec
 
 EOF
 
-occam previrt lhttpd.manifest
-
 # finally...build specialized version
-clang lighttpd-final.bc -o lighttpd_specialized
+export OCCAM_LOGLEVEL=INFO
+export OCCAM_LOGFILE=${PWD}/slash/occam.log
+
+slash --work-dir=slash lhttpd.manifest
+
+cp slash/lighthttpd lighthttpd_slash
 
 # all done

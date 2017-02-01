@@ -26,5 +26,5 @@ main: main.c ${LIB}
 
 
 clean:
-	rm -f *~ ${LIB} .*.bc *.bc *.ll .*.o *.manifest main
+	rm -f *~ ${LIB} .*.bc *.bc *.ll .*.o *.manifest main main_slash
 	rm -rf slash
