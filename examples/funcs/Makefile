@@ -1,8 +1,8 @@
 
-all:  main.o.bc call.o.bc slash
+all:  main.o.bc call.o.bc
 
-
-main.o.bc:
+main.o.bc: 
+	wllvm main.c call.c -o main
 	wllvm main.c -c
 	extract-bc main.o
 
@@ -10,9 +10,5 @@ call.o.bc:
 	wllvm call.c -c
 	extract-bc call.o
 
-slash:
-	slash --work-dir=slash funcs.manifest
-
-
 clean:
-	rm -rf .*.bc *.o.bc *.o slash
+	rm -rf .*.bc *.o.bc *.o *.manifest slash main main_slash

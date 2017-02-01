@@ -33,6 +33,7 @@ export OCCAM_LOGFILE=${PWD}/slash/occam.log
 
 slash --work-dir=slash simple.manifest
 
+cp slash/main main_slash
 
 #debugging stuff below:
 for bitcode in slash/*.bc; do

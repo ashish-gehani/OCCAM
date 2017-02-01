@@ -17,14 +17,14 @@ else
 endif
 
 
-all: ls_previrt ls_O3
+all: ls_slash ls_O3
 
 
 previrtualize: ls.bc
-	${OCCAM_HOME}/bin/occam previrt --work-dir=previrt ls.manifest
+	slash --work-dir=slash ls.manifest
 
-ls_previrt: previrtualize
-	cp previrt/ls ls_previrt
+ls_slash: previrtualize
+	cp slash/ls ls_slash
 
 ls_O3:
 	${OPT} -O3 ls.bc -o ls.opt.bc
@@ -33,10 +33,5 @@ ls_O3:
 
 
 clean:
-	rm -f *.o *~ ls.opt.bc ls ls_O3 ls_previrt 
-	rm -rf previrt
-
-
-
-
-
+	rm -f *.o *~ ls.opt.bc ls ls_O3 ls_slash
+	rm -rf slash

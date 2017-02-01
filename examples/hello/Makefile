@@ -17,17 +17,17 @@ else
 endif
 
 
-all: hello_razor hello_O3
+all: hello_slash hello_O3
 
 
 hello.bc:
 	wllvm hello.c -o  hello
 	extract-bc hello
 
-razor: hello.bc
+slash: hello.bc
 	slash --work-dir=slash hello.manifest
 
-hello_razor: razor
+hello_slash: slash
 	cp slash/hello hello_slash
 
 hello_O3:
