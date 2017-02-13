@@ -276,7 +276,9 @@ namespace {
         proto::ComponentInterfaceTransform buf;
         codeInto(this->transform, buf);
         std::ofstream output(SpecializeComponentOutput.c_str(), std::ios::binary | std::ios::trunc);
-        assert(buf.SerializeToOstream(&output));
+	bool success = buf.SerializeToOstream(&output);
+	if (!success)
+	  assert (false && "failed to write out interface");
         output.close();
       }
 
