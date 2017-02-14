@@ -53,7 +53,8 @@ Using razor
 ===========
 
 `razor` is a pip package that relies on the same dynamic library as `occam`,
-so you should first build and install `occam` as described above.
+so you should first build and install `occam` as described above. `razor`  provides
+the commandline tool `slash`.
 You can either install `razor` you can from this repository, or you can just do a
 ```
 pip install razor
@@ -64,7 +65,7 @@ To install an editable version from this repository:
 make -f Makefile develop
 ```
 
-This may require sudo priviliges. Either way you can now use slash:
+This may require sudo priviliges. Either way you can now use `slash`:
 
 ```
 slash [--work-dir=<dir>]  [--force] [--no-strip] [--no-specialize] <manifest>
@@ -76,6 +77,13 @@ slash [--work-dir=<dir>]  [--force] [--no-strip] [--no-specialize] <manifest>
 ```
 
 which will prevent any inter-module specializations.
+
+
+To function correctly `slash` calls LLVM tools such as `opt` and `clang++`. These should be available in
+your `PATH`, and be the currently supported version (3.5). Like `wllvm`, `slash`, will pay attention to
+the environment variables `LLVM_OPT_NAME` and `LLVM_CXX_NAME`
+if your version of these tools are adorned with suffixes.
+
 
 The Manifest(o)
 ===============

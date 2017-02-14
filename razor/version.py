@@ -50,4 +50,4 @@ Version History:
 """
 
 
-razor_version = '1.0.3'
+razor_version = '1.0.4'

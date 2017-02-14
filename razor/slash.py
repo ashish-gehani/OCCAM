@@ -55,7 +55,7 @@ def entrypoint():
 
         --work-dir <dir>  : Output intermediate files to the given location <dir>
         --no-strip        : Leave symbol information in the binary
-        --no-specialize   : Do not specialize any itermodule calls
+        --no-specialize   : Do not specialize any intermodule calls
 
 
     """
