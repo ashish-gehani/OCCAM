@@ -7,7 +7,7 @@ mkdir -p travis_build/Repositories
 
 ## Ubuntu adds suffixes to the LLVM tools that we rely on.
 #export the suffix	    
-export LLVM_SUFFIX=-3.5
+export LLVM_SUFFIX=-3.8
 
 #run the suffix additions script
 . ${BUILD_HOME}/scripts/env.sh
