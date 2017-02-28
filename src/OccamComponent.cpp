@@ -128,7 +128,8 @@ namespace previrt
     // Perform global dead code elimination
     // TODO: To what extent should we do this here, versus
     //       doing it elsewhere?
-    PassManager cdeMgr, mfMgr, mcMgr;
+    PassManager<Module> cdeMgr;
+    PassManager<Module>  mcMgr;
     cdeMgr.add(createGlobalDCEPass());
     //mfMgr.add(createMergeFunctionsPass());
     mcMgr.add(createConstantMergePass());

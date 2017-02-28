@@ -176,7 +176,7 @@ namespace previrt
     f->setLinkage(GlobalValue::PrivateLinkage);
     f->addFnAttr(Attribute::AlwaysInline);
 
-    PassManager mgr;
+    PassManager<Module> mgr;
     mgr.add(createAlwaysInlinerPass());
     mgr.run(M);
 

@@ -159,7 +159,7 @@ namespace previrt
     }
 
     // Use LLVM to remove dead definitions, code, etc.
-    PassManager mgr;
+    PassManager<Module> mgr;
     mgr.add(createGlobalDCEPass());
     mgr.add(createGlobalOptimizerPass());
     while (mgr.run(M)) {
