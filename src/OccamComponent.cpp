@@ -133,7 +133,10 @@ namespace previrt
     ModulePass* modulePassDCE = createGlobalDCEPass();
     cdeMgr.addPass(modulePassDCE);
     //mfMgr.add(createMergeFunctionsPass());
-    mcMgr.addPass(createConstantMergePass());
+
+    ModulePass* constantMergePass = createConstantMergePass();
+
+    mcMgr.addPass(constantMergePass);
     bool moreToDo = true;
     unsigned int iters = 0;
     while (moreToDo && iters < 10000) {
@@ -144,7 +147,7 @@ namespace previrt
       //if (cdeMgr.run(M)) moreToDo = true;
       // (originally commented) if (mfMgr.run(M)) moreToDo = true;
       PreservedAnalyses mcPA = mcMgr.run(M);
-      if (mcPA.preserve<ConstantMerge>())
+      if (mcPA.preserved((void*) constantMergePass->getPassID()))
 	moreToDo = true;
       //if (mcMgr.run(M)) moreToDo = true;
       modified = modified || moreToDo;
@@ -153,13 +156,13 @@ namespace previrt
 
     if (moreToDo) {
       PreservedAnalyses cdePA = cdeMgr.run(M);
-      if (cdePA.preserve<GlobalDCE>()) 
+      if (cdePA.preserved((void*) modulePassDCE->getPassID()))
 	errs() << "GlobalDCE still had more to do\n";
 
       //if (mfMgr.run(M)) errs() << "MergeFunctions still had more to do\n";
 
-      PreserveAnalyses mcPA = mcMgr.run(M);
-      if (mcPA.preserve<ConstantMerge>())
+      PreservedAnalyses mcPA = mcMgr.run(M);
+      if (mcPA.preserved((void*) constantMergePass->getPassID()))
 	errs() << "MergeConstants still had more to do\n";
     }
 
