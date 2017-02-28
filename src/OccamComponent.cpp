@@ -130,24 +130,36 @@ namespace previrt
     //       doing it elsewhere?
     PassManager<Module> cdeMgr;
     PassManager<Module>  mcMgr;
-    cdeMgr.add(createGlobalDCEPass());
+    cdeMgr.addPass(createGlobalDCEPass());
     //mfMgr.add(createMergeFunctionsPass());
-    mcMgr.add(createConstantMergePass());
+    mcMgr.addPass(createConstantMergePass());
     bool moreToDo = true;
     unsigned int iters = 0;
     while (moreToDo && iters < 10000) {
       moreToDo = false;
-      if (cdeMgr.run(M)) moreToDo = true;
-      //if (mfMgr.run(M)) moreToDo = true;
-      if (mcMgr.run(M)) moreToDo = true;
+      PreservedAnalyses cdePA = cdeMgr.run(M);
+      if (cdePA<GlobalDCEPass>.preserve()) 
+	moreToDo =true;
+      //if (cdeMgr.run(M)) moreToDo = true;
+      // (originally commented) if (mfMgr.run(M)) moreToDo = true;
+      PreserveAnalyses mcPA = mcMgr.run(M);
+      if (mcPA<ConstantMergePass>.preserve())
+	moreTodo = true;
+      //if (mcMgr.run(M)) moreToDo = true;
       modified = modified || moreToDo;
       ++iters;
     }
 
     if (moreToDo) {
-      if (cdeMgr.run(M)) errs() << "GlobalDCE still had more to do\n";
+      PreservedAnalyses cdePA = cdeMgr.run(M);
+      if (cdePA<GlobalDCEPass>.preserve()) 
+	errs() << "GlobalDCE still had more to do\n";
+
       //if (mfMgr.run(M)) errs() << "MergeFunctions still had more to do\n";
-      if (mcMgr.run(M)) errs() << "MergeConstants still had more to do\n";
+
+      PreserveAnalyses mcPA = mcMgr.run(M);
+      if (mcPA<ConstantMergePass>.preserve())
+	errs() << "MergeConstants still had more to do\n";
     }
 
     if (modified) {
