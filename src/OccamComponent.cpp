@@ -130,7 +130,8 @@ namespace previrt
     //       doing it elsewhere?
     PassManager<Module> cdeMgr;
     PassManager<Module>  mcMgr;
-    cdeMgr.addPass(createGlobalDCEPass());
+    ModulePass* modulePassDCE = createGlobalDCEPass();
+    cdeMgr.addPass(modulePassDCE);
     //mfMgr.add(createMergeFunctionsPass());
     mcMgr.addPass(createConstantMergePass());
     bool moreToDo = true;
@@ -138,7 +139,7 @@ namespace previrt
     while (moreToDo && iters < 10000) {
       moreToDo = false;
       PreservedAnalyses cdePA = cdeMgr.run(M);
-      if (cdePA.preserve<GlobalDCE>()) 
+      if (cdePA.preserved(modulePassDCE->ID)) 
 	moreToDo =true;
       //if (cdeMgr.run(M)) moreToDo = true;
       // (originally commented) if (mfMgr.run(M)) moreToDo = true;
