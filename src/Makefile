@@ -15,7 +15,7 @@ LLVM_CFG = $(LLVM_HOME)/bin/$(LLVM_CONFIG)
 
 LLVM_INCLUDE = $(shell ${LLVM_CFG} --includedir)
 
-CXX_FLAGS += $(shell  ${LLVM_CFG} --cxxflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include
+CXX_FLAGS += $(shell  ${LLVM_CFG} --cxxflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include  -DGOOGLE_PROTOBUF_NO_RTTI -fPIC
 
 C_FLAGS = $(shell  ${LLVM_CFG} --cflags)
 
