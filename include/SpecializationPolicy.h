@@ -51,7 +51,7 @@ namespace llvm
 
 namespace previrt
 {
-  struct SpecializationPolicy
+  class SpecializationPolicy
   {
   protected:
     SpecializationPolicy();
