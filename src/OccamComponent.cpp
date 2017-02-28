@@ -139,7 +139,7 @@ namespace previrt
     while (moreToDo && iters < 10000) {
       moreToDo = false;
       PreservedAnalyses cdePA = cdeMgr.run(M);
-      if (cdePA.preserved(modulePassDCE->getPassID())) 
+      if (cdePA.preserved(&(modulePassDCE->getPassID()))) 
 	moreToDo =true;
       //if (cdeMgr.run(M)) moreToDo = true;
       // (originally commented) if (mfMgr.run(M)) moreToDo = true;
