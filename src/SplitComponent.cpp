@@ -40,7 +40,7 @@
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Pass.h"
-#include "llvm/IR/PassManager.h"
+#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Bitcode/ReaderWriter.h"
@@ -159,7 +159,7 @@ namespace previrt
     }
 
     // Use LLVM to remove dead definitions, code, etc.
-    PassManager<Module> mgr;
+    legacy::PassManager mgr;
     mgr.add(createGlobalDCEPass());
     mgr.add(createGlobalOptimizerPass());
     while (mgr.run(M)) {

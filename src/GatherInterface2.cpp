@@ -532,7 +532,8 @@ namespace previrt
         std::ofstream output(GatherInterfaceOutput.c_str(), std::ios::binary);
 	assert(output.good());
         bool success = ci.SerializeToOstream(&output);
-	assert(success && "failed to write out interface");
+	if (!success)
+	  assert(false && "failed to write out interface");
         output.close();
       }
 

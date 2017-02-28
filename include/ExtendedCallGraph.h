@@ -23,7 +23,7 @@
 #include<fstream>
 #include<queue>
 #include<stack>
-#include<string.h>
+#include<string>
 
 using namespace llvm;
 using namespace std;
@@ -48,7 +48,8 @@ class ExtendedCallGraph {
 
   string strip(const string& in) {
 
-    if(in.find("struct") == -1) // The casted type is not a struct type
+    // The casted type is not a struct type    
+    if(in.find("struct") == string::npos) 
       return in;
 
     char final[2000];
@@ -69,7 +70,9 @@ class ExtendedCallGraph {
 
   bool filterStructs(string type_string){
 
-    if(type_string.find("%struct") != -1 && type_string.find("(") == -1 && type_string.find("[") == -1)
+    if(type_string.find("%struct") != string::npos &&
+       type_string.find("(") == string::npos &&
+       type_string.find("[") == string::npos)
       return true;
     else
       return false;

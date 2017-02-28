@@ -50,6 +50,7 @@
 #include "SpecializationPolicy.h"
 #include "StrategySpecializer.h"
 #include "Specializer.h"
+#include "ExtendedCallGraph.h"
 
 #include <list>
 #include <set>
@@ -79,7 +80,7 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
       }
 
       bool indirect = false;
-      map<Function*, bool> targetFuncs;
+      std::map<Function*, bool> targetFuncs;
       Function* calleeFunction = call.getCalledFunction();      
       if (calleeFunction == NULL) { // dynamic call, can't resolve       
          ecg->resolveCall(ci, *f->getParent(), targetFuncs);
@@ -214,7 +215,7 @@ SpecializerPass::runOnModule(Module &M)
 {
   // Creating and initiazing an ExtendedCallGraph object
   // This is an imprecise and incomplete callgraph for indirect function calls
-  ecg = new ExtendedCallGraph();
+  auto ecg = new ExtendedCallGraph();
   ecg->initializeCallGraph(M);
   CallGraphWrapperPass& CG = this->getAnalysis<CallGraphWrapperPass> ();
 

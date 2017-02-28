@@ -161,7 +161,6 @@ namespace previrt
       result = llvm::CloneFunction(f, vmap, true, &info);
       result->setName(baseName);
     }
-
     return result;
   }
 
@@ -209,7 +208,7 @@ namespace previrt
       } else {
 	newInst = CallInst::Create(nfunc, ArrayRef<Value*>(newOperands, specialized_arg_count));
       }
-      delete newOperands;
+      delete[] newOperands;
 
     } else if (InvokeInst* ci = dyn_cast<InvokeInst>(I)) {
 
@@ -221,7 +220,7 @@ namespace previrt
       newInst = InvokeInst::Create(nfunc, ci->getNormalDest(),
           ci->getUnwindDest(), ArrayRef<Value*>(newOperands,
           specialized_arg_count), ci->getName());
-      delete newOperands;
+      delete[] newOperands;
 
     } else {
       assert(false && "specializeCallSite got non-callsite");

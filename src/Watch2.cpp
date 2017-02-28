@@ -173,7 +173,10 @@ namespace previrt
             matchEnv[idx].c_str());
       }
 
-      return irb.CreateConstGEP2_32(matchCache[idx], 0, 0);
+      Value* v = matchCache[idx];
+      return
+	irb.CreateConstGEP2_32(cast<SequentialType>(v->getType())->getElementType(),
+			       v, 0, 0);
     }
 
     bool
@@ -378,7 +381,10 @@ namespace previrt
 
       ConstantInt* zero32 = ConstantInt::get(IntegerType::getInt32Ty(
           env.getContext()), 0, false);
-      return ConstantExpr::getGetElementPtr(cnst, zero32, true);
+
+      llvm::ConstantDataArray * cnstDA = cast<llvm::ConstantDataArray> (cnst);
+      return ConstantExpr::getGetElementPtr(cnstDA->getType()->getElementType(),
+					    cnst, zero32, true);
     } else {
       errs() << "Empty PrimExpr!\n";
       return NULL;
@@ -587,11 +593,11 @@ namespace previrt
         const watch::proto::ActionTree& tr = policy.seq(i);
         if (!compileAction(inside, delegate, tr, ctx, env, blocks[i], failure, blocks[i + 1])) {
           // Don't delete the blocks because they were llvm allocated
-          delete blocks;
+          delete[] blocks;
           return false;
         }
       }
-      delete blocks;
+      delete[] blocks;
       return true;
     } else {
       errs() << "Empty ActionTree!\n";
@@ -632,7 +638,7 @@ namespace previrt
       GlobalVariable *gv = new GlobalVariable(*inside->getParent(),
           name->getType(), true, GlobalVariable::LinkOnceODRLinkage, name, "");
 
-      Value* v = builder.CreateConstGEP2_32(gv, 0, 0);
+      Value* v = builder.CreateConstGEP2_32(name->getType(), gv, 0, 0);
       env.valueEnv.insert(env.valueEnv.begin(), v);
       builder.CreateCall(policyError, ArrayRef<Value*> (env.valueEnv));
     } else {

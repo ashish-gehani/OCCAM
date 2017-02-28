@@ -163,13 +163,13 @@ namespace previrt
   static BasicBlock*
   watch(Function* inside, Function* const delegate, const proto::ActionTree& policy, std::vector<Value*>& env, BasicBlock* failure)
   {
-    LLVMContext& ctx = inside->getContext();
+    errs () << "watch method not implemented!\n";
+    assert (false);
+    return nullptr;
 
+    LLVMContext& ctx = inside->getContext();
     switch (policy.type())
     {
-    default:
-      assert(false); // Not implemented
-      break;
     case proto::CASE:
     {
       assert(policy.has_case_());
@@ -270,7 +270,7 @@ namespace previrt
       GlobalVariable *gv = new GlobalVariable(*inside->getParent(),
           name->getType(), true, GlobalVariable::LinkOnceODRLinkage, name, "");
 
-      Value* v = builder.CreateConstGEP2_32(gv, 0, 0);
+      Value* v = builder.CreateConstGEP2_32(name->getType(), gv, 0, 0);
       env.insert(env.begin(), v);
       builder.CreateCall(policyError, ArrayRef<Value*> (env));
     } else {
