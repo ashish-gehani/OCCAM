@@ -233,12 +233,12 @@ namespace previrt
     virtual void
     getAnalysisUsage(AnalysisUsage &Info) const
     {
-      Info.addRequiredTransitive<AliasAnalysis>();
+      Info.addRequiredTransitive<AAResultsWrapperPass>();
     }
     virtual bool
     runOnModule(Module& M)
     {
-      AliasAnalysis& aa = this->getAnalysis<AliasAnalysis>();
+      AliasAnalysis& aa = this->getAnalysis<AAResultsWrapperPass>();
       bool checked = false;
 
       errs() <<  "GatherInterfacePass::runOnModule: " << M.getModuleIdentifier() << "\n";
