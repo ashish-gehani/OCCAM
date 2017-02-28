@@ -39,7 +39,8 @@
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Pass.h"
-#include "llvm/IR/PassManager.h"
+//#include "llvm/IR/PassManager.h"
+#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -128,41 +129,32 @@ namespace previrt
     // Perform global dead code elimination
     // TODO: To what extent should we do this here, versus
     //       doing it elsewhere?
-    PassManager<Module> cdeMgr;
-    PassManager<Module>  mcMgr;
+    legacy::PassManager cdeMgr;
+    legacy::PassManager mcMgr;
     ModulePass* modulePassDCE = createGlobalDCEPass();
-    cdeMgr.addPass(modulePassDCE);
+    cdeMgr.add(modulePassDCE);
     //mfMgr.add(createMergeFunctionsPass());
 
     ModulePass* constantMergePass = createConstantMergePass();
 
-    mcMgr.addPass(constantMergePass);
+    mcMgr.add(constantMergePass);
     bool moreToDo = true;
     unsigned int iters = 0;
     while (moreToDo && iters < 10000) {
       moreToDo = false;
-      PreservedAnalyses cdePA = cdeMgr.run(M);
-      if (cdePA.preserved((void*) modulePassDCE->getPassID())) 
-	moreToDo =true;
-      //if (cdeMgr.run(M)) moreToDo = true;
+      if (cdeMgr.run(M)) moreToDo = true;
       // (originally commented) if (mfMgr.run(M)) moreToDo = true;
-      PreservedAnalyses mcPA = mcMgr.run(M);
-      if (mcPA.preserved((void*) constantMergePass->getPassID()))
-	moreToDo = true;
-      //if (mcMgr.run(M)) moreToDo = true;
+      if (mcMgr.run(M)) moreToDo = true;
       modified = modified || moreToDo;
       ++iters;
     }
 
     if (moreToDo) {
-      PreservedAnalyses cdePA = cdeMgr.run(M);
-      if (cdePA.preserved((void*) modulePassDCE->getPassID()))
+      if (cdeMgr.run(M))
 	errs() << "GlobalDCE still had more to do\n";
-
       //if (mfMgr.run(M)) errs() << "MergeFunctions still had more to do\n";
 
-      PreservedAnalyses mcPA = mcMgr.run(M);
-      if (mcPA.preserved((void*) constantMergePass->getPassID()))
+      if (mcMgr.run(M))
 	errs() << "MergeConstants still had more to do\n";
     }
 

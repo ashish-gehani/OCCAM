@@ -39,7 +39,8 @@
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/Pass.h"
-#include "llvm/IR/PassManager.h"
+#include "llvm/IR/LegacyPassManager.h"
+//#include "llvm/IR/PassManager.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/CommandLine.h"
@@ -146,7 +147,9 @@ namespace previrt
 
     if (this->progName) {
       GlobalVariable* gv = materializeStringLiteral(M, this->progName);
-      cargs.push_back(irb.CreateConstGEP2_32(gv, 0, 0));
+      auto* gvT = gv->getType();
+      auto* sty = cast<SequentialType>(gvT);
+      cargs.push_back(irb.CreateConstGEP2_32(sty->getElementType(), gv, 0, 0));
     } else {
       Value* progName = irb.CreateLoad(argvArg, false);
       cargs.push_back(progName);
@@ -155,7 +158,9 @@ namespace previrt
     for (int i = 0; i < this->argc; ++i)
     {
       GlobalVariable* gv = materializeStringLiteral(M, this->argv[i]);
-      cargs.push_back(irb.CreateConstGEP2_32(gv, 0, 0));
+      auto* gvT = gv->getType();
+      auto* sty = cast<SequentialType>(gvT);
+      cargs.push_back(irb.CreateConstGEP2_32(sty->getElementType(), gv, 0, 0));
     }
 
     Value* argv = irb.CreateAlloca(stringtype, ConstantInt::get(i32type,
@@ -168,15 +173,19 @@ namespace previrt
       Value* argptr = irb.CreateConstGEP1_32(argv, idx);
       irb.CreateStore(*i, argptr);
     }
-
-    Value* res = irb.CreateCall2(f, ConstantInt::getSigned(IntegerType::get(
-        M.getContext(), 32), cargs.size()), argv);
+    std::vector<Value *> calleeVargs;
+    calleeVargs.push_back(ConstantInt::getSigned(IntegerType::get(M.getContext(), 32), cargs.size()));
+    calleeVargs.push_back(argv);
+    ArrayRef<Value *> calleeArgs(calleeVargs);
+     Value* res = irb.CreateCall(f, calleeArgs);
+    //    Value* res = irb.CreateCall2(f, ConstantInt::getSigned(IntegerType::get(
+    //        M.getContext(), 32), cargs.size()), argv);
     irb.CreateRet(res);
 
     f->setLinkage(GlobalValue::PrivateLinkage);
     f->addFnAttr(Attribute::AlwaysInline);
 
-    PassManager<Module> mgr;
+    legacy::PassManager mgr;
     mgr.add(createAlwaysInlinerPass());
     mgr.run(M);
 
