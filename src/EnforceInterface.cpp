@@ -236,7 +236,7 @@ namespace previrt
       GlobalVariable *gv = new GlobalVariable(*F->getParent(), name->getType(),
           true, GlobalVariable::LinkOnceODRLinkage, name, "");
 
-      Value* v = builder.CreateConstGEP2_32(gv, 0, 0);
+      Value* v = builder.CreateConstGEP2_32(gv->getType(), gv, 0, 0); // gv->getType() is a guess
       ary.insert(ary.begin(), v);
       builder.CreateCall(policyError, ArrayRef<Value*> (ary), "");
       if (F->getReturnType() == Type::getVoidTy(F->getContext())) {
