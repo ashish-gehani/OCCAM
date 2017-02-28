@@ -238,7 +238,7 @@ namespace previrt
     virtual bool
     runOnModule(Module& M)
     {
-      AliasAnalysis& aa = this->getAnalysis<AAResultsWrapperPass>();
+      AliasAnalysis& aa = this->getAnalysis<AAResultsWrapperPass>().getAAResults();
       bool checked = false;
 
       errs() <<  "GatherInterfacePass::runOnModule: " << M.getModuleIdentifier() << "\n";
