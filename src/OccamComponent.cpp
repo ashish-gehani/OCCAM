@@ -138,13 +138,13 @@ namespace previrt
     while (moreToDo && iters < 10000) {
       moreToDo = false;
       PreservedAnalyses cdePA = cdeMgr.run(M);
-      if (cdePA.preserve<GlobalDCEPass>()) 
+      if (cdePA.preserve<GlobalDCE>()) 
 	moreToDo =true;
       //if (cdeMgr.run(M)) moreToDo = true;
       // (originally commented) if (mfMgr.run(M)) moreToDo = true;
       PreservedAnalyses mcPA = mcMgr.run(M);
-      if (mcPA.preserve<ConstantMergePass>())
-	moreTodo = true;
+      if (mcPA.preserve<ConstantMerge>())
+	moreToDo = true;
       //if (mcMgr.run(M)) moreToDo = true;
       modified = modified || moreToDo;
       ++iters;
@@ -152,13 +152,13 @@ namespace previrt
 
     if (moreToDo) {
       PreservedAnalyses cdePA = cdeMgr.run(M);
-      if (cdePA.preserve<GlobalDCEPass>()) 
+      if (cdePA.preserve<GlobalDCE>()) 
 	errs() << "GlobalDCE still had more to do\n";
 
       //if (mfMgr.run(M)) errs() << "MergeFunctions still had more to do\n";
 
       PreserveAnalyses mcPA = mcMgr.run(M);
-      if (mcPA.preserve<ConstantMergePass>())
+      if (mcPA.preserve<ConstantMerge>())
 	errs() << "MergeConstants still had more to do\n";
     }
 
