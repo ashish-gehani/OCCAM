@@ -117,9 +117,7 @@ namespace previrt
 	  if( ! cs.isCallee(use)){ continue; }
 	  
 	  const CallRewrite* const rw = T.lookupRewrite(i->first, cs.arg_begin(), cs.arg_end());
-	  if (rw == NULL){ continue; }
-	  
-
+	  if (rw == NULL){ continue; }	 
 #if DUMP
 	  BasicBlock* owner = cs.getInstruction()->getParent();
 	  errs() << "Specializing (inter-module) call to '" << cs.getCalledFunction()->getName()

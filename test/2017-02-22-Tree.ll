@@ -1,5 +1,5 @@
 ; RUN: cd %tree &&  %tree/build.sh
-; RUN: llvm-as < %tree/slash/main.o-final.ll | llvm-dis | FileCheck %s
+; RUN: %llvm_as < %tree/slash/main.o-final.ll | %llvm_dis | FileCheck %s
 
 ; ModuleID = 'slash/main.o-final.bc'
 target datalayout = "e-m:o-i64:64-f80:128-n8:16:32:64-S128"
