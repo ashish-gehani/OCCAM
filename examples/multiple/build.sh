@@ -30,6 +30,7 @@ extract-bc ${LIBRARY}
 
 export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
+export PATH=${LLVM_HOME}/bin:${PATH}
 
 slash --work-dir=slash multiple.manifest
 

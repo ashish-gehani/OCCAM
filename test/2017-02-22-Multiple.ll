@@ -2,7 +2,7 @@
 ;; directly %multiple/build.sh.
 ;
 ; RUN: cd %multiple &&  %multiple/build.sh 
-; RUN: llvm-as < %multiple/slash/main-final.ll | llvm-dis | FileCheck %s
+; RUN: %llvm_as < %multiple/slash/main-final.ll | %llvm_dis | FileCheck %s
 
 ; ModuleID = 'slash/main-final.bc'
 target datalayout = "e-m:o-i64:64-f80:128-n8:16:32:64-S128"
