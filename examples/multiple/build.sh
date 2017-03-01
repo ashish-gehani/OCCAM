@@ -29,7 +29,6 @@ extract-bc ${LIBRARY}
 
 
 export OCCAM_LOGLEVEL=INFO
-
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
 
 slash --work-dir=slash multiple.manifest
@@ -37,11 +36,8 @@ slash --work-dir=slash multiple.manifest
 cp slash/main main_slash
 
 #debugging stuff below:
-
 for bitcode in slash/*.bc; do
     llvm-dis  "$bitcode" &> /dev/null
 done
-
-
 
 exit 0

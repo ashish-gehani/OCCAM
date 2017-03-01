@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-export OCCAM_LOGLEVEL=INFO
-
 LIBRARY='library'
 
 unamestr=`uname`
@@ -29,6 +27,7 @@ extract-bc main
 extract-bc ${LIBRARY}
 
 
+export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
 
 slash --work-dir=slash simple.manifest
@@ -40,3 +39,4 @@ for bitcode in slash/*.bc; do
     llvm-dis  "$bitcode" &> /dev/null
 done
 
+exit 0

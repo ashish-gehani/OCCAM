@@ -40,3 +40,4 @@ for bitcode in slash/*.bc; do
     llvm-dis  "$bitcode" &> /dev/null
 done
 
+exit 0
