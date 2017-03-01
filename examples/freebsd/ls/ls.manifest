@@ -1,7 +1,0 @@
-{ "libs": ["-lutil", "-lc"]
-, "native-libs": ["-ltermcap", "-lc", "-lpthread"]
-, "search": ["/usr/lib"]
-, "binary": "lsal"
-, "modules": ["ls.bc"]
-, "args": ["-al"]
-}

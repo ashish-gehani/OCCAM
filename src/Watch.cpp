@@ -163,84 +163,87 @@ namespace previrt
   static BasicBlock*
   watch(Function* inside, Function* const delegate, const proto::ActionTree& policy, std::vector<Value*>& env, BasicBlock* failure)
   {
-    errs () << "watch method not implemented!\n";
-    assert (false);
+    errs () << "watch function is not implemented!\n";
     return nullptr;
 
+    /// XXX: this code is dead right now but we keep it in case at
+    /// some point we want to use it.
     LLVMContext& ctx = inside->getContext();
     switch (policy.type())
-    {
-    case proto::CASE:
-    {
-      assert(policy.has_case_());
-      PrevirtType pt(policy.case_().test());
-      Function* eq = pt.getEqualityFunction(inside->getParent());
-      if (eq == NULL) {
-        errs() << "No equality function, defaulting to false\n";
-        BasicBlock* trg = watch(inside, delegate, policy.case_()._else(), env, failure);
-        return trg;
-      } else {
-        Value* compLeft = env[policy.case_().var()];
-        Value* compRight = pt.concretize(*inside->getParent(), compLeft->getType());
-        env[policy.case_().var()] = compRight;
-        BasicBlock* _then = watch(inside, delegate, policy.case_()._then(), env, failure);
-        env[policy.case_().var()] = compLeft;
-        if (_then == NULL)
-          return NULL;
-        BasicBlock* _else = watch(inside, delegate, policy.case_()._else(), env, failure);
-        if (_else == NULL)
-          return NULL;
-
-        BasicBlock* bb = BasicBlock::Create(ctx);
-        IRBuilder<> builder(bb);
-        std::vector<Value*> argVals;
-        argVals.reserve(2);
-        argVals.push_back(compLeft);
-        argVals.push_back(compRight);
-        Value* test = builder.CreateCall(eq, ArrayRef<Value*> (argVals));
-        SwitchInst* sw = builder.CreateSwitch(test, _else, 1);
-        sw->addCase(ConstantInt::getTrue(ctx), _then);
-        inside->getBasicBlockList().push_front(bb);
-        return bb;
+      {
+      case proto::CASE:
+	{
+	  assert(policy.has_case_());
+	  PrevirtType pt(policy.case_().test());
+	  Function* eq = pt.getEqualityFunction(inside->getParent());
+	  if (eq == NULL) {
+	    errs() << "No equality function, defaulting to false\n";
+	    BasicBlock* trg = watch(inside, delegate, policy.case_()._else(), env, failure);
+	    return trg;
+	  } else {
+	    Value* compLeft = env[policy.case_().var()];
+	    Value* compRight = pt.concretize(*inside->getParent(), compLeft->getType());
+	    env[policy.case_().var()] = compRight;
+	    BasicBlock* _then = watch(inside, delegate, policy.case_()._then(), env, failure);
+	    env[policy.case_().var()] = compLeft;
+	    if (_then == NULL)
+	      return NULL;
+	    BasicBlock* _else = watch(inside, delegate, policy.case_()._else(), env, failure);
+	    if (_else == NULL)
+	      return NULL;
+	    
+	    BasicBlock* bb = BasicBlock::Create(ctx);
+	    IRBuilder<> builder(bb);
+	    std::vector<Value*> argVals;
+	    argVals.reserve(2);
+	    argVals.push_back(compLeft);
+	    argVals.push_back(compRight);
+	    Value* test = builder.CreateCall(eq, ArrayRef<Value*> (argVals));
+	    SwitchInst* sw = builder.CreateSwitch(test, _else, 1);
+	    sw->addCase(ConstantInt::getTrue(ctx), _then);
+	    inside->getBasicBlockList().push_front(bb);
+	    return bb;
+	  }
+	}
+      case proto::EVENT:
+	{
+	  assert(policy.has_event());
+	  std::vector<Value*> args;
+	  if (!getArguments(env, policy.event().args(), args)) {
+	    errs() << "index out of bounds\n";
+	    return NULL;
+	  }
+	  BasicBlock* bb = BasicBlock::Create(ctx);
+	  IRBuilder<> builder(bb);
+	  Constant* evt = getEvent(inside->getParent(),
+				   policy.event().handler().c_str(), args);
+	  builder.CreateCall(evt, ArrayRef<Value*> (args));
+	  if (policy.event().has_then()) {
+	    BasicBlock* then = watch(inside, delegate, policy.event().then(), env, failure);
+	    builder.CreateBr(then);
+	  } else {
+	    builder.CreateBr(failure);
+	  }
+	  inside->getBasicBlockList().push_front(bb);
+	  return bb;
+	}
+      case proto::FORWARD:
+	{
+	  BasicBlock* bb = BasicBlock::Create(ctx);
+	  IRBuilder<> builder(bb);
+	  
+	  CallInst* call = builder.CreateCall(delegate,
+					      ArrayRef<Value*> (env.data(),
+								env.data() + delegate->getArgumentList().size()));
+								
+	  call->setTailCall(true);
+	  tailCall(call, builder);
+	  inside->getBasicBlockList().push_front(bb);
+	  return bb;
+	}
+      case proto::FAIL:
+	return failure;
       }
-    }
-    case proto::EVENT:
-    {
-      assert(policy.has_event());
-      std::vector<Value*> args;
-      if (!getArguments(env, policy.event().args(), args)) {
-        errs() << "index out of bounds\n";
-        return NULL;
-      }
-      BasicBlock* bb = BasicBlock::Create(ctx);
-      IRBuilder<> builder(bb);
-      Constant* evt = getEvent(inside->getParent(),
-          policy.event().handler().c_str(), args);
-      builder.CreateCall(evt, ArrayRef<Value*> (args));
-      if (policy.event().has_then()) {
-        BasicBlock* then = watch(inside, delegate, policy.event().then(), env, failure);
-        builder.CreateBr(then);
-      } else {
-        builder.CreateBr(failure);
-      }
-      inside->getBasicBlockList().push_front(bb);
-      return bb;
-    }
-    case proto::FORWARD:
-    {
-      BasicBlock* bb = BasicBlock::Create(ctx);
-      IRBuilder<> builder(bb);
-
-      CallInst* call = builder.CreateCall(delegate, ArrayRef<Value*> (
-          env.data(), env.data() + delegate->getArgumentList().size()));
-      call->setTailCall(true);
-      tailCall(call, builder);
-      inside->getBasicBlockList().push_front(bb);
-      return bb;
-    }
-    case proto::FAIL:
-      return failure;
-    }
   }
 
   bool

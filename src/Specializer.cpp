@@ -198,29 +198,29 @@ namespace previrt
     Instruction* newInst = NULL;
     if (CallInst* ci = dyn_cast<CallInst>(I)) {
 
-      Value** newOperands = new Value*[specialized_arg_count];
+
+      std::vector<Value*> newOperands;
+      newOperands.reserve (specialized_arg_count);
+
       for (size_t j = 0; j < specialized_arg_count; ++j) {
-        newOperands[j] = ci->getArgOperand(perm[j]);
+        newOperands.push_back (ci->getArgOperand(perm[j]));
       }
 
       if (ci->hasName()) {
-	newInst = CallInst::Create(nfunc, ArrayRef<Value*>(newOperands, specialized_arg_count), ci->getName());
+	newInst = CallInst::Create(nfunc, newOperands, ci->getName());
       } else {
-	newInst = CallInst::Create(nfunc, ArrayRef<Value*>(newOperands, specialized_arg_count));
+	newInst = CallInst::Create(nfunc, newOperands);
       }
-      delete[] newOperands;
-
     } else if (InvokeInst* ci = dyn_cast<InvokeInst>(I)) {
 
-      Value** newOperands = new Value*[specialized_arg_count];
+      std::vector<Value*> newOperands;
+      newOperands.reserve(specialized_arg_count);
       for (size_t j = 0; j < specialized_arg_count; ++j) {
-        newOperands[j] = ci->getArgOperand(perm[j]);
+        newOperands.push_back(ci->getArgOperand(perm[j]));
       }
 
       newInst = InvokeInst::Create(nfunc, ci->getNormalDest(),
-          ci->getUnwindDest(), ArrayRef<Value*>(newOperands,
-          specialized_arg_count), ci->getName());
-      delete[] newOperands;
+				   ci->getUnwindDest(), newOperands, ci->getName());
 
     } else {
       assert(false && "specializeCallSite got non-callsite");

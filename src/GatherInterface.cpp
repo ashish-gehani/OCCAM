@@ -288,7 +288,9 @@ namespace previrt
         codeInto<ComponentInterface, proto::ComponentInterface> (
             this->interface, ci);
         std::ofstream output(GatherInterfaceOutput.c_str(), std::ios::binary);
-        assert(ci.SerializeToOstream(&output));
+	bool success = ci.SerializeToOstream(&output);
+	if (!success)
+	  assert (false && "failed to write out interface");	
         output.close();
       }
       return false;

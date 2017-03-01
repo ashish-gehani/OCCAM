@@ -349,6 +349,10 @@ namespace previrt
 	      ConstantInt::get(M.getContext(),
 			       APInt(buffer.int_().bits(), buffer.int_().value(), 16));
 	  break;
+      case proto::F:
+	  concreteValue =
+	      ConstantFP::get(type, StringRef(buffer.float_().data()));
+	  break;
       case proto::S:
 	  assert(buffer.str().IsInitialized());
 	  if (!buffer.str().cstr())
@@ -395,9 +399,12 @@ namespace previrt
   PrevirtType::isConcrete() const
   {
     // TODO: check which of these work
-    return buffer.type() == proto::I || buffer.type() == proto::G
-      || buffer.type() == proto::N || buffer.type() == proto::S;
-
+      
+    return buffer.type() == proto::I || // Integer
+      buffer.type() == proto::G || // Global
+      buffer.type() == proto::N || // Null
+      buffer.type() == proto::S || // String
+      buffer.type() == proto::F;  // float
   }
 
   bool
@@ -417,6 +424,8 @@ namespace previrt
     case proto::I:
       assert(buffer.int_().IsInitialized());
       return std::string("0x") + buffer.int_().value();
+    case proto::F:
+      return buffer.float_().data();
     case proto::S: {
       assert(buffer.str().IsInitialized());
       if (!buffer.str().cstr())

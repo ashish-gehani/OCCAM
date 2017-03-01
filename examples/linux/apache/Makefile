@@ -1,24 +1,20 @@
-#change these to something suitable if you are not running in a vagrant box.
-#USER=vagrant
-#INSTALL=/vagrant
-USER=iam
-INSTALL=/home/iam/Repositories/OCCAM/examples/linux/apache-install
+INSTALL=${PWD}/apache-install
 
 
-#current versions as of 12/2015
-PCRE=pcre-8.38
+#current versions as of 11/2016
+PCRE=pcre-8.39
 APR=apr-1.5.2
 APR_UTIL=apr-util-1.5.4
-HTTPD=httpd-2.4.18
+HTTPD=httpd-2.4.23
 
 #the urls (if the versions change you should check these)
 PCRE_URL=ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/${PCRE}.tar.gz
 APR_URL=http://download.nextag.com/apache/apr/${APR}.tar.gz
 APR_UTIL_URL=http://shinyfeather.com/apr/${APR_UTIL}.tar.gz
-HTTPD_URL=http://apache.claz.org/httpd/${HTTPD}.tar.gz
+HTTPD_URL=http://apache.cs.utah.edu/httpd/${HTTPD}.tar.gz
 
 
-all: check_sanity build
+all: build
 
 build: ${PCRE}_build ${APR}_build ${APR_UTIL}_build ${HTTPD}_build
 
@@ -82,11 +78,12 @@ ${APR_UTIL}_build: ${APR_UTIL}
 	extract-bc libaprutil-1.so                                         && \
 	cp libaprutil-1.so.bc ../../                                       && \
 	cd ..                                                              && \
-	cd xml/expat/.libs                                                 && \
-	extract-bc libexpat.so                                             && \
-	mv libexpat.so.bc ../../../../                                     && \
-	cd ../../..                                                        && \
 	make install                                                          
+
+#	cd xml/expat/.libs                                                 && \
+#	extract-bc libexpat.so                                             && \
+#	mv libexpat.so.bc ../../../../                                     && \
+#	cd ../../..                                                        && \
 
 
 ${HTTPD}.tar.gz:
@@ -112,16 +109,12 @@ ${HTTPD}_build: ${HTTPD}
 
 
 clean:
-	rm -rf *~  *_build  previrt httpd
+	rm -rf *~  *_build  slash linked_slash httpd *.manifest httpd_*
 
 
 very_clean: clean
 	rm -rf ${HTTPD} ${APR_UTIL} ${APR} ${PCRE}
 
 spotless: very_clean
-	rm -f *.tar.gz *.tar
+	rm -rf *.tar.gz *.tar *.bc build ${INSTALL}
 
-check_sanity:
-ifneq ($(shell whoami),${USER})
-	$(error you are not running in a vagrant box, make sure the install directories make sense)
-endif

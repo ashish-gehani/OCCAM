@@ -1,0 +1,2 @@
+
+The specialization do not appear to work for the float or global pointer versions.

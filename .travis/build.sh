@@ -2,6 +2,8 @@
 # Make sure we exit if there is a failure
 set -e
 
+wllvm-sanity-checker
+
 mkdir -p travis_build/occam
 mkdir -p travis_build/Repositories
 
@@ -15,15 +17,9 @@ export LLVM_SUFFIX=-3.8
 #now set up the environment
 . ${BUILD_HOME}/.travis/bash_profile
 
-cd ${REPOS}
-git clone https://github.com/SRI-CSL/whole-program-llvm.git 
 cd ${BUILD_HOME}
-make 
+make
 make install
-#for some reason the install of occam is not being picked up...
-#cd examples/hello
-#make clean
-#make
 RETURN="$?"
 
 
@@ -31,3 +27,11 @@ if [ "${RETURN}" != "0" ]; then
     echo "Building OCCAM failed!"
     exit 1
 fi
+
+cd ${BUILD_HOME}/examples/multiple
+./build.sh
+##need to do a grep in the ll here ....
+
+
+### down here we want to check that running slash on multiple actually works.
+### AND specializes; so we do not go a year or so with a broken previrt AGAIN.

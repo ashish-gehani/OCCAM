@@ -1,13 +1,25 @@
 
 
 
-all:
-	cp ../musllvm/libc.so.bc .
-	cp ../musllvm/libc.a .
-	./build.sh
+all: 
+	@echo "Just type ./build.sh; this is here just for 'make clean'"
 
+
+
+libc.a.bc:
+	make -C ../musllvm
+	cp ../musllvm/libc.a.bc ../musllvm/libc.so.bc ../musllvm/libc.a ../musllvm/crt1.o .
+
+nweb.bc:
+	clang -c nweb.c -emit-llvm
+
+nweb:
+	clang -static -nostdlib nweb.bc libc.a.bc crt1.o libc.a /usr/lib/gcc/x86_64-linux-gnu/4.8/libgcc.a -o nweb
 
 
 clean:
-	rm -rf *.a *.bc .*.bc .*.o *.s nweb nweb-base nweb.manifest nweb*.o previrt occam.log index.html* root/nweb.log
+	rm -rf *.a *.bc .*.bc .*.o *.o *.s nweb nweb-base *.manifest nweb*.o slash occam.log index.html* root/nweb.log 
 
+
+spotless: clean
+	rm -rf libc.a musllvm

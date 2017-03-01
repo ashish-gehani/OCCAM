@@ -1,0 +1,21 @@
+-- Previrt -------------------------------------------------------------------
+
+[ ] Debug previrtualized version of httpd. The previrtualized version of httpd
+    does not start correctly. It seems likely this is due to interactions with
+    pthreads (possibly some incorrectly eliminated symbols?).
+[ ] Figure out how to avoid needing to relink in libc, etc. to get the symbols
+    we need for the C runtime. (and C++/pthreads?)
+[ ] Add support for better call-graphs. Either improve Gregory's call graph,
+    choose a better one that's already in llvm, or port over the DSA call-graph
+    stuff in poolalloc.
+[ ] Support for previrtualizing un-named functions
+[ ] Support for previrtualizing internal function pointers accross module 
+    boundaries for call backs.
+[ ] To avoid creating multiple clones of the same specialized function, we check
+    if it already exists by looking it up in the module by name. This check
+    should probably be more robust. This is related to support for un-named
+    functions because we need to make sure we're using unique specializations
+    for the different functions.
+[ ] For ease of understanding, give created globals for strings, etc., names so
+    they don't show up as unnamed in the symbol table.
+[ ] Extract statistics about the previrtualization process.

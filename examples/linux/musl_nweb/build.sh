@@ -1,42 +1,45 @@
 #!/usr/bin/env bash
 
-. ../../../scripts/env.sh
+export OCCAM_LOGFILE=${PWD}/slash/occam.log
+export OCCAM_LOGLEVEL=INFO
 
+make libc.a.bc
 
 ROOT=`pwd`/root
 
-# Build the manifest file
-cat > nweb.manifest <<EOF
-{ "modules" : ["nweb.bc"]
-, "binary"  : "nweb"
-, "libs"    : ["libc.so.bc"]
-, "native_libs" : ["-lc", "-lpthread"]
-, "search"  : ["/usr/lib", "/usr/local/lib", "/usr/lib/x86_64-linux-gnu/"]
+cat > nweb.razor.manifest <<EOF
+{ "main" :  "nweb.o.bc"
+, "binary"  : "nweb_razor"
+, "modules"    : ["libc.a.bc"]
+, "native_libs" : ["crt1.o", "libc.a"]
+, "ldflags" : ["-static", "-nostdlib"]
 , "args"    : ["8181", "${ROOT}"]
 , "name"    : "nweb"
 }
 EOF
 
-#make the bitcode
-wllvm nweb.c -o nweb
-extract-bc nweb
-
-# Previrutalize
-${OCCAM_HOME}/bin/occam previrt --work-dir=previrt nweb.manifest
 
 
-# Link link the binary into the current directory
-# (it was created in previrt)
-echo "linking nweb to previrt/nweb"
-rm -f nweb
-ln -s previrt/nweb .
+# make the bitcode
 
-# Now build the non-previrt application
-echo "building the non-previrt application bitcode"
-${LLVM_OPT_NAME} -O3 nweb.bc -o nweb.opt.bc
+echo "wllvm nweb.c -c"
+wllvm nweb.c -c
 
-echo "creating the non-previrt application object file"
-${LLVM_LLC_NAME} -filetype=obj -o nweb.opt.o nweb.opt.bc
+echo "extract-bc nweb.o"
+extract-bc nweb.o
 
-echo "producing the non-previrt executable: nweb-base"
-${LLVM_CC_NAME} nweb.opt.o -o nweb-base 
+# make libc.a.o
+echo "llc -filetype=obj  libc.a.bc"
+llc -filetype=obj libc.a.bc
+
+# make a reference executable
+echo "clang -static -nostdlib nweb.o libc.a.o crt1.o libc.a -o nweb_static"
+clang -static -nostdlib nweb.o libc.a.o crt1.o libc.a -o nweb_static
+
+# Previrtualize
+slash --work-dir=slash nweb.razor.manifest
+
+#debugging stuff below:
+for bitcode in slash/*.bc; do
+    llvm-dis  "$bitcode" &> /dev/null
+done

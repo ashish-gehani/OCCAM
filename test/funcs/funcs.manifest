@@ -1,6 +1,0 @@
-{ "libs": []
-, "native-libs": ["-lc"]
-, "search": ["/usr/lib"]
-, "binary": "funcs"
-, "modules": ["main.bc", "call.bc"]
-}

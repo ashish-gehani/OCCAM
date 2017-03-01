@@ -95,10 +95,10 @@ namespace previrt
       if (!f->isDeclaration() && f->hasExternalLinkage() &&
           I.calls.find(f->getName()) == end &&
           I.references.find(f->getName()) == I.references.end()) {
-        errs() << "Hiding '" << f->getName() << "'\n";
-        f->setLinkage(GlobalValue::InternalLinkage);
+	errs() << "Hiding '" << f->getName() << "'\n";
+	f->setLinkage(GlobalValue::InternalLinkage);
 	hidden++;
-        modified = true;
+	modified = true;
       }
     }
 

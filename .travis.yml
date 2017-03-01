@@ -1,13 +1,29 @@
-language: c
+language: python
 
-compiler:
-  - clang
+python:
+#  - "3.5"
+#  - "3.4"
+#  - "3.3"
+  - "2.7"
+
+#language: c
+
+#compiler:
+#  - clang
 
 #https://docs.travis-ci.com/user/trusty-ci-environment/
+
 sudo: required
 dist: trusty
 
-#dependencies 
+#dependencies
+#
+# what a fucking mess:
+#
+# https://github.com/travis-ci/travis-ci/issues/4989
+# http://stackoverflow.com/questions/34819221/why-is-python-setup-py-saying-invalid-command-bdist-wheel-on-travis-ci
+#
+#
 install:
   - sudo apt-get update
   - sudo apt-get install -y wget libprotobuf-dev python-protobuf protobuf-compiler
@@ -20,4 +36,3 @@ install:
 #tests
 script:
   - ${BUILD_HOME}/.travis/build.sh
-
