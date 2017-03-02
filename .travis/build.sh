@@ -2,11 +2,6 @@
 # Make sure we exit if there is a failure
 set -e
 
-wllvm-sanity-checker
-
-which FileCheck
-
-
 mkdir -p travis_build/occam
 mkdir -p travis_build/Repositories
 
@@ -24,10 +19,11 @@ if [ "${RETURN}" != "0" ]; then
     exit 1
 fi
 
-cd ${BUILD_HOME}/examples/multiple
-./build.sh
-##need to do a grep in the ll here ....
+make test
+RETURN="$?"
 
 
-### down here we want to check that running slash on multiple actually works.
-### AND specializes; so we do not go a year or so with a broken previrt AGAIN.
+if [ "${RETURN}" != "0" ]; then
+    echo "The test harness is dicky!"
+    exit 1
+fi
