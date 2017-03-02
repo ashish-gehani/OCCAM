@@ -4,6 +4,9 @@ set -e
 
 wllvm-sanity-checker
 
+which FileCheck
+
+
 mkdir -p travis_build/occam
 mkdir -p travis_build/Repositories
 
