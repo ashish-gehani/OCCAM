@@ -103,7 +103,7 @@ namespace previrt
   Function*
   specializeFunction(Function *f, Value*const* args)
   // make a copy of f
-  // specialize on the arguments, a null means that that argument isn't known 
+  // specialize on the arguments, a null means that that argument isn't known
   {
     assert(!f->isDeclaration());
     ValueToValueMapTy vmap;
@@ -158,7 +158,7 @@ namespace previrt
     // check
     if (!result) {
       ClonedCodeInfo info;
-      result = llvm::CloneFunction(f, vmap, true, &info);
+      result = llvm::CloneFunction(f, vmap, &info);
       result->setName(baseName);
     }
     return result;
@@ -234,22 +234,22 @@ namespace previrt
   bool checkAlias(Function * f, CallInst * ci, AAResults & AA){
 
       bool debug = false;
-      if(debug) errs()<<"Checking Alias \n";     
-            
+      if(debug) errs()<<"Checking Alias \n";
+
       for(unsigned int i = 0; i < ci->getNumOperands(); i++){
-        Value * callArg = ci->getOperand(i);        
+        Value * callArg = ci->getOperand(i);
         for(Function::arg_iterator itr = f->arg_begin(); itr != f->arg_end(); itr++, i++) {
           Value * funcArg = (Value*) &(*itr);
-          if(!AA.isNoAlias(callArg, funcArg)) 
+          if(!AA.isNoAlias(callArg, funcArg))
           {
              if(debug)
                errs()<<*callArg<<" and "<<*funcArg<<" may ALIAS **** \n";
              return true;
-          }   
+          }
         }
       }
 
-      return false;      
+      return false;
   }
 
 
@@ -258,12 +258,12 @@ namespace previrt
   {
     if (f->isDeclaration())
       return false;
-   
+
     bool canSpec = true;
     for (inst_iterator I = inst_begin(f), E = inst_end(f); I != E; ++I) {
       if (CallInst* ci = dyn_cast<CallInst>(&*I)) {
         if (ci->isInlineAsm()) {
-          canSpec = canSpec & !checkAlias(f, ci, AA); 
+          canSpec = canSpec & !checkAlias(f, ci, AA);
         }
       }
     }

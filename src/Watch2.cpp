@@ -625,13 +625,13 @@ namespace previrt
 	  /// inserted in the function
 	  for (int j=i; i < policy.seq_size() + 1; ++j)
 	    delete blocks[j];
-	  
+
           return false;
         }
       }
       return true;
-      #endif 
-      
+      #endif
+
     } else {
       errs() << "Empty ActionTree!\n";
       return false;
@@ -801,7 +801,7 @@ namespace previrt
     virtual bool
     runOnModule(Module& M)
     {
-      
+
       errs() << "WatchPass2::runOnModule: " << M.getModuleIdentifier() << "\n";
 
       bool modified = false;
@@ -836,7 +836,7 @@ namespace previrt
             } else {
               inside = delegate;
               ValueToValueMapTy VMap;
-              delegate = CloneFunction(inside, VMap, true); // Being conservative, cloning debug info metadata
+              delegate = CloneFunction(inside, VMap); // Being conservative, cloning debug info metadata
               context.added_functions.push_back(delegate);
               inside->deleteBody();
             }

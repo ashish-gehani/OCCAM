@@ -191,7 +191,7 @@ namespace previrt
 	    BasicBlock* _else = watch(inside, delegate, policy.case_()._else(), env, failure);
 	    if (_else == NULL)
 	      return NULL;
-	    
+
 	    BasicBlock* bb = BasicBlock::Create(ctx);
 	    IRBuilder<> builder(bb);
 	    std::vector<Value*> argVals;
@@ -231,11 +231,11 @@ namespace previrt
 	{
 	  BasicBlock* bb = BasicBlock::Create(ctx);
 	  IRBuilder<> builder(bb);
-	  
+
 	  CallInst* call = builder.CreateCall(delegate,
 					      ArrayRef<Value*> (env.data(),
 								env.data() + delegate->getArgumentList().size()));
-								
+
 	  call->setTailCall(true);
 	  tailCall(call, builder);
 	  inside->getBasicBlockList().push_front(bb);
@@ -307,7 +307,7 @@ namespace previrt
     bool fancy;
     bool allowLocal;
     std::string failureName;
-    
+
   public:
     static char ID;
 
@@ -348,7 +348,7 @@ namespace previrt
 
       Constant* failureFunction = getExit(&M, failureName.c_str(), fancy);
 
-      
+
       for (::google::protobuf::RepeatedPtrField<
           proto::EnforceInterface_Functions>::const_iterator i =
           interface.functions().begin(), e = interface.functions().end(); i
@@ -368,7 +368,7 @@ namespace previrt
         } else {
           inside = delegate;
           ValueToValueMapTy VMap;
-          delegate = CloneFunction(inside, VMap, true); // Being conservative, cloning debug info metadata
+          delegate = CloneFunction(inside, VMap); // Being conservative, cloning debug info metadata
           M.getFunctionList().push_back(delegate);
           inside->deleteBody();
         }
