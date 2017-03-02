@@ -14,7 +14,7 @@ the corresponding python [package](https://pypi.python.org/pypi/protobuf/).
 If you need to generate application bitcode,
 you will want to install wllvm, either from the the pip [package](https://pypi.python.org/pypi/wllvm/) or the GitHub [repository](https://github.com/SRI-CSL/whole-program-llvm.git).
 
-The test harness also requires [lit](https://pypi.python.org/pypi/lit/) and `FileCheck'. `FileCheck` can often
+The test harness also requires [lit](https://pypi.python.org/pypi/lit/) and `FileCheck`. `FileCheck` can often
 be found in the binary directory of your llvm installation, however if you built your own, you may need to
 read [this.](https://bugs.llvm.org//show_bug.cgi?id=25675)
 
