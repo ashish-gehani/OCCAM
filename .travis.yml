@@ -16,6 +16,15 @@ python:
 sudo: required
 dist: trusty
 
+before_script:
+ - curl http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+ - echo "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty main" | sudo tee -a /etc/apt/sources.list
+ - echo "deb-src http://apt.llvm.org/trusty/ llvm-toolchain-trusty main" | sudo tee -a /etc/apt/sources.list
+ - echo "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.9 main" | sudo tee -a /etc/apt/sources.list
+ - echo "deb-src http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.9 main" | sudo tee -a /etc/apt/sources.list
+ - sudo apt-get update -qq
+ - sudo apt-get install clang-3.9 lldb-3.9
+
 #dependencies
 #
 # what a fucking mess:
@@ -27,12 +36,8 @@ dist: trusty
 install:
   - sudo apt-get update
   - sudo apt-get install -y wget libprotobuf-dev python-protobuf protobuf-compiler
-#
-# gotta work harder for these at the moment. see the bootstrap file.
-#
-#  - sudo apt-get install -y git llvm-3.9 libclang-3.9-dev clang-3.9
-#
-#
+# gotta work harder for these at the moment. see the before_script above.
+  - sudo apt-get install -y git llvm-3.9 libclang-3.9-dev clang-3.9
   - sudo apt-get install -y python-pip
   - pip --version
   - pip install setuptools --upgrade
