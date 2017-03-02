@@ -1,6 +1,6 @@
 ########  Occam configuration ################
 
-export LLVM_HOME=/usr/lib/llvm-3.8/
+export LLVM_HOME=/usr/lib/llvm-3.9/
 export CC=clang
 export CXX=clang++
 export CPP='clang -E'
