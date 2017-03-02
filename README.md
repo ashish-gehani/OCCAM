@@ -18,6 +18,8 @@ The test harness also requires [lit](https://pypi.python.org/pypi/lit/) and `Fil
 be found in the binary directory of your llvm installation, however if you built your own, you may need to
 read [this.](https://bugs.llvm.org//show_bug.cgi?id=25675)
 
+Detailed configuration instructions for Ubuntu 14.04 can be gleaned from [bootstrap.sh](https://github.com/SRI-CSL/OCCAM/blob/master/vagrants/14.04/basic/bootstrap.sh)  as well as the Travis CI scripts for each branch [.travis.yml](https://github.com/SRI-CSL/OCCAM/blob/master/.travis.yml).
+
 Building and Installing
 =======================
 
@@ -45,9 +47,6 @@ Build and install OCCAM with:
   make test
 ```
 
-Detailed instructions for Ubuntu 14.04 can be gleaned from [bootstrap.sh](https://github.com/SRI-CSL/OCCAM/blob/master/vagrants/14.04/basic/bootstrap.sh)  as well as the Travis CI scripts for each branch [.travis.yml](https://github.com/SRI-CSL/OCCAM/blob/master/.travis.yml)
-
-.
 
 Using OCCAM
 ===========
