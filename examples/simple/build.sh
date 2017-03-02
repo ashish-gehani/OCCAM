@@ -2,6 +2,7 @@
 
 LIBRARY='library'
 
+
 unamestr=`uname`
 if [[ "$unamestr" == 'Linux' ]]; then
    LIBRARY='library.so'

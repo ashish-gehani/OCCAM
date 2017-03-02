@@ -3,7 +3,7 @@ OUTPUT_LOG=./out.log
 
 LIT     = $(shell which lit)
 
-test: 
+test: clean
 ifeq ($(LIT),)
 	$(error you need to (pip) install lit)
 endif
