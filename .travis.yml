@@ -27,7 +27,7 @@ dist: trusty
 install:
   - sudo apt-get update
   - sudo apt-get install -y wget libprotobuf-dev python-protobuf protobuf-compiler
-  - sudo apt-get install -y git llvm-3.8 libclang-3.8-dev clang-3.8
+  - sudo apt-get install -y git llvm-3.9 libclang-3.9-dev clang-3.9
   - sudo apt-get install -y python-pip
   - pip --version
   - pip install setuptools --upgrade
@@ -35,7 +35,7 @@ install:
   - pip install protobuf
   - pip install lit
   - sudo -H pip install -r requirements.txt
-  - export PATH=/usr/lib/llvm-3.8/bin:${PATH}
+  - export PATH=/usr/lib/llvm-3.9/bin:${PATH}
   - export LLVM_COMPILER=clang
   - export WLLVM_OUTPUT=WARNING
   - export CC=clang
