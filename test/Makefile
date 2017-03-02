@@ -1,19 +1,16 @@
-LLVM_LIT=${LLVM_HOME}/../utils/lit/lit.py
-CFG_PATH=${OCCAM_HOME}/test
+CFG_PATH=../test
 OUTPUT_LOG=./out.log
 
-check_llvm_lit:
-	@test -s ${LLVM_LIT} || (echo "${LLVM_LIT} not found" ; exit 1)
+LIT     = $(shell which lit)
 
-test: check_llvm_lit 
-	@python ${LLVM_LIT} --param=test_dir=${OCCAM_HOME}/examples ${CFG_PATH} -v -o ${OUTPUT_LOG} 
+test: clean
+ifeq ($(LIT),)
+	$(error you need to (pip) install lit)
+endif
+	${LIT} --param=test_dir=../examples ${CFG_PATH} -v -o ${OUTPUT_LOG}
 
 clean:
 	rm -f out.log
-	$(MAKE) -C ${OCCAM_HOME}/examples/multiple clean
-	$(MAKE) -C ${OCCAM_HOME}/examples/simple clean
-	$(MAKE) -C ${OCCAM_HOME}/examples/tree clean
-
-
-
-
+	$(MAKE) -C ../examples/multiple clean
+	$(MAKE) -C ../examples/simple clean
+	$(MAKE) -C ../examples/tree clean
