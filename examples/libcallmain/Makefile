@@ -2,29 +2,17 @@
 #iam: producing the library varies from OS to OS
 OS   =  $(shell uname)
 
-LIBRARYNAME=library
-
-ifeq (Darwin, $(findstring Darwin, ${OS}))
-#  DARWIN
-LIB = ${LIBRARYNAME}.dylib
-LIBFLAGS = -Wall -fPIC -dynamiclib
-else
-# LINUX
-LIB = ${LIBRARYNAME}.so
-LIBFLAGS = -shared -fPIC  -Wl,-soname,${LIB}
-endif
-
-
 all: main
 
 
-${LIB}: library.c
-	${CC} ${LIBFLAGS}  library.c -o ${LIB}
+%.o: %.c
+	${CC} ${CFLAGS} $< -c -o $@
 
-main: main.c ${LIB}
-	${CC} -Wall  main.c -o main ${LIB}
+
+main: main.o library.o
+	${CC} -Wall  main.o library.o -o main
 
 
 clean:
-	rm -f *~ ${LIB} .*.bc *.bc *.ll .*.o *.manifest main main_slash
+	rm -f *~ *.o .*.bc *.bc *.ll .*.o *.manifest main main_slash
 	rm -rf slash

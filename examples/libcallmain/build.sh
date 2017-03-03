@@ -1,21 +1,11 @@
 #!/usr/bin/env bash
 
-LIBRARY='library'
-
-
-unamestr=`uname`
-if [[ "$unamestr" == 'Linux' ]]; then
-   LIBRARY='library.so'
-elif [[ "$unamestr" == 'Darwin' ]]; then
-   LIBRARY='library.dylib'
-fi
-
 
 # Build the manifest file  (FIXME: dylib not good for linux)
 cat > simple.manifest <<EOF
-{ "main" : "main.bc"
+{ "main" : "main.o.bc"
 , "binary"  : "main"
-, "modules"    : ["${LIBRARY}.bc"]
+, "modules"    : ["library.o.bc"]
 , "native_libs" : []
 , "args"    : []
 , "name"    : "main"
@@ -23,9 +13,9 @@ cat > simple.manifest <<EOF
 EOF
 
 #make the bitcode
-CC=wllvm make 
-extract-bc main
-extract-bc ${LIBRARY}
+CC=wllvm make
+extract-bc main.o
+extract-bc library.o
 
 
 export OCCAM_LOGLEVEL=INFO
