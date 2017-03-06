@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <time.h>
 
+int global2 = 555;
 
 static int mystery(){
 

@@ -5,9 +5,20 @@
 Prerequisites
 ============
 
-[OCCAM](https://github.com/SRI-CSL/OCCAM) currently works fine on Linux, OS X, and FreeBSD. You will
-need an installation of llvm-3.5. If you need to generate application bitcode,
+[OCCAM](https://github.com/SRI-CSL/OCCAM) currently works fine on Linux, OS X, and FreeBSD.
+It depends on an installation of LLVM. The master branch currently requires llvm-3.5, and
+there are branches for llvm-3.8, and llvm-3.9. We will endeavor to maintain such
+correspondences. You will also need the Google protobuffer compiler `protoc` and
+the corresponding python [package](https://pypi.python.org/pypi/protobuf/).
+
+If you need to generate application bitcode,
 you will want to install wllvm, either from the the pip [package](https://pypi.python.org/pypi/wllvm/) or the GitHub [repository](https://github.com/SRI-CSL/whole-program-llvm.git).
+
+The test harness also requires [lit](https://pypi.python.org/pypi/lit/) and `FileCheck`. `FileCheck` can often
+be found in the binary directory of your llvm installation, however if you built your own, you may need to
+read [this.](https://bugs.llvm.org//show_bug.cgi?id=25675)
+
+Detailed configuration instructions for Ubuntu 14.04 can be gleaned from [bootstrap.sh](https://github.com/SRI-CSL/OCCAM/blob/master/vagrants/14.04/basic/bootstrap.sh)  as well as the Travis CI scripts for each branch [.travis.yml](https://github.com/SRI-CSL/OCCAM/blob/master/.travis.yml).
 
 Building and Installing
 =======================
@@ -33,9 +44,9 @@ Build and install OCCAM with:
 ```
   make
   make install
+  make test
 ```
 
-Detailed instructions for Ubuntu 14.04 can be gleaned from [bootstrap.sh](https://github.com/SRI-CSL/OCCAM/blob/master/vagrants/14.04/basic/bootstrap.sh).
 
 Using OCCAM
 ===========

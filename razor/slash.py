@@ -285,7 +285,7 @@ class Slash(object):
 
         linker_args = final_libs + native_libs + native_lib_flags + ldflags
 
-        link_cmd = '\nclang++ {0} -o {1} {2}\n'.format(module, binary, ' '.join(linker_args))
+        link_cmd = '\nclang++ {0} -o {1} {2}\n'.format(final_module, binary, ' '.join(linker_args))
 
         sys.stderr.write('\nLinking ...\n')
         sys.stderr.write(link_cmd)

@@ -50,6 +50,10 @@ occam_lib:
 	$(MAKE) -C src all
 
 
+.PHONY: test
+test:
+	$(MAKE) -C test test
+
 install_occam_lib: occam_lib
 	$(MAKE) -C src install
 
@@ -129,6 +133,7 @@ zippity:
 
 clean:
 	$(MAKE) -C src clean
+	$(MAKE) -C test clean
 	rm -rf razor/proto
 	rm -rf dist
 
