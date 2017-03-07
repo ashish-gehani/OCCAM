@@ -7,7 +7,7 @@ cat > simple.manifest <<EOF
 , "binary"  : "harness"
 , "modules"    : ["memcmpO3fixed.bc"]
 , "native_libs" : []
-, "args"    : []
+, "args"    : ["foo", "foo", "4"]
 , "name"    : "harness"
 }
 EOF
