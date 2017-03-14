@@ -45,6 +45,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/IPO.h"
+#include "llvm/LinkAllPasses.h"
 
 #include <vector>
 #include <string>
@@ -186,7 +187,7 @@ namespace previrt
     f->addFnAttr(Attribute::AlwaysInline);
 
     legacy::PassManager mgr;
-    mgr.add(createAlwaysInlinerPass());
+    mgr.add(createAlwaysInlinerLegacyPass());
     mgr.run(M);
 
     return true;

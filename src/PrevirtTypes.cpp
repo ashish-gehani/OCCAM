@@ -212,19 +212,19 @@ namespace previrt
       char dst[128];
       const APFloat& val = cf->getValueAPF();
       val.convertToHexString(dst, 0, false, APFloat::rmNearestTiesToEven);
-      if (&val.getSemantics() == &APFloat::Bogus) {
+      if (&val.getSemantics() == &APFloat::Bogus()) {
         result.buffer.mutable_float_()->set_sem(proto::Bogus);
-      } else if (&val.getSemantics() == &APFloat::IEEEhalf) {
+      } else if (&val.getSemantics() == &APFloat::IEEEhalf()) {
         result.buffer.mutable_float_()->set_sem(proto::IEEEhalf);
-      } else if (&val.getSemantics() == &APFloat::IEEEdouble) {
+      } else if (&val.getSemantics() == &APFloat::IEEEdouble()) {
         result.buffer.mutable_float_()->set_sem(proto::IEEEdouble);
-      } else if (&val.getSemantics() == &APFloat::IEEEquad) {
+      } else if (&val.getSemantics() == &APFloat::IEEEquad()) {
         result.buffer.mutable_float_()->set_sem(proto::IEEEquad);
-      } else if (&val.getSemantics() == &APFloat::IEEEsingle) {
+      } else if (&val.getSemantics() == &APFloat::IEEEsingle()) {
         result.buffer.mutable_float_()->set_sem(proto::IEEEsingle);
-      } else if (&val.getSemantics() == &APFloat::PPCDoubleDouble) {
+      } else if (&val.getSemantics() == &APFloat::PPCDoubleDouble()) {
         result.buffer.mutable_float_()->set_sem(proto::PPCDoubleDouble);
-      } else if (&val.getSemantics() == &APFloat::x87DoubleExtended) {
+      } else if (&val.getSemantics() == &APFloat::x87DoubleExtended()) {
         result.buffer.mutable_float_()->set_sem(proto::x87DoubleExtended);
       } else {
         return result;
@@ -305,7 +305,7 @@ namespace previrt
       if (const ConstantFP* va = dyn_cast<const ConstantFP>(val)) {
         const fltSemantics* sem = NULL;
         switch (buffer.float_().sem()) {
-#define CASE(x) case proto::x: { if (&va->getValueAPF().getSemantics() != &APFloat::x) return NO_MATCH; sem = &APFloat::x; break; }
+#define CASE(x) case proto::x: { if (&va->getValueAPF().getSemantics() != &APFloat::x()) return NO_MATCH; sem = &APFloat::x(); break; }
         CASE(IEEEdouble)
         CASE(IEEEhalf)
         CASE(IEEEsingle)

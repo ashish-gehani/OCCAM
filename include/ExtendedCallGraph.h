@@ -204,7 +204,7 @@ class ExtendedCallGraph {
 	    }
 	  }
 	  else {
-	    if(globalName == NULL)  return;
+	    if(globalName.empty())  return;
 	    Function * calledFunction = M.getFunction(StringRef(globalName));
 	    if(calledFunction != NULL){
 	      if(checkArgs(callInst, calledFunction))
