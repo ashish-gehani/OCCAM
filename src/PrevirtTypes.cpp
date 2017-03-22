@@ -233,21 +233,30 @@ namespace previrt
       result.buffer.set_type(proto::F);
       return result;
     } else if (const GlobalValue* gv = dyn_cast<const GlobalValue>(cnst)) {
-      const GlobalVariable* gvar = dyn_cast<GlobalVariable>(gv);
+      // gv can be alias, function or variable
+      // XXX: pass LLVM -strip pass will get rid of all internal names.
 
+      // function
+      if (isa<Function>(gv) && gv->getName() != "") {
+	result.buffer.set_type(proto::G);
+	result.buffer.mutable_global()->set_name(gv->getName().data());
+	return result;
+      }
+
+      // global alias or variable
       if (gv->getName() != "") {
         if (gv->isExternalLinkage(gv->getLinkage())) {
           result.buffer.set_type(proto::G);
           result.buffer.mutable_global()->set_name(gv->getName().data());
-          if (gvar) {
+          if (const GlobalVariable* gvar = dyn_cast<GlobalVariable>(gv)) {
             result.buffer.mutable_global()->set_is_const(gvar->isConstant());
           }
           return result;
         } else {
-          errs() << gv->getName() << " is not external!\n";
 	  return result;
         }
       }
+      
     } else if (isa<const ConstantExpr>(cnst)) {
 	StringRef out;
 	// See if it's a string constant
