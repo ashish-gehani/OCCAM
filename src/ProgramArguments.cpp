@@ -105,8 +105,12 @@ namespace previrt
   }
   SpecializeArguments::~SpecializeArguments()
   {
-    if (this->argv != NULL)
+    if (argv != NULL) {
+      for (int i=0; i < argc; i++)
+	delete [] argv[i];
+      
       delete[] argv;
+    }
   }
   bool
   SpecializeArguments::runOnModule(Module& M)
