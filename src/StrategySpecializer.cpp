@@ -76,14 +76,29 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
       }
 
       Function* callee = call.getCalledFunction();
-      if (callee == NULL) { // dynamic call, can't resolve
+      
+      if (callee == NULL) { 
+	llvm::errs () << "Cannot specialize " << *(call.getInstruction()) << " indirect call\n";
         continue;
       }
-      const unsigned int callee_arg_count = callee->getArgumentList().size();
-      if (callee == NULL || !canSpecialize(callee) || callee->isVarArg())
+      
+      if (callee->isVarArg()) {
+	llvm::errs () << "Cannot specialize " << *(call.getInstruction()) << " has vararg\n";
         continue;
+      }
+            
       if (callee->hasFnAttribute(Attribute::NoInline)) {
-        //errs() << "Function '" << callee->getName() << "' has noinline, skipping.\n";
+	llvm::errs() << "Cannot specialize " << *(call.getInstruction()) << " has NoInline\n";
+        continue;
+      }
+
+      if (callee->hasFnAttribute(Attribute::OptimizeNone)) {
+	llvm::errs() << "Cannot specialize " << *(call.getInstruction()) << " has OptimizeNone\n";
+        continue;
+      }
+
+      if (!canSpecialize(callee)) {
+	llvm::errs () << "Cannot specialize " << *(call.getInstruction()) << " decl or asm\n";
         continue;
       }
       
@@ -116,7 +131,7 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
       
 
       // == BEGIN DEBUGGING =============================================
-#if DUMP
+      #if DUMP
       errs() << "Specializing call to '" << callee->getName()
           << "' in function '" << f->getName() << "' on arguments [";
       for (unsigned int i = 0, cnt = 0; i < callee->getArgumentList().size(); ++i) {
@@ -132,12 +147,12 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
         }
       }
       errs() << "]\n";
-#endif
+      #endif
       // == END DEBUGGING ===============================================
 
       std::vector<const SpecializationTable::Specialization*> versions;
       table.getSpecializations(callee, specScheme, versions);
-
+      const unsigned int callee_arg_count = callee->getArgumentList().size();
       Function* specializedVersion = NULL;
       for (std::vector<const SpecializationTable::Specialization*>::iterator i =
           versions.begin(), e = versions.end(); i != e; ++i) {

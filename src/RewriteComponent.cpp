@@ -84,15 +84,6 @@ namespace previrt
     return specializeCallSite(cs.getInstruction(), newTarget, rw->args);
   }
   
-  static bool
-  vector_in(const std::vector<unsigned>& x, unsigned in)
-  {
-    for (std::vector<unsigned>::const_iterator i = x.begin(), e = x.end(); i != e; ++i) {
-      if (*i == in) return true;
-    }
-    return false;
-  }
-
   bool
   TransformComponentWithUse(Module& M, ComponentInterfaceTransform& T)
   {
@@ -114,29 +105,49 @@ namespace previrt
 	  CallSite cs(cast<Instruction>(user));
 	  
 	  // If we are not the callee we should bail
-	  if( ! cs.isCallee(use)){ continue; }
+	  if(!cs.isCallee(use)){ continue; }
 	  
 	  const CallRewrite* const rw = T.lookupRewrite(i->first, cs.arg_begin(), cs.arg_end());
 	  if (rw == NULL){ continue; }
 	  
-#if DUMP
+          #if DUMP
 	  BasicBlock* owner = cs.getInstruction()->getParent();
 	  errs() << "Specializing (inter-module) call to '" << cs.getCalledFunction()->getName()
 		 << "' in function '" << (owner == NULL ? "??" : owner->getParent()->getName())
 		 << "' on arguments [";
 	  for (unsigned int i = 0, cnt = 0; i < cs.arg_size(); ++i) {
-	    if (!vector_in(rw->args, i)) {
+	    if (std::find(rw->args.begin(), rw->args.end(), i) == rw->args.end()) {
 	      if (cnt++ != 0)
 		errs() << ",";
-	      errs() << i << "=(" << *cs.getArgument(i) << ")";
+	      if (Function* funptr = dyn_cast<Function> (cs.getArgument(i)))
+		errs() << i << "=(" << "&" << funptr->getName () << ")";
+	      else
+		errs() << i << "=(" << *cs.getArgument(i) << ")";
 	    }
 	  }
 	  errs() << "]\n";
-#endif
+          #endif
 	  
+	  if (cs.getCalledFunction () && cs.getCalledFunction ()->hasExternalLinkage()) {
+	    for (unsigned int i = 0; i < cs.arg_size(); ++i) {
+	      if (std::find(rw->args.begin(), rw->args.end(), i) == rw->args.end()) {
+		if (Function* funptr = dyn_cast<Function> (cs.getArgument(i))) {
+		  // XXX: we are specializing a callsite that has an
+		  // argument with the address of a function
+		  // foo. After the specialization, foo may be dead in
+		  // the current module but it might be called in
+		  // another module.  This code ensures that foo will
+		  // not be remove from the current module, otherwise
+		  // the linker will complain.
+		  funptr->setLinkage(GlobalValue::ExternalLinkage);
+		  llvm::errs () << "Marking " << funptr->getName () << "  as external.\n";
+		}
+	      }
+	    }
+	  }
+
 	  Instruction* newInst = applyRewriteToCall(M, rw, cs);
 	  llvm::ReplaceInstWithInst(cs.getInstruction(), newInst);
-	  
 	  modified = true;
 	}
       }

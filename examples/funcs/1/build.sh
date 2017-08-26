@@ -17,8 +17,9 @@ make
 
 export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
+export PATH=${LLVM_HOME}/bin:${PATH}
 
-slash --work-dir=slash funcs.manifest
+slash --no-strip --work-dir=slash funcs.manifest
 
 cp slash/main main_slash
 
@@ -26,3 +27,5 @@ cp slash/main main_slash
 for bitcode in slash/*.bc; do
     llvm-dis  "$bitcode" &> /dev/null
 done
+
+exit 0
