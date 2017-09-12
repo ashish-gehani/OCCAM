@@ -97,7 +97,7 @@ def sanity_check_manifest(manifest):
 
     old_manifest_keys = ['modules', 'libs', 'search', 'shared']
 
-    new_manifest_keys = ['main', 'binary']
+    new_manifest_keys = ['main', 'binary', 'constraints']
 
     dodo_manifest_keys = ['watch']
 
@@ -172,8 +172,14 @@ def check_manifest(manifest):
     if ldflags is None:
         ldflags = []
 
-
     args = manifest.get('args')
+
+    constraints = manifest.get('constraints')
+    if constraints is None:
+        constraints = []
+    else:
+        constraints = []
+
 
     name = manifest.get('name')
     if name is None:
