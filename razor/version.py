@@ -30,7 +30,7 @@
  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Freeping Creaturism:
+Feeping Creaturism:
 
 This is the all important version number used by pip.
 
