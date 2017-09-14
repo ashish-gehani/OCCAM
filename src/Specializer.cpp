@@ -92,8 +92,9 @@ namespace previrt
       }
       return base;
     } else {
-      args.reserve(f->getArgumentList().size());
-      for (unsigned int i = 0; i < f->getArgumentList().size(); ++i)
+      unsigned alen = f->arg_size();
+      args.reserve(alen);
+      for (unsigned int i = 0; i < alen; ++i)
         args.push_back("?");
       //iam      return f->getNameStr();
       return f->getName().str();
@@ -122,7 +123,7 @@ namespace previrt
         assert(arg->getType() == args[i]->getType()
 	       && "Specializing argument with concrete value of wrong type!");
 
-        vmap.insert(std::pair<Value*, WeakVH>(arg, args[i]));
+        vmap.insert(typename ValueToValueMapTy::value_type (arg, args[i]));
         PrevirtType pt = PrevirtType::abstract(args[i]);
         argNames[j] = pt.to_string();
         /*
@@ -142,7 +143,7 @@ namespace previrt
       }
       j++;
     }
-    assert (i == f->getArgumentList().size());
+    assert (i == f->arg_size());
 
     baseName += "(";
     for (std::vector<std::string>::const_iterator it = argNames.begin(), be = argNames.begin(), en = argNames.end(); it != en; ++it) {
@@ -168,7 +169,7 @@ namespace previrt
   specializeFunction(Function *f, const std::vector<Value*>& args)
   {
     assert(!f->isDeclaration());
-    assert(f->getArgumentList().size() == args.size());
+    assert(f->arg_size() == args.size());
     Function *nfunc = specializeFunction(f, args.data());
 
     // Debugging code for detecting some mis-specializations.
@@ -191,9 +192,9 @@ namespace previrt
   specializeCallSite(Instruction* I,
       llvm::Function* nfunc, const std::vector<unsigned>& perm)
   {
-    assert((nfunc->isVarArg() && nfunc->getArgumentList().size() <= perm.size())
-        || (!nfunc->isVarArg() && nfunc->getArgumentList().size() == perm.size()));
-    const size_t specialized_arg_count = perm.size(); //nfunc->getArgumentList().size();
+    assert((nfunc->isVarArg() && nfunc->arg_size() <= perm.size())
+        || (!nfunc->isVarArg() && nfunc->arg_size() == perm.size()));
+    const size_t specialized_arg_count = perm.size(); //nfunc->arg_size();
 
     Instruction* newInst = NULL;
     if (CallInst* ci = dyn_cast<CallInst>(I)) {

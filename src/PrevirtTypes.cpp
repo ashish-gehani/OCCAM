@@ -345,7 +345,7 @@ namespace previrt
 	  break;
       case proto::I:
 	  assert(buffer.int_().IsInitialized());
-	  concreteValue = 
+	  concreteValue =
 	      ConstantInt::get(M.getContext(),
 			       APInt(buffer.int_().bits(), buffer.int_().value(), 16));
 	  break;
@@ -358,7 +358,7 @@ namespace previrt
 	  if (!buffer.str().cstr())
 	      break;
 	  { // Scope sc locally
-	      GlobalVariable* sc = 
+	      GlobalVariable* sc =
 		  materializeStringLiteral(M, buffer.str().data().c_str());
 	      concreteValue = charStarFromStringConstant(M, sc);
 	  }
@@ -374,7 +374,7 @@ namespace previrt
 	      // a pointer, which should be the case because we only concretize
 	      // arguments and you can't pass a structure or function except
 	      // as a pointer.
-	      assert(type->isPointerTy() 
+	      assert(type->isPointerTy()
 		     && "Unexpected concretization of G to non-pointer type");
 	      Type * elemType = type->getContainedType(0);
 	      if (elemType->isFunctionTy()) {
@@ -399,7 +399,7 @@ namespace previrt
   PrevirtType::isConcrete() const
   {
     // TODO: check which of these work
-      
+
     return buffer.type() == proto::I || // Integer
       buffer.type() == proto::G || // Global
       buffer.type() == proto::N || // Null
@@ -486,10 +486,10 @@ namespace previrt
     BasicBlock* bb = BasicBlock::Create(ctx, Twine("entry"), f);
     IRBuilder<> builder(bb);
 
-    Function::ArgumentListType::iterator var = f->getArgumentList().begin();
-    Argument* a1 = &(*var);
-    var++;
-    Argument* a2 = &(*var);
+    auto it = f->arg_begin();
+    Argument* a1 = &(*it);
+    it++;
+    Argument* a2 = &(*it);
     Value* test = builder.CreateICmpEQ(a1, a2);
     builder.CreateRet(test);
 
@@ -513,8 +513,11 @@ namespace previrt
         Type::getInt32Ty(M.getContext()), ArrayRef<Type*>(ft), false);
     Constant* strcmp = M.getOrInsertFunction("strcmp", strcmp_type);
 
-    Value* vals[2] =
-      { &*(f->getArgumentList().begin()), &*(++f->getArgumentList().begin()) };
+    auto it = f->arg_begin();
+    auto a1 = &*(it);
+    auto a2 = &*(++it);
+
+    Value* vals[2] = { a1, a2 };
     Value* test = builder.CreateCall(strcmp, ArrayRef<Value*>(vals, 2), "");
     Value* result = builder.CreateICmpEQ(test,
         ConstantInt::get(test->getType(), 0, true));

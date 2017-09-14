@@ -183,8 +183,8 @@ namespace previrt
     FunctionHandle fname = f->getName();
     if (this->calls.find(fname) == this->calls.end()) {
       std::vector<CallInfo*> calls;
-      CallInfo* ci = CallInfo::Create(f->getArgumentList().size(), 1);
-      ci->args.resize(f->getArgumentList().size(), PrevirtType::unknown());
+      CallInfo* ci = CallInfo::Create(f->arg_size(), 1);
+      ci->args.resize(f->arg_size(), PrevirtType::unknown());
       calls.push_back(ci);
       this->calls[fname] = calls;
     } else {
@@ -200,8 +200,8 @@ namespace previrt
         return;
         no: continue;
       }
-      CallInfo* ci = CallInfo::Create(f->getArgumentList().size(), 1);
-      ci->args.resize(f->getArgumentList().size(), PrevirtType::unknown());
+      CallInfo* ci = CallInfo::Create(f->arg_size(), 1);
+      ci->args.resize(f->arg_size(), PrevirtType::unknown());
       this->calls[fname].push_back(ci);
     }
   }
@@ -282,7 +282,7 @@ namespace previrt
     assert(i != this->calls.end());
     return i->second.begin();
   }
-  
+
   ComponentInterface::CallIterator
   ComponentInterface::call_end(StringRef n) const
   {

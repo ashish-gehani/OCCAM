@@ -121,7 +121,7 @@ namespace previrt
     void
     init(Function* f)
     {
-      argCount = f->getArgumentList().size();
+      argCount = f->arg_size();
       valueEnv.resize(argCount, NULL);
 
       for (Function::arg_iterator begin = f->arg_begin(), end = f->arg_end(); begin
@@ -514,7 +514,7 @@ namespace previrt
 
       CallInst* call = builder.CreateCall(const_cast<Function*> (delegate),
           ArrayRef<Value*> (env.valueEnv.data(), env.valueEnv.data()
-              + delegate->getArgumentList().size()));
+              + delegate->arg_size()));
       env.valueEnv.push_back(call);
       builder.CreateBr(success);
 
@@ -645,7 +645,7 @@ namespace previrt
 		Constant* policyError, bool fancyFail)
   {
     env.valueEnv.clear();
-    env.valueEnv.reserve(inside->getArgumentList().size());
+    env.valueEnv.reserve(inside->arg_size());
     for (Function::arg_iterator i = inside->arg_begin(), e = inside->arg_end(); i
         != e; ++i) {
       env.valueEnv.push_back(&*i);

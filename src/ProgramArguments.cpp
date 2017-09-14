@@ -114,7 +114,7 @@ namespace previrt
   SpecializeArguments::runOnModule(Module& M)
   {
     Function* f = M.getFunction("main");
-    
+
     if (f == NULL)
       {
 	errs() << "SpecializeArguments::runOnModule: running on module without 'main' function.\n"
@@ -122,7 +122,7 @@ namespace previrt
 	return false;
       }
 
-    if (f->getArgumentList().size() != 2)
+    if (f->arg_size() != 2)
     {
       errs() << "SpecializeArguments::runOnModule: main module has incorrect signature\n" << f->getFunctionType();
       return false;

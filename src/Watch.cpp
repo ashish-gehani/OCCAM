@@ -234,7 +234,7 @@ namespace previrt
 
 	  CallInst* call = builder.CreateCall(delegate,
 					      ArrayRef<Value*> (env.data(),
-								env.data() + delegate->getArgumentList().size()));
+								env.data() + delegate->arg_size()));
 
 	  call->setTailCall(true);
 	  tailCall(call, builder);
@@ -250,7 +250,7 @@ namespace previrt
   watchFunction(Function* inside, Function* const delegate, const proto::ActionTree& policy, Constant* policyError, bool fancyFail)
   {
     std::vector<Value*> env;
-    env.reserve(inside->getArgumentList().size());
+    env.reserve(inside->arg_size());
     for (Function::arg_iterator i = inside->arg_begin(), e = inside->arg_end(); i
         != e; ++i) {
       env.push_back((Value*) &*i);

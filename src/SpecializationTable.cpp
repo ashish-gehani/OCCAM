@@ -214,7 +214,7 @@ namespace previrt
       std::vector<const Specialization*>& result) const
   {
     const Specialization* current = this->getSpecialization(f);
-    const int arg_count = f->getArgumentList().size();
+    const int arg_count = f->arg_size();
 
     for (std::vector<Specialization*>::const_iterator i =
         current->children.begin(), e = current->children.end(); i != e; ++i) {

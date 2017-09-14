@@ -76,7 +76,7 @@ namespace previrt
    * implement the given interface.
    */
   bool
-  MinimizeComponent(Module& M, ComponentInterface& I)
+  MinimizeComponent(Module& M, const ComponentInterface& I)
   {
     bool modified = false;
     int hidden = 0;

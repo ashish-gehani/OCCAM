@@ -81,32 +81,32 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
 
       bool indirect = false;
       std::map<Function*, bool> targetFuncs;
-      Function* calleeFunction = call.getCalledFunction();      
-      if (calleeFunction == NULL) { // dynamic call, can't resolve       
+      Function* calleeFunction = call.getCalledFunction();
+      if (calleeFunction == NULL) { // dynamic call, can't resolve
          ecg->resolveCall(ci, *f->getParent(), targetFuncs);
          indirect = true;
       }
       else{
-         targetFuncs[calleeFunction] = true;  
-      }    
+         targetFuncs[calleeFunction] = true;
+      }
 
-      if(targetFuncs.size() == 0) continue; // No function has been resolved        
-      
+      if(targetFuncs.size() == 0) continue; // No function has been resolved
+
       for(map<Function*, bool>::iterator it = targetFuncs.begin(); it != targetFuncs.end(); it++)
       {
-      
+
       Function * callee = it->first;
-      const unsigned int callee_arg_count = callee->getArgumentList().size();
+      const unsigned int callee_arg_count = callee->arg_size();
       if (callee == NULL || !canSpecialize(callee, AA) || callee->isVarArg())
       {
         continue;
       }
 
       if (callee->hasFnAttribute(Attribute::NoInline)) {
-        
+
         continue;
       }
-      
+
       //iam: the old version is when this is true
       //iam: the current 3/2/2016 version has this false.
       bool break_the_nostrip_version = false;
@@ -117,9 +117,9 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
 	  //errs() << "Skipping function with no name.\n";
 	  continue;
 	}
-	
-      } 
-      
+
+      }
+
       // Hashim: Internal linkage functions skiping should be reconsidered
       else {
 	// This is too much traceing
@@ -136,12 +136,12 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
       {
         continue;
       }
-      
+
       // == BEGIN DEBUGGING =============================================
 #if DUMP
       errs() << "Specializing call to '" << callee->getName()
           << "' in function '" << f->getName() << "' on arguments [";
-      for (unsigned int i = 0, cnt = 0; i < callee->getArgumentList().size(); ++i) {
+      for (unsigned int i = 0, cnt = 0; i < callee->arg_size(); ++i) {
         if (specScheme[i] != NULL) {
           if (cnt++ != 0)
             errs() << ",";
@@ -174,7 +174,7 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
         // need to build a specialized version
         specializedVersion = specializeFunction(callee, specScheme);
         if(specializedVersion == NULL) continue; // Hashim: hacking
-        
+
         table.addSpecialization(callee, specScheme, specializedVersion);
 
         to_add.push_back(specializedVersion);
@@ -182,7 +182,7 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
 
       assert(specializedVersion != NULL);
       const unsigned int specialized_arg_count =
-          specializedVersion->getArgumentList().size();
+          specializedVersion->arg_size();
 
       std::vector<unsigned> argPerm;
       argPerm.reserve(specialized_arg_count);
@@ -191,8 +191,8 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
           argPerm.push_back(from);
       }
       assert(specialized_arg_count == argPerm.size());
-   
-      if(!indirect){      
+
+      if(!indirect){
         Instruction* newInst = specializeCallSite(&*I, specializedVersion, argPerm);
         llvm::ReplaceInstWithInst(bb->getInstList(), I, newInst);
       }
@@ -264,7 +264,7 @@ SpecializerPass::runOnModule(Module &M)
     if (optimizer) {
       optimizer->run(*f);
     }
-   
+
     //errs()<<"func2: "<<f->getName()<<"\n";
     //AliasAnalysis & AA = getAnalysis<AAResultsWrapperPass>(*f).getAAResults();
     //trySpecializeFunction(f, table, policy, to_add, AA, ecg);
@@ -287,7 +287,7 @@ SpecializerPass::runOnModule(Module &M)
 
 void
 SpecializerPass::getAnalysisUsage(AnalysisUsage &AU) const {
- 
+
   AU.addRequired<CallGraphWrapperPass>();
   AU.addRequired<AAResultsWrapperPass>();
   AU.setPreservesAll();
@@ -296,7 +296,7 @@ SpecializerPass::getAnalysisUsage(AnalysisUsage &AU) const {
 namespace previrt
 {
   char SpecializerPass::ID;
-  
+
   SpecializerPass::SpecializerPass(bool _opt) :
     ModulePass(SpecializerPass::ID), optimize(_opt)
   {
@@ -330,7 +330,7 @@ namespace
       SpecializerPass(OptSpecialized.getValue())
     {
     }
-   
+
     ~ParEvalOptPass()
     {
     }
@@ -340,4 +340,3 @@ namespace
   static RegisterPass<ParEvalOptPass> X("Ppeval",
       "partial evaluation (inlining)", false, false);
 }
-
