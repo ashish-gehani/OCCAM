@@ -4,5 +4,5 @@
 , "native_libs" : []
 , "args"    : []
 , "name"    : "hello"
-, "constraints" : "{ argv[1] = 'donald duck', argc > 1 }"
+, "constraints" : "{ argv[1] = \"donald duck\", argv[7] = \"-mcsat\" }"
 }

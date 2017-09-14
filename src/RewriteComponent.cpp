@@ -152,6 +152,7 @@ namespace previrt
 	}
       }
     }
+	
 
     return modified;
   }
@@ -215,8 +216,9 @@ namespace previrt
 
           assert(newTarget != NULL);
 
-          Instruction* newInst = specializeCallSite(I, newTarget, rw->args);
-          llvm::ReplaceInstWithInst(bb->getInstList(), I, newInst);
+          Instruction * inst = &*I;
+          Instruction* newInst = specializeCallSite(inst, newTarget, rw->args);
+          llvm::ReplaceInstWithInst(inst, newInst);
           modified = true;
         }
       }

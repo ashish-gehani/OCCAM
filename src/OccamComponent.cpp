@@ -39,7 +39,8 @@
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Pass.h"
-#include "llvm/PassManager.h"
+//#include "llvm/IR/PassManager.h"
+#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -75,7 +76,7 @@ namespace previrt
    * implement the given interface.
    */
   bool
-  MinimizeComponent(Module& M, ComponentInterface& I)
+  MinimizeComponent(Module& M, const ComponentInterface& I)
   {
     bool modified = false;
     int hidden = 0;
@@ -128,25 +129,33 @@ namespace previrt
     // Perform global dead code elimination
     // TODO: To what extent should we do this here, versus
     //       doing it elsewhere?
-    PassManager cdeMgr, mfMgr, mcMgr;
-    cdeMgr.add(createGlobalDCEPass());
+    legacy::PassManager cdeMgr;
+    legacy::PassManager mcMgr;
+    ModulePass* modulePassDCE = createGlobalDCEPass();
+    cdeMgr.add(modulePassDCE);
     //mfMgr.add(createMergeFunctionsPass());
-    mcMgr.add(createConstantMergePass());
+
+    ModulePass* constantMergePass = createConstantMergePass();
+
+    mcMgr.add(constantMergePass);
     bool moreToDo = true;
     unsigned int iters = 0;
     while (moreToDo && iters < 10000) {
       moreToDo = false;
       if (cdeMgr.run(M)) moreToDo = true;
-      //if (mfMgr.run(M)) moreToDo = true;
+      // (originally commented) if (mfMgr.run(M)) moreToDo = true;
       if (mcMgr.run(M)) moreToDo = true;
       modified = modified || moreToDo;
       ++iters;
     }
 
     if (moreToDo) {
-      if (cdeMgr.run(M)) errs() << "GlobalDCE still had more to do\n";
+      if (cdeMgr.run(M))
+	errs() << "GlobalDCE still had more to do\n";
       //if (mfMgr.run(M)) errs() << "MergeFunctions still had more to do\n";
-      if (mcMgr.run(M)) errs() << "MergeConstants still had more to do\n";
+
+      if (mcMgr.run(M))
+	errs() << "MergeConstants still had more to do\n";
     }
 
     if (modified) {

@@ -368,7 +368,7 @@ namespace previrt
     getAnalysisUsage(AnalysisUsage &Info) const
     {
       Info.addRequired<CallGraphWrapperPass> ();
-      Info.addRequiredTransitive<AliasAnalysis>();
+      Info.addRequiredTransitive<AAResultsWrapperPass>();
       Info.setPreservesAll();
     }
     virtual bool

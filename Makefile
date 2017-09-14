@@ -22,6 +22,11 @@ RM_F    = rm -f
 
 export OCCAM_LIB = $(OCCAM_HOME)/lib
 
+# tests needs an LLVM install from cmake with:
+# -DLLVM_INSTALL_UTILS=ON 
+# https://bugs.llvm.org//show_bug.cgi?id=25675
+
+
 
 all: sanity_check dist occam_lib
 

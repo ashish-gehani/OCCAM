@@ -6,8 +6,8 @@ Prerequisites
 ============
 
 [OCCAM](https://github.com/SRI-CSL/OCCAM) currently works fine on Linux, OS X, and FreeBSD.
-It depends on an installation of LLVM. The master branch currently requires llvm-3.5, and
-there are branches for llvm-3.8, and llvm-3.9. We will endeavor to maintain such
+It depends on an installation of LLVM. The master branch currently requires llvm-5.0, and
+there are branches for llvm-3.5, llvm-3.8, llvm-3.9, and llvm-4.0. We will endeavor to maintain such
 correspondences. You will also need the Google protobuffer compiler `protoc` and
 the corresponding python [package](https://pypi.python.org/pypi/protobuf/).
 
@@ -30,8 +30,8 @@ Set where OCCAM's library will be stored:
 
 Point to your LLVM's location, if non-standard:
 ```
-  export LLVM_HOME=/usr/local/llvm-3.5
-  export LLVM_CONFIG=llvm-config-3.5
+  export LLVM_HOME=/usr/local/llvm-5.0
+  export LLVM_CONFIG=llvm-config-5.0
 ```
 
 Set where system libraries, including Google Protocol Buffers, are located:
@@ -91,7 +91,7 @@ which will prevent any inter-module specializations.
 
 
 To function correctly `slash` calls LLVM tools such as `opt` and `clang++`. These should be available in
-your `PATH`, and be the currently supported version (3.5). Like `wllvm`, `slash`, will pay attention to
+your `PATH`, and be the currently supported version (5.0). Like `wllvm`, `slash`, will pay attention to
 the environment variables `LLVM_OPT_NAME` and `LLVM_CXX_NAME`
 if your version of these tools are adorned with suffixes.
 
