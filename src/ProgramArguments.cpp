@@ -184,8 +184,16 @@ namespace previrt
     irb.CreateRet(res);
 
     f->setLinkage(GlobalValue::PrivateLinkage);
+    // XXX: f is the old main which is now called inside new_main and
+    // we would like to inline old main into new_main. In llvm 5.0
+    // main has the NonInline attribute which is inherited by old main
+    // when it is created. Thus, we need to remove the NoInline
+    // attribute. If we remove NoInline then we also need to remove
+    // OptimizeNone.
+    f->removeFnAttr(Attribute::NoInline);
+    f->removeFnAttr(Attribute::OptimizeNone);
     f->addFnAttr(Attribute::AlwaysInline);
-
+    
     legacy::PassManager mgr;
     mgr.add(createAlwaysInlinerLegacyPass());
     mgr.run(M);
