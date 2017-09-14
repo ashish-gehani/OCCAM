@@ -121,7 +121,7 @@ namespace previrt
     void
     init(Function* f)
     {
-      argCount = f->getArgumentList().size();
+      argCount = f->arg_size();
       valueEnv.resize(argCount, NULL);
 
       for (Function::arg_iterator begin = f->arg_begin(), end = f->arg_end(); begin
@@ -173,7 +173,10 @@ namespace previrt
             matchEnv[idx].c_str());
       }
 
-      return irb.CreateConstGEP2_32(matchCache[idx], 0, 0);
+      Value* v = matchCache[idx];
+      return
+	irb.CreateConstGEP2_32(cast<SequentialType>(v->getType())->getElementType(),
+			       v, 0, 0);
     }
 
     bool
@@ -378,7 +381,10 @@ namespace previrt
 
       ConstantInt* zero32 = ConstantInt::get(IntegerType::getInt32Ty(
           env.getContext()), 0, false);
-      return ConstantExpr::getGetElementPtr(cnst, zero32, true);
+
+      llvm::ConstantDataArray * cnstDA = cast<llvm::ConstantDataArray> (cnst);
+      return ConstantExpr::getGetElementPtr(cnstDA->getType()->getElementType(),
+					    cnst, zero32, true);
     } else {
       errs() << "Empty PrimExpr!\n";
       return NULL;
@@ -508,7 +514,7 @@ namespace previrt
 
       CallInst* call = builder.CreateCall(const_cast<Function*> (delegate),
           ArrayRef<Value*> (env.valueEnv.data(), env.valueEnv.data()
-              + delegate->getArgumentList().size()));
+              + delegate->arg_size()));
       env.valueEnv.push_back(call);
       builder.CreateBr(success);
 
@@ -619,13 +625,13 @@ namespace previrt
 	  /// inserted in the function
 	  for (int j=i; i < policy.seq_size() + 1; ++j)
 	    delete blocks[j];
-	  
+
           return false;
         }
       }
       return true;
-      #endif 
-      
+      #endif
+
     } else {
       errs() << "Empty ActionTree!\n";
       return false;
@@ -639,7 +645,7 @@ namespace previrt
 		Constant* policyError, bool fancyFail)
   {
     env.valueEnv.clear();
-    env.valueEnv.reserve(inside->getArgumentList().size());
+    env.valueEnv.reserve(inside->arg_size());
     for (Function::arg_iterator i = inside->arg_begin(), e = inside->arg_end(); i
         != e; ++i) {
       env.valueEnv.push_back(&*i);
@@ -665,7 +671,7 @@ namespace previrt
       GlobalVariable *gv = new GlobalVariable(*inside->getParent(),
           name->getType(), true, GlobalVariable::LinkOnceODRLinkage, name, "");
 
-      Value* v = builder.CreateConstGEP2_32(gv, 0, 0);
+      Value* v = builder.CreateConstGEP2_32(name->getType(), gv, 0, 0);
       env.valueEnv.insert(env.valueEnv.begin(), v);
       builder.CreateCall(policyError, ArrayRef<Value*> (env.valueEnv));
     } else {
@@ -795,7 +801,7 @@ namespace previrt
     virtual bool
     runOnModule(Module& M)
     {
-      
+
       errs() << "WatchPass2::runOnModule: " << M.getModuleIdentifier() << "\n";
 
       bool modified = false;
@@ -830,7 +836,7 @@ namespace previrt
             } else {
               inside = delegate;
               ValueToValueMapTy VMap;
-              delegate = CloneFunction(inside, VMap, true); // Being conservative, cloning debug info metadata
+              delegate = CloneFunction(inside, VMap); // Being conservative, cloning debug info metadata
               context.added_functions.push_back(delegate);
               inside->deleteBody();
             }

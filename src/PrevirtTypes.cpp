@@ -212,19 +212,19 @@ namespace previrt
       char dst[128];
       const APFloat& val = cf->getValueAPF();
       val.convertToHexString(dst, 0, false, APFloat::rmNearestTiesToEven);
-      if (&val.getSemantics() == &APFloat::Bogus) {
+      if (&val.getSemantics() == &APFloat::Bogus()) {
         result.buffer.mutable_float_()->set_sem(proto::Bogus);
-      } else if (&val.getSemantics() == &APFloat::IEEEhalf) {
+      } else if (&val.getSemantics() == &APFloat::IEEEhalf()) {
         result.buffer.mutable_float_()->set_sem(proto::IEEEhalf);
-      } else if (&val.getSemantics() == &APFloat::IEEEdouble) {
+      } else if (&val.getSemantics() == &APFloat::IEEEdouble()) {
         result.buffer.mutable_float_()->set_sem(proto::IEEEdouble);
-      } else if (&val.getSemantics() == &APFloat::IEEEquad) {
+      } else if (&val.getSemantics() == &APFloat::IEEEquad()) {
         result.buffer.mutable_float_()->set_sem(proto::IEEEquad);
-      } else if (&val.getSemantics() == &APFloat::IEEEsingle) {
+      } else if (&val.getSemantics() == &APFloat::IEEEsingle()) {
         result.buffer.mutable_float_()->set_sem(proto::IEEEsingle);
-      } else if (&val.getSemantics() == &APFloat::PPCDoubleDouble) {
+      } else if (&val.getSemantics() == &APFloat::PPCDoubleDouble()) {
         result.buffer.mutable_float_()->set_sem(proto::PPCDoubleDouble);
-      } else if (&val.getSemantics() == &APFloat::x87DoubleExtended) {
+      } else if (&val.getSemantics() == &APFloat::x87DoubleExtended()) {
         result.buffer.mutable_float_()->set_sem(proto::x87DoubleExtended);
       } else {
         return result;
@@ -256,7 +256,6 @@ namespace previrt
 	  return result;
         }
       }
-      
     } else if (isa<const ConstantExpr>(cnst)) {
 	StringRef out;
 	// See if it's a string constant
@@ -314,7 +313,7 @@ namespace previrt
       if (const ConstantFP* va = dyn_cast<const ConstantFP>(val)) {
         const fltSemantics* sem = NULL;
         switch (buffer.float_().sem()) {
-#define CASE(x) case proto::x: { if (&va->getValueAPF().getSemantics() != &APFloat::x) return NO_MATCH; sem = &APFloat::x; break; }
+#define CASE(x) case proto::x: { if (&va->getValueAPF().getSemantics() != &APFloat::x()) return NO_MATCH; sem = &APFloat::x(); break; }
         CASE(IEEEdouble)
         CASE(IEEEhalf)
         CASE(IEEEsingle)
@@ -354,7 +353,7 @@ namespace previrt
 	  break;
       case proto::I:
 	  assert(buffer.int_().IsInitialized());
-	  concreteValue = 
+	  concreteValue =
 	      ConstantInt::get(M.getContext(),
 			       APInt(buffer.int_().bits(), buffer.int_().value(), 16));
 	  break;
@@ -367,7 +366,7 @@ namespace previrt
 	  if (!buffer.str().cstr())
 	      break;
 	  { // Scope sc locally
-	      GlobalVariable* sc = 
+	      GlobalVariable* sc =
 		  materializeStringLiteral(M, buffer.str().data().c_str());
 	      concreteValue = charStarFromStringConstant(M, sc);
 	  }
@@ -383,7 +382,7 @@ namespace previrt
 	      // a pointer, which should be the case because we only concretize
 	      // arguments and you can't pass a structure or function except
 	      // as a pointer.
-	      assert(type->isPointerTy() 
+	      assert(type->isPointerTy()
 		     && "Unexpected concretization of G to non-pointer type");
 	      Type * elemType = type->getContainedType(0);
 	      if (elemType->isFunctionTy()) {
@@ -408,7 +407,7 @@ namespace previrt
   PrevirtType::isConcrete() const
   {
     // TODO: check which of these work
-      
+
     return buffer.type() == proto::I || // Integer
       buffer.type() == proto::G || // Global
       buffer.type() == proto::N || // Null
@@ -495,10 +494,10 @@ namespace previrt
     BasicBlock* bb = BasicBlock::Create(ctx, Twine("entry"), f);
     IRBuilder<> builder(bb);
 
-    Function::ArgumentListType::iterator var = f->getArgumentList().begin();
-    Argument* a1 = &(*var);
-    var++;
-    Argument* a2 = &(*var);
+    auto it = f->arg_begin();
+    Argument* a1 = &(*it);
+    it++;
+    Argument* a2 = &(*it);
     Value* test = builder.CreateICmpEQ(a1, a2);
     builder.CreateRet(test);
 
@@ -522,8 +521,11 @@ namespace previrt
         Type::getInt32Ty(M.getContext()), ArrayRef<Type*>(ft), false);
     Constant* strcmp = M.getOrInsertFunction("strcmp", strcmp_type);
 
-    Value* vals[2] =
-      { &*(f->getArgumentList().begin()), &*(++f->getArgumentList().begin()) };
+    auto it = f->arg_begin();
+    auto a1 = &*(it);
+    auto a2 = &*(++it);
+
+    Value* vals[2] = { a1, a2 };
     Value* test = builder.CreateCall(strcmp, ArrayRef<Value*>(vals, 2), "");
     Value* result = builder.CreateICmpEQ(test,
         ConstantInt::get(test->getType(), 0, true));

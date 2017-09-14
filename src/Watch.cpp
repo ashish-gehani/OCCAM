@@ -191,7 +191,7 @@ namespace previrt
 	    BasicBlock* _else = watch(inside, delegate, policy.case_()._else(), env, failure);
 	    if (_else == NULL)
 	      return NULL;
-	    
+
 	    BasicBlock* bb = BasicBlock::Create(ctx);
 	    IRBuilder<> builder(bb);
 	    std::vector<Value*> argVals;
@@ -231,11 +231,11 @@ namespace previrt
 	{
 	  BasicBlock* bb = BasicBlock::Create(ctx);
 	  IRBuilder<> builder(bb);
-	  
+
 	  CallInst* call = builder.CreateCall(delegate,
 					      ArrayRef<Value*> (env.data(),
-								env.data() + delegate->getArgumentList().size()));
-								
+								env.data() + delegate->arg_size()));
+
 	  call->setTailCall(true);
 	  tailCall(call, builder);
 	  inside->getBasicBlockList().push_front(bb);
@@ -250,7 +250,7 @@ namespace previrt
   watchFunction(Function* inside, Function* const delegate, const proto::ActionTree& policy, Constant* policyError, bool fancyFail)
   {
     std::vector<Value*> env;
-    env.reserve(inside->getArgumentList().size());
+    env.reserve(inside->arg_size());
     for (Function::arg_iterator i = inside->arg_begin(), e = inside->arg_end(); i
         != e; ++i) {
       env.push_back((Value*) &*i);
@@ -273,7 +273,7 @@ namespace previrt
       GlobalVariable *gv = new GlobalVariable(*inside->getParent(),
           name->getType(), true, GlobalVariable::LinkOnceODRLinkage, name, "");
 
-      Value* v = builder.CreateConstGEP2_32(gv, 0, 0);
+      Value* v = builder.CreateConstGEP2_32(name->getType(), gv, 0, 0);
       env.insert(env.begin(), v);
       builder.CreateCall(policyError, ArrayRef<Value*> (env));
     } else {
@@ -307,7 +307,7 @@ namespace previrt
     bool fancy;
     bool allowLocal;
     std::string failureName;
-    
+
   public:
     static char ID;
 
@@ -348,7 +348,7 @@ namespace previrt
 
       Constant* failureFunction = getExit(&M, failureName.c_str(), fancy);
 
-      
+
       for (::google::protobuf::RepeatedPtrField<
           proto::EnforceInterface_Functions>::const_iterator i =
           interface.functions().begin(), e = interface.functions().end(); i
@@ -368,7 +368,7 @@ namespace previrt
         } else {
           inside = delegate;
           ValueToValueMapTy VMap;
-          delegate = CloneFunction(inside, VMap, true); // Being conservative, cloning debug info metadata
+          delegate = CloneFunction(inside, VMap); // Being conservative, cloning debug info metadata
           M.getFunctionList().push_back(delegate);
           inside->deleteBody();
         }

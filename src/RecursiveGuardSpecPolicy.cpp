@@ -146,7 +146,7 @@ namespace previrt
 
     for (CallGraphWrapperPass::iterator i = cg.begin(), e = cg.end(); i != e; ++i) {
       if (indicies.find(i->first) == indicies.end()) {
-        strongconnect(i->second, cg, stack, stack_contents, indicies, index, scc);
+        strongconnect(&(*(i->second)), cg, stack, stack_contents, indicies, index, scc);
       }
     }
   }
