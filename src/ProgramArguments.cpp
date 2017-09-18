@@ -110,7 +110,7 @@ namespace previrt
     if (argv != NULL) {
       for (int i=0; i < argc; i++)
 	delete [] argv[i];
-      
+
       delete[] argv;
     }
   }
@@ -151,9 +151,12 @@ namespace previrt
     std::vector<Constant*> init;
 
     if (this->progName) {
+      //llvm::errs() << "Here: " << this->progName << "\n";
       GlobalVariable* gv = materializeStringLiteral(M, this->progName);
+      //llvm::errs() << "gc: " << gv << "\n";
       auto* gvT = gv->getType();
-      auto* sty = cast<SequentialType>(gvT);
+      //auto* sty = cast<SequentialType>(gvT);
+      auto* sty = cast<PointerType>(gvT);
       cargs.push_back(irb.CreateConstGEP2_32(sty->getElementType(), gv, 0, 0));
     } else {
       Value* progName = irb.CreateLoad(argvArg, false);
@@ -164,7 +167,8 @@ namespace previrt
     {
       GlobalVariable* gv = materializeStringLiteral(M, this->argv[i]);
       auto* gvT = gv->getType();
-      auto* sty = cast<SequentialType>(gvT);
+      //auto* sty = cast<SequentialType>(gvT);
+      auto* sty = cast<PointerType>(gvT);
       cargs.push_back(irb.CreateConstGEP2_32(sty->getElementType(), gv, 0, 0));
     }
 
@@ -197,7 +201,7 @@ namespace previrt
     f->removeFnAttr(Attribute::NoInline);
     f->removeFnAttr(Attribute::OptimizeNone);
     f->addFnAttr(Attribute::AlwaysInline);
-    
+
     legacy::PassManager mgr;
     mgr.add(createAlwaysInlinerLegacyPass());
     mgr.run(M);

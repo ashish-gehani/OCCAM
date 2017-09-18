@@ -174,9 +174,8 @@ namespace previrt
       }
 
       Value* v = matchCache[idx];
-      return
-	irb.CreateConstGEP2_32(cast<SequentialType>(v->getType())->getElementType(),
-			       v, 0, 0);
+      //return irb.CreateConstGEP2_32(cast<SequentialType>(v->getType())->getElementType(), v, 0, 0);
+      return irb.CreateConstGEP2_32(cast<PointerType>(v->getType())->getElementType(), v, 0, 0);
     }
 
     bool
