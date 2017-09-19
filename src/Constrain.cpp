@@ -40,7 +40,6 @@
 #include "llvm/IR/Attributes.h"
 #include "llvm/Pass.h"
 #include "llvm/IR/LegacyPassManager.h"
-//#include "llvm/IR/PassManager.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/CommandLine.h"
@@ -59,7 +58,7 @@ namespace previrt
 {
   char Constrain::ID;
 
-  Constrain::Constrain(const char* filename, const char* name) :
+  Constrain::Constrain(const char* filename) :
     ModulePass(Constrain::ID)
   {
     char str[1024];
@@ -97,12 +96,10 @@ namespace previrt
       errs() << "\t" << this->argv[i] << "\n";
     }
 
-    this->progName = name;
-
     fclose(f);
   }
-  Constrain::Constrain(int _argc, char* _argv[], const char* name) :
-    ModulePass(Constrain::ID), argc(_argc), argv(_argv), progName(name)
+  Constrain::Constrain(int _argc, char* _argv[]) :
+    ModulePass(Constrain::ID), argc(_argc), argv(_argv)
   {
   }
   Constrain::~Constrain()
@@ -155,6 +152,5 @@ namespace previrt
     }
   };
 
-  static RegisterPass<RegisterConstrain> X("Pconstraints", "Constrain main() function arguments from file 'constraints'", false,
-      false);
+  static RegisterPass<RegisterConstrain> X("Pconstraints", "Constrain main() function arguments from file 'constraints'", false, false);
 }

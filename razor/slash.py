@@ -153,7 +153,7 @@ class Slash(object):
         os.chdir(self.work_dir)
 
         if constraints:
-            print(constraints)
+            print('Using the constraints: {0}\n'.format(constraints))
 
         #specialize the arguments ...
         if args is not None:
@@ -166,7 +166,6 @@ class Slash(object):
             pre = main.get()
             post = main.new('a')
             passes.constrain_program_args(pre, post, constraints, 'constraints')
-
 
         #watches were inserted here ...
 

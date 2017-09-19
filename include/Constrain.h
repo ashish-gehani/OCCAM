@@ -49,11 +49,10 @@ namespace previrt
   private:
     int argc;
     char** argv;
-    const char* progName;
 
   public:
-    Constrain(const char*, const char* name=NULL);
-    Constrain(int argc, char* argv[], const char* name=NULL);
+    Constrain(const char*);
+    Constrain(int argc, char* argv[]);
     virtual
     ~Constrain();
 
