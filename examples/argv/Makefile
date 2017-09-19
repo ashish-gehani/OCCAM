@@ -16,7 +16,6 @@ else
   CLANG = $(LLVM_CC_NAME)
 endif
 
-
 all: hello_slash hello_O3
 
 

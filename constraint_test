@@ -1,0 +1,10 @@
+#!/usr/local/bin/python
+#
+
+
+import sys, os
+
+import razor.antlr.Parser
+
+if __name__ == '__main__':
+    sys.exit(razor.antlr.Parser.main())

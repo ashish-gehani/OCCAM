@@ -2,7 +2,6 @@
 , "binary"  : "hello"
 , "modules"    : []
 , "native_libs" : []
-, "args"    : []
 , "name"    : "hello"
 , "constraints" : "{ argv[1] = \"donald duck\", argv[7] = \"-mcsat\" }"
 }

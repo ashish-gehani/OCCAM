@@ -23,12 +23,12 @@ RM_F    = rm -f
 export OCCAM_LIB = $(OCCAM_HOME)/lib
 
 # tests needs an LLVM install from cmake with:
-# -DLLVM_INSTALL_UTILS=ON 
+# -DLLVM_INSTALL_UTILS=ON
 # https://bugs.llvm.org//show_bug.cgi?id=25675
 
 
 
-all: sanity_check dist occam_lib
+all: antlr sanity_check dist occam_lib
 
 #
 # Sanity Checks.
@@ -53,6 +53,10 @@ endif
 
 occam_lib:
 	$(MAKE) -C src all
+
+
+antlr:
+	make -C razor/antlr antlr4
 
 
 .PHONY: test
@@ -139,6 +143,7 @@ zippity:
 clean:
 	$(MAKE) -C src clean
 	$(MAKE) -C test clean
+	$(MAKE) -C razor/antlr clean
 	rm -rf razor/proto
 	rm -rf dist
 

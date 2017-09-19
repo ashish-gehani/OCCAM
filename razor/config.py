@@ -109,4 +109,9 @@ def get_occamlib():
 def get_llvm_tool(tool):
     """ Returns the appropriate tool.
     """
-    return CFG.get_llvm_tool(tool)
+    tool = CFG.get_llvm_tool(tool)
+    llvm_home = os.getenv('LLVM_HOME')
+    if llvm_home:
+        return os.path.join(llvm_home, 'bin', tool)
+    else:
+        return tool

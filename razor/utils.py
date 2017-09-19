@@ -39,6 +39,7 @@ import logging
 
 from . import provenance
 from . import config
+from .antlr.Parser import parseFromString
 
 def checkOccamLib():
     occamlib = config.get_occamlib_path()
@@ -178,7 +179,7 @@ def check_manifest(manifest):
     if constraints is None:
         constraints = []
     else:
-        constraints = []
+        constraints = parseFromString(constraints)
 
 
     name = manifest.get('name')
@@ -186,7 +187,7 @@ def check_manifest(manifest):
         sys.stderr.write('No name in manifest\n')
         return (False, )
 
-    return (True, main, binary, modules, native_libs, ldflags, args, name)
+    return (True, main, binary, modules, native_libs, ldflags, args, name, constraints)
 
 
 #iam: used to be just os.path.basename; but now when we are processing trees
