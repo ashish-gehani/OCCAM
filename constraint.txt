@@ -1,0 +1,1 @@
+{ argv[1] = "donald duck", argv[3] = "--verbose", argv[7] = "-mcsat" }
