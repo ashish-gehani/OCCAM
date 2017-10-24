@@ -59,4 +59,5 @@ install:
 
 #tests
 script:
-  - ${BUILD_HOME}/.travis/build.sh
+  #uncomment this when we can do an 'apt-get install llvm-5.0'
+  #- ${BUILD_HOME}/.travis/build.sh
