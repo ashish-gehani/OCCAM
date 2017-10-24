@@ -1,5 +1,5 @@
 
-all: tree.bc
+all: tree_slash
 
 
 tree:
@@ -14,6 +14,15 @@ tree.bc: compile
 	get-bc tree/tree
 	mv tree/tree.bc .
 
+
+slash: tree.bc
+	slash --work-dir=slash tree.manifest
+
+tree_slash: slash
+	cp slash/tree tree_slash
+
+
+
 clean:
-	rm tree.bc
+	rm -rf tree.bc slash tree_slash *~
 	make -C tree clean

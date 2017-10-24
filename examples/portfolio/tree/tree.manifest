@@ -1,0 +1,7 @@
+{ "main" : "tree.bc"
+, "binary"  : "tree"
+, "modules"    : []
+, "native_libs" : []
+, "name"    : "tree"
+, "constraints" : "{ argc = 1, argv[1] = \"-J\", argv[2] = \"-h\" }"
+}
