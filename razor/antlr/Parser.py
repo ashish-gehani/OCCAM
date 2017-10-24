@@ -22,13 +22,14 @@ def main(verbose=False):
     if len(sys.argv) != 2:
         print('Usage: {0} <constraint file>'.format(sys.argv[0]))
     else:
-        codelist = parseFromFile(sys.argv[1])
-        print(codelist)
+        (argc, argv)  = parseFromFile(sys.argv[1])
+        print(argc)
+        print(argv)
         if not verbose:
             return 0
-        if codelist is None:
+        if argv is None:
             return 1
-        for c in codelist:
+        for c in argv:
             print('str(c) = ', str(c))
             print('repr(c) = ', repr(c))
         return 0
@@ -40,7 +41,8 @@ def parseFromString(string):
     return parseFromStream(InputStream(string), "stdin")
 
 def parseFromStream(stream, source):
-    retval = None
+    argc = '-1'
+    argv = None
     try:
         lexer = ArgvLexer(stream)
         stream = CommonTokenStream(lexer)
@@ -48,8 +50,8 @@ def parseFromStream(stream, source):
         tree = parser.constraint()
         visitor = Visitor(source)
         visitor.visit(tree)
-        retval = visitor.result
-        retval = sorted(retval, key=itemgetter(0), reverse=False)
+        argv = sorted(visitor.result, key=itemgetter(0), reverse=False)
+        argc = visitor.argc
     except ParseError as pe:
         print(pe)
-    return retval
+    return (argc, argv)

@@ -127,7 +127,9 @@ def constrain_program_args(input_file, output_file, cnstrs, filename=None, name=
     else:
         cnstr_file = filename
     f = open(cnstr_file, 'w')
-    for x in cnstrs:
+    (argc, argv) = cnstrs
+    f.write('{0}\n'.format(argc))
+    for x in argv:
         f.write('{0} {1}\n'.format(*x))
     f.close()
 

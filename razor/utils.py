@@ -177,7 +177,7 @@ def check_manifest(manifest):
 
     constraints = manifest.get('constraints')
     if constraints is None:
-        constraints = []
+        constraints = ('-1', [])
     else:
         constraints = parseFromString(constraints)
 

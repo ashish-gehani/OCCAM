@@ -6,10 +6,13 @@ constraint :  '{' atomlist '}'
 atomlist: atom ( ',' atom )*
              ;
 
-atom:  ARGV '[' INTEGER ']' BINOP STRING
+atom:  ARGV '[' INTEGER ']' BINOP STRING  |
+       ARGC BINOP INTEGER
          ;
 
 ARGV  :   'argv';
+
+ARGC  :   'argc';
 
 BINOP     :   '=' ;
 
