@@ -130,7 +130,9 @@ def constrain_program_args(input_file, output_file, cnstrs, filename=None, name=
     (argc, argv) = cnstrs
     f.write('{0}\n'.format(argc))
     for x in argv:
-        f.write('{0} {1}\n'.format(*x))
+        (index, value) = x
+        #f.write('{0} {1}\n'.format(*x))
+        f.write('{0} {1}\n'.format(index,value[1:-1]))        
     f.close()
 
     args = ['-Pconstraints', '-Pconstraints-input', cnstr_file]
