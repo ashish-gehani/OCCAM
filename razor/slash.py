@@ -152,9 +152,6 @@ class Slash(object):
 
         os.chdir(self.work_dir)
 
-        if constraints:
-            print('Using the constraints: {0}\n'.format(constraints))
-
         #specialize the arguments ...
         if args is not None:
             main = files[module]
@@ -162,6 +159,7 @@ class Slash(object):
             post = main.new('a')
             passes.specialize_program_args(pre, post, args, 'arguments', name=name)
         elif constraints:
+            print('Using the constraints: {0}\n'.format(constraints))
             main = files[module]
             pre = main.get()
             post = main.new('a')
@@ -299,7 +297,7 @@ class Slash(object):
         final_libs = [files[x].get() for x in libs]
         final_module = files[module].get()
 
-        linker_args = final_libs + native_libs + native_lib_flags + ldflags
+        linker_args = ['-O2'] + final_libs + native_libs + native_lib_flags + ldflags
 
         link_cmd = '\nclang++ {0} -o {1} {2}\n'.format(final_module, binary, ' '.join(linker_args))
 
