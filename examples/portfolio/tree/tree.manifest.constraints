@@ -3,5 +3,5 @@
 , "modules"    : []
 , "native_libs" : []
 , "name"    : "tree"
-, "args"    : ["-Jh"]
+, "constraints" : "{ argc = 1, argv[0] = \"tree\", argv[1] = \"-J\", argv[2] = \"-h\" }"
 }

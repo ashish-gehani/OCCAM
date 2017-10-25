@@ -1,3 +1,4 @@
+MANIFEST=tree.manifest.constraints
 
 all: tree_slash
 
@@ -16,7 +17,7 @@ tree.bc: compile
 
 
 slash: tree.bc
-	slash --work-dir=slash tree.manifest
+	slash --work-dir=slash $(MANIFEST)
 
 tree_slash: slash
 	cp slash/tree tree_slash
