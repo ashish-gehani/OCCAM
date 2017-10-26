@@ -297,7 +297,7 @@ class Slash(object):
         final_libs = [files[x].get() for x in libs]
         final_module = files[module].get()
 
-        linker_args = ['-O2'] + final_libs + native_libs + native_lib_flags + ldflags
+        linker_args = final_libs + native_libs + native_lib_flags + ldflags
 
         link_cmd = '\nclang++ {0} -o {1} {2}\n'.format(final_module, binary, ' '.join(linker_args))
 
