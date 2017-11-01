@@ -80,6 +80,10 @@ extern bool colorize, ansilines, linktargetcolor;
 extern char *leftcode, *rightcode, *endcode;
 extern const struct linedraw *linedraw;
 
+static inline bool output_fixed(void){
+  return Xflag || Hflag || Jflag;
+}
+
 
 int main(int argc, char **argv)
 {
@@ -221,15 +225,25 @@ int main(int argc, char **argv)
 	  cmpfunc = NULL;
 	  break;
 	case 'X':
-	  Hflag = FALSE;
-	  Xflag = TRUE;
+	  if(!output_fixed()){
+	    Xflag = TRUE;
+	    Hflag = FALSE;
+	    Jflag = FALSE;
+	  }
 	  break;
 	case 'J':
-	  Jflag = TRUE;
+	  if(!output_fixed()){
+	    Jflag = TRUE;
+	    Xflag = FALSE;
+	    Hflag = FALSE;
+	  }
 	  break;
 	case 'H':
-	  Hflag = TRUE;
-	  Xflag = FALSE;
+	  if(!output_fixed()){
+	    Hflag = TRUE;
+	    Xflag = FALSE;
+	    Jflag = FALSE;
+	  }
 	  if (argv[n] == NULL) {
 	    fprintf(stderr,"tree: missing argument to -H option.\n");
 	    exit(1);
