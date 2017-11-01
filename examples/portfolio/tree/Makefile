@@ -21,9 +21,21 @@ slash: tree.bc
 
 tree_slash: slash
 	cp slash/tree tree_slash
+	cp tree/tree tree_orig
+
+compile_tweaked: tree
+	cp tree_tweaked.c tree/tree.c
+	cd tree; CC=gclang make -f Makefile.darwin
+
+tree_slash_tweaked: clean compile_tweaked slash
+	cp slash/tree tree_slash_tweaked
 
 
 
 clean:
-	rm -rf tree.bc slash tree_slash *~
+	rm -rf tree.bc slash 
+	make -C tree clean
+
+very_clean: clean
+	rm -rf tree_slash tree_orig tree_slash_tweaked
 	make -C tree clean
