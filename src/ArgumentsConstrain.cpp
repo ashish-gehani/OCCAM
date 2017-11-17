@@ -188,6 +188,7 @@ bool ArgumentsConstraint::runOnModule(Module &M) {
   for (auto &kv: argv_map) {
     // create a global variable with the argument from the manifest
     GlobalVariable *gv_i = materializeStringLiteral(M, kv.second.c_str());
+    gv_i->setName("new_argv");
     // take the address of the global variable
     Value *gv_i_ref =
       builder.CreateConstGEP2_32(
