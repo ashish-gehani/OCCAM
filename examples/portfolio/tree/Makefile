@@ -17,7 +17,7 @@ tree.bc: compile
 
 
 slash: tree.bc
-	slash --work-dir=slash $(MANIFEST)
+	slash --no-strip --work-dir=slash $(MANIFEST)
 
 tree_slash: slash
 	cp slash/tree tree_slash
@@ -25,6 +25,10 @@ tree_slash: slash
 
 compile_tweaked: tree
 	cp tree_tweaked.c tree/tree.c
+	cd tree; CC=gclang make -f Makefile.darwin
+
+compile_tweaked_2: tree
+	cp tree_tweaked_2.c tree/tree.c
 	cd tree; CC=gclang make -f Makefile.darwin
 
 tree_slash_tweaked: clean compile_tweaked slash

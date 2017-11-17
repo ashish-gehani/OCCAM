@@ -5,6 +5,9 @@
 /////////////////////////////////////////////////////////////////////////
 // Changes:
 // - make sure that the three flags are mutually exclusive
+// - Have a local version of the flags XflagL, JflagL, and XflagL so
+//   that SCCP can do its work. Otherwise, the flags remain as
+//   pointers and SCCP is not effective.
 /////////////////////////////////////////////////////////////////////////
 
 /* $Copyright: $
@@ -37,7 +40,8 @@ static char *hversion="\t\t tree v1.7.0 %s 1996 - 2014 by Steve Baker and Thomas
 /* Globals */
 bool dflag, lflag, pflag, sflag, Fflag, aflag, fflag, uflag, gflag;
 bool qflag, Nflag, Qflag, Dflag, inodeflag, devflag, hflag, Rflag;
-bool Hflag, siflag, cflag, Xflag, Jflag, duflag, pruneflag;
+bool siflag, cflag, duflag, pruneflag;
+bool Xflag, Jflag, Hflag;
 bool noindent, force_color, nocolor, xdev, noreport, nolinks, flimit, dirsfirst;
 bool ignorecase, matchdirs;
 bool reverse;
@@ -96,6 +100,9 @@ static inline bool output_fixed(void){
 
 int main(int argc, char **argv)
 {
+  bool XflagL = FALSE;
+  bool JflagL = FALSE;
+  bool HflagL = FALSE;  
   char **dirname = NULL;
   int i,j=0,k,n,optf,p,q,dtotal,ftotal,colored = FALSE;
   struct stat st;
@@ -115,7 +122,7 @@ int main(int argc, char **argv)
   memset(dirs, 0, sizeof(int) * maxdirs);
   dirs[0] = 0;
   Level = -1;
-
+  
   setlocale(LC_CTYPE, "");
   setlocale(LC_COLLATE, "");
 
@@ -234,24 +241,27 @@ int main(int argc, char **argv)
 	  cmpfunc = NULL;
 	  break;
 	case 'X':
-	  if(!output_fixed()){
-	    Xflag = TRUE;
-	    Hflag = FALSE;
-	    Jflag = FALSE;
+	  //if(!output_fixed()){
+	  if (XflagL || HflagL || JflagL) {
+	    XflagL = TRUE;
+	    HflagL = FALSE;
+	    JflagL = FALSE;
 	  }
 	  break;
 	case 'J':
-	  if(!output_fixed()){
-	    Jflag = TRUE;
-	    Xflag = FALSE;
-	    Hflag = FALSE;
+	  //if(!output_fixed()){
+	  if (XflagL || HflagL || JflagL) {
+	    JflagL = TRUE;
+	    XflagL = FALSE;
+	    HflagL = FALSE;
 	  }
 	  break;
 	case 'H':
-	  if(!output_fixed()){
-	    Hflag = TRUE;
-	    Xflag = FALSE;
-	    Jflag = FALSE;
+	  //if(!output_fixed()){
+	  if (XflagL || HflagL || JflagL) {  
+	    HflagL = TRUE;
+	    XflagL = FALSE;
+	    JflagL = FALSE;
 	  }
 	  if (argv[n] == NULL) {
 	    fprintf(stderr,"tree: missing argument to -H option.\n");
@@ -459,13 +469,13 @@ int main(int argc, char **argv)
   
   if (outfilename == NULL) {
 #ifdef __EMX__
-    _fsetmode(outfile=stdout,Hflag?"b":"t");
+    _fsetmode(outfile=stdout,HflagL?"b":"t");
 #else
     outfile = stdout;
 #endif
   } else {
 #ifdef __EMX__
-    outfile = fopen(outfilename,Hflag?"wb":"wt");
+    outfile = fopen(outfilename,HflagL?"wb":"wt");
 #else
     outfile = fopen(outfilename,"w");
 #endif
@@ -481,14 +491,14 @@ int main(int argc, char **argv)
   needfulltree = duflag || pruneflag || matchdirs;
 
   /* Set our listdir function and sanity check options. */
-  if (Hflag) {
+  if (HflagL) {
     listdir = needfulltree ? html_rlistdir : html_listdir;
-    Xflag = FALSE;
-  } else if (Xflag) {
+    XflagL = FALSE;
+  } else if (XflagL) {
     listdir = needfulltree ? xml_rlistdir : xml_listdir;
     colorize = FALSE;
     colored = FALSE; /* Do people want colored XML output? */
-  } else if (Jflag) {
+  } else if (JflagL) {
     listdir = needfulltree ? json_rlistdir : json_listdir;
     colorize = FALSE;
     colored = FALSE; /* Do people want colored JSON output? */
@@ -501,7 +511,7 @@ int main(int argc, char **argv)
   if (Rflag && (Level == -1))
     Rflag = FALSE;
 
-  if (Hflag) {
+  if (HflagL) {
     emit_html_header(charset, title, version);
 
     fflag = FALSE;
@@ -513,11 +523,11 @@ int main(int argc, char **argv)
       else fprintf(outfile,"<a href=\"%s\">%s</a>",host,host);
     }
     curdir = gnu_getcwd();
-  } else if (Xflag) {
+  } else if (XflagL) {
     fprintf(outfile,"<?xml version=\"1.0\"");
     if (charset) fprintf(outfile," encoding=\"%s\"",charset);
     fprintf(outfile,"?>%s<tree>%s",_nl,_nl);
-  } else if (Jflag)
+  } else if (JflagL)
     fputc('[',outfile);
 
   if (dirname) {
@@ -533,19 +543,19 @@ int main(int argc, char **argv)
 	if (colorize) colored = color(st.st_mode,dirname[i],n<0,FALSE);
 	size += st.st_size;
       }
-      if (Xflag || Jflag) {
+      if (XflagL || JflagL) {
 	mt = st.st_mode & S_IFMT;
 	for(j=0;ifmt[j];j++)
 	  if (ifmt[j] == mt) break;
-        if (Xflag)
+        if (XflagL)
 	  fprintf(outfile,"%s<%s name=\"%s\">", noindent?"":"  ", ftype[j], dirname[i]);
-        else if (Jflag) {
+        else if (JflagL) {
 	  if (i) fprintf(outfile, ",");
           fprintf(outfile,"%s{\"type\":\"%s\",\"name\":\"%s\",\"contents\":[", noindent?"":"\n  ", ftype[j], dirname[i]);
 	}
-      } else if (!Hflag) printit(dirname[i]);
+      } else if (!HflagL) printit(dirname[i]);
       if (colored) fprintf(outfile,"%s",endcode);
-      if (!Hflag) size += listdir(dirname[i],&dtotal,&ftotal,0,0);
+      if (!HflagL) size += listdir(dirname[i],&dtotal,&ftotal,0,0);
       else {
 	if (chdir(dirname[i])) {
 	  fprintf(outfile,"%s [error opening dir]\n",dirname[i]);
@@ -555,8 +565,8 @@ int main(int argc, char **argv)
 	  chdir(curdir);
 	}
       }
-      if (Xflag) fprintf(outfile,"%s</%s>\n",noindent?"":"  ", ftype[j]);
-      if (Jflag) fprintf(outfile,"%s]}",noindent?"":"  ");
+      if (XflagL) fprintf(outfile,"%s</%s>\n",noindent?"":"  ", ftype[j]);
+      if (JflagL) fprintf(outfile,"%s]}",noindent?"":"  ");
     }
   } else {
     if ((n = lstat(".",&st)) >= 0) {
@@ -564,26 +574,26 @@ int main(int argc, char **argv)
       if (colorize) colored = color(st.st_mode,".",n<0,FALSE);
       size = st.st_size;
     }
-    if (Xflag) fprintf(outfile,"%s<directory name=\".\">",noindent?"":"  ");
-    else if (Jflag) fprintf(outfile, "{\"type\":\"directory\",\"name\": \".\",\"contents\":[");
-    else if (!Hflag) fprintf(outfile,".");
+    if (XflagL) fprintf(outfile,"%s<directory name=\".\">",noindent?"":"  ");
+    else if (JflagL) fprintf(outfile, "{\"type\":\"directory\",\"name\": \".\",\"contents\":[");
+    else if (!HflagL) fprintf(outfile,".");
     if (colored) fprintf(outfile,"%s",endcode);
     size += listdir(".",&dtotal,&ftotal,0,0);
-    if (Xflag) fprintf(outfile,"%s</directory>%s",noindent?"":"  ", _nl);
-    if (Jflag) fprintf(outfile,"%s]}",noindent?"":"  ");
+    if (XflagL) fprintf(outfile,"%s</directory>%s",noindent?"":"  ", _nl);
+    if (JflagL) fprintf(outfile,"%s]}",noindent?"":"  ");
   }
 
-  if (Hflag)
+  if (HflagL)
     fprintf(outfile,"\t<br><br>\n\t</p>\n\t<p>\n");
 
   if (!noreport) {
-    if (Xflag) {
+    if (XflagL) {
       fprintf(outfile,"%s<report>%s",noindent?"":"  ", _nl);
       if (duflag) fprintf(outfile,"%s<size>%lld</size>%s", noindent?"":"    ", (long long int)size, _nl);
       fprintf(outfile,"%s<directories>%d</directories>%s", noindent?"":"    ", dtotal, _nl);
       if (!dflag) fprintf(outfile,"%s<files>%d</files>%s", noindent?"":"    ", ftotal, _nl);
       fprintf(outfile,"%s</report>%s",noindent?"":"  ", _nl);
-    } else if (Jflag) {
+    } else if (JflagL) {
       fprintf(outfile, ",%s{\"type\":\"report\"",noindent?"":"\n  ");
       if (duflag) fprintf(outfile,",\"size\":%lld", (long long int)size);
       fprintf(outfile,",\"directories\":%d", dtotal);
@@ -601,7 +611,7 @@ int main(int argc, char **argv)
     }
   }
 
-  if (Hflag) {
+  if (HflagL) {
     fprintf(outfile,"\t<br><br>\n\t</p>\n");
     fprintf(outfile,"\t<hr>\n");
     fprintf(outfile,"\t<p class=\"VERSION\">\n");
@@ -609,9 +619,9 @@ int main(int argc, char **argv)
     fprintf(outfile,"\t</p>\n");
     fprintf(outfile,"</body>\n");
     fprintf(outfile,"</html>\n");
-  } else if (Xflag) {
+  } else if (XflagL) {
     fprintf(outfile,"</tree>\n");
-  } else if (Jflag) {
+  } else if (JflagL) {
       fprintf(outfile, "%s]\n",_nl);
   }
 

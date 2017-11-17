@@ -42,8 +42,9 @@ time a output flag is enabled the rest of mutually exclusive output
 flags are disabled. This solves our problem.
 
 A last problem is that even if our tweaked specialized program does
-not output html or xml format anymore we have not seen an elimination of the
-html or xml routines. The problem is that the flags are global
+not output html or xml format anymore we have not seen an elimination
+of the html or xml routines. For instance, we should not see a call to
+a function emit_html_header. The problem is that the flags are global
 variables in llvm bitcode and therefore they are pointers. Dead code
 elimination and constant propagation passed do not reason about such
 objects. Therefore they do not remove that code.
