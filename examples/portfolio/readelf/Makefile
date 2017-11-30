@@ -1,3 +1,7 @@
+
+#COMPILER=wllvm
+COMPILER=gclang
+EXTRACT_BC=get-bc
 all: build
 
 
@@ -6,14 +10,14 @@ binutils:
 
 
 build: binutils
-	cd binutils; CC=wllvm ./configure --disable-gdb --disable-libdecnumber --disable-readline --disable-sim
+	cd binutils; CC=${COMPILER} ./configure --disable-gdb --disable-libdecnumber --disable-readline --disable-sim
 	make -C binutils
 
+readelf.bc: build
+	cd binutils/binutils; ${EXTRACT_BC} readelf; mv readelf.bc ../../
 
 clean:
-
+	rm -f ./binutils/binutils/readelf
 
 distclean: clean
 	rm -rf binutils
-
-
