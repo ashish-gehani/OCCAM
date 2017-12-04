@@ -1,8 +1,13 @@
 
 #COMPILER=wllvm
+#EXTRACT_BC=extract-bc
+
 COMPILER=gclang
 EXTRACT_BC=get-bc
-all: build
+
+MANIFEST=readelf.manifest
+
+all: slash
 
 
 binutils:
@@ -16,8 +21,14 @@ build: binutils
 readelf.bc: build
 	cd binutils/binutils; ${EXTRACT_BC} readelf; mv readelf.bc ../../
 
+slash: readelf.bc
+	slash --no-strip --work-dir=slash $(MANIFEST)
+	cp slash/readelf readelf_slash
+
+
 clean:
-	rm -f ./binutils/binutils/readelf
+	rm -rf ./binutils/binutils/readelf slash
+
 
 distclean: clean
-	rm -rf binutils
+	rm -rf binutils readelf.bc readelf_slash readelf

@@ -1,0 +1,8 @@
+{ "main" : "readelf.bc"
+, "binary"  : "readelf"
+, "modules"    : []
+, "native_libs" : [ "/usr/lib/libiconv.dylib" ]
+, "ldflags" : [ "-O2" ]
+, "name"    : "readelf"
+, "constraints" : "{ argc = 1, argv[0] = \"readelf\", argv[1] = \"-s\" }"
+}
