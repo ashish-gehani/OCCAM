@@ -36,8 +36,7 @@ setup(
     license='MIT',
 
     install_requires=[
-        "protobuf >= 3.0.0",
-        "antlr4-python2-runtime >= 4.5.3"
+        "protobuf >= 3.0.0"
     ],
 
 

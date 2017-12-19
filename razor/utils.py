@@ -39,7 +39,6 @@ import logging
 
 from . import provenance
 from . import config
-from .antlr.Parser import parseFromString
 
 def checkOccamLib():
     occamlib = config.get_occamlib_path()
@@ -179,7 +178,7 @@ def check_manifest(manifest):
     if constraints is None:
         constraints = ('-1', [])
     else:
-        constraints = parseFromString(constraints)
+        constraints = (constraints[0], constraints[1:])
 
 
     name = manifest.get('name')

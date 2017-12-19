@@ -28,7 +28,7 @@ export OCCAM_LIB = $(OCCAM_HOME)/lib
 
 
 
-all: antlr sanity_check dist occam_lib
+all: sanity_check dist occam_lib
 
 #
 # Sanity Checks.
@@ -53,10 +53,6 @@ endif
 
 occam_lib:
 	$(MAKE) -C src all
-
-
-antlr:
-	make -C razor/antlr antlr4
 
 
 .PHONY: test
@@ -143,7 +139,6 @@ zippity:
 clean:
 	$(MAKE) -C src clean
 	$(MAKE) -C test clean
-	$(MAKE) -C razor/antlr clean
 	rm -rf razor/proto
 	rm -rf dist
 

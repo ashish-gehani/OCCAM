@@ -4,5 +4,5 @@
 , "native_libs" : []
 , "ldflags" : [ "-O2" ]
 , "name"    : "tree"
-, "constraints" : "{ argc = 1, argv[0] = \"tree\", argv[1] = \"-J\", argv[2] = \"-h\" }"
+, "constraints" : ["1", "tree", "-J", "-h"]
 }
