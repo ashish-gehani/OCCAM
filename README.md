@@ -114,6 +114,11 @@ have meaning:
 
 + `args` : the list of arguments you wish to specialize in the main of `main`.
 
++ `constraints` : a list consisting of a positive integer, followed by some number of strings. The
+number indicates the expected number of arguments the specialized program will receive, and the
+remaing strings are the specialized arguments to the original program.
+
+Not that `args` and `constraints` are mutually exclusive. If you use one you should not use the other.
 
 As an example, (see `examples/linux/apache`), to previrtualize apache:
 
@@ -138,6 +143,22 @@ Another example, (see `examples/linux/musl_nweb`), specializes `nweb` with `musl
 , "name"    : "nweb"
 }
 ```
+
+A third example, (see `examples/portfolio/tree`),  illustrates the use of the `constraints` field to partially specialize 
+the arguments to the `tree` utility.
+```
+{ "main" : "tree.bc"
+, "binary"  : "tree"
+, "modules"    : []
+, "native_libs" : []
+, "ldflags" : [ "-O2" ]
+, "name"    : "tree"
+, "constraints" : ["1", "tree", "-J", "-h"]
+}
+```
+the specialized program will output its results in JSON notation, that will include a human readable size field.
+The specialized program expects one extra argument, either a directory, or another flag to output the contents of the
+current working directory.
 
 ---
 
