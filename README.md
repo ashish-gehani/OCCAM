@@ -118,7 +118,7 @@ have meaning:
 number indicates the expected number of arguments the specialized program will receive, and the
 remaing strings are the specialized arguments to the original program.
 
-Not that `args` and `constraints` are mutually exclusive. If you use one you should not use the other.
+Note that `args` and `constraints` are mutually exclusive. If you use one you should not use the other.
 
 As an example, (see `examples/linux/apache`), to previrtualize apache:
 
