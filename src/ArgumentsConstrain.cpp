@@ -164,6 +164,17 @@ bool ArgumentsConstraint::runOnModule(Module &M) {
   BasicBlock *entry = BasicBlock::Create(M.getContext(),"entry", new_main);  
   builder.SetInsertPoint(entry);
 
+  // Add sanity check: if argc-1 != manifest's first argument then return 1
+  Value* matchArgcCond = builder.CreateICmpEQ(argc, ConstantInt::get(argc->getType(), extra_argc + 1));
+  BasicBlock* entry_cont = BasicBlock::Create(M.getContext(),"entry", new_main);  
+  BasicBlock* errorBB = BasicBlock::Create(M.getContext(),"incorrect_argc", new_main);  
+  // wire up entry with entry_cont and errorBB blocks
+  builder.CreateCondBr(matchArgcCond, entry_cont, errorBB);
+  builder.SetInsertPoint(errorBB);
+  builder.CreateRet(ConstantInt::get(new_main->getReturnType(), 1));
+
+  entry = entry_cont;
+  builder.SetInsertPoint(entry);  
   // new argc
   Value* new_argc =
     builder.CreateAdd(argc,
