@@ -2,8 +2,8 @@
 # Make sure we exit if there is a failure
 set -e
 
-#uncomment this when we can do an 'apt-get install llvm-5.0'
-exit 0
+#comment this when we can do an 'apt-get install llvm-5.0'
+#exit 0
 
 mkdir -p travis_build/occam
 mkdir -p travis_build/Repositories
