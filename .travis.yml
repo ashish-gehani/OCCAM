@@ -39,6 +39,7 @@ install:
 # gotta work harder for these at the moment. see the before_script above.
   - sudo apt-get install -y git llvm-5.0 libclang-5.0-dev clang-5.0
   - sudo apt-get install -y python-pip
+  - sudo apt-get install -y llvm-3.5
   - pip --version
   - pip install setuptools --upgrade
   - pip install wheel
