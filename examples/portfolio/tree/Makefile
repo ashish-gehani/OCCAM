@@ -11,7 +11,7 @@ compile: tree
 	cp Makefile.darwin tree
 	cd tree; CC=gclang make -f Makefile.darwin
 
-tree.bc: compile
+tree.bc: compile_tweaked
 	get-bc tree/tree
 	mv tree/tree.bc .
 
@@ -24,6 +24,7 @@ tree_slash: slash
 	cp tree/tree tree_orig
 
 compile_tweaked: tree
+	cp Makefile.darwin tree
 	cp tree_tweaked.c tree/tree.c
 	cd tree; CC=gclang make -f Makefile.darwin
 
@@ -43,3 +44,4 @@ clean:
 very_clean: clean
 	rm -rf tree_slash tree_orig tree_slash_tweaked
 	make -C tree clean
+	rm -rf tree
