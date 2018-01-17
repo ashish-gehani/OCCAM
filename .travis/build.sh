@@ -22,6 +22,10 @@ if [ "${RETURN}" != "0" ]; then
     exit 1
 fi
 
+sudo updatedb
+locate FileCheck
+ls -laR /usr/lib/llvm-5.0/
+
 make test
 RETURN="$?"
 
