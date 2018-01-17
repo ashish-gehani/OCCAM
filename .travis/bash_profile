@@ -4,6 +4,6 @@ export LLVM_HOME=/usr/lib/llvm-5.0/
 export CC=clang
 export CXX=clang++
 export CPP='clang -E'
-export PATH=${WLLVM_HOME}:${PATH}
+export PATH=${WLLVM_HOME}:${BUILD_HOME}/dist/FileCheck_trusty:${PATH}
 
 alias occam=${OCCAM_HOME}/bin/occam
