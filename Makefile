@@ -139,9 +139,11 @@ zippity:
 	cat README.md | pandoc -f markdown_github > doczip/index.html
 	zip -r -j doczip.zip doczip
 
-clean:
+limpio:
 	$(MAKE) -C src clean
 	$(MAKE) -C test clean
+
+clean: limpio
 	rm -rf razor/proto
 	rm -rf dist
 
