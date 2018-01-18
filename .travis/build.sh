@@ -2,9 +2,6 @@
 # Make sure we exit if there is a failure
 set -e
 
-#comment this when we can do an 'apt-get install llvm-5.0'
-#exit 0
-
 mkdir -p travis_build/occam
 mkdir -p travis_build/Repositories
 
@@ -22,13 +19,8 @@ if [ "${RETURN}" != "0" ]; then
     exit 1
 fi
 
-#sudo updatedb
-#locate FileCheck
-#ls -laR /usr/lib/llvm-5.0/
-
 make test
 RETURN="$?"
-
 
 if [ "${RETURN}" != "0" ]; then
     echo "The testing harness is dicky!"
