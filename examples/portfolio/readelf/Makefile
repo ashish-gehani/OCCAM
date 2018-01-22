@@ -24,6 +24,7 @@ readelf.bc: build
 slash: readelf.bc
 	slash --no-strip --work-dir=slash $(MANIFEST)
 	cp slash/readelf readelf_slash
+	cp  binutils/binutils/readelf readelf_orig
 
 
 clean:
