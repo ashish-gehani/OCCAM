@@ -1,0 +1,7 @@
+{ "main" : "curl.bc"
+, "binary"  : "curl"
+, "modules"    : [ "libcurl.4.dylib.bc" ]
+, "native_libs" : [  ]
+, "ldflags" : [ "-O2" ]
+, "name"    : "curl"
+}

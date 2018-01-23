@@ -44,3 +44,17 @@ curlgit/lib/.curl-strtoofft.o.bc
 curlgit/lib/.curl-nonblock.o.bc
 curlgit/lib/.curl-warnless.o.bc
 
+otool -L install/bin/curl:
+
+install/bin/curl:
+	/Users/iam/Repositories/GitHub/OCCAM/examples/portfolio/curl/install/lib/libcurl.4.dylib (compatibility version 10.0.0, current version 10.0.0)
+	/usr/local/opt/libidn2/lib/libidn2.0.dylib (compatibility version 4.0.0, current version 4.3.0)
+	/System/Library/Frameworks/LDAP.framework/Versions/A/LDAP (compatibility version 1.0.0, current version 2.4.0)
+	/usr/local/lib/libz.1.dylib (compatibility version 1.0.0, current version 1.2.8)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1252.0.0)
+
+
+
+not a static build:
+
+  -rw-r--r--   1 iam  staff  469056 Jan 22 17:20 curl.bc
