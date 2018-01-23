@@ -14,11 +14,11 @@ binutils:
 	git clone git://sourceware.org/git/binutils-gdb.git binutils
 
 
-build: binutils
+binutils/binutils/readelf: binutils
 	cd binutils; CC=${COMPILER} ./configure --disable-gdb --disable-libdecnumber --disable-readline --disable-sim
 	make -C binutils
 
-readelf.bc: build
+readelf.bc: binutils/binutils/readelf
 	cd binutils/binutils; ${EXTRACT_BC} readelf; mv readelf.bc ../../
 
 slash: readelf.bc
