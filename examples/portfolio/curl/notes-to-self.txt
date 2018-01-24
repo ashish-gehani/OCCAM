@@ -4,7 +4,7 @@ see if you can do (with or without the libcurl.a):
 
 result:
 
-duplicate or missing symbols, resp;ectively.
+duplicate or missing symbols, respectively.
 
 
 
