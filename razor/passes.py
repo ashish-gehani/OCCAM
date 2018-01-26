@@ -105,7 +105,7 @@ def peval(input_file, output_file, log=None):
         else:
             break
 
-    shutil.move(opt.name, output_file)
+    shutil.move(done.name, output_file)
 
     try:
         os.unlink(done.name)
