@@ -3,12 +3,11 @@ CURLDIR= $(shell pwd)
 MANIFEST_PREVIRT=curl.manifest.previrt
 MANIFEST_SPECIALIZED=curl.manifest.specialized
 
-WLLVM=wllvm
-EXTRACT_BC=extract-bc
+#WLLVM=wllvm
+#EXTRACT_BC=extract-bc
 #
-# gclang appears to have a concurrency issue as the libtool compile step mvs and renames the object files.
-#WLLVM=glang
-#EXTRACT_BC=get-bc
+WLLVM=gclang
+EXTRACT_BC=get-bc
 
 all: slash_specialized slash_previrt
 
