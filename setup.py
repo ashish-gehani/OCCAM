@@ -36,7 +36,7 @@ setup(
     license='MIT',
 
     install_requires=[
-        "protobuf >= 3.0.0"
+        "protobuf >= 3.5.1"
     ],
 
 
