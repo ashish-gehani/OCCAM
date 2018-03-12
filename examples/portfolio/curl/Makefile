@@ -3,11 +3,11 @@ CURLDIR= $(shell pwd)
 MANIFEST_PREVIRT=curl.manifest.previrt
 MANIFEST_SPECIALIZED=curl.manifest.specialized
 
-#WLLVM=wllvm
-#EXTRACT_BC=extract-bc
-#
-WLLVM=gclang
-EXTRACT_BC=get-bc
+WLLVM=wllvm
+EXTRACT_BC=extract-bc
+
+#WLLVM=gclang
+#EXTRACT_BC=get-bc
 
 all: slash_specialized slash_previrt
 
@@ -16,7 +16,7 @@ curlgit:
 	git clone https://github.com/curl/curl.git curlgit
 
 
-install/bin/curl:
+install/bin/curl: curlgit
 	cd curlgit; ./buildconf; CC=${WLLVM} ./configure --enable-static --prefix=${CURLDIR}/install/; make -V=1; make install
 
 bitcode: curl.bc libcurl.4.dylib.bc
