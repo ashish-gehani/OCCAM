@@ -3,16 +3,23 @@ MANIFEST=tree.manifest.constraints
 all: tree_slash
 
 
+COMPILER=wllvm
+EXTRACT_BC=extract-bc
+
+#COMPILER=gclang
+#EXTRACT_BC=get-bc
+
+
 tree:
 	git clone git://anonscm.debian.org/collab-maint/tree.git
 
 
 compile: tree
 	cp Makefile.darwin tree
-	cd tree; CC=gclang make -f Makefile.darwin
+	cd tree; CC=${COMPILER} make -f Makefile.darwin
 
 tree.bc: compile_tweaked
-	get-bc tree/tree
+	${EXTRACT_BC} tree/tree
 	mv tree/tree.bc .
 
 
@@ -26,11 +33,11 @@ tree_slash: slash
 compile_tweaked: tree
 	cp Makefile.darwin tree
 	cp tree_tweaked.c tree/tree.c
-	cd tree; CC=gclang make -f Makefile.darwin
+	cd tree; CC=${COMPILER} make -f Makefile.darwin
 
 compile_tweaked_2: tree
 	cp tree_tweaked_2.c tree/tree.c
-	cd tree; CC=gclang make -f Makefile.darwin
+	cd tree; CC=${COMPILER} make -f Makefile.darwin
 
 tree_slash_tweaked: clean compile_tweaked slash
 	cp slash/tree tree_slash_tweaked
@@ -38,7 +45,7 @@ tree_slash_tweaked: clean compile_tweaked slash
 
 
 clean:
-	rm -rf tree.bc slash 
+	rm -rf tree.bc slash
 	make -C tree clean
 
 very_clean: clean
