@@ -4,7 +4,6 @@
 #include <syslog.h>
 
 //<iam's addition's>
-//make this smaller and you will see a bug in the design of the read_config function.
 #define CFG_CHUNK 10000
 static void dump_config(FILE*);
 //<iam's addition's>
