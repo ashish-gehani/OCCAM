@@ -49,6 +49,7 @@
 #include "PrevirtualizeInterfaces.h"
 
 #include <vector>
+#include <iterator>
 #include <string>
 #include <stdio.h>
 #include <fstream>
@@ -133,10 +134,11 @@ namespace previrt
     {
       LLVMContext& ctx = success->getContext();
       const BasicBlock* top = success;
-      Function::ArgumentListType::const_reverse_iterator args =
-          inside->getArgumentList().rbegin();
+
+      Argument* args =  inside->arg_end() - 1;
+
       for (std::vector<PrevirtType>::const_reverse_iterator b =
-          this->params.rbegin(), e = this->params.rend(); b != e; ++b, ++args) {
+          this->params.rbegin(), e = this->params.rend(); b != e; ++b, --args) {
         if (!b->isConcrete()) {
           // Nothing to check for non-concrete values
           continue;
@@ -159,12 +161,11 @@ namespace previrt
         argVals.push_back(b->concretize(*inside->getParent(), args->getType()));
         argVals.push_back(const_cast<Argument*> (&*args));
         Value* test = builder.CreateCall(eq, ArrayRef<Value*> (argVals));
-        SwitchInst* sw = builder.CreateSwitch(test,
-            const_cast<BasicBlock*> (failure), 1);
-        sw->addCase((ConstantInt*) ConstantInt::getTrue(Type::getInt1Ty(ctx)),
-            const_cast<BasicBlock*> (top));
+        SwitchInst* sw = builder.CreateSwitch(test, const_cast<BasicBlock*> (failure), 1);
+        sw->addCase((ConstantInt*) ConstantInt::getTrue(Type::getInt1Ty(ctx)), const_cast<BasicBlock*> (top));
         top = bb;
-      }
+      } //for
+
       return top;
     }
   };
@@ -195,10 +196,10 @@ namespace previrt
   protectCall(Function* F, Function* const call, const FunctionContract& I)
   {
     std::vector<Value*> ary;
-    ary.reserve(F->getArgumentList().size());
-    for (Function::ArgumentListType::iterator i = F->getArgumentList().begin(),
-        e = F->getArgumentList().end(); i != e; ++i) {
-      ary.push_back(&*i);
+    ary.reserve(F->arg_size());
+
+    for (auto &a : F->args()) {
+      ary.push_back(&a);
     }
 
     BasicBlock* call_bb = BasicBlock::Create(F->getContext());
@@ -236,7 +237,7 @@ namespace previrt
       GlobalVariable *gv = new GlobalVariable(*F->getParent(), name->getType(),
           true, GlobalVariable::LinkOnceODRLinkage, name, "");
 
-      Value* v = builder.CreateConstGEP2_32(gv, 0, 0);
+      Value* v = builder.CreateConstGEP2_32(name->getType(), gv, 0, 0); // name->getType() is a guess
       ary.insert(ary.begin(), v);
       builder.CreateCall(policyError, ArrayRef<Value*> (ary), "");
       if (F->getReturnType() == Type::getVoidTy(F->getContext())) {

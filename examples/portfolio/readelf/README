@@ -1,0 +1,11 @@
+
+
+readelf -s <X86_64 executable>
+
+just lists the sections.
+
+
+
+0. Totally unclear why we need to explicitly link with /usr/lib/libiconv.dylib
+
+

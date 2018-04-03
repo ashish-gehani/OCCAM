@@ -2,8 +2,6 @@
 # Make sure we exit if there is a failure
 set -e
 
-wllvm-sanity-checker
-
 mkdir -p travis_build/occam
 mkdir -p travis_build/Repositories
 
@@ -23,7 +21,6 @@ fi
 
 make test
 RETURN="$?"
-
 
 if [ "${RETURN}" != "0" ]; then
     echo "The testing harness is dicky!"

@@ -1,0 +1,11 @@
+--- config.sub	2016-04-26 15:23:29.000000000 +0430
++++ config.sub	1998-05-09 05:42:58.000000000 +0430
+@@ -685,7 +685,7 @@
+ 	      | -nindy* | -vxsim* | -vxworks* | -ebmon* | -hms* | -mvs* \
+ 	      | -clix* | -riscos* | -uniplus* | -iris* | -rtu* | -xenix* \
+ 	      | -hiux* | -386bsd* | -netbsd* | -openbsd* | -freebsd* | -riscix* \
+-	      | -lynxos* | -bosx* | -nextstep* | -darwin* | -cxux* | -aout* | -elf* \
++	      | -lynxos* | -bosx* | -nextstep* | -cxux* | -aout* | -elf* \
+ 	      | -ptx* | -coff* | -ecoff* | -winnt* | -domain* | -vsta* \
+ 	      | -udi* | -eabi* | -lites* | -ieee* | -go32* | -aux* \
+ 	      | -cygwin32* | -pe* | -psos* | -moss* | -proelf* | -rtems* \

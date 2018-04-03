@@ -97,7 +97,7 @@ def sanity_check_manifest(manifest):
 
     old_manifest_keys = ['modules', 'libs', 'search', 'shared']
 
-    new_manifest_keys = ['main', 'binary']
+    new_manifest_keys = ['main', 'binary', 'constraints']
 
     dodo_manifest_keys = ['watch']
 
@@ -172,15 +172,21 @@ def check_manifest(manifest):
     if ldflags is None:
         ldflags = []
 
-
     args = manifest.get('args')
+
+    constraints = manifest.get('constraints')
+    if constraints is None:
+        constraints = ('-1', [])
+    else:
+        constraints = (constraints[0], constraints[1:])
+
 
     name = manifest.get('name')
     if name is None:
         sys.stderr.write('No name in manifest\n')
         return (False, )
 
-    return (True, main, binary, modules, native_libs, ldflags, args, name)
+    return (True, main, binary, modules, native_libs, ldflags, args, name, constraints)
 
 
 #iam: used to be just os.path.basename; but now when we are processing trees

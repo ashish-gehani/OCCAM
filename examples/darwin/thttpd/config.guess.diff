@@ -1,0 +1,12 @@
+--- config.guess	2016-04-26 15:26:37.000000000 +0430
++++ config.guess	1998-05-09 05:42:58.000000000 +0430
+@@ -132,9 +132,6 @@
+     powerpc:machten:*:*)
+ 	echo powerpc-apple-machten${UNAME_RELEASE}
+ 	exit 0 ;;
+-    *:Darwin:*:*)
+-	echo powerpc-apple-darwin${UNAME_RELEASE}
+-	exit 0 ;;
+     RISC*:Mach:*:*)
+ 	echo mips-dec-mach_bsd4.3
+ 	exit 0 ;;

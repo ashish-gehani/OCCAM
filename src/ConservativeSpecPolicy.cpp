@@ -34,7 +34,7 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Instructions.h"
-#include "llvm/PassManager.h"
+#include "llvm/IR/PassManager.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/Support/CommandLine.h"
@@ -112,7 +112,7 @@ namespace previrt
       User::op_iterator end) const
   {
     Value** slice = NULL;
-    const unsigned int arg_count = F->getArgumentList().size();
+    const unsigned int arg_count = F->arg_size();
 
     for (unsigned int i = 0; i < arg_count && begin != end; ++begin, ++i) {
       Constant* cst = dyn_cast<Constant> (begin->get());

@@ -16,6 +16,15 @@ python:
 sudo: required
 dist: trusty
 
+before_install:
+ - curl http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+ - echo "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty main" | sudo tee -a /etc/apt/sources.list
+ - echo "deb-src http://apt.llvm.org/trusty/ llvm-toolchain-trusty main" | sudo tee -a /etc/apt/sources.list
+ - echo "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main" | sudo tee -a /etc/apt/sources.list
+ - echo "deb-src http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main" | sudo tee -a /etc/apt/sources.list
+ - sudo apt-get update -qq
+ - sudo apt-get install clang-5.0 lldb-5.0
+
 #dependencies
 #
 # what a fucking mess:
@@ -27,7 +36,8 @@ dist: trusty
 install:
   - sudo apt-get update
   - sudo apt-get install -y wget libprotobuf-dev python-protobuf protobuf-compiler
-  - sudo apt-get install -y git llvm-3.5 libclang-3.5-dev clang-3.5
+# gotta work harder for these at the moment. see the before_script above.
+  - sudo apt-get install -y git llvm-5.0 libclang-5.0-dev clang-5.0
   - sudo apt-get install -y python-pip
   - pip --version
   - pip install setuptools --upgrade
@@ -38,7 +48,7 @@ install:
   # - pip install -r requirements.txt
   # but this seems to work. Bizarre
   - sudo -H pip install -r requirements.txt
-  - export PATH=/usr/lib/llvm-3.5/bin:${PATH}
+  - export PATH=/usr/lib/llvm-5.0/bin:${PATH}
   - export LLVM_COMPILER=clang
   - export WLLVM_OUTPUT=WARNING
   - export CC=clang

@@ -105,7 +105,7 @@ def peval(input_file, output_file, log=None):
         else:
             break
 
-    shutil.move(opt.name, output_file)
+    shutil.move(done.name, output_file)
 
     try:
         os.unlink(done.name)
@@ -117,6 +117,29 @@ def peval(input_file, output_file, log=None):
 def optimize(input_file, output_file):
     args = ['-disable-simplify-libcalls', input_file, '-o', output_file, '-O3']
     return driver.run(config.get_llvm_tool('opt'), args)
+
+def constrain_program_args(input_file, output_file, cnstrs, filename=None, name=None):
+    "constrain the program arguments"
+    if filename is None:
+        cnstr_file = tempfile.NamedTemporaryFile(delete=False)
+        cnstr_file.close()
+        cnstr_file = cnstr_file.name
+    else:
+        cnstr_file = filename
+    f = open(cnstr_file, 'w')
+    (argc, argv) = cnstrs
+    f.write('{0}\n'.format(argc))
+    index = 0
+    for x in argv:
+        f.write('{0} {1}\n'.format(index, x))
+        index += 1
+    f.close()
+
+    args = ['-Pconstraints', '-Pconstraints-input', cnstr_file]
+    driver.previrt(input_file, output_file, args)
+
+    if filename is None:
+        os.unlink(arg_file)
 
 def specialize_program_args(input_file, output_file, args, filename=None, name=None):
     "fix the program arguments"

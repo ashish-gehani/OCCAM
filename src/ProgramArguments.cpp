@@ -39,11 +39,13 @@
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/Pass.h"
-#include "llvm/PassManager.h"
+#include "llvm/IR/LegacyPassManager.h"
+//#include "llvm/IR/PassManager.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/IPO.h"
+#include "llvm/LinkAllPasses.h"
 
 #include <vector>
 #include <string>
@@ -108,7 +110,7 @@ namespace previrt
     if (argv != NULL) {
       for (int i=0; i < argc; i++)
 	delete [] argv[i];
-      
+
       delete[] argv;
     }
   }
@@ -116,7 +118,7 @@ namespace previrt
   SpecializeArguments::runOnModule(Module& M)
   {
     Function* f = M.getFunction("main");
-    
+
     if (f == NULL)
       {
 	errs() << "SpecializeArguments::runOnModule: running on module without 'main' function.\n"
@@ -124,7 +126,7 @@ namespace previrt
 	return false;
       }
 
-    if (f->getArgumentList().size() != 2)
+    if (f->arg_size() != 2)
     {
       errs() << "SpecializeArguments::runOnModule: main module has incorrect signature\n" << f->getFunctionType();
       return false;
@@ -149,8 +151,13 @@ namespace previrt
     std::vector<Constant*> init;
 
     if (this->progName) {
+      //llvm::errs() << "Here: " << this->progName << "\n";
       GlobalVariable* gv = materializeStringLiteral(M, this->progName);
-      cargs.push_back(irb.CreateConstGEP2_32(gv, 0, 0));
+      //llvm::errs() << "gc: " << gv << "\n";
+      auto* gvT = gv->getType();
+      //auto* sty = cast<SequentialType>(gvT);
+      auto* sty = cast<PointerType>(gvT);
+      cargs.push_back(irb.CreateConstGEP2_32(sty->getElementType(), gv, 0, 0));
     } else {
       Value* progName = irb.CreateLoad(argvArg, false);
       cargs.push_back(progName);
@@ -159,7 +166,10 @@ namespace previrt
     for (int i = 0; i < this->argc; ++i)
     {
       GlobalVariable* gv = materializeStringLiteral(M, this->argv[i]);
-      cargs.push_back(irb.CreateConstGEP2_32(gv, 0, 0));
+      auto* gvT = gv->getType();
+      //auto* sty = cast<SequentialType>(gvT);
+      auto* sty = cast<PointerType>(gvT);
+      cargs.push_back(irb.CreateConstGEP2_32(sty->getElementType(), gv, 0, 0));
     }
 
     Value* argv = irb.CreateAlloca(stringtype, ConstantInt::get(i32type,
@@ -172,16 +182,28 @@ namespace previrt
       Value* argptr = irb.CreateConstGEP1_32(argv, idx);
       irb.CreateStore(*i, argptr);
     }
-
-    Value* res = irb.CreateCall2(f, ConstantInt::getSigned(IntegerType::get(
-        M.getContext(), 32), cargs.size()), argv);
+    std::vector<Value *> calleeVargs;
+    calleeVargs.push_back(ConstantInt::getSigned(IntegerType::get(M.getContext(), 32), cargs.size()));
+    calleeVargs.push_back(argv);
+    ArrayRef<Value *> calleeArgs(calleeVargs);
+     Value* res = irb.CreateCall(f, calleeArgs);
+    //    Value* res = irb.CreateCall2(f, ConstantInt::getSigned(IntegerType::get(
+    //        M.getContext(), 32), cargs.size()), argv);
     irb.CreateRet(res);
 
     f->setLinkage(GlobalValue::PrivateLinkage);
+    // XXX: f is the old main which is now called inside new_main and
+    // we would like to inline old main into new_main. In llvm 5.0
+    // main has the NonInline attribute which is inherited by old main
+    // when it is created. Thus, we need to remove the NoInline
+    // attribute. If we remove NoInline then we also need to remove
+    // OptimizeNone.
+    f->removeFnAttr(Attribute::NoInline);
+    f->removeFnAttr(Attribute::OptimizeNone);
     f->addFnAttr(Attribute::AlwaysInline);
 
-    PassManager mgr;
-    mgr.add(createAlwaysInlinerPass());
+    legacy::PassManager mgr;
+    mgr.add(createAlwaysInlinerLegacyPass());
     mgr.run(M);
 
     return true;

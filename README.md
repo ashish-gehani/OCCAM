@@ -6,8 +6,8 @@ Prerequisites
 ============
 
 [OCCAM](https://github.com/SRI-CSL/OCCAM) currently works fine on Linux, OS X, and FreeBSD.
-It depends on an installation of LLVM. The master branch currently requires llvm-3.5, and
-there are branches for llvm-3.8, and llvm-3.9. We will endeavor to maintain such
+It depends on an installation of LLVM. The master branch currently requires llvm-5.0, and
+there are branches for llvm-3.5, llvm-3.8, llvm-3.9, and llvm-4.0. We will endeavor to maintain such
 correspondences. You will also need the Google protobuffer compiler `protoc` and
 the corresponding python [package](https://pypi.python.org/pypi/protobuf/).
 
@@ -16,7 +16,7 @@ you will want to install wllvm, either from the the pip [package](https://pypi.p
 
 The test harness also requires [lit](https://pypi.python.org/pypi/lit/) and `FileCheck`. `FileCheck` can often
 be found in the binary directory of your llvm installation, however if you built your own, you may need to
-read [this.](https://bugs.llvm.org//show_bug.cgi?id=25675)
+read [this.](https://bugs.llvm.org//show_bug.cgi?id=25675) Hint: the build produces it, but does not install it (try `locate FileCheck`, then copy it to the `bin` directory).
 
 Detailed configuration instructions for Ubuntu 14.04 can be gleaned from [bootstrap.sh](https://github.com/SRI-CSL/OCCAM/blob/master/vagrants/14.04/basic/bootstrap.sh)  as well as the Travis CI scripts for each branch [.travis.yml](https://github.com/SRI-CSL/OCCAM/blob/master/.travis.yml).
 
@@ -30,8 +30,8 @@ Set where OCCAM's library will be stored:
 
 Point to your LLVM's location, if non-standard:
 ```
-  export LLVM_HOME=/usr/local/llvm-3.5
-  export LLVM_CONFIG=llvm-config-3.5
+  export LLVM_HOME=/usr/local/llvm-5.0
+  export LLVM_CONFIG=llvm-config-5.0
 ```
 
 Set where system libraries, including Google Protocol Buffers, are located:
@@ -91,7 +91,7 @@ which will prevent any inter-module specializations.
 
 
 To function correctly `slash` calls LLVM tools such as `opt` and `clang++`. These should be available in
-your `PATH`, and be the currently supported version (3.5). Like `wllvm`, `slash`, will pay attention to
+your `PATH`, and be the currently supported version (5.0). Like `wllvm`, `slash`, will pay attention to
 the environment variables `LLVM_OPT_NAME` and `LLVM_CXX_NAME`
 if your version of these tools are adorned with suffixes.
 
@@ -114,6 +114,11 @@ have meaning:
 
 + `args` : the list of arguments you wish to specialize in the main of `main`.
 
++ `constraints` : a list consisting of a positive integer, followed by some number of strings. The
+number indicates the expected number of arguments the specialized program will receive, and the
+remaing strings are the specialized arguments to the original program.
+
+Note that `args` and `constraints` are mutually exclusive. If you use one you should not use the other.
 
 As an example, (see `examples/linux/apache`), to previrtualize apache:
 
@@ -138,6 +143,22 @@ Another example, (see `examples/linux/musl_nweb`), specializes `nweb` with `musl
 , "name"    : "nweb"
 }
 ```
+
+A third example, (see `examples/portfolio/tree`),  illustrates the use of the `constraints` field to partially specialize 
+the arguments to the `tree` utility.
+```
+{ "main" : "tree.bc"
+, "binary"  : "tree"
+, "modules"    : []
+, "native_libs" : []
+, "ldflags" : [ "-O2" ]
+, "name"    : "tree"
+, "constraints" : ["1", "tree", "-J", "-h"]
+}
+```
+the specialized program will output its results in JSON notation, that will include a human readable size field.
+The specialized program expects one extra argument, either a directory, or another flag to output the contents of the
+current working directory.
 
 ---
 

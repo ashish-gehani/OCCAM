@@ -42,6 +42,7 @@
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Analysis/AliasAnalysis.h"
 
 #include "llvm/ADT/ArrayRef.h"
 
@@ -91,8 +92,9 @@ namespace previrt
       }
       return base;
     } else {
-      args.reserve(f->getArgumentList().size());
-      for (unsigned int i = 0; i < f->getArgumentList().size(); ++i)
+      unsigned alen = f->arg_size();
+      args.reserve(alen);
+      for (unsigned int i = 0; i < alen; ++i)
         args.push_back("?");
       //iam      return f->getNameStr();
       return f->getName().str();
@@ -102,7 +104,7 @@ namespace previrt
   Function*
   specializeFunction(Function *f, Value*const* args)
   // make a copy of f
-  // specialize on the arguments, a null means that that argument isn't known 
+  // specialize on the arguments, a null means that that argument isn't known
   {
     assert(!f->isDeclaration());
     ValueToValueMapTy vmap;
@@ -121,7 +123,7 @@ namespace previrt
         assert(arg->getType() == args[i]->getType()
 	       && "Specializing argument with concrete value of wrong type!");
 
-        vmap.insert(std::pair<Value*, WeakVH>(arg, args[i]));
+        vmap.insert(typename ValueToValueMapTy::value_type (arg, args[i]));
         PrevirtType pt = PrevirtType::abstract(args[i]);
         argNames[j] = pt.to_string();
         /*
@@ -141,7 +143,7 @@ namespace previrt
       }
       j++;
     }
-    assert (i == f->getArgumentList().size());
+    assert (i == f->arg_size());
 
     baseName += "(";
     for (std::vector<std::string>::const_iterator it = argNames.begin(), be = argNames.begin(), en = argNames.end(); it != en; ++it) {
@@ -157,10 +159,9 @@ namespace previrt
     // check
     if (!result) {
       ClonedCodeInfo info;
-      result = llvm::CloneFunction(f, vmap, true, &info);
+      result = llvm::CloneFunction(f, vmap, &info);
       result->setName(baseName);
     }
-
     return result;
   }
 
@@ -168,7 +169,7 @@ namespace previrt
   specializeFunction(Function *f, const std::vector<Value*>& args)
   {
     assert(!f->isDeclaration());
-    assert(f->getArgumentList().size() == args.size());
+    assert(f->arg_size() == args.size());
     Function *nfunc = specializeFunction(f, args.data());
 
     // Debugging code for detecting some mis-specializations.
@@ -191,9 +192,9 @@ namespace previrt
   specializeCallSite(Instruction* I,
       llvm::Function* nfunc, const std::vector<unsigned>& perm)
   {
-    assert((nfunc->isVarArg() && nfunc->getArgumentList().size() <= perm.size())
-        || (!nfunc->isVarArg() && nfunc->getArgumentList().size() == perm.size()));
-    const size_t specialized_arg_count = perm.size(); //nfunc->getArgumentList().size();
+    assert((nfunc->isVarArg() && nfunc->arg_size() <= perm.size())
+        || (!nfunc->isVarArg() && nfunc->arg_size() == perm.size()));
+    const size_t specialized_arg_count = perm.size(); //nfunc->arg_size();
 
     Instruction* newInst = NULL;
     if (CallInst* ci = dyn_cast<CallInst>(I)) {
@@ -211,7 +212,6 @@ namespace previrt
       } else {
 	newInst = CallInst::Create(nfunc, newOperands);
       }
-      
     } else if (InvokeInst* ci = dyn_cast<InvokeInst>(I)) {
 
       std::vector<Value*> newOperands;
@@ -221,7 +221,7 @@ namespace previrt
       }
 
       newInst = InvokeInst::Create(nfunc, ci->getNormalDest(),
-          ci->getUnwindDest(), newOperands, ci->getName());
+				   ci->getUnwindDest(), newOperands, ci->getName());
 
     } else {
       assert(false && "specializeCallSite got non-callsite");
@@ -231,19 +231,45 @@ namespace previrt
     return newInst;
   }
 
+
+  bool checkAlias(Function * f, CallInst * ci, AAResults & AA){
+
+      bool debug = false;
+      if(debug) errs()<<"Checking Alias \n";
+
+      for(unsigned int i = 0; i < ci->getNumOperands(); i++){
+        Value * callArg = ci->getOperand(i);
+        for(Function::arg_iterator itr = f->arg_begin(); itr != f->arg_end(); itr++, i++) {
+          Value * funcArg = (Value*) &(*itr);
+          if(!AA.isNoAlias(callArg, funcArg))
+          {
+             if(debug)
+               errs()<<*callArg<<" and "<<*funcArg<<" may ALIAS **** \n";
+             return true;
+          }
+        }
+      }
+
+      return false;
+  }
+
+
   bool
-  canSpecialize(Function* f)
+  canSpecialize(Function* f, AAResults & AA)
   {
     if (f->isDeclaration())
       return false;
+
+    bool canSpec = true;
     for (inst_iterator I = inst_begin(f), E = inst_end(f); I != E; ++I) {
       if (CallInst* ci = dyn_cast<CallInst>(&*I)) {
         if (ci->isInlineAsm()) {
-          return false;
+          canSpec = canSpec & !checkAlias(f, ci, AA);
         }
       }
     }
-    return true;
+
+    return canSpec;
   }
 
   GlobalVariable*
@@ -259,10 +285,13 @@ namespace previrt
   Constant*
   charStarFromStringConstant(llvm::Module& m, llvm::Constant* v)
   {
+    errs()<<"CHAR STAR \n\n\n\n\n" ;
     Constant* zero = ConstantInt::getSigned(IntegerType::getInt32Ty(m.getContext()), 0);
     Constant* args[2] = {zero, zero};
     ArrayRef<Constant*> ar_args(args, 2);
-    return ConstantExpr::getGetElementPtr(v, ar_args, false);
+    Type * constantType = cast<PointerType>(v->getType()->getScalarType())
+    ->getContainedType(0u);
+    return ConstantExpr::getGetElementPtr(constantType, v, ar_args, false);
   }
 
 }

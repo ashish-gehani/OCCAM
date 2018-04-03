@@ -22,6 +22,11 @@ RM_F    = rm -f
 
 export OCCAM_LIB = $(OCCAM_HOME)/lib
 
+# tests needs an LLVM install from cmake with:
+# -DLLVM_INSTALL_UTILS=ON
+# https://bugs.llvm.org//show_bug.cgi?id=25675
+
+
 
 all: sanity_check dist occam_lib
 
@@ -78,6 +83,9 @@ uninstall: uninstall_razor uninstall_occam_lib
 
 install: install_occam_lib install_razor
 
+#spanish people are too impatient to do the "pip install ." more than once.
+instalar: install_occam_lib #install_razor
+
 dist: proto
 	python setup.py bdist_wheel
 
@@ -131,9 +139,11 @@ zippity:
 	cat README.md | pandoc -f markdown_github > doczip/index.html
 	zip -r -j doczip.zip doczip
 
-clean:
+limpio:
 	$(MAKE) -C src clean
 	$(MAKE) -C test clean
+
+clean: limpio
 	rm -rf razor/proto
 	rm -rf dist
 

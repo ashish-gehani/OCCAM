@@ -46,6 +46,8 @@ from . import pool
 
 from . import driver
 
+from . import config
+
 def entrypoint():
     """This is the main entry point
 
@@ -57,6 +59,7 @@ def entrypoint():
         --no-strip        : Leave symbol information in the binary
         --no-specialize   : Do not specialize any intermodule calls
 
+        --tool <tool>     : Print the path to the tool and exit.
 
     """
     return Slash(sys.argv).run() if utils.checkOccamLib() else 1
@@ -73,9 +76,15 @@ class Slash(object):
         utils.setLogger()
 
         try:
-            cmdflags = ['work-dir=', 'force', 'no-strip', 'no-specialize']
+            cmdflags = ['work-dir=', 'force', 'no-strip', 'no-specialize', 'tool=']
             parsedargs = getopt.getopt(argv[1:], None, cmdflags)
             (self.flags, self.args) = parsedargs
+
+            tool = utils.get_flag(self.flags, 'tool', None)
+            if tool is not None:
+                tool = config.get_llvm_tool(tool)
+                print 'tool = {0}'.format(tool)
+                sys.exit(0)
 
         except Exception:
             usage(argv[0])
@@ -108,7 +117,7 @@ class Slash(object):
         if not valid:
             return 1
 
-        (valid, module, binary, libs, native_libs, ldflags, args, name) = parsed
+        (valid, module, binary, libs, native_libs, ldflags, args, name, constraints) = parsed
 
 
         no_strip = utils.get_flag(self.flags, 'no-strip', None)
@@ -149,7 +158,12 @@ class Slash(object):
             pre = main.get()
             post = main.new('a')
             passes.specialize_program_args(pre, post, args, 'arguments', name=name)
-
+        elif constraints:
+            print('Using the constraints: {0}\n'.format(constraints))
+            main = files[module]
+            pre = main.get()
+            post = main.new('a')
+            passes.constrain_program_args(pre, post, constraints, 'constraints')
 
         #watches were inserted here ...
 

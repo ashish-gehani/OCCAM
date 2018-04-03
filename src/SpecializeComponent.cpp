@@ -89,13 +89,13 @@ namespace previrt
   {
 
     errs() << "SpecializeComponent()\n";
-    
+
 
     int rewrite_count = 0;
     const ComponentInterface& I = T.getInterface();
     // TODO: What needs to be done?
     // - Should try to handle strings & arrays
-    // Iterate through all functions in the interface of T 
+    // Iterate through all functions in the interface of T
     for (ComponentInterface::FunctionIterator ff = I.begin(), fe = I.end(); ff
         != fe; ++ff) {
       StringRef name = ff->first();
@@ -105,7 +105,7 @@ namespace previrt
         // We don't specialize declarations because we don't own them
         continue;
       }
-      
+
       // Now iterate through all calls to func in the interface of T
       for (ComponentInterface::CallIterator cc = I.call_begin(name), ce =
           I.call_end(name); cc != ce; ++cc) {
@@ -118,14 +118,14 @@ namespace previrt
           continue;
         }
 
-        if (arg_count != func->getArgumentList().size()) {
+        if (arg_count != func->arg_size()) {
           // Not referring to this function?
           // NOTE: I can't assert this equality because of the way that approximations occur
           continue;
         }
 
 	/*
-	  should we specialize? if yes then each bit in slice will indicate whether the argument is 
+	  should we specialize? if yes then each bit in slice will indicate whether the argument is
 	  a specializable constant
 	 */
         SmallBitVector slice(arg_count);
@@ -154,7 +154,7 @@ namespace previrt
 	  args is a list of pointers to values
 	   --  if the pointer is NULL then that argument is not specialized
 	   -- if the pointer is not NULL then the argument will be/has been specialized to that value
-	   
+
 	  argsPerm is a list on integers; the indices of the non-special arguments
 
 	  args[i] = NULL iff i is in argsPerm for i < arg_count.
@@ -169,13 +169,13 @@ namespace previrt
         T.rewrite(name, call, rewriteTo, argPerm);
 
         to_add.push_back(nfunc);
-	
-	
+
+
 	errs() << "Specialized  " << name << " to " << rewriteTo << "\n";
 
 #if 0
 	for (unsigned i = 0; i < arg_count; i++) {
-	  errs() << "i = " << i << ": slice[i] = " << slice[i] 
+	  errs() << "i = " << i << ": slice[i] = " << slice[i]
 		 << " args[i] = " << args.at(i) << "\n";
 	}
 	errs() << " argPerm = [";
@@ -183,7 +183,7 @@ namespace previrt
 	  errs() << argPerm.at(i) << " ";
 	}
 	errs() << "]\n";
-#endif	
+#endif
 
        rewrite_count++;
       }
@@ -243,9 +243,9 @@ namespace {
     runOnModule(Module& M)
     {
       if (transform.interface == NULL) return false;
-      
+
       errs() << "SpecializeComponentPass::runOnModule(): " << M.getModuleIdentifier() << "\n";
-      
+
 
       std::list<Function*> to_add;
       CallGraphWrapperPass& CG = getAnalysis<CallGraphWrapperPass> ();
@@ -253,9 +253,9 @@ namespace {
           SpecializationPolicy::aggressivePolicy(), CG);
 
       bool modified = SpecializeComponent(M, this->transform, *policy, to_add);
-     
-      /* 
-	 adding the "new" specialized definitions (in to_add) to M; 
+
+      /*
+	 adding the "new" specialized definitions (in to_add) to M;
 	 opt will write out M to the -o argument to the "python call"
       */
       Module::FunctionListType &functionList = M.getFunctionList();

@@ -33,15 +33,15 @@
 
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/ADT/SmallBitVector.h"
-
+#include "llvm/Analysis/AliasAnalysis.h"
 #include "PrevirtualizeInterfaces.h"
 
 #include <list>
 
-namespace llvm
-{
-  class AliasAnalysis;
-}
+/* namespace llvm */
+/* { */
+/*   class AliasAnalysis; */
+/* } */
 
 namespace previrt
 {
@@ -51,7 +51,7 @@ namespace previrt
    */
   void
   GatherInterface(llvm::Module& M, ComponentInterface& I,
-      llvm::AliasAnalysis* aa = NULL);
+		  llvm::AliasAnalysis* aa = NULL);
 
   /*
    * Compute the minimal interface that the given function depends on
@@ -59,7 +59,7 @@ namespace previrt
    */
   void
   GatherInterface(llvm::Function& M, ComponentInterface& I,
-      llvm::AliasAnalysis* aa = NULL);
+		  llvm::AliasAnalysis* aa = NULL);
 
   /*
    * Compute the minimal interface that the given function depends on
