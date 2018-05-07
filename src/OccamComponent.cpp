@@ -58,16 +58,23 @@ namespace previrt
   localizeLinkage(GlobalValue::LinkageTypes l)
   {
     switch (l) {
-    // TODO I'm not sure if all external definitions have an appropriate internal counterpart
-    default:
-      errs() << "Got other linkage! " << l << "\n";
-      return l;
     case GlobalValue::ExternalLinkage:
       return GlobalValue::InternalLinkage;
     case GlobalValue::ExternalWeakLinkage:
       return GlobalValue::WeakODRLinkage;
     case GlobalValue::AppendingLinkage:
       return GlobalValue::AppendingLinkage;
+    case GlobalValue::CommonLinkage:
+      // CommonLinkage is most similar to weak linkage
+      // However, we mark it as internal linkage so that other
+      // optimizations are applicable.
+      //return GlobalValue::WeakODRLinkage;
+      return GlobalValue::InternalLinkage;
+    // TODO I'm not sure if all external definitions have an
+    // appropriate internal counterpart
+    default:
+      errs() << "Got other linkage! " << l << "\n";
+      return l;
     }
   }
 
@@ -102,15 +109,17 @@ namespace previrt
       }
     }
 
-    // Set all initialized global variables that are not referenced in the interface to "localized linkage" only
+    // Set all initialized global variables that are not referenced in
+    // the interface to "localized linkage" only
     for (Module::global_iterator i = M.global_begin(), e = M.global_end(); i != e; ++i) {
-      if (i->hasExternalLinkage() && i->hasInitializer() &&
+      if ((i->hasExternalLinkage() || i->hasCommonLinkage()) && 
+	  i->hasInitializer() &&
           I.references.find(i->getName()) == I.references.end()) {
-        errs() << "internalizing '" << i->getName() << "'\n";
+	errs() << "internalizing '" << i->getName() << "'\n";	
         i->setLinkage(localizeLinkage(i->getLinkage()));
 	internalized++;
         modified = true;
-      }
+      } 
     }
     /* TODO: We want to do this, but libc has some problems...
     for (Module::alias_iterator i = M.alias_begin(), e = M.alias_end(); i != e; ++i) {
