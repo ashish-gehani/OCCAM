@@ -25,7 +25,7 @@ cp slash/main main_slash
 
 #debugging stuff below:
 for bitcode in slash/*.bc; do
-    llvm-dis  "$bitcode" &> /dev/null
+    ${LLVM_HOME}/bin/llvm-dis  "$bitcode" &> /dev/null
 done
 
 exit 0
