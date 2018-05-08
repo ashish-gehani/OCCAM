@@ -33,5 +33,5 @@ $OPT $LIBS -mem2reg --lower-gv-init -memory-ssa -mem2reg $IN  -o $OUT
 
 IN=$OUT
 OUT=$dirpath/$filename.o.bc
-echo "$OPT $LIBS -ip-dse -strip-memory-ssa-inst -globaldce -ipsccp -dce -globaldce $IN -o $OUT"
-$OPT $LIBS -ip-dse -strip-memory-ssa-inst -globaldce -ipsccp -dce -globaldce $IN -o $OUT
+echo "$OPT $LIBS -ip-dse -strip-memory-ssa-inst -globaldce -Psccp -dce -globaldce $IN -o $OUT"
+$OPT $LIBS -ip-dse -strip-memory-ssa-inst -globaldce -Psccp -dce -globaldce $IN -o $OUT
