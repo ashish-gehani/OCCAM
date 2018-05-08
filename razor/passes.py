@@ -90,15 +90,30 @@ def peval(input_file, output_file, log=None):
     done.close()
 
     out = ['']
-
+    
     shutil.copy(input_file, done.name)
     while True:
+        # optimize using standard llvm transformations
         retcode = optimize(done.name, opt.name)
         if retcode != 0:
             shutil.copy(done.name, output_file)
             return retcode
 
-        if driver.previrt_progress(opt.name, done.name, ['-Ppeval'], output=out):
+        passes = []
+        if False:
+            ##lower global initializers to store's in main (improve precision of sccp)
+            passes += ['-lower-gv-init']
+            ##dead store elimination (improve precision of sccp)
+            passes += ['-memory-ssa', '-mem2reg', '-ip-dse', '-strip-memory-ssa-inst']
+            ##perform sccp
+            passes += ['-Psccp']
+            ##cleanup after sccp
+            passes += ['-dce', '-globaldce']
+                
+        
+        # inlining using policies
+        passes += ['-Ppeval']
+        if driver.previrt_progress(opt.name, done.name, passes, output=out):
             print "previrt successful"
             if log is not None:
                 log.write(out[0])
