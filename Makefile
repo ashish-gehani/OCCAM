@@ -52,8 +52,8 @@ ifeq ($(LLVM_HOME),)
 endif
 
 occam_lib:
+	git submodule update --init --recursive
 	$(MAKE) -C src all
-
 
 .PHONY: test
 test:
@@ -78,14 +78,9 @@ ifeq ($(PROTOC),)
 endif
 	$(PIP) uninstall razor
 
-install_sea_dsa:
-	git submodule update --init --recursive
-
-install_extern_deps: install_sea_dsa
-
 uninstall: uninstall_razor uninstall_occam_lib
 
-install: install_extern_deps install_occam_lib install_razor 
+install: install_occam_lib install_razor 
 
 #spanish people are too impatient to do the "pip install ." more than once.
 instalar: install_occam_lib #install_razor 
