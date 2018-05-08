@@ -88,9 +88,7 @@ const Value *MemorySSACallSite::getNonPrimed(unsigned idx) const {
 // return the primed top-level variable of the mem.ssa.XXX
 // instruction associated with the idx-th actual parameter.
 const Value *MemorySSACallSite::getPrimed(unsigned idx) const {
-  assert (isRefMod(idx, m_only_singleton) ||
-	  isMod(idx, m_only_singleton) ||
-	  isNew(idx, m_only_singleton));      
+  assert (isRefMod(idx) || isMod(idx) || isNew(idx));
   return getMemSSAParamPrimed(m_actual_params[idx], m_only_singleton);
 }
   
