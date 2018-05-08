@@ -27,7 +27,8 @@ OnlySingleton("ip-dse-only-singleton",
    llvm::cl::Hidden,
    llvm::cl::init(true));
 
-#define DSE_LOG(...) __VA_ARGS__
+//#define DSE_LOG(...) __VA_ARGS__
+#define DSE_LOG(...)
 
 namespace previrt {
 namespace transforms {
@@ -74,10 +75,10 @@ class IPDeadStoreElimination: public ModulePass {
   inline void enqueue(Q &queue, const S &visited, const Instruction *I, StoreInst *SI) {
     QueueElem e(I, SI);
     if (visited.count(e) != 0) {
-      DSE_LOG(errs() << "\tSkipped " << e << " from the queue!\n";)
-	return;
+      DSE_LOG(errs() << "\tSkipped " << e << " from the queue!\n");
+      return;
     }
-    DSE_LOG(errs() << "\tEnqueued " << e << "\n";)
+    DSE_LOG(errs() << "\tEnqueued " << e << "\n");
       queue.push_back(e);
   }
   
@@ -149,19 +150,19 @@ public:
 	    for(auto &e: queue) {
 	      errs () << "\t" << e << "\n";
 	    }
-	    errs () << "[IP-DSE] END initial queue\n";)
+	    errs () << "[IP-DSE] END initial queue\n";);
       
     //boost::unordered_set<QueueElem> visited;
     std::set<QueueElem> visited;	
     
     while (!queue.empty()) {
       QueueElem w = queue.back();
-      DSE_LOG(errs() << "[IP-DSE] Processing " << *(w.mem_ssa_inst) << "\n";)
+      DSE_LOG(errs() << "[IP-DSE] Processing " << *(w.mem_ssa_inst) << "\n");
       queue.pop_back();
       visited.insert(w);
       
       if (hasMemSSALoadUser(w.mem_ssa_inst, OnlySingleton)) {
-	DSE_LOG(errs() << "\thas a load user: CANNOT be removed.\n";)
+	DSE_LOG(errs() << "\thas a load user: CANNOT be removed.\n");
 	markStoreToKeep(w.store_inst);
 	continue;
       } 
@@ -169,26 +170,26 @@ public:
       for (auto &U: w.mem_ssa_inst->uses()) {
 	Instruction *I = dyn_cast<Instruction>(U.getUser());
 	if (!I) continue;
-	DSE_LOG(errs() << "\tChecking user " << *I << "\n";)
+	DSE_LOG(errs() << "\tChecking user " << *I << "\n");
 		  
 	if (PHINode *PHI = dyn_cast<PHINode>(I)) {
-	  DSE_LOG(errs () << "\tPHI node: enqueuing lhs\n";)
+	  DSE_LOG(errs () << "\tPHI node: enqueuing lhs\n");
 	  enqueue(queue, visited, PHI, w.store_inst);
 	} else {
 	  ImmutableCallSite CS(I);
 	  if (!CS.getCalledFunction()) continue;
 	  
 	  if (isMemSSAStore(CS, OnlySingleton)) {
-	    DSE_LOG(errs() << "\tstore: skipped\n";)
+	    DSE_LOG(errs() << "\tstore: skipped\n");
 	    continue;
 	  } else if (isMemSSAArgRef(CS, OnlySingleton)) { 
-	    DSE_LOG(errs() << "\targ ref: CANNOT be removed\n";)
+	    DSE_LOG(errs() << "\targ ref: CANNOT be removed\n");
 	    markStoreToKeep(w.store_inst);		
 	  } else if (isMemSSAArgMod(CS, OnlySingleton)) {
-	    DSE_LOG(errs() << "\targ mod: skipped\n";)
+	    DSE_LOG(errs() << "\targ mod: skipped\n");
 	    continue;
 	  } else if (isMemSSAArgRefMod(CS, OnlySingleton)) {
-	    DSE_LOG(errs() << "\tRecurse inter-procedurally in the callee\n";)
+	    DSE_LOG(errs() << "\tRecurse inter-procedurally in the callee\n");
 	    // Inter-procedural step: we recurse on the uses of
 	    // the corresponding formal (non-primed) variable in
 	    // the callee.
@@ -219,7 +220,7 @@ public:
 	  } else if (isMemSSAFunIn(CS, OnlySingleton)) {
 	    // do nothing
 	  } else if (isMemSSAFunOut(CS, OnlySingleton)) {
-	    DSE_LOG(errs() << "\tRecurse inter-procedurally in the caller\n";)
+	    DSE_LOG(errs() << "\tRecurse inter-procedurally in the caller\n");
 	    // Inter-procedural step: we recurse on the uses of
 	    // the corresponding actual (primed) variable in the
 	    // caller.
@@ -252,7 +253,7 @@ public:
     // Finally, we remove dead store instructions
     for (auto &kv: m_store_map) {
       if (!kv.second) {	
-	DSE_LOG(errs() << "[IP-DSE] DELETED " <<  *(kv.first) << "\n";)
+	DSE_LOG(errs() << "[IP-DSE] DELETED " <<  *(kv.first) << "\n");
 	kv.first->eraseFromParent();  
       } 
     }

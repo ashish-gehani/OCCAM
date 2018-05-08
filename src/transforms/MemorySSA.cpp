@@ -30,6 +30,9 @@ LocalReadMod ("Pmem-ssa-local-mod",
               llvm::cl::desc("Memory SSA: Compute read/mod info locally"),
               llvm::cl::init(false));
 
+//#define MEMSSA_LOG(...) __VA_ARGS__
+#define MEMSSA_LOG(...)
+
 namespace previrt {
 namespace transforms {  
   
@@ -323,9 +326,9 @@ namespace transforms {
     Graph &G = m_dsa->getGraph (F);
 
     // Debugging
-    errs () << "Memory SSA on " << F.getName() << "\n";    
-    G.write(errs());
-    errs () << "\n";
+    MEMSSA_LOG(errs () << "Memory SSA on " << F.getName() << "\n";    
+	       G.write(errs());
+	       errs () << "\n";);
     
     m_shadows.clear ();
     // -- preserve ids across functions m_node_ids.clear ();
@@ -387,7 +390,7 @@ namespace transforms {
 					    getUniqueScalar (ctx, B, c)}), v);
 	    } else {
 	      // TODO: handle multiple nodes
-	      errs () << "WARNING: missing calloc instrumentation because cell offset is not zero\n";
+	      errs() << "WARNING: missing calloc instrumentation because cell offset is not zero\n";
 	    }
           }
           else if (MemSetInst *MSI = dyn_cast<MemSetInst>(&inst)) {
@@ -405,7 +408,7 @@ namespace transforms {
 					    getUniqueScalar (ctx, B, c)}), v);
 	    } else {
 	      // TODO: handle multiple nodes
-	      errs () << "WARNING: missing memset instrumentation because cell offset is not zero\n";
+	      errs() << "WARNING: missing memset instrumentation because cell offset is not zero\n";
 	    }
           }
 	  
