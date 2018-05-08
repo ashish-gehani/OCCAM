@@ -2,8 +2,8 @@
 
 extern int nd_int(void);
 
-int x;   // DEAD INITIALIZATION
-int y;   // DEAD INITIALIZATION
+static int x;   // DEAD INITIALIZATION
+static int y;   // DEAD INITIALIZATION
 
 int init() {
   y = y+1;    // LIVE STORE
