@@ -175,10 +175,9 @@ public:
 	if (PHINode *PHI = dyn_cast<PHINode>(I)) {
 	  DSE_LOG(errs () << "\tPHI node: enqueuing lhs\n");
 	  enqueue(queue, visited, PHI, w.store_inst);
-	} else {
+	} else if (isa<CallInst>(I)) {
 	  ImmutableCallSite CS(I);
 	  if (!CS.getCalledFunction()) continue;
-	  
 	  if (isMemSSAStore(CS, OnlySingleton)) {
 	    DSE_LOG(errs() << "\tstore: skipped\n");
 	    continue;
@@ -218,6 +217,7 @@ public:
 	      report_fatal_error("[IP-DSE] expected to enqueue from callee");
 	    }
 	  } else if (isMemSSAFunIn(CS, OnlySingleton)) {
+	    DSE_LOG(errs() << "\tin: skipped\n");
 	    // do nothing
 	  } else if (isMemSSAFunOut(CS, OnlySingleton)) {
 	    DSE_LOG(errs() << "\tRecurse inter-procedurally in the caller\n");
@@ -225,9 +225,9 @@ public:
 	    // the corresponding actual (primed) variable in the
 	    // caller.
 	      
-	      int64_t idx = getMemSSAParamIdx(CS, OnlySingleton);
+	    int64_t idx = getMemSSAParamIdx(CS, OnlySingleton);
 	    if (idx < 0) {
-	      report_fatal_error("[IP-DSE] cannot find index in mem.ssa function");		
+	      report_fatal_error("[IP-DSE] cannot find index in mem.ssa function");
 	    }
 	    Function *F = I->getParent()->getParent();
 	    for (auto &U: F->uses()) {
@@ -239,7 +239,7 @@ public:
 		if (const Instruction* caller_primed = dyn_cast<const Instruction>(MemSsaCS->getPrimed(idx))) {
 		  enqueue(queue, visited, caller_primed, w.store_inst);
 		} else {
-		  report_fatal_error("[IP-DSE] expected to enqueue from caller");		    
+		  report_fatal_error("[IP-DSE] expected to enqueue from caller");
 		}
 	      }
 	    }
