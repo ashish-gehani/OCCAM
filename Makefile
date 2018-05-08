@@ -52,7 +52,7 @@ ifeq ($(LLVM_HOME),)
 endif
 
 occam_lib:
-	git submodule update --init --recursive
+	git submodule update --remote --init --recursive
 	$(MAKE) -C src all
 
 .PHONY: test
