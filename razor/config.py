@@ -43,8 +43,9 @@ import sys
 class ConfigObj(object):
     """All access to the environment comes through this class.
     """
-    def  __init__(self, libfile):
+    def  __init__(self, libfile, dsalib):
         self._occamlib = libfile
+        self._dsalib = dsalib
         self._env = {'clang'      :  'LLVM_CC_NAME',
                      'clang++'    :  'LLVM_CXX_NAME',
                      'llvm-link'  :  'LLVM_LINK_NAME',
@@ -69,6 +70,10 @@ class ConfigObj(object):
         """
         return self._occamlib
 
+    def get_dsalib(self):
+        """ Returns the path to the DSA library.
+        """
+        return self._dsalib    
 
     def get_llvm_tool(self, tool):
         """ Returns the appropriate tool.
@@ -90,6 +95,21 @@ def get_occamlib_path():
         sys.stderr.write('Unsupported platform: {0}\n'.format(system))
         return None
 
+def get_dsalib_path():
+    """ Deduces the full path to the DSA shared/dynamic library.
+    """
+    home = os.getenv('OCCAM_HOME')
+    if home is None:
+        return None
+    system = platform.system()
+    if system == 'Linux':
+        return os.path.join(home, 'lib', 'libSeaDsa.so')
+    elif system == 'Darwin':
+        return os.path.join(home, 'lib', 'libSeaDsa.dylib')
+    else:
+        sys.stderr.write('Unsupported platform: {0}\n'.format(system))
+        return None
+    
 
 def get_logfile():
     """ Returns the path to the occam logfile.
@@ -99,12 +119,17 @@ def get_logfile():
         logfile = '/tmp/occam.log'
     return logfile
 
-CFG = ConfigObj(get_occamlib_path())
+CFG = ConfigObj(get_occamlib_path(), get_dsalib_path())
 
 def get_occamlib():
-    """ Returns the path to the occam logfile.
+    """ Returns the path to the occam shared/dynamic library.
     """
     return CFG.get_occamlib()
+
+def get_dsalib():
+    """ Returns the path to the DSA shared/dynamic library.
+    """
+    return CFG.get_dsalib()
 
 def get_llvm_tool(tool):
     """ Returns the appropriate tool.
