@@ -1,0 +1,4 @@
+This is similar to 3 but we can fully specialized if we provide
+implementation for strlen and strncmp.
+
+Note that we don't need the option --devirt.

@@ -18,3 +18,7 @@ clean:
 	$(MAKE) -C ../examples/multiple clean
 	$(MAKE) -C ../examples/simple clean
 	$(MAKE) -C ../examples/tree clean
+	$(MAKE) -C ../examples/funcs/1 clean
+	$(MAKE) -C ../examples/funcs/2 clean
+	$(MAKE) -C ../examples/funcs/3 clean
+	$(MAKE) -C ../examples/funcs/4 clean
