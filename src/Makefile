@@ -63,7 +63,10 @@ all: ${LIBRARY}
 libSeaDsa:
 	$(MAKE) -C analysis/sea-dsa install INSTALL_DIR=${OCCAM_LIB}
 
-extern_libs: libSeaDsa
+libLlvmDsa:
+	$(MAKE) -C analysis/llvm-dsa install INSTALL_DIR=${OCCAM_LIB}
+
+extern_libs: libSeaDsa libLlvmDsa
 
 ${LIBRARY}: extern_libs ${SOURCES}
 	echo "The source is being built according to ${LLVM_CFG}"

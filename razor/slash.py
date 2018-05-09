@@ -57,8 +57,8 @@ def entrypoint():
 
         --work-dir <dir>  : Output intermediate files to the given location <dir>
         --no-strip        : Leave symbol information in the binary
+        --devirt          : Devirtualize indirect function calls
         --no-specialize   : Do not specialize any intermodule calls
-
         --tool <tool>     : Print the path to the tool and exit.
 
     """
@@ -66,7 +66,7 @@ def entrypoint():
 
 
 def  usage(exe):
-    template = '{0} [--work-dir=<dir>]  [--force] [--no-strip] [--no-specialize] <manifest>\n'
+    template = '{0} [--work-dir=<dir>]  [--force] [--no-strip] [--devirt] [--no-specialize] <manifest>\n'
     sys.stderr.write(template.format(exe))
 
 
@@ -76,7 +76,12 @@ class Slash(object):
         utils.setLogger()
 
         try:
-            cmdflags = ['work-dir=', 'force', 'no-strip', 'no-specialize', 'tool=']
+            cmdflags = ['work-dir=',
+                        'force',
+                        'no-strip',
+                        'devirt',
+                        'no-specialize',
+                        'tool=']
             parsedargs = getopt.getopt(argv[1:], None, cmdflags)
             (self.flags, self.args) = parsedargs
 
@@ -122,6 +127,8 @@ class Slash(object):
 
         no_strip = utils.get_flag(self.flags, 'no-strip', None)
 
+        devirt = utils.get_flag(self.flags, 'devirt', None)
+        
         no_specialize = utils.get_flag(self.flags, 'no-specialize', None)
 
         sys.stderr.write('\nslash working on {0} wrt {1} ...\n'.format(module, ' '.join(libs)))
@@ -167,11 +174,19 @@ class Slash(object):
 
         #watches were inserted here ...
 
+        #Resolve indirect calls using a pointer analysis
+        def _devirt(m):
+            "Devirtualize indirect function calls"
+            pre = m.get()
+            post = m.new('d')
+            passes.devirt(pre, post)
+            
+        if devirt is not None:
+            pool.InParallel(_devirt, files.values(), self.pool)
+        
         # Internalize everything that we can
         # We can never internalize main
         interface.writeInterface(interface.mainInterface(), 'main.iface')
-
-
 
         # First compute the simple interfaces
         vals = files.items()
@@ -220,6 +235,10 @@ class Slash(object):
             iteration += 1
             progress = False
 
+            # resolve indirect calls using a pointer analysis            
+            #if devirt is not None:
+            #    pool.InParallel(_devirt, files.values(), self.pool)
+                
             # Intra-module previrt
             def intra(m):
                 "Intra-module previrtualization"

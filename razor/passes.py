@@ -79,6 +79,12 @@ def strip(input_file, output_file):
     args += ['-strip', '-globaldce', '-globalopt', '-strip-dead-prototypes']
     return driver.run(config.get_llvm_tool('opt'), args)
 
+def devirt(input_file, output_file):
+    """ devirtualize indirect function calls
+    """
+    args = ['-devirt']
+    return driver.previrt_progress(input_file, output_file, args)
+
 def peval(input_file, output_file, log=None):
     """intra module previrtualization
     """

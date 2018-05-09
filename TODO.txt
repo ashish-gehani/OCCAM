@@ -5,11 +5,11 @@
     pthreads (possibly some incorrectly eliminated symbols?).
 [ ] Figure out how to avoid needing to relink in libc, etc. to get the symbols
     we need for the C runtime. (and C++/pthreads?)
-[ ] Add support for better call-graphs. Either improve Gregory's call graph,
+[X] Add support for better call-graphs. Either improve Gregory's call graph,
     choose a better one that's already in llvm, or port over the DSA call-graph
     stuff in poolalloc.
 [ ] Support for previrtualizing un-named functions
-[ ] Support for previrtualizing internal function pointers accross module 
+[X] Support for previrtualizing internal function pointers accross module 
     boundaries for call backs.
 [ ] To avoid creating multiple clones of the same specialized function, we check
     if it already exists by looking it up in the module by name. This check
