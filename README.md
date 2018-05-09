@@ -4,7 +4,7 @@
 Description
 ============
 
-[OCCAM](https://github.com/SRI-CSL/OCCAM) is a whole-program partial evaluator for LLVM bitcode that aims at debloating shared/static libraries and programs. 
+[OCCAM](https://github.com/SRI-CSL/OCCAM) is a whole-program partial evaluator for LLVM bitcode that aims at debloating shared/static libraries and programs running on a specific deployment context.
 
 Prerequisites
 ============
