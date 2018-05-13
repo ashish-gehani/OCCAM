@@ -58,6 +58,8 @@ def entrypoint():
         --work-dir <dir>  : Output intermediate files to the given location <dir>
         --no-strip        : Leave symbol information in the binary
         --devirt          : Devirtualize indirect function calls
+        --llpe            : Use Smowton's LLPE for intra-module prunning
+        --ipdse           : Apply inter-procedural dead store elimination (experimental)
         --no-specialize   : Do not specialize any intermodule calls
         --tool <tool>     : Print the path to the tool and exit.
 
@@ -66,7 +68,7 @@ def entrypoint():
 
 
 def  usage(exe):
-    template = '{0} [--work-dir=<dir>]  [--force] [--no-strip] [--devirt] [--no-specialize] <manifest>\n'
+    template = '{0} [--work-dir=<dir>]  [--force] [--no-strip] [--devirt] [--llpe] [--ipdse] [--no-specialize] <manifest>\n'
     sys.stderr.write(template.format(exe))
 
 
@@ -80,6 +82,8 @@ class Slash(object):
                         'force',
                         'no-strip',
                         'devirt',
+                        'llpe',
+                        'ipdse',
                         'no-specialize',
                         'tool=']
             parsedargs = getopt.getopt(argv[1:], None, cmdflags)
@@ -128,6 +132,10 @@ class Slash(object):
         no_strip = utils.get_flag(self.flags, 'no-strip', None)
 
         devirt = utils.get_flag(self.flags, 'devirt', None)
+
+        use_llpe = utils.get_flag(self.flags, 'llpe', None)
+
+        use_ipdse = utils.get_flag(self.flags, 'ipdse', None)        
         
         no_specialize = utils.get_flag(self.flags, 'no-specialize', None)
 
@@ -249,7 +257,7 @@ class Slash(object):
                 post = m.new('p')
                 post_base = os.path.basename(post)
                 fn = 'previrt_%s-%s' % (pre_base, post_base)
-                passes.peval(pre, post, log=open(fn, 'w'))
+                passes.peval(pre, post, use_llpe, use_ipdse, log=open(fn, 'w'))
 
             pool.InParallel(intra, files.values(), self.pool)
 

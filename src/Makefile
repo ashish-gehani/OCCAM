@@ -60,13 +60,19 @@ INSTALL = install
 
 all: ${LIBRARY}
 
+# Pointer Analysis
 libSeaDsa:
 	$(MAKE) -C analysis/sea-dsa install INSTALL_DIR=${OCCAM_LIB}
 
-libDSA:
+# Another Pointer Analysis
+libLlvmDsa:
 	$(MAKE) -C analysis/llvm-dsa install INSTALL_DIR=${OCCAM_LIB}
 
-extern_libs: libSeaDsa libDSA
+# Smowton's LLPE tool
+libLLPE:
+	$(MAKE) -C analysis/llpe install INSTALL_DIR=${OCCAM_LIB}
+
+extern_libs: libSeaDsa libLlvmDsa libLLPE
 
 ${LIBRARY}: extern_libs ${SOURCES}
 	echo "The source is being built according to ${LLVM_CFG}"

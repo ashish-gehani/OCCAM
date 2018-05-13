@@ -85,8 +85,8 @@ def devirt(input_file, output_file):
     args = ['-devirt']
     return driver.previrt_progress(input_file, output_file, args)
 
-def peval(input_file, output_file, log=None):
-    """intra module previrtualization
+def peval(input_file, output_file, use_llpe, use_ipdse, log=None):
+    """ intra module previrtualization
     """
     opt = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
     pre = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
@@ -95,8 +95,18 @@ def peval(input_file, output_file, log=None):
     pre.close()
     done.close()
 
-    out = ['']
+    if use_llpe is not None:
+        print '\tRunning LLPE...'
+        llpe_libs = []
+        for lib in config.get_llpelibs():
+            llpe_libs.append('-load={0}'.format(lib))
+	args= llpe_libs + ['-loop-simplify', '-lcssa', \
+                           '-llpe', '-llpe-omit-checks', '-llpe-single-threaded', \
+                           input_file, '-o=%s' % done.name]       
+	driver.run(config.get_llvm_tool('opt'), args)
+	shutil.copy(done.name, input_file)		
     
+    out = ['']    
     shutil.copy(input_file, done.name)
     while True:
         # optimize using standard llvm transformations
@@ -106,7 +116,8 @@ def peval(input_file, output_file, log=None):
             return retcode
 
         passes = []
-        if False:
+        if use_ipdse is not None:
+            print '\tRunning IP-DSE...'
             ##lower global initializers to store's in main (improve precision of sccp)
             passes += ['-lower-gv-init']
             ##dead store elimination (improve precision of sccp)
