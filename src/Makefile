@@ -37,12 +37,12 @@ LD_FLAGS += -undefined suppress -flat_namespace
 else ifeq (FreeBSD, $(findstring FreeBSD, ${OS}))
 # FreeBSD
 LIBRARY = ${LIBRARYNAME}.so
-LIBFLAGS = -shared -Wl,-soname,${LIB}
+LIBFLAGS = -shared -Wl,-soname,${LIBRARY}
 OTHERLIBS = -L/usr/local/lib -lpthread -lprotobuf 
 else
 # LINUX
 LIBRARY = ${LIBRARYNAME}.so
-LIBFLAGS = -shared -Wl,-soname,${LIB}
+LIBFLAGS = -shared -Wl,-soname,${LIBRARY}
 OTHERLIBS =  -lpthread -lprotobuf 
 endif
 
@@ -107,7 +107,8 @@ protoc: Watch.proto Previrt.proto
 
 clean: 
 	rm -rf ${OBJECTS} proto ${LIBRARY} 
-
+	$(MAKE) -C analysis/llvm-dsa clean
+	$(MAKE) -C analysis/sea-dsa clean
 
 install: check-occam-lib ${LIBRARY}
 	$(INSTALL) -m 664 ${LIBRARY} $(OCCAM_LIB)
