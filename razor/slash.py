@@ -33,6 +33,7 @@
 import getopt
 import sys
 import os
+import tempfile
 
 from . import utils
 
@@ -60,6 +61,7 @@ def entrypoint():
         --devirt          : Devirtualize indirect function calls
         --llpe            : Use Smowton's LLPE for intra-module prunning
         --ipdse           : Apply inter-procedural dead store elimination (experimental)
+        --stats           : Show some stats before and after specialization
         --no-specialize   : Do not specialize any intermodule calls
         --tool <tool>     : Print the path to the tool and exit.
 
@@ -68,7 +70,7 @@ def entrypoint():
 
 
 def  usage(exe):
-    template = '{0} [--work-dir=<dir>]  [--force] [--no-strip] [--devirt] [--llpe] [--ipdse] [--no-specialize] <manifest>\n'
+    template = '{0} [--work-dir=<dir>]  [--force] [--no-strip] [--devirt] [--llpe] [--ipdse] [--stats] [--no-specialize] <manifest>\n'
     sys.stderr.write(template.format(exe))
 
 
@@ -84,6 +86,7 @@ class Slash(object):
                         'devirt',
                         'llpe',
                         'ipdse',
+                        'stats',
                         'no-specialize',
                         'tool=']
             parsedargs = getopt.getopt(argv[1:], None, cmdflags)
@@ -135,7 +138,9 @@ class Slash(object):
 
         use_llpe = utils.get_flag(self.flags, 'llpe', None)
 
-        use_ipdse = utils.get_flag(self.flags, 'ipdse', None)        
+        use_ipdse = utils.get_flag(self.flags, 'ipdse', None)
+
+        show_stats = utils.get_flag(self.flags, 'stats', None)                
         
         no_specialize = utils.get_flag(self.flags, 'no-specialize', None)
 
@@ -199,7 +204,8 @@ class Slash(object):
         # First compute the simple interfaces
         vals = files.items()
         def mkvf(k):
-            return provenance.VersionedFile(utils.prevent_collisions(k[:k.rfind('.bc')]), 'iface')
+            return provenance.VersionedFile(utils.prevent_collisions(k[:k.rfind('.bc')]),
+                                            'iface')
         refs = dict([(k, mkvf(k)) for (k, _) in vals])
 
         def _references((m, f)):
@@ -229,6 +235,9 @@ class Slash(object):
 
             pool.InParallel(_strip, files.values(), self.pool)
 
+        profile_map_before = {}
+        profile_map_after = {}
+            
         # Begin main loop
         iface_before_file = provenance.VersionedFile('interface_before', 'iface')
         iface_after_file = provenance.VersionedFile('interface_after', 'iface')
@@ -238,6 +247,15 @@ class Slash(object):
             base = utils.prevent_collisions(m[:m.rfind('.bc')])
             rewrite_files[m] = provenance.VersionedFile(base, 'rw')
         iteration = 0
+
+        if show_stats is not None:
+            def _profile_before(m):
+                #sys.stderr.write("Profiling %s...\n" % m.get())
+                _, name = tempfile.mkstemp()
+                passes.profile(m.get(), name)
+                profile_map_before[m.get()] = name
+            pool.InParallel(_profile_before, files.values(), self.pool)
+            
         while progress:
 
             iteration += 1
@@ -268,7 +286,6 @@ class Slash(object):
 
             if no_specialize is None:
                 # Specialize
-
                 def _spec((nm, m)):
                     "Inter-module module specialization"
                     pre = m.get()
@@ -313,6 +330,14 @@ class Slash(object):
                 passes.internalize(pre, post, [iface_after_file.get()])
             pool.InParallel(prune, files.values(), self.pool)
 
+        if show_stats is not None:
+            def _profile_after(m):
+                #sys.stderr.write("Profiling %s...\n" % m.get())
+                _, name = tempfile.mkstemp()
+                passes.profile(m.get(), name)
+                profile_map_after[m.get()] = name
+            pool.InParallel(_profile_after, files.values(), self.pool)
+            
         # Make symlinks for the "final" versions
         for x in files.values():
             trg = x.base('-final')
@@ -334,4 +359,37 @@ class Slash(object):
         sys.stderr.write('\ndone.\n')
         pool.shutdownDefaultPool()
 
+        if show_stats is not None:
+            for (f1,v1), (f2,v2) in zip(profile_map_before.iteritems(), \
+                                        profile_map_after.iteritems()) :
+                sys.stderr.write(f1)
+                sys.stderr.write(f2)
+
+                def _splitext(abspath):
+                    #Given abspath of the form basename.ext1.ext2....extn  
+                    #return basename.ext1
+                    base = os.path.basename(abspath)
+                    res = base.split(os.extsep)
+                    assert(len(res) > 1)
+                    return res[0] + '.' + res[1]
+                
+                f1 = _splitext(f1)
+                f2 = _splitext(f2)
+                assert (f1 == f2)
+                
+                sys.stderr.write('\n\nStatistics for %s before specialization\n' % f1)
+                fd = open(v1, 'r')
+                for line in fd:
+                    sys.stderr.write('\t')
+                    sys.stderr.write(line)
+                fd.close()
+                os.remove(v1)
+                sys.stderr.write('Statistics for %s after specialization\n' % f2)
+                fd = open(v2, 'r')
+                for line in fd:
+                    sys.stderr.write('\t')                    
+                    sys.stderr.write(line)
+                fd.close()
+                os.remove(v2)
+                
         return 0

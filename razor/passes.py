@@ -82,8 +82,15 @@ def strip(input_file, output_file):
 def devirt(input_file, output_file):
     """ devirtualize indirect function calls
     """
-    args = ['-devirt']
+    args = ['-devirt', '-calltarget-ignore-external']
     return driver.previrt_progress(input_file, output_file, args)
+
+def profile(input_file, output_file):
+    """ Count number of instructions, functions, memory accesses, etc
+    """
+    args = ['-Pprofiler']
+    args += ['-profile-outfile={0}'.format(output_file)]
+    return driver.previrt_progress(input_file, '/dev/null', args)
 
 def peval(input_file, output_file, use_llpe, use_ipdse, log=None):
     """ intra module previrtualization

@@ -54,6 +54,8 @@ SOURCES += $(wildcard analysis/*.cpp)
 
 SOURCES += $(wildcard transforms/*.cpp)
 
+SOURCES += $(wildcard utils/*.cpp)
+
 OBJECTS := proto/Previrt.pb.o proto/Watch.pb.o $(patsubst %.cpp,%.o,${SOURCES}) 
 
 INSTALL = install
@@ -86,6 +88,9 @@ analysis/%.o: analysis/%.cpp
 	$(CXX) ${CXX_FLAGS} $< -c -o $@
 
 transforms/%.o: transforms/%.cpp 
+	$(CXX) ${CXX_FLAGS} $< -c -o $@
+
+utils/%.o: utils/%.cpp 
 	$(CXX) ${CXX_FLAGS} $< -c -o $@
 
 %.o: %.cpp
