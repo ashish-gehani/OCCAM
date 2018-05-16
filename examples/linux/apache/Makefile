@@ -11,16 +11,10 @@ LLVMGET=get-bc
 #LLVMGET=extract-bc
 
 
-#current versions as of 11/2016
-#PCRE=pcre-8.39
+#current versions as of 5/16/2018
 PCRE=pcre-8.42
-#APR=apr-1.5.2
 APR=apr-1.6.3
-
-
-#APR_UTIL=apr-util-1.5.4
 APR_UTIL=apr-util-1.6.1
-#HTTPD=httpd-2.4.23
 HTTPD=httpd-2.4.33
 
 #the urls (if the versions change you should check these)
