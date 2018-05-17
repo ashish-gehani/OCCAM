@@ -34,6 +34,7 @@ import getopt
 import sys
 import os
 import tempfile
+import collections
 
 from . import utils
 
@@ -235,8 +236,8 @@ class Slash(object):
 
             pool.InParallel(_strip, files.values(), self.pool)
 
-        profile_map_before = {}
-        profile_map_after = {}
+        profile_map_before = collections.OrderedDict()
+        profile_map_after = collections.OrderedDict()
             
         # Begin main loop
         iface_before_file = provenance.VersionedFile('interface_before', 'iface')
@@ -249,11 +250,12 @@ class Slash(object):
         iteration = 0
 
         if show_stats is not None:
-            def _profile_before(m):
-                #sys.stderr.write("Profiling %s...\n" % m.get())
+            for m in files.values():
                 _, name = tempfile.mkstemp()
-                passes.profile(m.get(), name)
                 profile_map_before[m.get()] = name
+            def _profile_before(m):
+                #sys.stderr.write("Profiling %s and storing in %s...\n" % (m.get(), profile_map_before[m.get()]))
+                passes.profile(m.get(), profile_map_before[m.get()])
             pool.InParallel(_profile_before, files.values(), self.pool)
             
         while progress:
@@ -331,11 +333,12 @@ class Slash(object):
             pool.InParallel(prune, files.values(), self.pool)
 
         if show_stats is not None:
-            def _profile_after(m):
-                #sys.stderr.write("Profiling %s...\n" % m.get())
+            for m in files.values():
                 _, name = tempfile.mkstemp()
-                passes.profile(m.get(), name)
                 profile_map_after[m.get()] = name
+            def _profile_after(m):
+                #sys.stderr.write("Profiling %s and storing in %s...\n" % (m.get(), profile_map_after[m.get()]))
+                passes.profile(m.get(), profile_map_after[m.get()])
             pool.InParallel(_profile_after, files.values(), self.pool)
             
         # Make symlinks for the "final" versions
@@ -372,7 +375,7 @@ class Slash(object):
                     res = base.split(os.extsep)
                     assert(len(res) > 1)
                     return res[0] + '.' + res[1]
-                
+
                 f1 = _splitext(f1)
                 f2 = _splitext(f2)
                 assert (f1 == f2)
