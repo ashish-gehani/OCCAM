@@ -23,7 +23,7 @@ before_install:
  - echo "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main" | sudo tee -a /etc/apt/sources.list
  - echo "deb-src http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main" | sudo tee -a /etc/apt/sources.list
  - sudo apt-get update -qq
- - sudo apt-get install clang-5.0 lldb-5.0
+ - sudo apt-get install clang-5.0 
 
 #dependencies
 #
@@ -35,9 +35,11 @@ before_install:
 #
 install:
   - sudo apt-get update
+  - sudo apt-get install -y libboost1.55-all-dev
   - sudo apt-get install -y wget libprotobuf-dev python-protobuf protobuf-compiler
 # gotta work harder for these at the moment. see the before_script above.
-  - sudo apt-get install -y git llvm-5.0 libclang-5.0-dev clang-5.0
+  - sudo apt-get install -y git 
+  - sudo apt-get install -y llvm-5.0   
   - sudo apt-get install -y python-pip
   - pip --version
   - pip install setuptools --upgrade

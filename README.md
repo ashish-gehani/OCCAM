@@ -1,11 +1,15 @@
 [![PyPI version](https://badge.fury.io/py/razor.svg)](https://badge.fury.io/py/razor)
 [![Build Status](https://travis-ci.org/SRI-CSL/OCCAM.svg?branch=master)](https://travis-ci.org/SRI-CSL/OCCAM)
 
+Description
+============
+
+[OCCAM](https://github.com/SRI-CSL/OCCAM) is a whole-program partial evaluator for LLVM bitcode that aims at debloating programs and shared/static libraries running in a specific deployment context.
 
 Prerequisites
 ============
 
-[OCCAM](https://github.com/SRI-CSL/OCCAM) currently works fine on Linux, OS X, and FreeBSD.
+OCCAM currently works fine on Linux, OS X, and FreeBSD.
 It depends on an installation of LLVM. The master branch currently requires llvm-5.0, and
 there are branches for llvm-3.5, llvm-3.8, llvm-3.9, and llvm-4.0. We will endeavor to maintain such
 correspondences. You will also need the Google protobuffer compiler `protoc` and

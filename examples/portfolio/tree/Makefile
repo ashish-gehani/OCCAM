@@ -24,7 +24,7 @@ tree.bc: compile_tweaked
 
 
 slash: tree.bc
-	slash --no-strip --work-dir=slash $(MANIFEST)
+	slash --no-strip --stats --devirt --work-dir=slash $(MANIFEST)
 
 tree_slash: slash
 	cp slash/tree tree_slash

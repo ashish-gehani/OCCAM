@@ -24,11 +24,14 @@ hello.bc:
 	wllvm hello.c -o  hello
 	extract-bc hello
 
+workdir:
+	mkdir workdir
+
 slash: hello.bc
-	slash --work-dir=slash hello.manifest
+	slash --work-dir=workdir hello.manifest
 
 hello_slash: slash
-	cp slash/hello hello_slash
+	cp workdir/hello hello_slash
 
 hello_O3:
 	${OPT} -O3 hello.bc -o hello.opt.bc
@@ -38,4 +41,4 @@ hello_O3:
 
 clean:
 	rm -f *.o .*.o *~ *.bc .*.bc hello hello_O3
-	rm -rf slash hello_slash
+	rm -rf workdir hello_slash

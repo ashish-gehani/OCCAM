@@ -1,16 +1,26 @@
 INSTALL=${PWD}/apache-install
 
+#gllvm
+LLVMCC=gclang
+LLVMCXX=gclang++
+LLVMGET=get-bc
 
-#current versions as of 11/2016
-PCRE=pcre-8.39
-APR=apr-1.5.2
-APR_UTIL=apr-util-1.5.4
-HTTPD=httpd-2.4.23
+#wllvm
+#LLVMCC=wllvm
+#LLVMCXX=wllvm++
+#LLVMGET=extract-bc
+
+
+#current versions as of 5/16/2018
+PCRE=pcre-8.42
+APR=apr-1.6.3
+APR_UTIL=apr-util-1.6.1
+HTTPD=httpd-2.4.33
 
 #the urls (if the versions change you should check these)
-PCRE_URL=ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/${PCRE}.tar.gz
-APR_URL=http://download.nextag.com/apache/apr/${APR}.tar.gz
-APR_UTIL_URL=http://shinyfeather.com/apr/${APR_UTIL}.tar.gz
+PCRE_URL=https://ftp.pcre.org/pub/pcre/${PCRE}.tar.gz
+APR_URL=http://apache.mirrors.ionfish.org//apr/${APR}.tar.gz
+APR_UTIL_URL=http://apache.mirrors.pair.com//apr/${APR_UTIL}.tar.gz
 HTTPD_URL=http://apache.cs.utah.edu/httpd/${HTTPD}.tar.gz
 
 
@@ -28,15 +38,15 @@ ${PCRE}: ${PCRE}.tar
 	tar xvf ${PCRE}.tar
 
 ${PCRE}_build: ${PCRE}
-	mkdir -p ${PCRE}_build                                      && \
-	cd ${PCRE}_build                                            && \
-	CC=wllvm ../${PCRE}/configure --prefix=${INSTALL}/${PCRE}   && \
-	CC=wllvm make 	                                            && \
-	cd  .libs                                                   && \
-	extract-bc libpcre.so                                       && \
-	cp libpcre.so.bc ../../                                     && \
-	cd  ..                                                      && \
-	make install                                                   
+	mkdir -p ${PCRE}_build                                                         && \
+	cd ${PCRE}_build                                                               && \
+	CXX=${LLVMCXX} CC=${LLVMCC} ../${PCRE}/configure --prefix=${INSTALL}/${PCRE}   && \
+	CXX=${LLVMCXX} CC=${LLVMCC} make 	                                           && \
+	cd  .libs                                                                      && \
+	${LLVMGET} libpcre.so                                                          && \
+	cp libpcre.so.*.bc ../../libpcre.so.bc                                         && \
+	cd  ..                                                                         && \
+	make install
 
 
 ${APR}.tar.gz:
@@ -49,15 +59,15 @@ ${APR}: ${APR}.tar
 	tar xvf ${APR}.tar
 
 ${APR}_build: ${APR}
-	mkdir -p ${APR}_build                                    && \
-	cd ${APR}_build                                          && \
-	CC=wllvm ../${APR}/configure --prefix=${INSTALL}/${APR}  && \
-	CC=wllvm make                                            && \
-	cd .libs                                                 && \
-	extract-bc libapr-1.so                                   && \
-	cp libapr-1.so.bc ../../                                 && \
-	cd ..                                                    && \
-	make install                                                
+	mkdir -p ${APR}_build                                        && \
+	cd ${APR}_build                                              && \
+	CC=${LLVMCC} ../${APR}/configure --prefix=${INSTALL}/${APR}  && \
+	CC=${LLVMCC} make                                            && \
+	cd .libs                                                     && \
+	${LLVMGET} libapr-1.so                                       && \
+	cp libapr-1.so.*.bc ../../libapr-1.so.bc                     && \
+	cd ..                                                        && \
+	make install
 
 ${APR_UTIL}.tar.gz:
 	wget ${APR_UTIL_URL}
@@ -69,19 +79,19 @@ ${APR_UTIL}: ${APR_UTIL}.tar
 	tar xvf ${APR_UTIL}.tar
 
 ${APR_UTIL}_build: ${APR_UTIL}
-	mkdir -p ${APR_UTIL}_build                                         && \
-	cd ${APR_UTIL}_build                                               && \
-	CC=wllvm ../${APR_UTIL}/configure --prefix=${INSTALL}/${APR_UTIL}     \
+	mkdir -p ${APR_UTIL}_build                                             && \
+	cd ${APR_UTIL}_build                                                   && \
+	CC=${LLVMCC} ../${APR_UTIL}/configure --prefix=${INSTALL}/${APR_UTIL}     \
                                           --with-apr=${INSTALL}/${APR}     && \
-	CC=wllvm make                                                      && \
-	cd .libs                                                           && \
-	extract-bc libaprutil-1.so                                         && \
-	cp libaprutil-1.so.bc ../../                                       && \
-	cd ..                                                              && \
-	make install                                                          
+	CC=${LLVMCC} make                                                      && \
+	cd .libs                                                               && \
+	${LLVMGET} libaprutil-1.so                                             && \
+	cp libaprutil-1.so.*.bc ../../libaprutil-1.so.bc                       && \
+	cd ..                                                                  && \
+	make install
 
 #	cd xml/expat/.libs                                                 && \
-#	extract-bc libexpat.so                                             && \
+#	${LLVMGET} libexpat.so                                             && \
 #	mv libexpat.so.bc ../../../../                                     && \
 #	cd ../../..                                                        && \
 
@@ -96,16 +106,16 @@ ${HTTPD}: ${HTTPD}.tar
 	tar xvf ${HTTPD}.tar
 
 ${HTTPD}_build: ${HTTPD}
-	mkdir -p ${HTTPD}_build                                                       && \
-	cd  ${HTTPD}_build                                                            && \
-	CC=wllvm ../${HTTPD}/configure --prefix=${INSTALL}/${HTTPD}                      \
+	mkdir -p ${HTTPD}_build                                                           && \
+	cd  ${HTTPD}_build                                                                && \
+	CC=${LLVMCC} ../${HTTPD}/configure --prefix=${INSTALL}/${HTTPD}                      \
                                        --with-pcre=${INSTALL}/${PCRE}/bin/pcre-config    \
                                        --with-apr=${INSTALL}/${APR}                      \
-				       --with-apr-util=${INSTALL}/${APR_UTIL}         && \
-	CC=wllvm make                                                                 && \
-	extract-bc httpd                                                              && \
-	cp httpd.bc ../                                                               && \
-	make install                                                                     
+				       --with-apr-util=${INSTALL}/${APR_UTIL}                         && \
+	CC=${LLVMCC} make                                                                 && \
+	${LLVMGET} httpd                                                                  && \
+	cp httpd.bc ../                                                                   && \
+	make install
 
 
 clean:
@@ -117,4 +127,3 @@ very_clean: clean
 
 spotless: very_clean
 	rm -rf *.tar.gz *.tar *.bc build ${INSTALL}
-

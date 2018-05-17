@@ -43,8 +43,11 @@ import sys
 class ConfigObj(object):
     """All access to the environment comes through this class.
     """
-    def  __init__(self, libfile):
+    def  __init__(self, libfile, seadsalib, llvmdsalib, llpelibs):
         self._occamlib = libfile
+        self._seadsalib = seadsalib
+        self._llvmdsalib = llvmdsalib
+        self._llpelibs = llpelibs
         self._env = {'clang'      :  'LLVM_CC_NAME',
                      'clang++'    :  'LLVM_CXX_NAME',
                      'llvm-link'  :  'LLVM_LINK_NAME',
@@ -69,7 +72,21 @@ class ConfigObj(object):
         """
         return self._occamlib
 
+    def get_sea_dsalib(self):
+        """ Returns the path to the SeaHorn DSA library.
+        """
+        return self._seadsalib    
 
+    def get_llvm_dsalib(self):
+        """ Returns the path to the LLVM DSA library.
+        """
+        return self._llvmdsalib    
+
+    def get_llpelibs(self):
+        """ Returns the paths (list) to the LLPE libraries.
+        """
+        return self._llpelibs    
+    
     def get_llvm_tool(self, tool):
         """ Returns the appropriate tool.
         """
@@ -90,6 +107,56 @@ def get_occamlib_path():
         sys.stderr.write('Unsupported platform: {0}\n'.format(system))
         return None
 
+def get_sea_dsalib_path():
+    """ Deduces the full path to the SeaHorn DSA shared/dynamic library.
+    """
+    home = os.getenv('OCCAM_HOME')
+    if home is None:
+        return None
+    system = platform.system()
+    if system == 'Linux':
+        return os.path.join(home, 'lib', 'libSeaDsa.so')
+    elif system == 'Darwin':
+        return os.path.join(home, 'lib', 'libSeaDsa.dylib')
+    else:
+        sys.stderr.write('Unsupported platform: {0}\n'.format(system))
+        return None
+    
+def get_llvm_dsalib_path():
+    """ Deduces the full path to the LLVM DSA shared/dynamic library.
+    """
+    home = os.getenv('OCCAM_HOME')
+    if home is None:
+        return None
+    system = platform.system()
+    if system == 'Linux':
+        return os.path.join(home, 'lib', 'libDSA.so')
+    elif system == 'Darwin':
+        return os.path.join(home, 'lib', 'libDSA.dylib')
+    else:
+        sys.stderr.write('Unsupported platform: {0}\n'.format(system))
+        return None
+
+def get_llpelibs_paths():
+    """ Deduces the full path to the LLPE shared/dynamic libraries.
+        LLPE consists of multiple libraries so it returns a list.
+    """
+    home = os.getenv('OCCAM_HOME')
+    paths = []
+    if home is None:
+        return paths
+    system = platform.system()
+    if system == 'Linux':
+        paths.append(os.path.join(home, 'lib', 'LLVMLLPEMain.so'))
+        paths.append(os.path.join(home, 'lib', 'LLVMLLPEUtils.so'))
+        paths.append(os.path.join(home, 'lib', 'LLVMLLPEDriver.so'))        
+    elif system == 'Darwin':
+        paths.append(os.path.join(home, 'lib', 'LLVMLLPEMain.dylib'))
+        paths.append(os.path.join(home, 'lib', 'LLVMLLPEUtils.dylib'))
+        paths.append(os.path.join(home, 'lib', 'LLVMLLPEDriver.dylib'))        
+    else:
+        sys.stderr.write('Unsupported platform: {0}\n'.format(system))
+    return paths
 
 def get_logfile():
     """ Returns the path to the occam logfile.
@@ -99,12 +166,30 @@ def get_logfile():
         logfile = '/tmp/occam.log'
     return logfile
 
-CFG = ConfigObj(get_occamlib_path())
+CFG = ConfigObj(get_occamlib_path(), \
+                get_sea_dsalib_path(), \
+                get_llvm_dsalib_path(), \
+                get_llpelibs_paths())
 
 def get_occamlib():
-    """ Returns the path to the occam logfile.
+    """ Returns the path to the occam shared/dynamic library.
     """
     return CFG.get_occamlib()
+
+def get_sea_dsalib():
+    """ Returns the path to the SeaHorn DSA shared/dynamic library.
+    """
+    return CFG.get_sea_dsalib()
+
+def get_llvm_dsalib():
+    """ Returns the path to the LLVM DSA shared/dynamic library.
+    """
+    return CFG.get_llvm_dsalib()
+
+def get_llpelibs():
+    """ Returns the paths to the LLPE shared/dynamic libraries.
+    """
+    return CFG.get_llpelibs()
 
 def get_llvm_tool(tool):
     """ Returns the appropriate tool.

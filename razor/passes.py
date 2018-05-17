@@ -79,8 +79,21 @@ def strip(input_file, output_file):
     args += ['-strip', '-globaldce', '-globalopt', '-strip-dead-prototypes']
     return driver.run(config.get_llvm_tool('opt'), args)
 
-def peval(input_file, output_file, log=None):
-    """intra module previrtualization
+def devirt(input_file, output_file):
+    """ devirtualize indirect function calls
+    """
+    args = ['-devirt', '-calltarget-ignore-external']
+    return driver.previrt_progress(input_file, output_file, args)
+
+def profile(input_file, output_file):
+    """ Count number of instructions, functions, memory accesses, etc
+    """
+    args = ['-Pprofiler']
+    args += ['-profile-outfile={0}'.format(output_file)]
+    return driver.previrt_progress(input_file, '/dev/null', args)
+
+def peval(input_file, output_file, use_llpe, use_ipdse, log=None):
+    """ intra module previrtualization
     """
     opt = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
     pre = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
@@ -89,16 +102,42 @@ def peval(input_file, output_file, log=None):
     pre.close()
     done.close()
 
-    out = ['']
-
+    if use_llpe is not None:
+        print '\tRunning LLPE...'
+        llpe_libs = []
+        for lib in config.get_llpelibs():
+            llpe_libs.append('-load={0}'.format(lib))
+	args= llpe_libs + ['-loop-simplify', '-lcssa', \
+                           '-llpe', '-llpe-omit-checks', '-llpe-single-threaded', \
+                           input_file, '-o=%s' % done.name]       
+	driver.run(config.get_llvm_tool('opt'), args)
+	shutil.copy(done.name, input_file)		
+    
+    out = ['']    
     shutil.copy(input_file, done.name)
     while True:
+        # optimize using standard llvm transformations
         retcode = optimize(done.name, opt.name)
         if retcode != 0:
             shutil.copy(done.name, output_file)
             return retcode
 
-        if driver.previrt_progress(opt.name, done.name, ['-Ppeval'], output=out):
+        passes = []
+        if use_ipdse is not None:
+            print '\tRunning IP-DSE...'
+            ##lower global initializers to store's in main (improve precision of sccp)
+            passes += ['-lower-gv-init']
+            ##dead store elimination (improve precision of sccp)
+            passes += ['-memory-ssa', '-mem2reg', '-ip-dse', '-strip-memory-ssa-inst']
+            ##perform sccp
+            passes += ['-Psccp']
+            ##cleanup after sccp
+            passes += ['-dce', '-globaldce']
+                
+        
+        # inlining using policies
+        passes += ['-Ppeval']
+        if driver.previrt_progress(opt.name, done.name, passes, output=out):
             print "previrt successful"
             if log is not None:
                 log.write(out[0])

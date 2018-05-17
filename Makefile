@@ -52,8 +52,8 @@ ifeq ($(LLVM_HOME),)
 endif
 
 occam_lib:
+	git submodule update --remote --init --recursive
 	$(MAKE) -C src all
-
 
 .PHONY: test
 test:
@@ -78,13 +78,12 @@ ifeq ($(PROTOC),)
 endif
 	$(PIP) uninstall razor
 
-
 uninstall: uninstall_razor uninstall_occam_lib
 
-install: install_occam_lib install_razor
+install: install_occam_lib install_razor 
 
 #spanish people are too impatient to do the "pip install ." more than once.
-instalar: install_occam_lib #install_razor
+instalar: install_occam_lib #install_razor 
 
 dist: proto
 	python setup.py bdist_wheel
