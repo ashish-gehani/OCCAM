@@ -51,8 +51,11 @@ ifeq ($(LLVM_HOME),)
 	$(error LLVM_HOME is undefined)
 endif
 
+# occam_lib:
+# 	git submodule update --remote --init --recursive
+# 	$(MAKE) -C src all
+
 occam_lib:
-	git submodule update --remote --init --recursive
 	$(MAKE) -C src all
 
 .PHONY: test
