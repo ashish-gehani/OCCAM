@@ -96,16 +96,15 @@ namespace transforms {
   
   // Return the "index" field from a memory ssa formal or actual
   // parameters.
-  inline int64_t getMemSSAParamIdx(const llvm::ImmutableCallSite &CS,
-				   bool onlySingleton) {
+  inline int64_t getMemSSAParamIdx(const llvm::ImmutableCallSite &CS) {
     int64_t idx = -1;
     if (CS.getCalledFunction() &&
-	(isMemSSAArgRef(CS, onlySingleton) ||
-	 isMemSSAArgMod(CS, onlySingleton) ||
-	 isMemSSAArgRefMod(CS, onlySingleton) ||
-	 isMemSSAArgNew(CS, onlySingleton) ||
-	 isMemSSAFunIn(CS, onlySingleton) ||
-	 isMemSSAFunOut(CS, onlySingleton))) {
+	(isMemSSAArgRef(CS, false /*onlySingleton*/) ||
+	 isMemSSAArgMod(CS, false /*onlySingleton*/) ||
+	 isMemSSAArgRefMod(CS, false /*onlySingleton*/) ||
+	 isMemSSAArgNew(CS, false /*onlySingleton*/) ||
+	 isMemSSAFunIn(CS, false /*onlySingleton*/) ||
+	 isMemSSAFunOut(CS, false /*onlySingleton*/))) {
       const llvm::Value *arg = CS.getArgument(2);
       if (const llvm::ConstantInt *CI =
 	  llvm::dyn_cast<llvm::ConstantInt>(arg)) {

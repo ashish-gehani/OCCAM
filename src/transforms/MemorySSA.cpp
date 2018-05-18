@@ -516,6 +516,9 @@ namespace transforms {
       B.SetInsertPoint (ret);
       unsigned idx = 0;
       for (const Node* n : reach) {
+	// skip nodes that are not read/written by the callee
+	if (!isRead (n, F) && !isModified (n, F)) continue;
+	
 	// TODO: extend to work with all slices
 	Cell c (const_cast<Node*> (n), 0);
 	

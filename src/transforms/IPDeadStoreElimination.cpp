@@ -193,7 +193,7 @@ public:
 	    // the corresponding formal (non-primed) variable in
 	    // the callee.
 	      
-	    int64_t idx = getMemSSAParamIdx(CS, OnlySingleton);
+	    int64_t idx = getMemSSAParamIdx(CS);
 	    if (idx < 0) {
 	      report_fatal_error("[IP-DSE] cannot find index in mem.ssa function");
 	    }
@@ -225,7 +225,7 @@ public:
 	    // the corresponding actual (primed) variable in the
 	    // caller.
 	      
-	    int64_t idx = getMemSSAParamIdx(CS, OnlySingleton);
+	    int64_t idx = getMemSSAParamIdx(CS);
 	    if (idx < 0) {
 	      report_fatal_error("[IP-DSE] cannot find index in mem.ssa function");
 	    }

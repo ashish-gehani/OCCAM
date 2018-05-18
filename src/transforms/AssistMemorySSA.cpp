@@ -1,6 +1,7 @@
 #include "transforms/AssistMemorySSA.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/Transforms/Utils/UnifyFunctionExitNodes.h"
+#include "llvm/Support/raw_ostream.h"
 
 namespace previrt {
 namespace transforms {
@@ -21,20 +22,21 @@ MemorySSACallSite::MemorySSACallSite(CallInst *ci, bool only_singleton)
     }
     
     ImmutableCallSite CS(CI);
+    // XXX: we store all actual parameters regardless only_singleton flag
     if (CS.getCalledFunction() && 
-	(isMemSSAArgRef(CS, m_only_singleton) ||
-	 isMemSSAArgMod(CS, m_only_singleton) ||
-	 isMemSSAArgRefMod(CS, m_only_singleton) ||
-	 isMemSSAArgNew(CS, m_only_singleton))) {
+	(isMemSSAArgRef(CS, false /*m_only_singleton*/) ||
+	 isMemSSAArgMod(CS, false /*m_only_singleton*/) ||
+	 isMemSSAArgRefMod(CS, false /*m_only_singleton*/) ||
+	 isMemSSAArgNew(CS, false /*m_only_singleton*/))) {
       // get "index" field from the callsite
-      int64_t idx = getMemSSAParamIdx(CS, m_only_singleton);
+      int64_t idx = getMemSSAParamIdx(CS);
       if (idx < 0) {
-	    report_fatal_error("[IP-DSE] cannot find index in mem.ssa function");
+	report_fatal_error("[IP-DSE] cannot find index in mem.ssa function");
       }
       if (first) {
 	m_actual_params.resize(idx + 1);
 	first = false;
-	  } 
+      } 
       m_actual_params[idx] = CS;
     } else {
       // no more mem.ssa functions so that we can stop here
@@ -82,12 +84,22 @@ bool MemorySSACallSite::isNew(unsigned idx) const {
 // return the non-primed top-level variable of the mem.ssa.XXX
 // instruction associated with the idx-th actual parameter.
 const Value *MemorySSACallSite::getNonPrimed(unsigned idx) const {
+  if (idx >= m_actual_params.size()) {
+    errs () << "Number of actual parameters=" << m_actual_params.size() << "\n";
+    errs () << "Accessing index=" << idx << "\n";    
+    report_fatal_error("[IP-DSE] out of range access to m_actual_params");	
+  }  
   return getMemSSAParamNonPrimed(m_actual_params[idx], m_only_singleton);
 }
 
 // return the primed top-level variable of the mem.ssa.XXX
 // instruction associated with the idx-th actual parameter.
 const Value *MemorySSACallSite::getPrimed(unsigned idx) const {
+  if (idx >= m_actual_params.size()) {
+    errs () << "Number of actual parameters=" << m_actual_params.size() << "\n";
+    errs () << "Accessing index=" << idx << "\n";
+    report_fatal_error("[IP-DSE] out of range access to m_actual_params");	
+  }  
   assert (isRefMod(idx) || isMod(idx) || isNew(idx));
   return getMemSSAParamPrimed(m_actual_params[idx], m_only_singleton);
 }
@@ -114,7 +126,7 @@ MemorySSAFunction::MemorySSAFunction(Function &F, Pass &P, bool only_singleton)
       if (const CallInst *CI = dyn_cast<const CallInst>(&inst)) {
 	ImmutableCallSite CS(CI);
 	if (CS.getCalledFunction() && isMemSSAFunIn(CS, m_only_singleton)) {
-	  int64_t idx = getMemSSAParamIdx(CS, m_only_singleton);
+	  int64_t idx = getMemSSAParamIdx(CS);
 	  if (idx < 0) {
 	    report_fatal_error("[IP-DSE] Cannot find index in mem.ssa function");
 	  }
@@ -143,7 +155,7 @@ MemorySSACallsManager::MemorySSACallsManager(Module &M, Pass &P, bool only_singl
   : m_M(M), m_only_singleton(only_singleton) {
   
   for (auto &F: m_M) {
-    if (F.empty()) continue;
+    if (F.isDeclaration()) continue;
     
     m_functions.insert(std::make_pair(&F, new MemorySSAFunction(F, P, m_only_singleton)));
     for (auto &I: instructions(&F)) {
@@ -151,7 +163,8 @@ MemorySSACallsManager::MemorySSACallsManager(Module &M, Pass &P, bool only_singl
 	ImmutableCallSite CS(CI);
 	if (CS.getCalledFunction() &&
 	    !CS.getCalledFunction()->getName().startswith("mem.ssa")) {
-	  m_callsites.insert(std::make_pair(CI, new MemorySSACallSite(CI, m_only_singleton)));
+	  m_callsites.insert(std::make_pair(CI,
+					    new MemorySSACallSite(CI, m_only_singleton)));
 	}
       }
     }
