@@ -35,6 +35,7 @@ import logging
 
 from . import config
 
+verbose = False
 
 class ReturnCode(Exception):
     def __init__(self, value, cmd, proc):
@@ -58,13 +59,15 @@ def previrt(fin, fout, args, **opts):
             '-load={0}'.format(config.get_llvm_dsalib()),
             '-load={0}'.format(config.get_occamlib())]                         
     args = libs + [fin, '-o={0}'.format(fout)] + args
+    if verbose: print config.get_llvm_tool('opt') + ' ' + ' '.join(args)    
     return run(config.get_llvm_tool('opt'), args, **opts)
 
 def previrt_progress(fin, fout, args, output=None):
     libs = ['-load={0}'.format(config.get_sea_dsalib()),
             '-load={0}'.format(config.get_llvm_dsalib()),
             '-load={0}'.format(config.get_occamlib())]
-    args = [config.get_llvm_tool('opt')] + libs + [fin, '-o={0}'.format(fout)] + args 
+    args = [config.get_llvm_tool('opt')] + libs + [fin, '-o={0}'.format(fout)] + args
+    if verbose: print ' '.join(args)
     proc = subprocess.Popen(args,
                             stderr=subprocess.PIPE,
                             stdout=subprocess.PIPE,
