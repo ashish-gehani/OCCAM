@@ -19,7 +19,7 @@ EOF
 #, "libexpat.so.bc"
 
 # Previrtualize
-slash --work-dir=slash httpd.manifest
+slash --work-dir=slash --stats --devirt httpd.manifest
 
 cp slash/httpd_slashed .
 
@@ -40,6 +40,6 @@ EOF
 export OCCAM_LOGFILE=${PWD}/linked_slash/occam.log
 
 # Previrtualize
-slash --work-dir=linked_slash linked_httpd.manifest
+slash --work-dir=linked_slash --stats --devirt linked_httpd.manifest
 
 cp linked_slash/httpd_linked .
