@@ -82,7 +82,8 @@ def strip(input_file, output_file):
 def devirt(input_file, output_file):
     """ devirtualize indirect function calls
     """
-    args = ['-devirt', '-calltarget-ignore-external']
+    args = ['-devirt-ta', '-calltarget-ignore-external']    
+    #args = ['-devirt', '-calltarget-ignore-external']
     return driver.previrt_progress(input_file, output_file, args)
 
 def profile(input_file, output_file):
