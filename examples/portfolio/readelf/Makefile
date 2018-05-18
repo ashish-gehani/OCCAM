@@ -22,7 +22,7 @@ readelf.bc: binutils/binutils/readelf
 	cd binutils/binutils; ${EXTRACT_BC} readelf; mv readelf.bc ../../
 
 slash: readelf.bc
-	slash --no-strip --work-dir=slash $(MANIFEST)
+	slash --stats --devirt --no-strip --work-dir=slash $(MANIFEST)
 	cp slash/readelf readelf_slash
 	cp  binutils/binutils/readelf readelf_orig
 
