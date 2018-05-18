@@ -129,7 +129,8 @@ def peval(input_file, output_file, use_llpe, use_ipdse, log=None):
             ##lower global initializers to store's in main (improve precision of sccp)
             passes += ['-lower-gv-init']
             ##dead store elimination (improve precision of sccp)
-            passes += ['-memory-ssa', '-mem2reg', '-ip-dse', '-strip-memory-ssa-inst']
+            passes += ['-memory-ssa', '-Pmem-ssa-local-mod','-Pmem-ssa-split-fields',
+                       '-mem2reg', '-ip-dse', '-strip-memory-ssa-inst']
             ##perform sccp
             passes += ['-Psccp']
             ##cleanup after sccp
