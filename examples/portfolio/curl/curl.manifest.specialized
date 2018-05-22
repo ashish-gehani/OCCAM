@@ -2,7 +2,7 @@
 , "binary"  : "curl"
 , "modules"    : []
 , "native_libs" : [ "./install/lib/libcurl.4.dylib", "/usr/local/lib/libz.1.dylib"  ]
-, "ldflags" : [ "-O2" ]
+, "ldflags" : [ "-O2", "-lz" ]
 , "name"    : "curl"
 , "constraints" : [1, "curl", "--compressed", "--http1.1", "--ipv4"]
 }

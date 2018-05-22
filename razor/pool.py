@@ -105,7 +105,9 @@ def getDefaultPool():
     return POOL
 
 def InParallel(f, args, pool=None):
-    sys.stderr.write("Starting %s...\n" % f.func_doc)
+    import datetime
+    dt = datetime.datetime.now ().strftime ('%d/%m/%Y %H:%M:%S')
+    sys.stderr.write("[%s] Starting %s...\n" % (dt, f.func_doc))
     if pool is None:
         pool = getDefaultPool()
     result = pool.map(f, args)

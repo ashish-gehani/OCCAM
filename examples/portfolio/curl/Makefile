@@ -32,11 +32,11 @@ libcurl.4.dylib.bc: install/bin/curl
 
 
 slash_specialized: curl.bc 
-	slash --no-strip --work-dir=slash_specialized $(MANIFEST_SPECIALIZED)
+	slash --no-strip --devirt --stats --work-dir=slash_specialized $(MANIFEST_SPECIALIZED)
 	cp slash_specialized/curl curl_slash_specialized
 
 slash_previrt: curl.bc libcurl.4.dylib.bc
-	slash --no-strip --work-dir=slash_previrt $(MANIFEST_PREVIRT)
+	slash --no-strip --devirt --stats --work-dir=slash_previrt $(MANIFEST_PREVIRT)
 	cp slash_previrt/curl curl_slash_previrt
 
 
