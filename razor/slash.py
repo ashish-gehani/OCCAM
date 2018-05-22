@@ -236,15 +236,8 @@ class Slash(object):
 
             pool.InParallel(_strip, files.values(), self.pool)
 
-<<<<<<< HEAD
-        profile_map_before = {}
-        profile_map_after = {}
-
-=======
         profile_map_before = collections.OrderedDict()
         profile_map_after = collections.OrderedDict()
-            
->>>>>>> 4a810bfd9718b8bdaa1472c56142a65e65a7afed
         # Begin main loop
         iface_before_file = provenance.VersionedFile('interface_before', 'iface')
         iface_after_file = provenance.VersionedFile('interface_after', 'iface')
