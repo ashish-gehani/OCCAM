@@ -95,7 +95,7 @@ class Slash(object):
             tool = utils.get_flag(self.flags, 'tool', None)
             if tool is not None:
                 tool = config.get_llvm_tool(tool)
-                print 'tool = {0}'.format(tool)
+                print('tool = {0}'.format(tool))
                 sys.exit(0)
 
         except Exception:
@@ -140,8 +140,8 @@ class Slash(object):
 
         use_ipdse = utils.get_flag(self.flags, 'ipdse', None)
 
-        show_stats = utils.get_flag(self.flags, 'stats', None)                
-        
+        show_stats = utils.get_flag(self.flags, 'stats', None)
+
         no_specialize = utils.get_flag(self.flags, 'no-specialize', None)
 
         sys.stderr.write('\nslash working on {0} wrt {1} ...\n'.format(module, ' '.join(libs)))
@@ -193,10 +193,10 @@ class Slash(object):
             pre = m.get()
             post = m.new('d')
             passes.devirt(pre, post)
-            
+
         if devirt is not None:
             pool.InParallel(_devirt, files.values(), self.pool)
-        
+
         # Internalize everything that we can
         # We can never internalize main
         interface.writeInterface(interface.mainInterface(), 'main.iface')
@@ -237,7 +237,7 @@ class Slash(object):
 
         profile_map_before = {}
         profile_map_after = {}
-            
+
         # Begin main loop
         iface_before_file = provenance.VersionedFile('interface_before', 'iface')
         iface_after_file = provenance.VersionedFile('interface_after', 'iface')
@@ -255,16 +255,16 @@ class Slash(object):
                 passes.profile(m.get(), name)
                 profile_map_before[m.get()] = name
             pool.InParallel(_profile_before, files.values(), self.pool)
-            
+
         while progress:
 
             iteration += 1
             progress = False
 
-            # resolve indirect calls using a pointer analysis            
+            # resolve indirect calls using a pointer analysis
             #if devirt is not None:
             #    pool.InParallel(_devirt, files.values(), self.pool)
-                
+
             # Intra-module previrt
             def intra(m):
                 "Intra-module previrtualization"
@@ -337,7 +337,7 @@ class Slash(object):
                 passes.profile(m.get(), name)
                 profile_map_after[m.get()] = name
             pool.InParallel(_profile_after, files.values(), self.pool)
-            
+
         # Make symlinks for the "final" versions
         for x in files.values():
             trg = x.base('-final')
@@ -366,17 +366,17 @@ class Slash(object):
                 sys.stderr.write(f2)
 
                 def _splitext(abspath):
-                    #Given abspath of the form basename.ext1.ext2....extn  
+                    #Given abspath of the form basename.ext1.ext2....extn
                     #return basename.ext1
                     base = os.path.basename(abspath)
                     res = base.split(os.extsep)
                     assert(len(res) > 1)
                     return res[0] + '.' + res[1]
-                
+
                 f1 = _splitext(f1)
                 f2 = _splitext(f2)
                 assert (f1 == f2)
-                
+
                 sys.stderr.write('\n\nStatistics for %s before specialization\n' % f1)
                 fd = open(v1, 'r')
                 for line in fd:
@@ -387,9 +387,9 @@ class Slash(object):
                 sys.stderr.write('Statistics for %s after specialization\n' % f2)
                 fd = open(v2, 'r')
                 for line in fd:
-                    sys.stderr.write('\t')                    
+                    sys.stderr.write('\t')
                     sys.stderr.write(line)
                 fd.close()
                 os.remove(v2)
-                
+
         return 0

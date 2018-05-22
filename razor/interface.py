@@ -129,7 +129,7 @@ def readInterfaceFromText(f):
     result = pb.ComponentInterface()
 
     for line in [x.strip() for x in f.readlines()]:
-        if len(line) == 0:
+        if not line:
             continue
         if line.startswith('#'):
             continue
@@ -161,5 +161,5 @@ def readInterfaceFromText(f):
                         else:
                             assert False
         else:
-            print "skipping line '%s'" % line
+            print("skipping line '{0}'".format(line))
     return result

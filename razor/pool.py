@@ -81,10 +81,11 @@ class ThreadPool(object):
                 try:
                     result[i] = f(args[i])
                 except Exception:
-                    print "Exception in worker for %s:" % f.func_doc
-                    print '-'*60
+                    seperator = '-' * 60
+                    print("Exception in worker for {0}:".format(f.func_doc))
+                    print(seperator)
                     traceback.print_exc(file=sys.stderr)
-                    print '-'*60
+                    print(seperator)
                     sys.exit(1)  #iam: was _exit; but are we really that low level?
                 finally:
                     sem.release()

@@ -39,6 +39,18 @@ import platform
 import sys
 
 
+__system = platform.system()
+
+def libExtension():
+    if __system == 'Linux':
+        return 'so'
+    if __system == 'FreeBSD':
+        return 'so'
+    if __system == 'Darwin':
+        return 'dylib'
+    return None
+
+__libext = libExtension()
 
 class ConfigObj(object):
     """All access to the environment comes through this class.
@@ -75,18 +87,18 @@ class ConfigObj(object):
     def get_sea_dsalib(self):
         """ Returns the path to the SeaHorn DSA library.
         """
-        return self._seadsalib    
+        return self._seadsalib
 
     def get_llvm_dsalib(self):
         """ Returns the path to the LLVM DSA library.
         """
-        return self._llvmdsalib    
+        return self._llvmdsalib
 
     def get_llpelibs(self):
         """ Returns the paths (list) to the LLPE libraries.
         """
-        return self._llpelibs    
-    
+        return self._llpelibs
+
     def get_llvm_tool(self, tool):
         """ Returns the appropriate tool.
         """
@@ -97,45 +109,36 @@ def get_occamlib_path():
     """
     home = os.getenv('OCCAM_HOME')
     if home is None:
+        sys.stderr.write('OCCAM_HOME not set!\n')
         return None
-    system = platform.system()
-    if system == 'Linux':
-        return os.path.join(home, 'lib', 'libprevirt.so')
-    elif system == 'Darwin':
-        return os.path.join(home, 'lib', 'libprevirt.dylib')
-    else:
-        sys.stderr.write('Unsupported platform: {0}\n'.format(system))
-        return None
+    if __libext is not None:
+        return os.path.join(home, 'lib', 'libprevirt.{0}'.format(__libext))
+    sys.stderr.write('Unsupported platform: {0}\n'.format(__system))
+    return None
 
 def get_sea_dsalib_path():
     """ Deduces the full path to the SeaHorn DSA shared/dynamic library.
     """
     home = os.getenv('OCCAM_HOME')
     if home is None:
+        sys.stderr.write('OCCAM_HOME not set!\n')
         return None
-    system = platform.system()
-    if system == 'Linux':
-        return os.path.join(home, 'lib', 'libSeaDsa.so')
-    elif system == 'Darwin':
-        return os.path.join(home, 'lib', 'libSeaDsa.dylib')
-    else:
-        sys.stderr.write('Unsupported platform: {0}\n'.format(system))
-        return None
-    
+    if __libext is not None:
+        return os.path.join(home, 'lib', 'libSeaDsa.{0}'.format(__libext))
+    sys.stderr.write('Unsupported platform: {0}\n'.format(__system))
+    return None
+
 def get_llvm_dsalib_path():
     """ Deduces the full path to the LLVM DSA shared/dynamic library.
     """
     home = os.getenv('OCCAM_HOME')
     if home is None:
+        sys.stderr.write('OCCAM_HOME not set!\n')
         return None
-    system = platform.system()
-    if system == 'Linux':
-        return os.path.join(home, 'lib', 'libDSA.so')
-    elif system == 'Darwin':
-        return os.path.join(home, 'lib', 'libDSA.dylib')
-    else:
-        sys.stderr.write('Unsupported platform: {0}\n'.format(system))
-        return None
+    if __libext is not None:
+        return os.path.join(home, 'lib', 'libDSA.{0}'.format(__libext))
+    sys.stderr.write('Unsupported platform: {0}\n'.format(__system))
+    return None
 
 def get_llpelibs_paths():
     """ Deduces the full path to the LLPE shared/dynamic libraries.
@@ -145,17 +148,12 @@ def get_llpelibs_paths():
     paths = []
     if home is None:
         return paths
-    system = platform.system()
-    if system == 'Linux':
-        paths.append(os.path.join(home, 'lib', 'LLVMLLPEMain.so'))
-        paths.append(os.path.join(home, 'lib', 'LLVMLLPEUtils.so'))
-        paths.append(os.path.join(home, 'lib', 'LLVMLLPEDriver.so'))        
-    elif system == 'Darwin':
-        paths.append(os.path.join(home, 'lib', 'LLVMLLPEMain.dylib'))
-        paths.append(os.path.join(home, 'lib', 'LLVMLLPEUtils.dylib'))
-        paths.append(os.path.join(home, 'lib', 'LLVMLLPEDriver.dylib'))        
+    if __libext is not None:
+        paths.append(os.path.join(home, 'lib', 'LLVMLLPEMain.{0}'.format(__libext)))
+        paths.append(os.path.join(home, 'lib', 'LLVMLLPEUtils.{0}'.format(__libext)))
+        paths.append(os.path.join(home, 'lib', 'LLVMLLPEDriver.{0}'.format(__libext)))
     else:
-        sys.stderr.write('Unsupported platform: {0}\n'.format(system))
+        sys.stderr.write('Unsupported platform: {0}\n'.format(__system))
     return paths
 
 def get_logfile():
@@ -198,5 +196,4 @@ def get_llvm_tool(tool):
     llvm_home = os.getenv('LLVM_HOME')
     if llvm_home:
         return os.path.join(llvm_home, 'bin', tool)
-    else:
-        return tool
+    return tool

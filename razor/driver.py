@@ -56,7 +56,7 @@ def all_args(opt, args):
 def previrt(fin, fout, args, **opts):
     libs = ['-load={0}'.format(config.get_sea_dsalib()),
             '-load={0}'.format(config.get_llvm_dsalib()),
-            '-load={0}'.format(config.get_occamlib())]                         
+            '-load={0}'.format(config.get_occamlib())]
     args = libs + [fin, '-o={0}'.format(fout)] + args
     return run(config.get_llvm_tool('opt'), args, **opts)
 
@@ -64,7 +64,7 @@ def previrt_progress(fin, fout, args, output=None):
     libs = ['-load={0}'.format(config.get_sea_dsalib()),
             '-load={0}'.format(config.get_llvm_dsalib()),
             '-load={0}'.format(config.get_occamlib())]
-    args = [config.get_llvm_tool('opt')] + libs + [fin, '-o={0}'.format(fout)] + args 
+    args = [config.get_llvm_tool('opt')] + libs + [fin, '-o={0}'.format(fout)] + args
     proc = subprocess.Popen(args,
                             stderr=subprocess.PIPE,
                             stdout=subprocess.PIPE,
