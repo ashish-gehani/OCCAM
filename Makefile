@@ -55,8 +55,7 @@ endif
 submodule_update:
 	git submodule update --remote --init --recursive
 
-occam_lib:
-	$(MAKE) -C src all
+
 
 occam_lib:
 	$(MAKE) -C src all
