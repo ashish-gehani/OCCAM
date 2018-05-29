@@ -8,7 +8,19 @@ TECLA=libtecla
 TECLA_TARBALL=${TECLA}.tar.gz
 TECLA_URL=http://www.astro.caltech.edu/~mcs/tecla/${TECLA_TARBALL}
 
-TECLA_BITCODE=enhance.bc libtecla.a.bc libtecla.dylib.bc
+ifeq (Darwin, $(findstring Darwin, ${OS}))
+
+LIBEXT=dylib
+
+else
+
+LIBEXT=so
+
+endif
+
+
+
+TECLA_BITCODE=enhance.bc libtecla.a.bc libtecla.${LIBEXT}.bc
 
 all: ${TECLA_BITCODE}
 
@@ -28,8 +40,8 @@ enhance.bc: ${TECLA}/enhance
 libtecla.a.bc: ${TECLA}/enhance
 	cd ${TECLA}; ${LLVMGET} -b libtecla.a; mv libtecla.a.bc ../
 
-libtecla.dylib.bc: ${TECLA}/enhance
-	cd ${TECLA}; ${LLVMGET} libtecla.dylib; mv libtecla.*.dylib.bc ../libtecla.dylib.bc
+libtecla.${LIBEXT}.bc: ${TECLA}/enhance
+	cd ${TECLA}; ${LLVMGET} libtecla.${LIBEXT}; mv libtecla.${LIBEXT}.*.bc ../libtecla.${LIBEXT}.bc
 
 
 
