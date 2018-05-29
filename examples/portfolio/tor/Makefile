@@ -43,7 +43,9 @@ CFG_FLAGS=--prefix=${TOR_INSTALL}
 else
 
 LIBEXT=so
-CFG_FLAGS=--enable-static-tor  --with-openssl-dir=${OPENSSL_INSTALL}  --with-libevent-dir=${LIBEVENT_INSTALL}/lib  --with-zlib-dir=${ZLIB_INSTALL}  --prefix=${TOR_INSTALL}
+CFG_FLAGS=--with-openssl-dir=${OPENSSL_INSTALL}  --with-libevent-dir=${LIBEVENT_INSTALL}/lib  --with-zlib-dir=${ZLIB_INSTALL}  --prefix=${TOR_INSTALL}
+LDFLAGS="-L${LIBEVENT_INSTALL}/lib -L${OPENSSL_INSTALL}/lib"
+CFLAGS="-I${LIBEVENT_INSTALL}/include -I${OPENSSL_INSTALL}/include -Wl,-rpath,${OPENSSL_INSTALL}/lib"
 
 endif
 
@@ -63,8 +65,8 @@ ${TOR_TARBALL}:
 ${TOR}: ${TOR_TARBALL}
 	tar xvfz ${TOR_TARBALL}
 
-${TOR_INSTALL}/bin/tor: ${TOR}
-	cd ${TOR}; CC=${LLVMCC} ./configure ${CFG_FLAGS};  make && make install
+${TOR_INSTALL}/bin/tor: ${TOR} libz.a.bc libssl.a.bc libevent.a.bc
+	cd ${TOR}; CC=${LLVMCC} LDFLAGS=${LDFLAGS} CFLAGS=${CFLAGS} ./configure ${CFG_FLAGS};  make && make install
 
 tor.bc: ${TOR_INSTALL}/bin/tor
 	cd ${TOR_INSTALL}/bin; ${LLVMGET} tor; mv tor.bc ${THISDIR}
