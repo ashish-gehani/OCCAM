@@ -3,6 +3,7 @@
 THISDIR= $(shell pwd)
 
 
+
 ZLIB=zlib-1.2.11
 ZLIB_TARBALL=${ZLIB}.tar.gz
 ZLIB_URL=https://zlib.net/${ZLIB_TARBALL}
@@ -31,6 +32,21 @@ TOR_INSTALL=${THISDIR}/install/tor
 LLVMCC=gclang
 LLVMGET=get-bc
 
+ifeq (Darwin, $(findstring Darwin, ${OS}))
+
+LIBEXT=dylib
+CFG_FLAGS=--prefix=${TOR_INSTALL}
+
+else
+
+LIBEXT=so
+CFG_FLAGS=--enable-static-tor  --with-openssl-dir=${OPENSSL_INSTALL}  --with-libevent-dir=${LIBEVENT_INSTALL}/lib  --with-zlib-dir=${ZLIB_INSTALL}  --prefix=${TOR_INSTALL}
+
+endif
+
+
+
+
 BITCODE = libz.a.bc libssl.a.bc libevent.a.bc tor.bc
 
 all: tor.bc
@@ -45,9 +61,7 @@ ${TOR}: ${TOR_TARBALL}
 	tar xvfz ${TOR_TARBALL}
 
 ${TOR_INSTALL}/bin/tor: ${TOR}
-	cd ${TOR}; CC=${LLVMCC} ./configure --prefix=${TOR_INSTALL};  make && make install
-#on linux we should try this:
-#	cd ${TOR}; CC=${LLVMCC} ./configure --disable-dependency-tracking  --enable-static-tor  --with-openssl-dir=${OPENSSL_INSTALL}  --with-libevent-dir=${LIBEVENT_INSTALL}/lib  --with-zlib-dir=${ZLIB_INSTALL}  --prefix=${TOR_INSTALL};  make && make install
+	cd ${TOR}; CC=${LLVMCC} ./configure ${CFG_FLAGS};  make && make install
 
 tor.bc: ${TOR_INSTALL}/bin/tor
 	cd ${TOR_INSTALL}/bin; ${LLVMGET} tor; mv tor.bc ${THISDIR}
