@@ -1,3 +1,7 @@
+OS   =  $(shell uname)
+ARCH =  $(shell uname -p)
+
+
 #LLVMCC=wllvm
 #LLVMGET=extract-bc
 
@@ -41,7 +45,7 @@ libtecla.a.bc: ${TECLA}/enhance
 	cd ${TECLA}; ${LLVMGET} -b libtecla.a; mv libtecla.a.bc ../
 
 libtecla.${LIBEXT}.bc: ${TECLA}/enhance
-	cd ${TECLA}; ${LLVMGET} libtecla.${LIBEXT}; mv libtecla.${LIBEXT}.*.bc ../libtecla.${LIBEXT}.bc
+	cd ${TECLA}; ${LLVMGET} libtecla.${LIBEXT}; mv libtecla*${LIBEXT}*.bc ../libtecla.${LIBEXT}.bc
 
 
 

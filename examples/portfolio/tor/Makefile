@@ -1,6 +1,9 @@
 #iam wrote this monstrosity
 
-THISDIR= $(shell pwd)
+THISDIR =  $(shell pwd)
+OS      =  $(shell uname)
+ARCH    =  $(shell uname -p)
+
 
 
 
