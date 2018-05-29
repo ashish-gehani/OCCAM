@@ -43,8 +43,7 @@ class VersionedFile(object):
     def get(self):
         if self._version == 0:
             return "%s.%s" % (self._base, self._suffix)
-        else:
-            return self._format % self._version
+        return self._format % self._version
 
 class FileStream(object):
     def __init__(self, base, suffix):
@@ -65,8 +64,7 @@ class FileStream(object):
     def base(self, mod=None):
         if mod is None:
             return self._base + '.' + self._suffix
-        else:
-            return self._base + mod + '.' + self._suffix
+        return self._base + mod + '.' + self._suffix
 
     def __len__(self):
         return len(self._versions)
