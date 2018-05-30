@@ -29,11 +29,11 @@ TOR_URL=https://www.torproject.org/dist/${TOR_TARBALL}
 TOR_INSTALL=${THISDIR}/install/tor
 
 
-#LLVMCC=wllvm
-#LLVMGET=extract-bc
+LLVMCC=wllvm
+LLVMGET=extract-bc
 
-LLVMCC=gclang
-LLVMGET=get-bc
+#LLVMCC=gclang
+#LLVMGET=get-bc
 
 ifeq (Darwin, $(findstring Darwin, ${OS}))
 
@@ -113,7 +113,7 @@ libevent.a.bc: ${LIBEVENT_INSTALL}/lib/libevent.a
 
 
 clean:
-	rm ${BITCODE}
+	rm -f ${BITCODE}
 	make -C ${ZLIB} clean
 	make -C ${LIBEVENT} clean
 	make -C ${OPENSSL} clean
