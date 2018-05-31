@@ -29,6 +29,7 @@ LIBEXT=so
 
 endif
 
+
 CFLAGS="-I${OPENSSL_INSTALL}/include -Wl,-rpath,${OPENSSL_INSTALL}/lib"
 LDFLAGS="-L${OPENSSL_INSTALL}/lib"
 
@@ -62,7 +63,7 @@ libssl.a.bc:
 
 very_clean:
 	rm -rf ${OPENSSH} ${OPENSSH_BITCODE}
-	make -C . -f Makefile_openssl very_clean
+#	make -C . -f Makefile_openssl very_clean
 
 
 spotless: very_clean

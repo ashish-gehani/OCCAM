@@ -19,12 +19,12 @@ LLVMGET=get-bc
 ifeq (Darwin, $(findstring Darwin, ${OS}))
 
 LIBEXT=dylib
-CFG_FLAGS=darwin64-x86_64-cc
+CFG_FLAGS=darwin64-x86_64-cc no-asm shared
 
 else
 
 LIBEXT=so
-CFG_FLAGS
+CFG_FLAGS=linux-x86_64-clang no-asm shared
 
 endif
 
@@ -42,7 +42,7 @@ ${OPENSSL}: ${OPENSSL_TARBALL}
 	tar xvfz ${OPENSSL_TARBALL}
 
 ${OPENSSL_INSTALL}/lib/libssl.a: ${OPENSSL}
-	cd ${OPENSSL}; CC=${LLVMCC} ./Configure ${CFG_FLAGS} --prefix=${OPENSSL_INSTALL} --openssldir=${OPENSSL_INSTALL}; make && make install
+	cd ${OPENSSL}; CC=${LLVMCC} CFLAGS=${CFLAGS} ./Configure ${CFG_FLAGS} --prefix=${OPENSSL_INSTALL} --openssldir=${OPENSSL_INSTALL}; make && make install
 
 libssl.a.bc: ${OPENSSL_INSTALL}/lib/libssl.a
 	cd ${OPENSSL_INSTALL}/lib; ${LLVMGET} -b libssl.a; mv libssl.a.bc ${THISDIR}
