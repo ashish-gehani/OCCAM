@@ -86,8 +86,7 @@ def make_work_dir(d):
     if not os.path.isdir(d):
         sys.stderr.write('working directory  "{0}" is not a directory\n'.format(d))
         return False
-    else:
-        return True
+    return True
 
 
 def sanity_check_manifest(manifest):
@@ -250,9 +249,9 @@ def setLogger():
               'INFO'     : logging.INFO,
               'DEBUG'    : logging.DEBUG}
 
-    level = None
-    if os.environ.has_key('OCCAM_LOGLEVEL'):
-        level = levels[os.environ['OCCAM_LOGLEVEL']]
+    level = os.getenv('OCCAM_LOGLEVEL', None)
+    if level is not None:
+        level = levels[level]
     if level is None:
         level = logging.WARNING
     logger.setLevel(level)

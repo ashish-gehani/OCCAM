@@ -82,7 +82,8 @@ def strip(input_file, output_file):
 def devirt(input_file, output_file):
     """ devirtualize indirect function calls
     """
-    args = ['-devirt', '-calltarget-ignore-external']
+    args = ['-devirt-ta', '-calltarget-ignore-external']    
+    #args = ['-devirt', '-calltarget-ignore-external']
     return driver.previrt_progress(input_file, output_file, args)
 
 def profile(input_file, output_file):
@@ -103,17 +104,17 @@ def peval(input_file, output_file, use_llpe, use_ipdse, log=None):
     done.close()
 
     if use_llpe is not None:
-        print '\tRunning LLPE...'
+        print('\tRunning LLPE...')
         llpe_libs = []
         for lib in config.get_llpelibs():
             llpe_libs.append('-load={0}'.format(lib))
-	args= llpe_libs + ['-loop-simplify', '-lcssa', \
-                           '-llpe', '-llpe-omit-checks', '-llpe-single-threaded', \
-                           input_file, '-o=%s' % done.name]       
-	driver.run(config.get_llvm_tool('opt'), args)
-	shutil.copy(done.name, input_file)		
-    
-    out = ['']    
+            args = llpe_libs + ['-loop-simplify', '-lcssa', \
+                                '-llpe', '-llpe-omit-checks', '-llpe-single-threaded', \
+                                input_file, '-o=%s' % done.name]
+        driver.run(config.get_llvm_tool('opt'), args)
+        shutil.copy(done.name, input_file)
+
+    out = ['']
     shutil.copy(input_file, done.name)
     while True:
         # optimize using standard llvm transformations
@@ -124,21 +125,22 @@ def peval(input_file, output_file, use_llpe, use_ipdse, log=None):
 
         passes = []
         if use_ipdse is not None:
-            print '\tRunning IP-DSE...'
+            print('\tRunning IP-DSE...')
             ##lower global initializers to store's in main (improve precision of sccp)
             passes += ['-lower-gv-init']
             ##dead store elimination (improve precision of sccp)
-            passes += ['-memory-ssa', '-mem2reg', '-ip-dse', '-strip-memory-ssa-inst']
+            passes += ['-memory-ssa', '-Pmem-ssa-local-mod','-Pmem-ssa-split-fields',
+                       '-mem2reg', '-ip-dse', '-strip-memory-ssa-inst']
             ##perform sccp
             passes += ['-Psccp']
             ##cleanup after sccp
             passes += ['-dce', '-globaldce']
-                
-        
+
+
         # inlining using policies
         passes += ['-Ppeval']
         if driver.previrt_progress(opt.name, done.name, passes, output=out):
-            print "previrt successful"
+            print("previrt successful")
             if log is not None:
                 log.write(out[0])
         else:
@@ -157,7 +159,7 @@ def optimize(input_file, output_file):
     args = ['-disable-simplify-libcalls', input_file, '-o', output_file, '-O3']
     return driver.run(config.get_llvm_tool('opt'), args)
 
-def constrain_program_args(input_file, output_file, cnstrs, filename=None, name=None):
+def constrain_program_args(input_file, output_file, cnstrs, filename=None):
     "constrain the program arguments"
     if filename is None:
         cnstr_file = tempfile.NamedTemporaryFile(delete=False)
@@ -178,7 +180,7 @@ def constrain_program_args(input_file, output_file, cnstrs, filename=None, name=
     driver.previrt(input_file, output_file, args)
 
     if filename is None:
-        os.unlink(arg_file)
+        os.unlink(cnstr_file)
 
 def specialize_program_args(input_file, output_file, args, filename=None, name=None):
     "fix the program arguments"

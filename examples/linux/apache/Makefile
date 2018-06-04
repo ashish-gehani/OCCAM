@@ -90,12 +90,6 @@ ${APR_UTIL}_build: ${APR_UTIL}
 	cd ..                                                                  && \
 	make install
 
-#	cd xml/expat/.libs                                                 && \
-#	${LLVMGET} libexpat.so                                             && \
-#	mv libexpat.so.bc ../../../../                                     && \
-#	cd ../../..                                                        && \
-
-
 ${HTTPD}.tar.gz:
 	wget ${HTTPD_URL}
 
