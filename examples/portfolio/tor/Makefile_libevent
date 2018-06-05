@@ -1,4 +1,4 @@
-#iam wrote this monstrosity
+#iam 6/5/2018
 
 THISDIR =  $(shell pwd)
 OS      =  $(shell uname)

@@ -1,10 +1,12 @@
-#iam wrote this monstrosity
+#iam 6/5/2018
 
 THISDIR =  $(shell pwd)
 OS      =  $(shell uname)
 ARCH    =  $(shell uname -p)
 
-OPENSSL=openssl-1.0.2o
+OPENSSL_VERSION ?= 1.1.0h
+
+OPENSSL=openssl-${OPENSSL_VERSION}
 OPENSSL_TARBALL=${OPENSSL}.tar.gz
 OPENSSL_URL=https://www.openssl.org/source/${OPENSSL_TARBALL}
 OPENSSL_INSTALL=${THISDIR}/install/openssl
@@ -29,8 +31,6 @@ CFG_FLAGS=linux-x86_64-clang no-asm shared
 endif
 
 
-
-
 BITCODE = libssl.a.bc
 
 all: ${BITCODE}
@@ -47,14 +47,12 @@ ${OPENSSL_INSTALL}/lib/libssl.a: ${OPENSSL}
 libssl.a.bc: ${OPENSSL_INSTALL}/lib/libssl.a
 	cd ${OPENSSL_INSTALL}/lib; ${LLVMGET} -b libssl.a; mv libssl.a.bc ${THISDIR}
 
-
-
 clean:
 	rm -f ${BITCODE}
 	make -C ${OPENSSL} clean
 
 very_clean: clean
-	rm -rf install ${OPENSSL}
+	rm -rf ${OPENSSL_INSTALL} ${OPENSSL}
 
 spotless: very_clean
 	rm -rf ${OPENSSL_TARBALL}

@@ -4,7 +4,7 @@ THISDIR =  $(shell pwd)
 OS      =  $(shell uname)
 ARCH    =  $(shell uname -p)
 
-
+OPENSSL_VERSION=1.0.2o
 OPENSSL_INSTALL=${THISDIR}/install/openssl
 
 
@@ -43,7 +43,7 @@ ${OPENSSH_TARBALL}:
 ${OPENSSH}: ${OPENSSH_TARBALL}
 	tar xvfz ${OPENSSH_TARBALL}
 
-${OPENSSH}/Makefile: ${OPENSSH} libssl.a.bc
+${OPENSSH}/Makefile: ${OPENSSH} ${OPENSSH_INSTALL}
 	cd ${OPENSSH}; autoconf
 	cd ${OPENSSH}; CC=${LLVMCC} LDFLAGS=${LDFLAGS} CFLAGS=${CFLAGS} ./configure  --prefix=${OPENSSH_INSTALL}  --with-openssl-dir=${OPENSSL_INSTALL}
 
@@ -57,8 +57,11 @@ sshd.bc: ${OPENSSH}/ssh
 	cd ${OPENSSH_INSTALL}/sbin; ${LLVMGET} sshd; mv sshd.bc ${THISDIR}
 
 
-libssl.a.bc:
-	make -C . -f Makefile_openssl
+Makefile_openssl:
+	$(error Makefile_openssl is missing but required)
+
+${OPENSSH_INSTALL}: Makefile_openssl
+	OPENSSL_VERSION=${OPENSSL_VERSION} make -C . -f Makefile_openssl
 
 
 very_clean:
@@ -68,4 +71,4 @@ very_clean:
 
 spotless: very_clean
 	rm -rf ${OPENSSH_TARBALL}
-	make -C . -f Makefile_openssl spotless
+	OPENSSL_VERSION=${OPENSSL_VERSION} make -C . -f Makefile_openssl spotless

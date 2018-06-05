@@ -4,7 +4,6 @@ THISDIR =  $(shell pwd)
 OS      =  $(shell uname)
 ARCH    =  $(shell uname -p)
 
-
 OPENSSL_VERSION ?= 1.1.0h
 
 OPENSSL=openssl-${OPENSSL_VERSION}
@@ -13,19 +12,21 @@ OPENSSL_URL=https://www.openssl.org/source/${OPENSSL_TARBALL}
 OPENSSL_INSTALL=${THISDIR}/install/openssl
 
 
-LLVMCC=wllvm
-LLVMGET=extract-bc
+#LLVMCC=wllvm
+#LLVMGET=extract-bc
 
-#LLVMCC=gclang
-#LLVMGET=get-bc
+LLVMCC=gclang
+LLVMGET=get-bc
 
 ifeq (Darwin, $(findstring Darwin, ${OS}))
 
 LIBEXT=dylib
+CFG_FLAGS=darwin64-x86_64-cc no-asm shared
 
 else
 
 LIBEXT=so
+CFG_FLAGS=linux-x86_64-clang no-asm shared
 
 endif
 
@@ -34,7 +35,6 @@ BITCODE = libssl.a.bc
 
 all: ${BITCODE}
 
-
 ${OPENSSL_TARBALL}:
 	wget ${OPENSSL_URL}
 
@@ -42,7 +42,7 @@ ${OPENSSL}: ${OPENSSL_TARBALL}
 	tar xvfz ${OPENSSL_TARBALL}
 
 ${OPENSSL_INSTALL}/lib/libssl.a: ${OPENSSL}
-	cd ${OPENSSL}; CC=${LLVMCC} ./config --prefix=${OPENSSL_INSTALL} --openssldir=${OPENSSL_INSTALL}; make && make install
+	cd ${OPENSSL}; CC=${LLVMCC} CFLAGS=${CFLAGS} ./Configure ${CFG_FLAGS} --prefix=${OPENSSL_INSTALL} --openssldir=${OPENSSL_INSTALL}; make && make install
 
 libssl.a.bc: ${OPENSSL_INSTALL}/lib/libssl.a
 	cd ${OPENSSL_INSTALL}/lib; ${LLVMGET} -b libssl.a; mv libssl.a.bc ${THISDIR}
@@ -52,7 +52,7 @@ clean:
 	make -C ${OPENSSL} clean
 
 very_clean: clean
-	rm -rf i${OPENSSL_INSTALL} ${OPENSSL}
+	rm -rf ${OPENSSL_INSTALL} ${OPENSSL}
 
 spotless: very_clean
 	rm -rf ${OPENSSL_TARBALL}

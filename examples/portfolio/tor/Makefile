@@ -1,4 +1,4 @@
-#iam wrote this monstrosity
+#iam 6/5/2018
 
 THISDIR =  $(shell pwd)
 OS      =  $(shell uname)
@@ -46,7 +46,6 @@ endif
 
 
 
-
 BITCODE = tor.bc
 
 all: ${BITCODE}
@@ -56,20 +55,20 @@ Makefile_zlib:
 	$(error Makefile_zlib is missing but required)
 
 
-ZLIB_INSTALL: Makefile_zlib
+${ZLIB_INSTALL}: Makefile_zlib
 	ZLIB_VERSION=${ZLIB_VERSION} make -C . -f Makefile_zlib
 
 Makefile_openssl:
 	$(error Makefile_openssl is missing but required)
 
-OPENSSL_INSTALL: Makefile_openssl
-	OPENSSL_VERSION=${OPENSSL_VERSION} Make -C . -f Makefile_openssl
+${OPENSSL_INSTALL}: Makefile_openssl
+	OPENSSL_VERSION=${OPENSSL_VERSION} make -C . -f Makefile_openssl
 
 Makefile_libevent:
 	$(error Makefile_libevent is missing but required)
 
-LIBEVENT_INSTALL: Makefile_libevent
-	LIBEVENT_VERSION=${LIBEVENT_VERSION} Make -C . -f Makefile_libevent
+${LIBEVENT_INSTALL}: Makefile_libevent
+	LIBEVENT_VERSION=${LIBEVENT_VERSION} make -C . -f Makefile_libevent
 
 
 ${TOR_TARBALL}:
@@ -78,7 +77,7 @@ ${TOR_TARBALL}:
 ${TOR}: ${TOR_TARBALL}
 	tar xvfz ${TOR_TARBALL}
 
-${TOR_INSTALL}/bin/tor: ${TOR} libz.a.bc libssl.a.bc libevent.a.bc
+${TOR_INSTALL}/bin/tor: ${TOR} ${ZLIB_INSTALL} ${OPENSSL_INSTALL} ${LIBEVENT_INSTALL}
 	cd ${TOR}; CC=${LLVMCC} LDFLAGS=${LDFLAGS} CFLAGS=${CFLAGS} ./configure ${CFG_FLAGS};  make && make install
 
 tor.bc: ${TOR_INSTALL}/bin/tor
@@ -88,9 +87,9 @@ tor.bc: ${TOR_INSTALL}/bin/tor
 
 clean:
 	rm -f ${BITCODE}
-	make -C ${ZLIB} -f Makefile_zlib clean
-	make -C ${LIBEVENT}  -f Makefile_libevent clean
-	make -C ${OPENSSL} -f Makefile_openssl clean
+	make -C . -f Makefile_zlib clean
+	make -C . -f Makefile_libevent clean
+	make -C . -f Makefile_openssl clean
 	make -C ${TOR} clean
 
 very_clean: clean
