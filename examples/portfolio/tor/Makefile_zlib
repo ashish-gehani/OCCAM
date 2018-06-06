@@ -12,11 +12,8 @@ ZLIB_TARBALL=${ZLIB}.tar.gz
 ZLIB_URL=https://zlib.net/${ZLIB_TARBALL}
 ZLIB_INSTALL=${THISDIR}/install/zlib
 
-LLVMCC=wllvm
-LLVMGET=extract-bc
-
-#LLVMCC=gclang
-#LLVMGET=get-bc
+LLVMCC ?= gclang
+LLVMGET ?= get-bc
 
 ifeq (Darwin, $(findstring Darwin, ${OS}))
 

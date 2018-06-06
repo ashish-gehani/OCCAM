@@ -6,10 +6,14 @@ ARCH    =  $(shell uname -p)
 
 
 ZLIB_VERSION = 1.2.11
+export ZLIB_VERSION
 
 OPENSSL_VERSION = 1.1.0h
+export OPENSSL_VERSION
 
 LIBEVENT_VERSION = 2.1.8-stable
+export LIBEVENT_VERSION
+
 
 ZLIB_INSTALL=${THISDIR}/install/zlib
 
@@ -24,11 +28,12 @@ TOR_URL=https://www.torproject.org/dist/${TOR_TARBALL}
 TOR_INSTALL=${THISDIR}/install/tor
 
 
-LLVMCC=wllvm
-LLVMGET=extract-bc
+LLVMCC ?= gclang
+export LLVMCC
 
-#LLVMCC=gclang
-#LLVMGET=get-bc
+LLVMGET ?= get-bc
+export LLVMGET
+
 
 ifeq (Darwin, $(findstring Darwin, ${OS}))
 
@@ -56,19 +61,19 @@ Makefile_zlib:
 
 
 ${ZLIB_INSTALL}: Makefile_zlib
-	ZLIB_VERSION=${ZLIB_VERSION} make -C . -f Makefile_zlib
+	make -C . -f Makefile_zlib
 
 Makefile_openssl:
 	$(error Makefile_openssl is missing but required)
 
 ${OPENSSL_INSTALL}: Makefile_openssl
-	OPENSSL_VERSION=${OPENSSL_VERSION} make -C . -f Makefile_openssl
+	make -C . -f Makefile_openssl
 
 Makefile_libevent:
 	$(error Makefile_libevent is missing but required)
 
 ${LIBEVENT_INSTALL}: Makefile_libevent
-	LIBEVENT_VERSION=${LIBEVENT_VERSION} make -C . -f Makefile_libevent
+	make -C . -f Makefile_libevent
 
 
 ${TOR_TARBALL}:
@@ -97,3 +102,4 @@ very_clean: clean
 
 spotless: very_clean
 	rm -rf ${TOR_TARBALL}
+

@@ -55,6 +55,9 @@ endif
 submodule_update:
 	git submodule update --remote --init --recursive
 
+#update:
+#	git submodule update --recursive --remote
+
 
 
 occam_lib:

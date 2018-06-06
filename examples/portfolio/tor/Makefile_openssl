@@ -12,11 +12,8 @@ OPENSSL_URL=https://www.openssl.org/source/${OPENSSL_TARBALL}
 OPENSSL_INSTALL=${THISDIR}/install/openssl
 
 
-#LLVMCC=wllvm
-#LLVMGET=extract-bc
-
-LLVMCC=gclang
-LLVMGET=get-bc
+LLVMCC ?= gclang
+LLVMGET ?= get-bc
 
 ifeq (Darwin, $(findstring Darwin, ${OS}))
 
@@ -31,7 +28,7 @@ CFG_FLAGS=linux-x86_64-clang no-asm shared
 endif
 
 
-BITCODE = libssl.a.bc
+BITCODE = libssl.a.bc libcrypto.a.bc
 
 all: ${BITCODE}
 
@@ -46,6 +43,10 @@ ${OPENSSL_INSTALL}/lib/libssl.a: ${OPENSSL}
 
 libssl.a.bc: ${OPENSSL_INSTALL}/lib/libssl.a
 	cd ${OPENSSL_INSTALL}/lib; ${LLVMGET} -b libssl.a; mv libssl.a.bc ${THISDIR}
+
+libcrypto.a.bc: ${OPENSSL_INSTALL}/lib/libcrypto.a
+	cd ${OPENSSL_INSTALL}/lib; ${LLVMGET} -b libcrypto.a; mv libcrypto.a.bc ${THISDIR}
+
 
 clean:
 	rm -f ${BITCODE}

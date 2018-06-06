@@ -4,6 +4,8 @@ THISDIR =  $(shell pwd)
 OS      =  $(shell uname)
 ARCH    =  $(shell uname -p)
 
+OPENSSL_VERSION = 1.1.0h
+export OPENSSL_VERSION
 
 LIBEVENT_VERSION ?= 2.1.8-stable
 
@@ -14,11 +16,11 @@ LIBEVENT_INSTALL=${THISDIR}/install/libevent
 
 OPENSSL_INSTALL=${THISDIR}/install/openssl
 
-LLVMCC=wllvm
-LLVMGET=extract-bc
+LLVMCC ?= gclang
+export LLVMCC
 
-#LLVMCC=gclang
-#LLVMGET=get-bc
+LLVMGET ?= get-bc
+export LLVMGET
 
 ifeq (Darwin, $(findstring Darwin, ${OS}))
 
@@ -42,7 +44,7 @@ Makefile_openssl:
 	$(error Makefile_openssl is missing but required)
 
 OPENSSL_INSTALL: Makefile_openssl
-	Make -C . -f Makefile_openssl
+	make -C . -f Makefile_openssl
 
 ${LIBEVENT_TARBALL}:
 	wget ${LIBEVENT_URL}
