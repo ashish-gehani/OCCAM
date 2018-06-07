@@ -81,12 +81,18 @@ sshd.bc: ${OPENSSH}/ssh
 
 
 clean:
-	rm -f ${BITCODE} libssl.a.bc libcrypto.a.bc
+	rm -f ${BITCODE} libz.a.bc libssl.a.bc libcrypto.a.bc
+	make -C ${OPENSSH} clean
+	make -C . -f Makefile_openssl clean
+	make -C . -f Makefile_zlib clean
+
 
 very_clean:
-	rm -rf install ${OPENSSH} ${OPENSSH_BITCODE}
+	rm -rf install ${OPENSSH}
+	make -C . -f Makefile_zlib very_clean
+	make -C . -f Makefile_openssl very_clean
 
 spotless: very_clean
 	rm -rf ${OPENSSH_TARBALL}
-	OPENSSL_VERSION=${OPENSSL_VERSION} make -C . -f Makefile_openssl spotless
+	make -C . -f Makefile_openssl spotless
 
