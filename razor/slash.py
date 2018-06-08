@@ -170,9 +170,11 @@ class Slash(object):
         native_libs = new_native_libs
 
         files = utils.populate_work_dir(module, libs, self.work_dir)
-
         os.chdir(self.work_dir)
 
+        profile_map_before = collections.OrderedDict()
+        profile_map_after = collections.OrderedDict()
+        
         #specialize the arguments ...
         if args is not None:
             main = files[module]
@@ -180,7 +182,7 @@ class Slash(object):
             post = main.new('a')
             passes.specialize_program_args(pre, post, args, 'arguments', name=name)
         elif constraints:
-            print('Using the constraints: {0}\n'.format(constraints))
+            print('Input-user specialization using the constraints: {0}\n'.format(constraints))
             main = files[module]
             pre = main.get()
             post = main.new('a')
@@ -188,16 +190,16 @@ class Slash(object):
 
         #watches were inserted here ...
 
-        #Resolve indirect calls using a pointer analysis
-        def _devirt(m):
-            "Devirtualize indirect function calls"
-            pre = m.get()
-            post = m.new('d')
-            passes.devirt(pre, post)
-
-        if devirt is not None:
-            pool.InParallel(_devirt, files.values(), self.pool)
-
+        #Collect some stats before we start optimizing/debloating
+        if show_stats is not None:
+            for m in files.values():
+                _, name = tempfile.mkstemp()
+                profile_map_before[m.get()] = name
+            def _profile_before(m):
+                "Profiling before specialization"
+                passes.profile(m.get(), profile_map_before[m.get()])
+            pool.InParallel(_profile_before, files.values(), self.pool)
+        
         # Internalize everything that we can
         # We can never internalize main
         interface.writeInterface(interface.mainInterface(), 'main.iface')
@@ -236,8 +238,6 @@ class Slash(object):
 
             pool.InParallel(_strip, files.values(), self.pool)
 
-        profile_map_before = collections.OrderedDict()
-        profile_map_after = collections.OrderedDict()
         # Begin main loop
         iface_before_file = provenance.VersionedFile('interface_before', 'iface')
         iface_after_file = provenance.VersionedFile('interface_after', 'iface')
@@ -246,27 +246,14 @@ class Slash(object):
         for m, _ in files.iteritems():
             base = utils.prevent_collisions(m[:m.rfind('.bc')])
             rewrite_files[m] = provenance.VersionedFile(base, 'rw')
+            
         iteration = 0
-
-        if show_stats is not None:
-            for m in files.values():
-                _, name = tempfile.mkstemp()
-                profile_map_before[m.get()] = name
-            def _profile_before(m):
-                #sys.stderr.write("Profiling %s and storing in %s...\n" % (m.get(), profile_map_before[m.get()]))
-                passes.profile(m.get(), profile_map_before[m.get()])
-            pool.InParallel(_profile_before, files.values(), self.pool)
-
         while progress:
 
             iteration += 1
             progress = False
 
-            # resolve indirect calls using a pointer analysis
-            #if devirt is not None:
-            #    pool.InParallel(_devirt, files.values(), self.pool)
-
-            # Intra-module previrt
+            # Intra-module pruning
             def intra(m):
                 "Intra-module previrtualization"
                 # for m in files.values():
@@ -276,7 +263,7 @@ class Slash(object):
                 post = m.new('p')
                 post_base = os.path.basename(post)
                 fn = 'previrt_%s-%s' % (pre_base, post_base)
-                passes.peval(pre, post, use_llpe, use_ipdse, log=open(fn, 'w'))
+                passes.peval(pre, post, devirt, use_llpe, use_ipdse, log=open(fn, 'w'))
 
             pool.InParallel(intra, files.values(), self.pool)
 
@@ -285,8 +272,8 @@ class Slash(object):
                                 ['main.iface'])
             interface.writeInterface(iface, iface_before_file.new())
 
+            # Specialize
             if no_specialize is None:
-                # Specialize
                 def _spec((nm, m)):
                     "Inter-module module specialization"
                     pre = m.get()
@@ -331,12 +318,13 @@ class Slash(object):
                 passes.internalize(pre, post, [iface_after_file.get()])
             pool.InParallel(prune, files.values(), self.pool)
 
+        #Collect stats after the whole optimization/debloating process finished            
         if show_stats is not None:
             for m in files.values():
                 _, name = tempfile.mkstemp()
                 profile_map_after[m.get()] = name
             def _profile_after(m):
-                #sys.stderr.write("Profiling %s and storing in %s...\n" % (m.get(), profile_map_after[m.get()]))
+                "Profiling after specialization"
                 passes.profile(m.get(), profile_map_after[m.get()])
             pool.InParallel(_profile_after, files.values(), self.pool)
 
@@ -352,7 +340,6 @@ class Slash(object):
         final_module = files[module].get()
 
         linker_args = final_libs + native_libs + native_lib_flags + ldflags
-
         link_cmd = '\nclang++ {0} -o {1} {2}\n'.format(final_module, binary, ' '.join(linker_args))
 
         sys.stderr.write('\nLinking ...\n')
@@ -361,6 +348,7 @@ class Slash(object):
         sys.stderr.write('\ndone.\n')
         pool.shutdownDefaultPool()
 
+        #Print stats before and after
         if show_stats is not None:
             for (f1,v1), (f2,v2) in zip(profile_map_before.iteritems(), \
                                         profile_map_after.iteritems()) :
