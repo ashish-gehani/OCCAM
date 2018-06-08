@@ -10,6 +10,8 @@ clang++ ssh.bc libcrypto.a.bc libz.a.bc -ldl -lresolv -o ssh_from_bc
 export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
 
+rm -rf slash ssh_slashed
+
 # Build the manifest file
 cat > ssh.manifest <<EOF
 { "main" : "ssh.bc"
@@ -17,7 +19,7 @@ cat > ssh.manifest <<EOF
 , "modules"    : ["libcrypto.a.bc", "libz.a.bc"]
 , "native_libs" : ["-ldl", "-lresolv"]
 , "name"    : "ssh"
-, "constraints" : ["1", "-Y"]
+, "constraints" : ["1", "-Y", "-4"]
 }
 EOF
 

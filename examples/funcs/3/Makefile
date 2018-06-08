@@ -4,6 +4,9 @@ OS   =  $(shell uname)
 
 LIBRARYNAME=library
 
+CC ?= clang
+
+
 ifeq (Darwin, $(findstring Darwin, ${OS}))
 #  DARWIN
 LIB = ${LIBRARYNAME}.dylib
