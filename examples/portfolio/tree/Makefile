@@ -57,27 +57,28 @@ slash: tree.bc
 
 tree_slash: slash
 	cp slash/tree tree_slash
-	cp tree/tree tree_orig
+	cp ${TREE}/tree tree_orig
 
-compile_tweaked: tree
-	cp Makefile.darwin tree
-	cp tree_tweaked.c tree/tree.c
-	cd tree; CC=${LLVMCC} make -f Makefile.darwin
+#compile_tweaked: tree
+#	cp Makefile.darwin tree
+#	cp tree_tweaked.c ${TREE}/tree.c
+#	cd ${TREE}; CC=${LLVMCC} make -f Makefile.darwin
 
-compile_tweaked_2: tree
-	cp tree_tweaked_2.c tree/tree.c
-	cd tree; CC=${LLVMCC} make -f Makefile.darwin
+#compile_tweaked_2: tree
+#	cp tree_tweaked_2.c ${TREE}/tree.c
+#	cd ${TREE}; CC=${LLVMCC} make -f Makefile.darwin
 
-tree_slash_tweaked: clean compile_tweaked slash
-	cp slash/tree tree_slash_tweaked
-
+#tree_slash_tweaked: clean compile_tweaked slash
+#	cp slash/tree tree_slash_tweaked
 
 
 clean:
 	rm -rf tree.bc slash
-	make -C tree clean
 
 very_clean: clean
 	rm -rf tree_slash tree_orig tree_slash_tweaked
-	make -C tree clean
-	rm -rf tree
+	make -C ${TREE} clean
+	rm -rf ${TREE}
+
+spotless: very_clean
+	rm -rf ${TREE_TARBALL}

@@ -2,6 +2,6 @@
 , "binary"  : "curl"
 , "modules"    : [ "libcurl.4.dylib.bc" ]
 , "native_libs" : [ "/System/Library/Frameworks/LDAP.framework/Versions/A/LDAP", "/usr/local/lib/libz.1.dylib", "/usr/local/opt/libidn2/lib/libidn2.0.dylib" ]
-, "ldflags" : [ "-O2" ]
+, "ldflags" : [ "-O2"]
 , "name"    : "curl"
 }

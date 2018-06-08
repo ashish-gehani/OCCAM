@@ -23,7 +23,7 @@ EOF
 
 
 # Previrtualize
-slash --stats --devirt --work-dir=slash ssh.manifest
+#slash --stats --devirt --work-dir=slash ssh.manifest
+slash --stats --work-dir=slash ssh.manifest
 
 cp slash/ssh_slashed .
-
