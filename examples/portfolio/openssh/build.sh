@@ -16,8 +16,8 @@ cat > ssh.manifest <<EOF
 , "binary"  : "ssh_slashed"
 , "modules"    : ["libcrypto.a.bc", "libz.a.bc"]
 , "native_libs" : ["-ldl", "-lresolv"]
-, "args"    : []
 , "name"    : "ssh"
+, "constraints" : ["1", "-Y"]
 }
 EOF
 
