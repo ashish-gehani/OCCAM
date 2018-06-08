@@ -1,9 +1,6 @@
 MANIFEST=tree.manifest.constraints
 
-all: tree.bc
-
-#tree_slash
-
+all: tree_slash
 
 THISDIR =  $(shell pwd)
 OS      =  $(shell uname)
