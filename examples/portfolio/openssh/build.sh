@@ -4,8 +4,11 @@
 set -e
 
 
+echo "Linking ssh_from_bc"
 clang++ ssh.bc libcrypto.a.bc libz.a.bc -ldl -lresolv -o ssh_from_bc
 
+echo "Linking sshd_from_bc"
+clang++ sshd.bc libcrypto.a.bc libz.a.bc -ldl -lresolv -o sshd_from_bc
 
 export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
