@@ -28,9 +28,6 @@ EOF
 
 
 # Previrtualize
-#slash --stats --devirt --work-dir=slash ssh.manifest
-echo "NOT DOING --devirt COZ ITS DODGEY!!!!!!!!!!!!!!!!!"
-slash --stats --work-dir=slash ssh.manifest
+slash --stats --devirt --work-dir=slash ssh.manifest
 
 cp slash/ssh_slashed .
-echo "NOT DOING --devirt COZ ITS DODGEY!!!!!!!!!!!!!!!!!"
