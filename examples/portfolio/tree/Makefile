@@ -1,6 +1,4 @@
-MANIFEST=tree.manifest.constraints
-
-all: tree_slash
+all: tree.bc tree_orig
 
 THISDIR =  $(shell pwd)
 OS      =  $(shell uname)
@@ -51,13 +49,10 @@ tree.bc: ${TREE}/tree
 	${LLVMGET} ${TREE}/tree
 	cp ${TREE}/tree.bc .
 
-
-slash: tree.bc
-	slash --no-strip --stats --devirt --work-dir=slash ${MANIFEST}
-
-tree_slash: slash
-	cp slash/tree tree_slash
+tree_orig: ${TREE}/tree
 	cp ${TREE}/tree tree_orig
+
+
 
 #compile_tweaked: tree
 #	cp Makefile.darwin tree
