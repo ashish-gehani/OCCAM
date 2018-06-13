@@ -21,6 +21,10 @@ def main(args):
 
         for function in module.iter_functions():
             #print(function.get_name())
+
+            #if function.get_name() == "uncompress":
+            #    print(function.view_function_cfg_only())
+
             if function.is_declaration():
                 ndcls += 1
             else:
