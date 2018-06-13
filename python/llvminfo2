@@ -23,7 +23,7 @@ def main(args):
             #print(function.get_name())
 
             #if function.get_name() == "uncompress":
-            #    print(function.view_function_cfg_only())
+            #    print(function.view_function_cfg())
 
             if function.is_declaration():
                 ndcls += 1
@@ -37,9 +37,10 @@ def main(args):
                     nhidden += 1
                 else:
                     nprotected += 1
-            #            for bb in function.iter_basic_blocks():
-            #                for instruction in bb.iter_instructions():
-            #                    instruction.dump()
+
+            #for bb in function.iter_basic_blocks():
+            #    for instruction in bb.iter_instructions():
+            #        instruction.dump()
 
         print("The number of functions defined: {0}\n".format(nfns))
         print("The number of functions declared: {0}\n".format(ndcls))
