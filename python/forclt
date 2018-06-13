@@ -1,0 +1,67 @@
+#!/usr/bin/env python
+
+import sys
+from llvmcpy.llvm import *
+
+
+from code.callgraph import CallGraph
+
+
+def fileToModule(path):
+    buffer = create_memory_buffer_with_contents_of_file(path)
+    context = get_global_context()
+    module = context.parse_ir(buffer)
+    return module
+
+
+
+def main(args):
+    if len(args) > 2:
+
+        main_module = fileToModule(sys.argv[1])
+
+        lib_module = fileToModule(sys.argv[2])
+
+        if main_module is None or lib_module is None:
+            return 0
+
+        main_name = sys.argv[1].replace('.', '_')
+
+        lib_name = sys.argv[2].replace('.', '_')
+
+
+        main_callgraph = CallGraph.fromModule(main_name, main_module)
+
+
+        lib_callgraph = CallGraph.fromModule(lib_name, lib_module)
+
+
+        nodes = lib_callgraph.getNodes()
+
+        nodes.add('main')
+
+        subgraph = main_callgraph.restrict('calls_into_libcrypto', nodes)
+        subgraph_ni = subgraph.remove_isolated('calls_into_libcrypto (no isolated)')
+
+        if False:
+            print(main_callgraph)
+            print(lib_callgraph)
+            print(subgraph)
+            print(subgraph_ni)
+        else:
+            print(subgraph_ni.toDotString())
+
+        return 0
+
+    else:
+        print("Usage: {0} <llvm bitcode or ir>\n".format(args[0]))
+        return 1
+
+
+
+
+
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv))

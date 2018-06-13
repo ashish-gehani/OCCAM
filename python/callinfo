@@ -17,27 +17,7 @@ def main(args):
 
         gname = sys.argv[1].replace('.', '_')
 
-
-
-        callgraph = CallGraph(gname)
-
-        for function in module.iter_functions():
-            node = function.get_name()
-            node_id = callgraph.addNode(node)
-            if not function.is_declaration():
-                calls = 0
-                callees = set()
-                for bb in function.iter_basic_blocks():
-                    for instruction in bb.iter_instructions():
-                        if instruction.is_a_call_inst():
-                            callee = instruction.get_called().get_name()
-                            calls += 1
-                            if callee:
-                                callees.add(callee)
-                            #print(instruction.print_value_to_string())
-                            #print(instruction.get_called().get_name())
-                for callee in callees:
-                    callgraph.addEdge(node_id, callee)
+        callgraph = CallGraph.fromModule(gname, module)
 
         #print(callgraph)
         print(callgraph.toDotString())
