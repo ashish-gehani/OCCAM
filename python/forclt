@@ -37,7 +37,7 @@ def file2Array(path):
         with open(path, 'r') as fp:
             for entry in fp.readlines():
                 entry = entry.strip()
-                if entry:
+                if entry and entry[0] != '#':
                     retval.append(entry)
     except Exception as e:
         sys.stderr.write('file2Array("{0}") threw {1}\n'.format(path, str(e)))
@@ -67,11 +67,13 @@ def main(args):
 
         nids = callgraph.close_up(sample)
 
-        #print(nids)
+        #print(len(nids))
 
-        print(callgraph.toDotString(nids))
+        print(callgraph.graphInfo(nids))
 
-        #nids = callgraph.close_down(['main'])
+        #print(callgraph.toDotString(nids))
+
+        #nids_down = callgraph.close_down(['main'])
 
         #print(callgraph.toDotString(nids))
 

@@ -63,7 +63,17 @@ class CallGraph(object):
 
 
     def __str__(self):
-        return "CallGraph {0} with {1} nodes and {2} edges\n".format(self.name, len(self.nodes), len(self.edges))
+        return self.graphInfo()
+
+
+
+    def graphInfo(self, nodes = None):
+        nids = self.nids if nodes is None else self.toNidSet(nodes)
+        eset = set()
+        for e in self.edges:
+            if (e[0] in nids) and (e[1] in nids):
+                eset.add(e)
+        return "CallGraph {0} with {1} nodes and {2} edges\n".format(self.name, len(nids), len(eset))
 
 
     def addNode(self, node, id=None):
