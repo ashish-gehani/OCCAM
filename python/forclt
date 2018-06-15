@@ -13,43 +13,67 @@ def fileToModule(path):
     module = context.parse_ir(buffer)
     return module
 
+sample = (
+    'EVP_aes_128_cbc',
+    'EVP_aes_128_ctr',
+    'EVP_aes_128_gcm',
+    'EVP_aes_192_cbc',
+    'EVP_aes_192_ctr',
+    'EVP_aes_256_cbc',
+    'EVP_aes_256_ctr',
+    'EVP_aes_256_gcm',
+    'EVP_des_ede3_cbc',
+    'EVP_md5',
+    'EVP_rc4',
+    'EVP_sha1',
+    'EVP_sha256',
+    'EVP_sha384',
+    'EVP_sha512'
+    )
+
+def file2Array(path):
+    retval = []
+    try:
+        with open(path, 'r') as fp:
+            for entry in fp.readlines():
+                entry = entry.strip()
+                if entry:
+                    retval.append(entry)
+    except Exception as e:
+        sys.stderr.write('file2Array("{0}") threw {1}\n'.format(path, str(e)))
+    return retval
+
 
 
 def main(args):
-    if len(args) > 2:
+    global sample
+    if len(args) > 1:
 
-        main_module = fileToModule(sys.argv[1])
+        module = fileToModule(sys.argv[1])
 
-        lib_module = fileToModule(sys.argv[2])
-
-        if main_module is None or lib_module is None:
+        if module is None:
             return 0
 
-        main_name = sys.argv[1].replace('.', '_')
+        name = sys.argv[1].replace('.', '_')
 
-        lib_name = sys.argv[2].replace('.', '_')
+        callgraph = CallGraph.fromModule(name, module, True)
 
+        #print(callgraph)
 
-        main_callgraph = CallGraph.fromModule(main_name, main_module)
+        if len(args) > 2:
+            sample = file2Array(sys.argv[2])
 
+        #print(sample)
 
-        lib_callgraph = CallGraph.fromModule(lib_name, lib_module)
+        nids = callgraph.close_up(sample)
 
+        #print(nids)
 
-        nodes = lib_callgraph.getNodes()
+        print(callgraph.toDotString(nids))
 
-        nodes.add('main')
+        #nids = callgraph.close_down(['main'])
 
-        subgraph = main_callgraph.restrict('calls_into_libcrypto', nodes)
-        subgraph_ni = subgraph.remove_isolated('calls_into_libcrypto (no isolated)')
-
-        if False:
-            print(main_callgraph)
-            print(lib_callgraph)
-            print(subgraph)
-            print(subgraph_ni)
-        else:
-            print(subgraph_ni.toDotString())
+        #print(callgraph.toDotString(nids))
 
         return 0
 
