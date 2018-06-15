@@ -69,6 +69,8 @@ def main(args):
 
         #print(len(nids))
 
+        callgraph.dump_prototypes('/tmp/prototypes.txt', nids)
+
         print(callgraph.graphInfo(nids))
 
         #print(callgraph.toDotString(nids))
@@ -80,7 +82,7 @@ def main(args):
         return 0
 
     else:
-        print("Usage: {0} <llvm bitcode or ir>\n".format(args[0]))
+        print("Usage: {0} <llvm bitcode or ir>  <frontier file>\n".format(args[0]))
         return 1
 
 

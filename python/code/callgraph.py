@@ -1,4 +1,4 @@
-
+import sys
 
 from stringbuffer import StringBuffer
 
@@ -22,14 +22,16 @@ class CallGraph(object):
     def __init__(self, name):
         self.id_counter = 0
         self.name = name
-        # the set of node_ids
-        self.nids = set()
+        # the maps node_ids to names
+        self.nids = {}
         # maps the name to id
         self.nodes = {}
         # the set of edges
         self.edges = set()
         # maps nodes to the set of edges that they participate in.
         self.nodes_to_edges = {}
+        # maps nids to readable type string
+        self.prototypes = {}
 
     @staticmethod
     def fromModule(name, module, skip_system_calls = False):
@@ -41,8 +43,13 @@ class CallGraph(object):
             if function.is_declaration():
                 continue
 
-            node_id = callgraph.addNode(node)
+            node_id = callgraph.addNode(node, None, function.type_of().print_type_to_string())
+
             if not function.is_declaration():
+
+                #val = function.type_of()
+                #print(val.print_type_to_string())
+
                 callees = set()
                 for bb in function.iter_basic_blocks():
                     for instruction in bb.iter_instructions():
@@ -68,7 +75,7 @@ class CallGraph(object):
 
 
     def graphInfo(self, nodes = None):
-        nids = self.nids if nodes is None else self.toNidSet(nodes)
+        nids = set(self.nids.keys()) if nodes is None else self.toNidSet(nodes)
         eset = set()
         for e in self.edges:
             if (e[0] in nids) and (e[1] in nids):
@@ -76,7 +83,7 @@ class CallGraph(object):
         return "CallGraph {0} with {1} nodes and {2} edges\n".format(self.name, len(nids), len(eset))
 
 
-    def addNode(self, node, id=None):
+    def addNode(self, node, id=None, prototype=None):
         """adds the node to graph (if necessary), and returns it's id.
 
         if you happen to know its id you can set that too (useful for making subgraphs).
@@ -86,7 +93,9 @@ class CallGraph(object):
             nid = self.id_counter if id is None else id
             self.nodes[node] = nid
             self.nodes_to_edges[nid] = set()
-            self.nids.add(nid)
+            self.nids[nid] = node
+            if prototype is not None:
+                self.prototypes[nid] = prototype
             self.id_counter += 1
         else:
             nid = self.nodes[node]
@@ -116,7 +125,7 @@ class CallGraph(object):
     def toDotString(self, nodes = None):
         """produces the dot for either the entire graph, or just restricted to the nodes passed in.
         """
-        nids = self.nids if nodes is None else self.toNidSet(nodes)
+        nids = set(self.nids.keys()) if nodes is None else self.toNidSet(nodes)
 
         sb = StringBuffer()
         sb.append('digraph ').append(self.name).append(' {\n')
@@ -220,3 +229,20 @@ class CallGraph(object):
             after = len(answer)
             new = after > before
         return answer
+
+
+    def dump_prototypes(self, path, nids = None):
+
+        nids = set(self.nids.keys()) if nids is None else nids
+
+        try:
+            with open(path, 'w') as fp:
+                for nid in nids:
+                    if nid in self.prototypes:
+                        fp.write(self.nids[nid])
+                        fp.write(" :  ")
+                        fp.write(self.prototypes[nid])
+                        fp.write("\n")
+        except Exception as e:
+            print(e)
+            sys.stderr.write('dump_prototypes("{0}") threw {1}\n'.format(path, str(e)))
