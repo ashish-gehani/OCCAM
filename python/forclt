@@ -1,0 +1,95 @@
+#!/usr/bin/env python
+
+import sys
+from llvmcpy.llvm import *
+
+
+from code.callgraph import CallGraph
+
+
+def fileToModule(path):
+    buffer = create_memory_buffer_with_contents_of_file(path)
+    context = get_global_context()
+    module = context.parse_ir(buffer)
+    return module
+
+sample = (
+    'EVP_aes_128_cbc',
+    'EVP_aes_128_ctr',
+    'EVP_aes_128_gcm',
+    'EVP_aes_192_cbc',
+    'EVP_aes_192_ctr',
+    'EVP_aes_256_cbc',
+    'EVP_aes_256_ctr',
+    'EVP_aes_256_gcm',
+    'EVP_des_ede3_cbc',
+    'EVP_md5',
+    'EVP_rc4',
+    'EVP_sha1',
+    'EVP_sha256',
+    'EVP_sha384',
+    'EVP_sha512'
+    )
+
+def file2Array(path):
+    retval = []
+    try:
+        with open(path, 'r') as fp:
+            for entry in fp.readlines():
+                entry = entry.strip()
+                if entry and entry[0] != '#':
+                    retval.append(entry)
+    except Exception as e:
+        sys.stderr.write('file2Array("{0}") threw {1}\n'.format(path, str(e)))
+    return retval
+
+
+
+def main(args):
+    global sample
+    if len(args) > 1:
+
+        module = fileToModule(sys.argv[1])
+
+        if module is None:
+            return 0
+
+        name = sys.argv[1].replace('.', '_')
+
+        callgraph = CallGraph.fromModule(name, module, True)
+
+        #print(callgraph)
+
+        if len(args) > 2:
+            sample = file2Array(sys.argv[2])
+
+        #print(sample)
+
+        nids = callgraph.close_up(sample)
+
+        #print(len(nids))
+
+        callgraph.dump_prototypes('/tmp/prototypes.txt', nids)
+
+        print(callgraph.graphInfo(nids))
+
+        #print(callgraph.toDotString(nids))
+
+        #nids_down = callgraph.close_down(['main'])
+
+        #print(callgraph.toDotString(nids))
+
+        return 0
+
+    else:
+        print("Usage: {0} <llvm bitcode or ir>  <frontier file>\n".format(args[0]))
+        return 1
+
+
+
+
+
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv))

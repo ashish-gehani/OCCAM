@@ -1,0 +1,110 @@
+#!/usr/bin/env python
+
+
+import re
+import sys
+import llvmlite.binding as llvm
+
+
+def file2String(path, binary=False):
+    retval = None
+    mode = 'rb' if binary else 'r'
+    try:
+        with open(path, mode) as fp:
+            retval = fp.read()
+    except Exception as e:
+        sys.stderr.write('file2String("{0}") threw {1}\n'.format(path, str(e)))
+    return retval
+
+
+class ModuleUtils(object):
+
+    @staticmethod
+    def fromBitcode(path):
+        llvm_bitcode = file2String(path, True)
+        if llvm_bitcode and len(llvm_bitcode) > 0:
+            # Create a LLVM module object from the IR
+            mod = llvm.parse_bitcode(llvm_bitcode)
+            mod.verify()
+            return mod
+        else:
+            print('No Bitcode Found')
+            return None
+
+
+    @staticmethod
+    def fromIR(path):
+        llvm_ir = file2String(path)
+        # Create a LLVM module object from the IR
+        mod = llvm.parse_assembly(llvm_ir)
+        mod.verify()
+        return mod
+
+
+
+def main(args):
+
+    print("Using LLVM version: {0}\n".format(llvm.llvm_version_info))
+
+    if len(args) > 1:
+        path = args[1]
+
+        isBitcode = re.match(r".*\.bc$", path)
+
+        if isBitcode:
+            mod = ModuleUtils.fromBitcode(path)
+        else:
+            mod = ModuleUtils.fromIR(path)
+
+        if mod is None:
+            return 0
+
+        nfns = 0
+        ndcls = 0
+
+        ndefault = 0
+        nhidden = 0
+        nprotected = 0
+
+
+        for fn in mod.functions:
+
+            if fn.is_declaration:
+
+                ndcls += 1
+
+            else:
+                #print("name[{0}] = {1}\n".format(nfns, fn.name))
+                nfns += 1
+
+                v = fn.visibility
+                if v == llvm.Visibility.default:
+                    ndefault += 1
+                elif v == llvm.Visibility.hidden:
+                    nhidden += 1
+                else:
+                    nprotected += 1
+
+        print("The number of functions defined: {0}\n".format(nfns))
+        print("The number of functions declared: {0}\n".format(ndcls))
+
+        print("The visibility of functions: default = {0} hidden = {1} protected = {2}\n".format(ndefault, nhidden, nprotected))
+
+
+        ngbls = 0
+
+        for gbl in mod.global_variables:
+            ngbls += 1
+
+        print("The number of global variables: {0}\n".format(ngbls))
+
+
+
+        return 0
+    else:
+        print("Usage: {0} <llvm bitcode or ir>\n".format(args[0]))
+        return 1
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv))

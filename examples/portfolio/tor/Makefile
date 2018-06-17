@@ -1,25 +1,24 @@
-#iam wrote this monstrosity
+#iam 6/5/2018
 
 THISDIR =  $(shell pwd)
 OS      =  $(shell uname)
 ARCH    =  $(shell uname -p)
 
 
+ZLIB_VERSION = 1.2.11
+export ZLIB_VERSION
+
+OPENSSL_VERSION = 1.1.0h
+export OPENSSL_VERSION
+
+LIBEVENT_VERSION = 2.1.8-stable
+export LIBEVENT_VERSION
 
 
-ZLIB=zlib-1.2.11
-ZLIB_TARBALL=${ZLIB}.tar.gz
-ZLIB_URL=https://zlib.net/${ZLIB_TARBALL}
 ZLIB_INSTALL=${THISDIR}/install/zlib
 
-LIBEVENT=libevent-2.1.8-stable
-LIBEVENT_TARBALL=${LIBEVENT}.tar.gz
-LIBEVENT_URL=https://github.com/libevent/libevent/releases/download/release-2.1.8-stable/${LIBEVENT_TARBALL}
 LIBEVENT_INSTALL=${THISDIR}/install/libevent
 
-OPENSSL=openssl-1.1.0h
-OPENSSL_TARBALL=${OPENSSL}.tar.gz
-OPENSSL_URL=https://www.openssl.org/source/${OPENSSL_TARBALL}
 OPENSSL_INSTALL=${THISDIR}/install/openssl
 
 
@@ -29,11 +28,12 @@ TOR_URL=https://www.torproject.org/dist/${TOR_TARBALL}
 TOR_INSTALL=${THISDIR}/install/tor
 
 
-LLVMCC=wllvm
-LLVMGET=extract-bc
+LLVMCC ?= gclang
+export LLVMCC
 
-#LLVMCC=gclang
-#LLVMGET=get-bc
+LLVMGET ?= get-bc
+export LLVMGET
+
 
 ifeq (Darwin, $(findstring Darwin, ${OS}))
 
@@ -51,13 +51,30 @@ endif
 
 
 
+BITCODE = tor.bc
 
-BITCODE = libz.a.bc libssl.a.bc libevent.a.bc tor.bc
-
-all: tor.bc
+all: ${BITCODE}
 
 
-#${BITCODE}
+Makefile_zlib:
+	$(error Makefile_zlib is missing but required)
+
+
+${ZLIB_INSTALL}: Makefile_zlib
+	make -C . -f Makefile_zlib
+
+Makefile_openssl:
+	$(error Makefile_openssl is missing but required)
+
+${OPENSSL_INSTALL}: Makefile_openssl
+	make -C . -f Makefile_openssl
+
+Makefile_libevent:
+	$(error Makefile_libevent is missing but required)
+
+${LIBEVENT_INSTALL}: Makefile_libevent
+	make -C . -f Makefile_libevent
+
 
 ${TOR_TARBALL}:
 	wget ${TOR_URL}
@@ -65,62 +82,24 @@ ${TOR_TARBALL}:
 ${TOR}: ${TOR_TARBALL}
 	tar xvfz ${TOR_TARBALL}
 
-${TOR_INSTALL}/bin/tor: ${TOR} libz.a.bc libssl.a.bc libevent.a.bc
+${TOR_INSTALL}/bin/tor: ${TOR} ${ZLIB_INSTALL} ${OPENSSL_INSTALL} ${LIBEVENT_INSTALL}
 	cd ${TOR}; CC=${LLVMCC} LDFLAGS=${LDFLAGS} CFLAGS=${CFLAGS} ./configure ${CFG_FLAGS};  make && make install
 
 tor.bc: ${TOR_INSTALL}/bin/tor
 	cd ${TOR_INSTALL}/bin; ${LLVMGET} tor; mv tor.bc ${THISDIR}
 
 
-${ZLIB_TARBALL}:
-	wget ${ZLIB_URL}
-
-${ZLIB}: ${ZLIB_TARBALL}
-	tar xvfz ${ZLIB_TARBALL}
-
-${ZLIB_INSTALL}/lib/libz.a: ${ZLIB}
-	cd ${ZLIB}; CC=${LLVMCC} ./configure --prefix=${ZLIB_INSTALL}; make && make install
-
-libz.a.bc: ${ZLIB_INSTALL}/lib/libz.a
-	cd ${ZLIB_INSTALL}/lib; ${LLVMGET} -b libz.a; mv libz.a.bc ${THISDIR}
-
-
-${OPENSSL_TARBALL}:
-	wget ${OPENSSL_URL}
-
-${OPENSSL}: ${OPENSSL_TARBALL}
-	tar xvfz ${OPENSSL_TARBALL}
-
-${OPENSSL_INSTALL}/lib/libssl.a: ${OPENSSL}
-	cd ${OPENSSL}; CC=${LLVMCC} ./config --prefix=${OPENSSL_INSTALL} --openssldir=${OPENSSL_INSTALL}; make && make install
-
-libssl.a.bc: ${OPENSSL_INSTALL}/lib/libssl.a
-	cd ${OPENSSL_INSTALL}/lib; ${LLVMGET} -b libssl.a; mv libssl.a.bc ${THISDIR}
-
-
-${LIBEVENT_TARBALL}:
-	wget ${LIBEVENT_URL}
-
-${LIBEVENT}: ${LIBEVENT_TARBALL}
-	tar xvfz ${LIBEVENT_TARBALL}
-
-${LIBEVENT_INSTALL}/lib/libevent.a: ${LIBEVENT}
-	cd ${LIBEVENT}; CC=${LLVMCC} CFLAGS="-I${OPENSSL_INSTALL}/include" LDFLAGS="-L${OPENSSL_INSTALL}/lib" ./configure --prefix=${LIBEVENT_INSTALL}; make && make install
-
-libevent.a.bc: ${LIBEVENT_INSTALL}/lib/libevent.a
-	cd ${LIBEVENT_INSTALL}/lib; ${LLVMGET} -b libevent.a; mv libevent.a.bc ${THISDIR}
-
-
 
 clean:
 	rm -f ${BITCODE}
-	make -C ${ZLIB} clean
-	make -C ${LIBEVENT} clean
-	make -C ${OPENSSL} clean
+	make -C . -f Makefile_zlib clean
+	make -C . -f Makefile_libevent clean
+	make -C . -f Makefile_openssl clean
 	make -C ${TOR} clean
 
 very_clean: clean
-	rm -rf install ${TOR} ${ZLIB} ${OPENSSL} ${LIBEVENT}
+	rm -rf ${TOR_INSTALL} ${TOR} 
 
 spotless: very_clean
-	rm -rf ${TOR_TARBALL} ${ZLIB_TARBALL} ${OPENSSL_TARBALL} ${LIBEVENT_TARBALL}
+	rm -rf ${TOR_TARBALL}
+

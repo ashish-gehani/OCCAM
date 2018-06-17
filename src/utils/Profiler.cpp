@@ -226,11 +226,12 @@ namespace previrt {
         if (const ConstantInt *CI = dyn_cast<const ConstantInt> (BI->getOperand (1))) {
           APInt shift = CI->getValue ();
           if (CI->getType ()->isIntegerTy ()) {
-            APInt bitwidth (32, CI->getType ()->getIntegerBitWidth (), true);
-            if (shift.slt (bitwidth))
+            APInt bitwidth (shift.getBitWidth(), CI->getType ()->getIntegerBitWidth (), true);
+            if (shift.slt (bitwidth)) {
               ++SafeLeftShift;
-            else
+	    } else {
               ++UnsafeLeftShift;
+	    }
           }
           else 
             ++UnknownLeftShift;

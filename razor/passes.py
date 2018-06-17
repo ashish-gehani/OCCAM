@@ -80,77 +80,131 @@ def strip(input_file, output_file):
     return driver.run(config.get_llvm_tool('opt'), args)
 
 def devirt(input_file, output_file):
-    """ devirtualize indirect function calls
+    """ resolve indirect function calls
     """
-    args = ['-devirt-ta', '-calltarget-ignore-external']    
-    #args = ['-devirt', '-calltarget-ignore-external']
-    return driver.previrt_progress(input_file, output_file, args)
+    args = ['-devirt-ta',
+            # XXX: this one is not, in general, sound
+            #'-calltarget-ignore-external',
+            '-inline']    
+    retcode = driver.previrt_progress(input_file, output_file, args)
+    if retcode != 0:
+        return retcode
+
+    #FIXME: previrt_progress returns 0 in cases where --devirt-ta crashes.
+    #Here we check that the output_file exists 
+    if not os.path.isfile(output_file):
+        #Some return code different from zero
+        return 3
+    else:
+        return retcode
+            
 
 def profile(input_file, output_file):
-    """ Count number of instructions, functions, memory accesses, etc
+    """ count number of instructions, functions, memory accesses, etc.
     """
     args = ['-Pprofiler']
     args += ['-profile-outfile={0}'.format(output_file)]
-    return driver.previrt_progress(input_file, '/dev/null', args)
+    return driver.previrt(input_file, '/dev/null', args)
 
-def peval(input_file, output_file, use_llpe, use_ipdse, log=None):
+def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, log=None):
     """ intra module previrtualization
     """
     opt = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
-    pre = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
     done = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
+    tmp = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
     opt.close()
-    pre.close()
     done.close()
+    tmp.close()
+    
+    #XXX: Optimize using standard llvm transformations before any other pass.
+    #Otherwise, these passes will not be very effective.
+    retcode = optimize(input_file, done.name)
+    if retcode != 0:
+        print("ERROR: intra module optimization failed!")
+        shutil.copy(input_file, output_file)
+        return retcode
+    else:
+        print("\tintra module optimization finished succesfully")
+
+    if use_devirt is not None:
+        retcode = devirt(done.name, tmp.name)
+        if retcode != 0:
+            print("ERROR: resolution of indirect calls failed!")
+            shutil.copy(done.name, output_file)
+            return retcode
+        
+        print("\tresolved indirect calls finished succesfully")
+        shutil.copy(tmp.name, done.name)
 
     if use_llpe is not None:
-        print('\tRunning LLPE...')
         llpe_libs = []
         for lib in config.get_llpelibs():
             llpe_libs.append('-load={0}'.format(lib))
             args = llpe_libs + ['-loop-simplify', '-lcssa', \
                                 '-llpe', '-llpe-omit-checks', '-llpe-single-threaded', \
-                                input_file, '-o=%s' % done.name]
-        driver.run(config.get_llvm_tool('opt'), args)
-        shutil.copy(done.name, input_file)
+                                done.name, '-o=%s' % tmp.name]
+        retcode = driver.run(config.get_llvm_tool('opt'), args)
+        if retcode != 0:
+            print("ERROR: llpe failed!")
+            shutil.copy(done.name, output_file)
+            #FIXME: unlink files
+            return retcode
+        else:
+            print("\tllpe finished succesfully")
+        shutil.copy(tmp.name, done.name)
+
+    if use_ipdse is not None:
+        ##lower global initializers to store's in main (improve precision of sccp)
+        passes = ['-lower-gv-init']
+        ##dead store elimination (improve precision of sccp)
+        passes += ['-memory-ssa', '-Pmem-ssa-local-mod','-Pmem-ssa-split-fields',
+                   '-mem2reg', '-ip-dse', '-strip-memory-ssa-inst']
+        ##perform sccp
+        passes += ['-Psccp']
+        ##cleanup after sccp
+        passes += ['-dce', '-globaldce']
+        retcode = driver.previrt(done.name, tmp.name, passes)
+        if retcode != 0:
+            print("ERROR: ipdse failed!")
+            shutil.copy(done.name, output_file)
+            #FIXME: unlink files
+            return retcode
+        else:
+            print("\tipdse finished succesfully")
+        shutil.copy(tmp.name, done.name)
 
     out = ['']
-    shutil.copy(input_file, done.name)
+    iteration = 0
     while True:
-        # optimize using standard llvm transformations
-        retcode = optimize(done.name, opt.name)
-        if retcode != 0:
-            shutil.copy(done.name, output_file)
-            return retcode
-
-        passes = []
-        if use_ipdse is not None:
-            print('\tRunning IP-DSE...')
-            ##lower global initializers to store's in main (improve precision of sccp)
-            passes += ['-lower-gv-init']
-            ##dead store elimination (improve precision of sccp)
-            passes += ['-memory-ssa', '-Pmem-ssa-local-mod','-Pmem-ssa-split-fields',
-                       '-mem2reg', '-ip-dse', '-strip-memory-ssa-inst']
-            ##perform sccp
-            passes += ['-Psccp']
-            ##cleanup after sccp
-            passes += ['-dce', '-globaldce']
-
+        iteration += 1
+        if iteration > 1 or \
+           (use_llpe is not None or use_ipdse is not None):
+            # optimize using standard llvm transformations
+            retcode = optimize(done.name, opt.name)
+            if retcode != 0:
+                print("ERROR: intra-module optimization failed!")
+                break;
+            else:
+                print("\tintra module optimization finished succesfully")
+        else:
+            shutil.copy(done.name, opt.name)            
 
         # inlining using policies
-        passes += ['-Ppeval']
-        if driver.previrt_progress(opt.name, done.name, passes, output=out):
-            print("previrt successful")
+        passes = ['-Ppeval']
+        progress = driver.previrt_progress(opt.name, done.name, passes, output=out)
+        print("\tintra-module specialization finished")        
+        if progress:
             if log is not None:
                 log.write(out[0])
         else:
+            shutil.copy(opt.name, done.name)
             break
-
-    shutil.move(done.name, output_file)
-
+        
+    shutil.copy(done.name, output_file)
     try:
-        os.unlink(done.name)
-        os.unlink(pre.name)
+        os.unlink(done.name)        
+        os.unlink(opt.name)
+        os.unlink(tmp.name)
     except OSError:
         pass
     return retcode
@@ -160,7 +214,8 @@ def optimize(input_file, output_file):
     return driver.run(config.get_llvm_tool('opt'), args)
 
 def constrain_program_args(input_file, output_file, cnstrs, filename=None):
-    "constrain the program arguments"
+    """ constrain the program arguments.
+    """
     if filename is None:
         cnstr_file = tempfile.NamedTemporaryFile(delete=False)
         cnstr_file.close()
@@ -183,7 +238,8 @@ def constrain_program_args(input_file, output_file, cnstrs, filename=None):
         os.unlink(cnstr_file)
 
 def specialize_program_args(input_file, output_file, args, filename=None, name=None):
-    "fix the program arguments"
+    """ fix the program arguments.
+    """
     if filename is None:
         arg_file = tempfile.NamedTemporaryFile(delete=False)
         arg_file.close()
@@ -205,7 +261,8 @@ def specialize_program_args(input_file, output_file, args, filename=None, name=N
         os.unlink(arg_file)
 
 def deep(libs, ifaces):
-    "compute interfaces across modules"
+    """ compute interfaces across modules.
+    """
     tf = tempfile.NamedTemporaryFile(suffix='.iface', delete=False)
     tf.close()
     iface = inter.parseInterface(ifaces[0])

@@ -4,15 +4,23 @@ THISDIR =  $(shell pwd)
 OS      =  $(shell uname)
 ARCH    =  $(shell uname -p)
 
+ZLIB_VERSION = 1.2.11
+export ZLIB_VERSION
+
+OPENSSL_VERSION=1.0.2o
+export OPENSSL_VERSION
+
 
 OPENSSL_INSTALL=${THISDIR}/install/openssl
 
+ZLIB_INSTALL=${THISDIR}/install/zlib
 
-#LLVMCC=wllvm
-#LLVMGET=extract-bc
 
-LLVMCC=gclang
-LLVMGET=get-bc
+LLVMCC ?= gclang
+LLVMGET ?= get-bc
+
+export LLVMCC
+export LLVMGET
 
 OPENSSH=openssh-7.7p1
 OPENSSH_TARBALL=${OPENSSH}.tar.gz
@@ -33,9 +41,24 @@ endif
 CFLAGS="-I${OPENSSL_INSTALL}/include -Wl,-rpath,${OPENSSL_INSTALL}/lib"
 LDFLAGS="-L${OPENSSL_INSTALL}/lib"
 
-OPENSSH_BITCODE=ssh.bc sshd.bc
 
-all: ${OPENSSH_BITCODE}
+BITCODE=ssh.bc sshd.bc
+
+all: ${BITCODE}
+
+
+Makefile_zlib:
+	$(error Makefile_zlib is missing but required)
+
+${ZLIB_INSTALL}: Makefile_zlib
+	make -C . -f Makefile_zlib
+
+Makefile_openssl:
+	$(error Makefile_openssl is missing but required)
+
+${OPENSSL_INSTALL}: Makefile_openssl
+	make -C . -f Makefile_openssl
+
 
 ${OPENSSH_TARBALL}:
 	wget ${OPENSSH_URL}
@@ -43,7 +66,7 @@ ${OPENSSH_TARBALL}:
 ${OPENSSH}: ${OPENSSH_TARBALL}
 	tar xvfz ${OPENSSH_TARBALL}
 
-${OPENSSH}/Makefile: ${OPENSSH} libssl.a.bc
+${OPENSSH}/Makefile:  ${ZLIB_INSTALL} ${OPENSSL_INSTALL} ${OPENSSH} 
 	cd ${OPENSSH}; autoconf
 	cd ${OPENSSH}; CC=${LLVMCC} LDFLAGS=${LDFLAGS} CFLAGS=${CFLAGS} ./configure  --prefix=${OPENSSH_INSTALL}  --with-openssl-dir=${OPENSSL_INSTALL}
 
@@ -57,15 +80,19 @@ sshd.bc: ${OPENSSH}/ssh
 	cd ${OPENSSH_INSTALL}/sbin; ${LLVMGET} sshd; mv sshd.bc ${THISDIR}
 
 
-libssl.a.bc:
-	make -C . -f Makefile_openssl
+clean:
+	rm -f ${BITCODE} libz.a.bc libssl.a.bc libcrypto.a.bc
+	make -C ${OPENSSH} clean
+	make -C . -f Makefile_openssl clean
+	make -C . -f Makefile_zlib clean
 
 
 very_clean:
-	rm -rf ${OPENSSH} ${OPENSSH_BITCODE}
-#	make -C . -f Makefile_openssl very_clean
-
+	rm -rf install ${OPENSSH}
+	make -C . -f Makefile_zlib very_clean
+	make -C . -f Makefile_openssl very_clean
 
 spotless: very_clean
 	rm -rf ${OPENSSH_TARBALL}
 	make -C . -f Makefile_openssl spotless
+

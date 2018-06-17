@@ -1,54 +1,79 @@
-MANIFEST=tree.manifest.constraints
+all: tree.bc tree_orig
 
-all: tree_slash
-
-
-COMPILER=wllvm
-EXTRACT_BC=extract-bc
-
-#COMPILER=gclang
-#EXTRACT_BC=get-bc
+THISDIR =  $(shell pwd)
+OS      =  $(shell uname)
+ARCH    =  $(shell uname -p)
 
 
-tree:
-	git clone git://anonscm.debian.org/collab-maint/tree.git
+TREE_VERSION ?= 1.7.0
+
+TREE=tree-${TREE_VERSION}
+TREE_TARBALL=${TREE_VERSION}.tar.gz
+TREE_URL=https://github.com/SRI-CSL/tree/archive/${TREE_TARBALL}
+TREE_INSTALL=${THISDIR}/install/zlib
+
+https://github.com/SRI-CSL/tree/archive/1.7.0.tar.gz
+
+LLVMCC ?= gclang
+LLVMGET ?= get-bc
+
+ifeq (Darwin, $(findstring Darwin, ${OS}))
+
+LIBEXT=dylib
+MAKEFILE=Makefile.darwin
+
+else
+
+LIBEXT=so
+MAKEFILE=Makefile.darwin
+
+endif
 
 
-compile: tree
-	cp Makefile.darwin tree
-	cd tree; CC=${COMPILER} make -f Makefile.darwin
+BITCODE = tree.bc
 
-tree.bc: compile_tweaked
-	${EXTRACT_BC} tree/tree
-	mv tree/tree.bc .
+all: ${BITCODE}
+
+${TREE_TARBALL}:
+	wget ${TREE_URL}
+
+${TREE}: ${TREE_TARBALL}
+	tar xvfz ${TREE_TARBALL}
+
+${TREE}/tree: ${TREE}
+	cp Makefile.darwin ${TREE}
+	cp tree_tweaked.c ${TREE}/tree.c
+	cd ${TREE}; CC=${LLVMCC} make -f ${MAKEFILE}
+
+tree.bc: ${TREE}/tree
+	${LLVMGET} ${TREE}/tree
+	cp ${TREE}/tree.bc .
+
+tree_orig: ${TREE}/tree
+	cp ${TREE}/tree tree_orig
 
 
-slash: tree.bc
-	slash --no-strip --stats --devirt --work-dir=slash $(MANIFEST)
 
-tree_slash: slash
-	cp slash/tree tree_slash
-	cp tree/tree tree_orig
+#compile_tweaked: tree
+#	cp Makefile.darwin tree
+#	cp tree_tweaked.c ${TREE}/tree.c
+#	cd ${TREE}; CC=${LLVMCC} make -f Makefile.darwin
 
-compile_tweaked: tree
-	cp Makefile.darwin tree
-	cp tree_tweaked.c tree/tree.c
-	cd tree; CC=${COMPILER} make -f Makefile.darwin
+#compile_tweaked_2: tree
+#	cp tree_tweaked_2.c ${TREE}/tree.c
+#	cd ${TREE}; CC=${LLVMCC} make -f Makefile.darwin
 
-compile_tweaked_2: tree
-	cp tree_tweaked_2.c tree/tree.c
-	cd tree; CC=${COMPILER} make -f Makefile.darwin
-
-tree_slash_tweaked: clean compile_tweaked slash
-	cp slash/tree tree_slash_tweaked
-
+#tree_slash_tweaked: clean compile_tweaked slash
+#	cp slash/tree tree_slash_tweaked
 
 
 clean:
 	rm -rf tree.bc slash
-	make -C tree clean
 
 very_clean: clean
 	rm -rf tree_slash tree_orig tree_slash_tweaked
-	make -C tree clean
-	rm -rf tree
+	make -C ${TREE} clean
+	rm -rf ${TREE}
+
+spotless: very_clean
+	rm -rf ${TREE_TARBALL}
