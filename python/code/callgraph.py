@@ -12,44 +12,49 @@ def isSystemCall(name):
     else:
         return (False, name)
 
+#I think there ia a LLVM C-API call for this. Maybe also the system call thingy.
 def isIntrinsic(name):
     return name.startswith('llvm.')
 
 
 
+class Node(object):
+
+    def __init__(self, name, nid, prototype=None):
+        self.name = name
+        self.nid = nid
+        self.prototype = prototype
+        self.attributes = {}
+
+
+
 class CallGraph(object):
 
-    def __init__(self, name):
+    def __init__(self, gname):
         self.id_counter = 0
-        self.name = name
-        # the maps node_ids to names
-        self.nids = {}
-        # maps the name to id
-        self.nodes = {}
+        self.gname = gname
+        # the maps node_ids to nodes
+        self.nid_to_node = {}
+        # maps the name to nodes
+        self.name_to_node = {}
         # the set of edges
         self.edges = set()
         # maps nodes to the set of edges that they participate in.
-        self.nodes_to_edges = {}
-        # maps nids to readable type string
-        self.prototypes = {}
+        self.nids_to_edges = {}
 
     @staticmethod
-    def fromModule(name, module, skip_system_calls = False):
-        callgraph = CallGraph(name)
+    def fromModule(gname, module, skip_system_calls = False):
+        callgraph = CallGraph(gname)
 
         for function in module.iter_functions():
-            node = function.get_name()
+            name = function.get_name()
 
             if function.is_declaration():
                 continue
 
-            node_id = callgraph.addNode(node, None, function.type_of().print_type_to_string())
+            node_id = callgraph.addNode(name, None, function.type_of().print_type_to_string())
 
             if not function.is_declaration():
-
-                #val = function.type_of()
-                #print(val.print_type_to_string())
-
                 callees = set()
                 for bb in function.iter_basic_blocks():
                     for instruction in bb.iter_instructions():
@@ -73,36 +78,35 @@ class CallGraph(object):
         return self.graphInfo()
 
 
-
     def graphInfo(self, nodes = None):
-        nids = set(self.nids.keys()) if nodes is None else self.toNidSet(nodes)
+        nids = set(self.nid_to_node.keys()) if nodes is None else self.toNidSet(nodes)
         eset = set()
         for e in self.edges:
             if (e[0] in nids) and (e[1] in nids):
                 eset.add(e)
-        return "CallGraph {0} with {1} nodes and {2} edges\n".format(self.name, len(nids), len(eset))
+        return "CallGraph {0} with {1} nodes and {2} edges\n".format(self.gname, len(nids), len(eset))
 
 
-    def addNode(self, node, id=None, prototype=None):
+    def addNode(self, name, id=None, prototype=None):
         """adds the node to graph (if necessary), and returns it's id.
 
         if you happen to know its id you can set that too (useful for making subgraphs).
         """
         nid = None
-        if node not in self.nodes:
+        if name not in self.name_to_node:
             nid = self.id_counter if id is None else id
-            self.nodes[node] = nid
-            self.nodes_to_edges[nid] = set()
-            self.nids[nid] = node
-            if prototype is not None:
-                self.prototypes[nid] = prototype
+            node = Node(name, nid, prototype)
+            self.name_to_node[name] = node
+            self.nids_to_edges[nid] = set()
+            self.nid_to_node[nid] = node
             self.id_counter += 1
         else:
-            nid = self.nodes[node]
+            node = self.name_to_node[name]
+            nid = node.nid
         return nid
 
     def getNodes(self):
-        return set(self.nodes.keys())
+        return set(self.name_to_node.keys())
 
     def addEdge(self, source, target):
         """adds the edge from the (id of) source to the (id of) target.
@@ -115,8 +119,8 @@ class CallGraph(object):
         edge = (src_id, tgt_id)
         self.edges.add(edge)
 
-        self.nodes_to_edges[src_id].add(edge)
-        self.nodes_to_edges[tgt_id].add(edge)
+        self.nids_to_edges[src_id].add(edge)
+        self.nids_to_edges[tgt_id].add(edge)
 
 
         return edge
@@ -125,13 +129,13 @@ class CallGraph(object):
     def toDotString(self, nodes = None):
         """produces the dot for either the entire graph, or just restricted to the nodes passed in.
         """
-        nids = set(self.nids.keys()) if nodes is None else self.toNidSet(nodes)
+        nids = set(self.nid_to_node.keys()) if nodes is None else self.toNidSet(nodes)
 
         sb = StringBuffer()
-        sb.append('digraph ').append(self.name).append(' {\n')
+        sb.append('digraph ').append(self.gname).append(' {\n')
         #sb.append('\tnode [shape=box];\n')
-        for node in self.nodes:
-            node_id = self.nodes[node]
+        for node in self.name_to_node:
+            node_id = self.name_to_node[node].nid
             if node_id not in nids:
                 continue
             sb.append('\t').append(node_id).append(' [label="').append(node).append('"];\n')
@@ -148,6 +152,10 @@ class CallGraph(object):
         sb.append('}\n')
         return str(sb)
 
+    def annotate(self, annotation, mapping):
+        pass
+
+
 
     def remove_isolated(self, name):
         subgraph = CallGraph(self.name)
@@ -156,7 +164,7 @@ class CallGraph(object):
             has_an_edge.add(edge[0])
             has_an_edge.add(edge[1])
 
-        for node, node_id in self.nodes.iteritems():
+        for node, node_id in self.name_to_node.iteritems():
             if node_id in has_an_edge:
                 subgraph.addNode(node, node_id)
 
@@ -175,8 +183,8 @@ class CallGraph(object):
         node_ids = set()
 
         for node in nodes:
-            if node in self.nodes:
-                node_id = self.nodes[node]
+            if node in self.name_to_node:
+                node_id = self.name_to_node[node]
                 node_ids.add(subgraph.addNode(node, node_id))
 
         for edge in self.edges:
@@ -188,12 +196,15 @@ class CallGraph(object):
 
 
     def toNidSet(self, nodes):
+        """converts an iterable of nodes (name, node, or nid) to a set of node ids."""
         answer = set()
         for node in nodes:
-            if isinstance(node, int):
+            if isinstance(node, Node):
+                answer.add(node.nid)
+            elif isinstance(node, int):
                 answer.add(node)
-            elif node in self.nodes:
-                answer.add(self.nodes[node])
+            elif node in self.name_to_node:
+                answer.add(self.name_to_node[node].nid)
 #            else:
 #                print("Skipping {0}".format(node))
         return answer
@@ -206,7 +217,7 @@ class CallGraph(object):
         while new:
             before = len(answer)
             for nid in answer.copy():
-                candidates = self.nodes_to_edges[nid]
+                candidates = self.nids_to_edges[nid]
                 for e in candidates:
                     if e[1] == nid:
                         answer.add(e[0])
@@ -222,7 +233,7 @@ class CallGraph(object):
         while new:
             before = len(answer)
             for nid in answer.copy():
-                candidates = self.nodes_to_edges[nid]
+                candidates = self.nids_to_edges[nid]
                 for e in candidates:
                     if e[0] == nid:
                         answer.add(e[1])
@@ -233,15 +244,16 @@ class CallGraph(object):
 
     def dump_prototypes(self, path, nids = None):
 
-        nids = set(self.nids.keys()) if nids is None else nids
+        nids = set(self.nid_to_node.keys()) if nids is None else nids
 
         try:
             with open(path, 'w') as fp:
                 for nid in nids:
-                    if nid in self.prototypes:
-                        fp.write(self.nids[nid])
+                    node = self.nid_to_node[nid]
+                    if node.prototype is not None:
+                        fp.write(node.name)
                         fp.write(" :  ")
-                        fp.write(self.prototypes[nid])
+                        fp.write(node.prototype)
                         fp.write("\n")
         except Exception as e:
             print(e)
