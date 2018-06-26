@@ -9,7 +9,7 @@ MANIFEST_SPECIALIZED=curl.manifest.specialized
 LLVMCC=gclang
 LLVMGET=get-bc
 
-all: slash_specialized slash_previrt
+all: previrt
 
 CURL=curl-7.60.0
 CURLURL=https://curl.haxx.se/download/${CURL}.tar.gz
@@ -32,12 +32,21 @@ libcurl.4.dylib.bc: install/bin/curl
 	${LLVMGET} install/lib/libcurl.4.dylib
 	mv install/lib/libcurl.4.dylib.bc .
 
+specialized: bitcode_specialized slash_specialized
 
-slash_specialized: curl.bc
+bitcode_specialized: curl.bc
+
+.PHONY: slash_specialized
+slash_specialized: 
 	slash --no-strip --devirt --stats --work-dir=slash_specialized $(MANIFEST_SPECIALIZED)
 	cp slash_specialized/curl curl_slash_specialized
 
-slash_previrt: curl.bc libcurl.4.dylib.bc
+previrt: bitcode_previrt slash_previrt
+
+bitcode_previrt: curl.bc libcurl.4.dylib.bc
+
+.PHONY: slash_previrt
+slash_previrt: 
 	slash --no-strip --devirt --stats --work-dir=slash_previrt $(MANIFEST_PREVIRT)
 	cp slash_previrt/curl curl_slash_previrt
 

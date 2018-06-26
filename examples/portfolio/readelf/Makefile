@@ -7,8 +7,7 @@ EXTRACT_BC=get-bc
 
 MANIFEST=readelf.manifest
 
-all: slash
-
+all: readelf.bc slash
 
 binutils:
 	git clone git://sourceware.org/git/binutils-gdb.git binutils
@@ -21,7 +20,8 @@ binutils/binutils/readelf: binutils
 readelf.bc: binutils/binutils/readelf
 	cd binutils/binutils; ${EXTRACT_BC} readelf; mv readelf.bc ../../
 
-slash: readelf.bc
+.PHONY: slash
+slash: 
 	slash --stats --devirt --no-strip --work-dir=slash $(MANIFEST)
 	cp slash/readelf readelf_slash
 	cp  binutils/binutils/readelf readelf_orig

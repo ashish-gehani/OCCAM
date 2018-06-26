@@ -16,7 +16,15 @@ EXECPREFIX=${PROG}
 FULLEXEC=$(CURDIR)/../../benchspec/CPU2006/${FULLPROG}/exe/${EXECPREFIX}_${EXECSUFFIX}
 LLVMGET ?= get-bc
 
-all:
+BITCODE= ${PROG}.bc
+
+all: ${BITCODE} slash
+
+.PHONY: slash
+slash:
+	./build.sh
+
+${PROG}.bc:
 ifeq ($(SPEC),)
 	$(error SPEC is undefined)
 endif
