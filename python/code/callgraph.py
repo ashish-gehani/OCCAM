@@ -153,7 +153,14 @@ class CallGraph(object):
         return str(sb)
 
     def annotate(self, annotation, mapping):
-        pass
+        for name in mapping.keys():
+            node = self.name_to_node.get(name, None)
+            if node is not None:
+                val = mapping[name]
+                #print('node: {0} annotation: {1} value: {2}'.format(name, annotation, val))
+                node.attributes[annotation] = val
+            else:
+                print("skipping {0}\n".format(name))
 
 
 
