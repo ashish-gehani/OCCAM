@@ -32,7 +32,7 @@ endif
 
 BITCODE = tree.bc
 
-all: ${BITCODE}
+all: ${BITCODE} slash
 
 ${TREE_TARBALL}:
 	wget ${TREE_URL}
@@ -52,7 +52,9 @@ tree.bc: ${TREE}/tree
 tree_orig: ${TREE}/tree
 	cp ${TREE}/tree tree_orig
 
-
+.PHONY: slash
+slash:
+	./build.sh
 
 #compile_tweaked: tree
 #	cp Makefile.darwin tree
