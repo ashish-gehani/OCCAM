@@ -19,8 +19,8 @@ def main(args):
 
         callgraph = CallGraph.fromModule(gname, module, False) # True means we skip system calls
 
-        #print(callgraph)
-        print(callgraph.toDotString())
+        print(callgraph)
+        #print(callgraph.toDotString())
 
         return 0
 

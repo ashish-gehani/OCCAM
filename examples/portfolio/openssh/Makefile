@@ -44,7 +44,7 @@ LDFLAGS="-L${OPENSSL_INSTALL}/lib"
 
 BITCODE=ssh.bc sshd.bc
 
-all: ${BITCODE}
+all: ${BITCODE} slash
 
 
 Makefile_zlib:
@@ -73,12 +73,23 @@ ${OPENSSH}/Makefile:  ${ZLIB_INSTALL} ${OPENSSL_INSTALL} ${OPENSSH}
 ${OPENSSH}/ssh: ${OPENSSH}/Makefile
 	cd ${OPENSSH}; CC=${LLVMCC} make && make install
 
+ifeq ("$(wildcard ./ssh.bc)","")
 ssh.bc: ${OPENSSH}/ssh
 	cd ${OPENSSH_INSTALL}/bin; ${LLVMGET} ssh; mv ssh.bc ${THISDIR}
+else
+ssh.bc: echo "Found ssh.bc: do nothing"
+endif
 
-sshd.bc: ${OPENSSH}/ssh
+ifeq ("$(wildcard ./sshd.bc)","")
+sshd.bc: #${OPENSSH}/ssh
 	cd ${OPENSSH_INSTALL}/sbin; ${LLVMGET} sshd; mv sshd.bc ${THISDIR}
+else
+sshd.bc: echo "Found sshd.bc: do nothing"
+endif
 
+.PHONY: slash
+slash:
+	./build.sh
 
 clean:
 	rm -f ${BITCODE} libz.a.bc libssl.a.bc libcrypto.a.bc
