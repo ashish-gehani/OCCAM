@@ -1,0 +1,21 @@
+from llvmcpy.llvm import *
+
+
+def fileToModule(path):
+    buffer = create_memory_buffer_with_contents_of_file(path)
+    context = get_global_context()
+    module = context.parse_ir(buffer)
+    return module
+
+
+def file2Array(path):
+    retval = []
+    try:
+        with open(path, 'r') as fp:
+            for entry in fp.readlines():
+                entry = entry.strip()
+                if entry and entry[0] != '#':
+                    retval.append(entry)
+    except Exception as e:
+        sys.stderr.write('file2Array("{0}") threw {1}\n'.format(path, str(e)))
+    return retval
