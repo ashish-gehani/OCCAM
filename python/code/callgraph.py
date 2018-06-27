@@ -26,6 +26,28 @@ class Node(object):
         self.prototype = prototype
         self.attributes = {}
 
+    def set_attribute(self, key, val):
+        self.attributes[key] = val
+
+    def get_attribute(self, key, default=None):
+        self.attributes.get(key, default)
+
+    def toDotString(self, attributes = False):
+        cr = r'\n'
+        sb = StringBuffer()
+        sb.append(self.nid).append(' [label="').append(self.name)
+        if attributes:
+            if isinstance(attributes, list):
+                for key in self.attributes:
+                    if key in attributes:
+                        sb.append(cr).append(key).append(' = ').append(self.attributes[key])
+            else:
+                for key in self.attributes:
+                    sb.append(cr).append(key).append(' = ').append(self.attributes[key])
+        sb.append('"];')
+        return str(sb)
+
+
 
 
 class CallGraph(object):
@@ -52,24 +74,32 @@ class CallGraph(object):
             if function.is_declaration():
                 continue
 
-            node_id = callgraph.addNode(name, None, function.type_of().print_type_to_string())
+            basic_blocks = 0
+            instructions = 0
 
-            if not function.is_declaration():
-                callees = set()
-                for bb in function.iter_basic_blocks():
-                    for instruction in bb.iter_instructions():
-                        if instruction.is_a_call_inst():
-                            fname = instruction.get_called().get_name()
-                            if fname:
-                                (isSysCall, callee) = isSystemCall(fname)
-                                #ignore instrinsics and ...
-                                if callee and not isIntrinsic(callee):
-                                    if not (skip_system_calls and isSysCall):
-                                        callees.add(callee)
-                            #print(instruction.print_value_to_string())
-                            #print(instruction.get_called().get_name())
-                for callee in callees:
-                    callgraph.addEdge(node_id, callee)
+            node = callgraph.addNode(name, None, function.type_of().print_type_to_string())
+            node_id = node.nid
+
+            callees = set()
+            for bb in function.iter_basic_blocks():
+                basic_blocks += 1
+                for instruction in bb.iter_instructions():
+                    instructions += 1
+                    if instruction.is_a_call_inst():
+                        fname = instruction.get_called().get_name()
+                        if fname:
+                            (isSysCall, callee) = isSystemCall(fname)
+                            #ignore instrinsics and ...
+                            if callee and not isIntrinsic(callee):
+                                if not (skip_system_calls and isSysCall):
+                                    callees.add(callee)
+                        #print(instruction.print_value_to_string())
+                        #print(instruction.get_called().get_name())
+            for callee in callees:
+                callgraph.addEdge(node_id, callee)
+
+            node.set_attribute('basic_blocks', basic_blocks)
+            node.set_attribute('instructions', instructions)
 
         return callgraph
 
@@ -88,11 +118,11 @@ class CallGraph(object):
 
 
     def addNode(self, name, id=None, prototype=None):
-        """adds the node to graph (if necessary), and returns it's id.
+        """creates and adds the node to graph (if necessary), and returns it.
 
         if you happen to know its id you can set that too (useful for making subgraphs).
         """
-        nid = None
+        node = None
         if name not in self.name_to_node:
             nid = self.id_counter if id is None else id
             node = Node(name, nid, prototype)
@@ -102,8 +132,7 @@ class CallGraph(object):
             self.id_counter += 1
         else:
             node = self.name_to_node[name]
-            nid = node.nid
-        return nid
+        return node
 
     def getNodes(self):
         return set(self.name_to_node.keys())
@@ -114,8 +143,8 @@ class CallGraph(object):
         if the source or target is an integer it is treated as the id,
         if it is a string it is presumed to be the name of a node.
         """
-        src_id = source if isinstance(source, int) else self.addNode(source)
-        tgt_id = target if isinstance(target, int) else self.addNode(target)
+        src_id = source if isinstance(source, int) else self.addNode(source).nid
+        tgt_id = target if isinstance(target, int) else self.addNode(target).nid
         edge = (src_id, tgt_id)
         self.edges.add(edge)
 
@@ -126,7 +155,7 @@ class CallGraph(object):
         return edge
 
 
-    def toDotString(self, nodes = None):
+    def toDotString(self, nodes = None, attributes = False):
         """produces the dot for either the entire graph, or just restricted to the nodes passed in.
         """
         nids = set(self.nid_to_node.keys()) if nodes is None else self.toNidSet(nodes)
@@ -134,11 +163,12 @@ class CallGraph(object):
         sb = StringBuffer()
         sb.append('digraph ').append(self.gname).append(' {\n')
         #sb.append('\tnode [shape=box];\n')
-        for node in self.name_to_node:
-            node_id = self.name_to_node[node].nid
+        for name in self.name_to_node:
+            node = self.name_to_node[name]
+            node_id = node.nid
             if node_id not in nids:
                 continue
-            sb.append('\t').append(node_id).append(' [label="').append(node).append('"];\n')
+            sb.append('\t').append(node.toDotString(attributes)).append('\n')
 
         for edge in self.edges:
             src_id = edge[0]
@@ -192,7 +222,7 @@ class CallGraph(object):
         for node in nodes:
             if node in self.name_to_node:
                 node_id = self.name_to_node[node]
-                node_ids.add(subgraph.addNode(node, node_id))
+                node_ids.add(subgraph.addNode(node, node_id).nid)
 
         for edge in self.edges:
             if (edge[0] in node_ids) and (edge[1] in node_ids):

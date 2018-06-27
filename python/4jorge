@@ -42,8 +42,8 @@ def main(args):
 
         callgraph.annotate('gadgets', ropmap)
 
-        print(callgraph)
-        #print(callgraph.toDotString())
+        #print(callgraph)
+        print(callgraph.toDotString(None, ['gadgets']))
 
         return 0
 
@@ -76,7 +76,7 @@ def compute_callgraph(bitcode_path):
 
     gname = basename(bitcode_path).replace('.', '_')
 
-    return CallGraph.fromModule(gname, module, False) # True means we skip system calls
+    return CallGraph.fromModule(gname, module, True) # True means we skip system calls
 
 
 if __name__ == '__main__':
