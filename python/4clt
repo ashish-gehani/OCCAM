@@ -9,7 +9,7 @@ from code.callgraph import CallGraph
 
 from code.util import (fileToModule, file2Array)
 
-#./forclt ../examples/portfolio/openssh/ssh.bc ../examples/portfolio/openssh/frontier-clt.txt
+#./4clt ../examples/portfolio/openssh/ssh.bc ../examples/portfolio/openssh/frontier-clt.txt
 
 sample = (
     'EVP_aes_128_cbc',

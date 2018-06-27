@@ -67,17 +67,17 @@ ${OPENSSH_TARBALL}:
 ${OPENSSH}: ${OPENSSH_TARBALL}
 	tar xvfz ${OPENSSH_TARBALL}
 
-${OPENSSH}/Makefile:  ${ZLIB_INSTALL} ${OPENSSL_INSTALL} ${OPENSSH} 
+${OPENSSH}/Makefile:  ${ZLIB_INSTALL} ${OPENSSL_INSTALL} ${OPENSSH}
 	cd ${OPENSSH}; autoconf
-	cd ${OPENSSH}; CC=${LLVMCC} LDFLAGS=${LDFLAGS} CFLAGS=${CFLAGS} ./configure  --prefix=${OPENSSH_INSTALL}  --with-openssl-dir=${OPENSSL_INSTALL}
+	cd ${OPENSSH}; CC=${LLVMCC} LDFLAGS=${LDFLAGS} CFLAGS=${CFLAGS} ./configure  --disable-strip --prefix=${OPENSSH_INSTALL}  --with-openssl-dir=${OPENSSL_INSTALL}
 
-${OPENSSH}/ssh: ${OPENSSH}/Makefile
+${OPENSSH_INSTALL}/bin/ssh: ${OPENSSH}/Makefile
 	cd ${OPENSSH}; CC=${LLVMCC} make && make install
 
-ssh.bc: ${OPENSSH}/ssh
+ssh.bc: ${OPENSSH_INSTALL}/bin/ssh
 	cd ${OPENSSH_INSTALL}/bin; ${LLVMGET} ssh; mv ssh.bc ${THISDIR}
 
-sshd.bc: #${OPENSSH}/ssh
+sshd.bc: ${OPENSSH_INSTALL}/bin/ssh
 	cd ${OPENSSH_INSTALL}/sbin; ${LLVMGET} sshd; mv sshd.bc ${THISDIR}
 
 .PHONY: slash
@@ -99,4 +99,3 @@ very_clean:
 spotless: very_clean
 	rm -rf ${OPENSSH_TARBALL}
 	make -C . -f Makefile_openssl spotless
-

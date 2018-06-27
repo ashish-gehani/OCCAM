@@ -190,7 +190,7 @@ class CallGraph(object):
                 #print('node: {0} annotation: {1} value: {2}'.format(name, annotation, val))
                 node.attributes[annotation] = val
             else:
-                print("skipping {0}\n".format(name))
+                sys.stderr.write("skipping {0}\n".format(name))
 
 
 
