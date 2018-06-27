@@ -4,10 +4,9 @@
 
 COMPILER=gclang
 EXTRACT_BC=get-bc
+CURDIR=$(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 
-MANIFEST=readelf.manifest
-
-all: readelf.bc slash
+all: readelf.bc 
 
 binutils:
 	git clone git://sourceware.org/git/binutils-gdb.git binutils
@@ -21,11 +20,8 @@ readelf.bc: binutils/binutils/readelf
 	cd binutils/binutils; ${EXTRACT_BC} readelf; mv readelf.bc ../../
 
 .PHONY: slash
-slash: 
-	slash --stats --devirt --no-strip --work-dir=slash $(MANIFEST)
-	cp slash/readelf readelf_slash
-	cp  binutils/binutils/readelf readelf_orig
-
+slash:
+	${CURDIR}/build.sh
 
 clean:
 	rm -rf ./binutils/binutils/readelf slash

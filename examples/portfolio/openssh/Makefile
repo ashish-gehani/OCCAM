@@ -15,6 +15,7 @@ OPENSSL_INSTALL=${THISDIR}/install/openssl
 
 ZLIB_INSTALL=${THISDIR}/install/zlib
 
+CURDIR=$(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 
 LLVMCC ?= gclang
 LLVMGET ?= get-bc
@@ -44,7 +45,7 @@ LDFLAGS="-L${OPENSSL_INSTALL}/lib"
 
 BITCODE=ssh.bc sshd.bc
 
-all: ${BITCODE} slash
+all: ${BITCODE}
 
 
 Makefile_zlib:
@@ -81,7 +82,7 @@ sshd.bc: #${OPENSSH}/ssh
 
 .PHONY: slash
 slash:
-	./build.sh
+	${CURDIR}/build.sh
 
 clean:
 	rm -f ${BITCODE} libz.a.bc libssl.a.bc libcrypto.a.bc

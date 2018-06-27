@@ -12,6 +12,8 @@ TREE_TARBALL=${TREE_VERSION}.tar.gz
 TREE_URL=https://github.com/SRI-CSL/tree/archive/${TREE_TARBALL}
 TREE_INSTALL=${THISDIR}/install/zlib
 
+CURDIR=$(dir $(realpath $(firstword $(MAKEFILE_LIST))))
+
 https://github.com/SRI-CSL/tree/archive/1.7.0.tar.gz
 
 LLVMCC ?= gclang
@@ -32,7 +34,7 @@ endif
 
 BITCODE = tree.bc
 
-all: ${BITCODE} slash
+all: ${BITCODE} 
 
 ${TREE_TARBALL}:
 	wget ${TREE_URL}
@@ -54,7 +56,7 @@ tree_orig: ${TREE}/tree
 
 .PHONY: slash
 slash:
-	./build.sh
+	${CURDIR}/build.sh
 
 #compile_tweaked: tree
 #	cp Makefile.darwin tree
