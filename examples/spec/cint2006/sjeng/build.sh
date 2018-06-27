@@ -34,6 +34,6 @@ EOF
 
 
 # Run OCCAM
+cp ./sjeng ./sjeng_orig
 slash --stats --devirt --work-dir=slash sjeng.manifest
-
 cp ./slash/sjeng_slashed .

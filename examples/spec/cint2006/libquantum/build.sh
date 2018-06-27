@@ -20,7 +20,7 @@ done
 export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
 
-rm -rf slash ssh_slashed
+rm -rf slash libquantum_slashed
 
 # Build the manifest file
 cat > libquantum.manifest <<EOF
@@ -34,6 +34,6 @@ EOF
 
 
 # Run OCCAM
+cp ./libquantum ./libquantum_orig
 slash --stats --devirt --work-dir=slash libquantum.manifest
-
 cp ./slash/libquantum_slashed .

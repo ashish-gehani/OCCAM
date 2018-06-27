@@ -20,7 +20,7 @@ done
 export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
 
-rm -rf slash ssh_slashed
+rm -rf slash gcc_slashed
 
 # Build the manifest file
 cat > gcc.manifest <<EOF
@@ -34,6 +34,6 @@ EOF
 
 
 # Run OCCAM
+cp ./gcc ./gcc_orig
 slash --stats --devirt --work-dir=slash gcc.manifest
-
 cp ./slash/gcc_slashed .
