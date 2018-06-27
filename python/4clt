@@ -52,17 +52,17 @@ def main(args):
 
         nids = callgraph.close_up(sample)
 
+        nids_down = callgraph.close_down(['main'])
+
+        nids = nids.intersection(nids_down)
+
         #print(len(nids))
 
         callgraph.dump_prototypes('/tmp/prototypes.txt', nids)
 
         #print(callgraph.graphInfo(nids))
 
-        print(callgraph.toDotString(nids, True))
-
-        #nids_down = callgraph.close_down(['main'])
-
-        #print(callgraph.toDotString(nids))
+        print(callgraph.toDotString(nids, False))
 
         return 0
 
