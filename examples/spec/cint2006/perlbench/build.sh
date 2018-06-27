@@ -34,6 +34,6 @@ EOF
 
 
 # Run OCCAM
+cp ./perlbench ./perlbench_orig
 slash --stats --devirt --work-dir=slash perlbench.manifest
-
 cp ./slash/perlbench_slashed .

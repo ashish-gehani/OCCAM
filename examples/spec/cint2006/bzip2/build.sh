@@ -20,7 +20,7 @@ done
 export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
 
-rm -rf slash ssh_slashed
+rm -rf slash bzip2_slashed
 
 # Build the manifest file
 cat > bzip2.manifest <<EOF
@@ -34,6 +34,6 @@ EOF
 
 
 # Run OCCAM
+cp ./bzip2 ./bzip2_orig
 slash --stats --devirt --work-dir=slash bzip2.manifest
-
 cp ./slash/bzip2_slashed .

@@ -34,6 +34,6 @@ EOF
 
 
 # Run OCCAM
+cp ./specrand ./specrand_orig
 slash --stats --devirt --work-dir=slash specrand.manifest
-
 cp ./slash/specrand_slashed .
