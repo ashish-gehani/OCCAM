@@ -1,0 +1,80 @@
+#!/usr/bin/env python
+
+import sys
+
+from os.path import basename
+
+from llvmcpy.llvm import *
+
+from ropgadget.core import *
+from ropgadget.args import *
+
+from code.callgraph import CallGraph
+
+# 2 nodes 1 edge
+#./4jorge ../examples/hello/hello ../examples/hello/hello.bc
+
+# 26 nodes 35 edges
+#./4jorge ../examples/darwin/nweb/nweb ../examples/darwin/nweb/nweb.bc
+
+# 197 nodes 459 edges
+#./4jorge ../examples/darwin/thttpd/thttpd ../examples/darwin/thttpd/thttpd.bc
+
+# 1630 nodes 5940 edges
+#./4jorge ../examples/portfolio/openssh/install/openssh/bin/ssh ../examples/portfolio/openssh/ssh.bc
+
+
+
+def main(args):
+    if len(args) == 3:
+
+        binary_path = sys.argv[1]
+
+        bitcode_path = sys.argv[2]
+
+        compute_callgraph(binary_path, bitcode_path)
+
+        return 0
+
+    else:
+        print("Usage: {0} <executable> <llvm bitcode or ir for executable>\n".format(args[0]))
+        return 1
+
+
+
+def compute_callgraph(binary_path, bitcode_path):
+        args_obj = Args(['--binary',  binary_path, '--silent'])
+
+        core = Core(args_obj.getArgs())
+
+        core.analyze()
+
+        functions = core.functions()
+
+        ropmap = functions.getMap()
+
+        #functions.show()
+
+        #print(ropmap)
+
+
+        buffer = create_memory_buffer_with_contents_of_file(bitcode_path)
+        context = get_global_context()
+        module = context.parse_ir(buffer)
+
+        if module is None:
+            return 0
+
+        gname = basename(bitcode_path).replace('.', '_')
+
+        callgraph = CallGraph.fromModule(gname, module, False) # True means we skip system calls
+
+        callgraph.annotate('gadgets', ropmap)
+
+        print(callgraph)
+        #print(callgraph.toDotString())
+
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv))
