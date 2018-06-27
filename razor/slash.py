@@ -182,7 +182,7 @@ class Slash(object):
             post = main.new('a')
             passes.specialize_program_args(pre, post, args, 'arguments', name=name)
         elif constraints:
-            print('Input-user specialization using the constraints: {0}\n'.format(constraints))
+            sys.stderr.write('Input-user specialization using the constraints: {0}\n'.format(constraints))
             main = files[module]
             pre = main.get()
             post = main.new('a')

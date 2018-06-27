@@ -31,6 +31,7 @@
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
+import sys
 import os
 import tempfile
 import shutil
@@ -120,20 +121,20 @@ def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, log=None):
     #Otherwise, these passes will not be very effective.
     retcode = optimize(input_file, done.name)
     if retcode != 0:
-        print("ERROR: intra module optimization failed!")
+        sys.stderr.write("ERROR: intra module optimization failed!\n")
         shutil.copy(input_file, output_file)
         return retcode
     else:
-        print("\tintra module optimization finished succesfully")
+        sys.stderr.write("\tintra module optimization finished succesfully\n")
 
     if use_devirt is not None:
         retcode = devirt(done.name, tmp.name)
         if retcode != 0:
-            print("ERROR: resolution of indirect calls failed!")
+            sys.stderr.write("ERROR: resolution of indirect calls failed!\n")
             shutil.copy(done.name, output_file)
             return retcode
         
-        print("\tresolved indirect calls finished succesfully")
+        sys.stderr.write("\tresolved indirect calls finished succesfully\n")
         shutil.copy(tmp.name, done.name)
 
     if use_llpe is not None:
@@ -145,12 +146,12 @@ def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, log=None):
                                 done.name, '-o=%s' % tmp.name]
         retcode = driver.run(config.get_llvm_tool('opt'), args)
         if retcode != 0:
-            print("ERROR: llpe failed!")
+            sys.stderr.write("ERROR: llpe failed!\n")
             shutil.copy(done.name, output_file)
             #FIXME: unlink files
             return retcode
         else:
-            print("\tllpe finished succesfully")
+            sys.stderr.write("\tllpe finished succesfully\n")
         shutil.copy(tmp.name, done.name)
 
     if use_ipdse is not None:
@@ -165,12 +166,12 @@ def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, log=None):
         passes += ['-dce', '-globaldce']
         retcode = driver.previrt(done.name, tmp.name, passes)
         if retcode != 0:
-            print("ERROR: ipdse failed!")
+            sys.stderr.write("ERROR: ipdse failed!\n")
             shutil.copy(done.name, output_file)
             #FIXME: unlink files
             return retcode
         else:
-            print("\tipdse finished succesfully")
+            sys.stderr.write("\tipdse finished succesfully\n")
         shutil.copy(tmp.name, done.name)
 
     out = ['']
@@ -182,17 +183,17 @@ def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, log=None):
             # optimize using standard llvm transformations
             retcode = optimize(done.name, opt.name)
             if retcode != 0:
-                print("ERROR: intra-module optimization failed!")
+                sys.stderr.write("ERROR: intra-module optimization failed!\n")
                 break;
             else:
-                print("\tintra module optimization finished succesfully")
+                sys.stderr.write("\tintra module optimization finished succesfully\n")
         else:
             shutil.copy(done.name, opt.name)            
 
         # inlining using policies
         passes = ['-Ppeval']
         progress = driver.previrt_progress(opt.name, done.name, passes, output=out)
-        print("\tintra-module specialization finished")        
+        sys.stderr.write("\tintra-module specialization finished\n")        
         if progress:
             if log is not None:
                 log.write(out[0])
