@@ -32,19 +32,29 @@ class Node(object):
     def get_attribute(self, key, default=None):
         self.attributes.get(key, default)
 
-    def toDotString(self, attributes = False):
+    def toDotString(self, attributes = False, fill = None):
         cr = r'\n'
         sb = StringBuffer()
+        has_attribute = False
+        highlight = 'yellow'
         sb.append(self.nid).append(' [label="').append(self.name)
         if attributes:
             if isinstance(attributes, list):
                 for key in self.attributes:
                     if key in attributes:
+                        has_attribute = True
                         sb.append(cr).append(key).append(' = ').append(self.attributes[key])
             else:
                 for key in self.attributes:
+                    #has_attribute = True
                     sb.append(cr).append(key).append(' = ').append(self.attributes[key])
-        sb.append('"];')
+        sb.append('"')
+        if fill:
+            sb.append(', color=').append(fill).append(',style=filled')
+        elif has_attribute:
+            sb.append(', color=').append(highlight).append(',style=filled')
+
+        sb.append('];')
         return str(sb)
 
 
@@ -155,9 +165,12 @@ class CallGraph(object):
         return edge
 
 
-    def toDotString(self, nodes = None, attributes = False):
+    def toDotString(self, nodes = None, attributes = False, highlights = None, fill = None):
         """produces the dot for either the entire graph, or just restricted to the nodes passed in.
         """
+
+        highighted_nids = set() if highlights is None else self.toNidSet(highlights)
+
         nids = set(self.nid_to_node.keys()) if nodes is None else self.toNidSet(nodes)
 
         sb = StringBuffer()
@@ -168,7 +181,10 @@ class CallGraph(object):
             node_id = node.nid
             if node_id not in nids:
                 continue
-            sb.append('\t').append(node.toDotString(attributes)).append('\n')
+            if fill and (node_id in highighted_nids):
+                sb.append('\t').append(node.toDotString(attributes, fill)).append('\n')
+            else:
+                sb.append('\t').append(node.toDotString(attributes)).append('\n')
 
         for edge in self.edges:
             src_id = edge[0]

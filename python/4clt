@@ -62,7 +62,7 @@ def main(args):
 
         #print(callgraph.graphInfo(nids))
 
-        print(callgraph.toDotString(nids, False))
+        print(callgraph.toDotString(nids, False, sample, 'lightblue'))
 
         return 0
 
