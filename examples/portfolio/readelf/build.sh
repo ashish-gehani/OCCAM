@@ -25,5 +25,5 @@ export OCCAM_LOGFILE=${PWD}/slash/occam.log
 rm -rf slash
 
 slash --no-strip --stats --devirt --work-dir=slash ${MANIFEST}
-cp slash/readelf readelf_slash
+cp slash/readelf readelf_slashed
 cp binutils/binutils/readelf readelf_orig

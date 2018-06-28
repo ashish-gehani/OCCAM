@@ -1,0 +1,12 @@
+spec/cint2006/bzip2
+spec/cint2006/mcf
+spec/cint2006/gobmk
+spec/cint2006/h264ref
+spec/cint2006/hmmer
+spec/cint2006/libquantum
+spec/cint2006/sjeng
+spec/cint2006/specrand
+#spec/cint2006/gcc
+#spec/cint2006/perlbench
+
+

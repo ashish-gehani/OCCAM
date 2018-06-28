@@ -29,4 +29,4 @@ rm -rf slash
 
 slash --no-strip --stats --devirt --work-dir=slash tree.manifest.constraints
 
-cp slash/tree tree_slash
+cp slash/tree tree_slashed
