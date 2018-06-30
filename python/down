@@ -29,7 +29,12 @@ def main(args):
         #print (frontier)
         #print (nids)
 
-        print(callgraph.toDotString(nids))
+        if False:
+            print(callgraph.toDotString(nids))
+        else:
+            nodes = callgraph.getNodes(nids)
+            for node in nodes:
+                print(node)
 
         return 0
 

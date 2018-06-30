@@ -39,7 +39,8 @@ LIBEXT=so
 endif
 
 
-CFLAGS="-I${OPENSSL_INSTALL}/include -Wl,-rpath,${OPENSSL_INSTALL}/lib"
+#CFLAGS="-I${OPENSSL_INSTALL}/include -Wl,-rpath,${OPENSSL_INSTALL}/lib   -Xclang-disable-O0-optnone"
+CFLAGS="-I${OPENSSL_INSTALL}/include -Wl,-rpath,${OPENSSL_INSTALL}/lib   -O3"
 LDFLAGS="-L${OPENSSL_INSTALL}/lib"
 
 
@@ -83,6 +84,9 @@ sshd.bc: ${OPENSSH_INSTALL}/bin/ssh
 .PHONY: slash
 slash:
 	${CURDIR}/build.sh
+
+ssh.json: ${OPENSSH_INSTALL}/bin/ssh
+	ROPgadget --silent --binary ${OPENSSH_INSTALL}/bin/ssh --fns2map ssh.json; echo "Done"
 
 clean:
 	rm -f ${BITCODE} libz.a.bc libssl.a.bc libcrypto.a.bc

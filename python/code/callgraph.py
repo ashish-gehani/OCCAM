@@ -3,11 +3,10 @@ import sys
 from stringbuffer import StringBuffer
 
 
-
 def isSystemCall(name):
     """returns a tuple consisting of the boolean and the cleaned up name.
     """
-    if ord(name[0]) == 1:
+    if name and ord(name[0]) == 1:
         return (True, name[1:])
     else:
         return (False, name)
@@ -73,22 +72,65 @@ class CallGraph(object):
         self.edges = set()
         # maps nodes to the set of edges that they participate in.
         self.nids_to_edges = {}
+        # set of externals
+        self.declarations = set()
+        # what to do here?
+        self.calls = 0
+        self.indirect_calls = 0
+        self.bitcasts = 0
 
     @staticmethod
     def fromModule(gname, module, skip_system_calls = False):
         callgraph = CallGraph(gname)
 
+
+        def resolve_callee(call_inst):
+            """Tries to resolve the function called in the call instruction, returns None if it can't."""
+            callee = None
+            called = instruction.get_called()
+            fname = called.get_name()
+            if fname:
+                callee = fname
+            elif called.is_a_load_inst():
+                #print("No callee name: LOAD")
+                callgraph.indirect_calls += 1
+            elif called.is_a_bit_cast_inst():
+                #print("No callee name: BITCAST")
+                callgraph.bitcasts += 1
+            elif called.is_a_constant():
+                opcode = called.get_const_opcode()
+                assert(opcode == 41) #is there a llvmcpy constant for this? what happened to all the enums?
+                nops = called.get_num_operands()
+                assert(nops == 1)
+                callee = called.get_operand(0).get_name()
+            else:
+                print("No callee name: unhandled case")
+                asssert(False)
+                #print("Called: ", called)
+                #print("Called: ", called.print_value_to_string())
+                #print("Instr: ", instruction.print_value_to_string())
+                pass
+
+            return callee
+
+
+
         for function in module.iter_functions():
+
             name = function.get_name()
 
+            (isSysCall, name) = isSystemCall(name)
+
+            node = callgraph.addNode(name, None, function.type_of().print_type_to_string())
+            node_id = node.nid
+
             if function.is_declaration():
+                callgraph.declarations.add(node.nid)
                 continue
 
             basic_blocks = 0
             instructions = 0
 
-            node = callgraph.addNode(name, None, function.type_of().print_type_to_string())
-            node_id = node.nid
 
             callees = set()
             for bb in function.iter_basic_blocks():
@@ -96,15 +138,16 @@ class CallGraph(object):
                 for instruction in bb.iter_instructions():
                     instructions += 1
                     if instruction.is_a_call_inst():
-                        fname = instruction.get_called().get_name()
-                        if fname:
-                            (isSysCall, callee) = isSystemCall(fname)
-                            #ignore instrinsics and ...
-                            if callee and not isIntrinsic(callee):
-                                if not (skip_system_calls and isSysCall):
-                                    callees.add(callee)
+                        callgraph.calls += 1
                         #print(instruction.print_value_to_string())
                         #print(instruction.get_called().get_name())
+                        callee = resolve_callee(instruction)
+                        (isSysCall, callee) = isSystemCall(callee)
+                        #ignore instrinsics and ...
+                        if callee and not isIntrinsic(callee):
+                            if not (skip_system_calls and isSysCall):
+                                callees.add(callee)
+
             for callee in callees:
                 callgraph.addEdge(node_id, callee)
 
@@ -124,7 +167,8 @@ class CallGraph(object):
         for e in self.edges:
             if (e[0] in nids) and (e[1] in nids):
                 eset.add(e)
-        return "CallGraph {0} with {1} nodes and {2} edges\n".format(self.gname, len(nids), len(eset))
+        statistics = (self.gname, len(nids), len(eset), self.calls, self.indirect_calls + self.bitcasts)
+        return "CallGraph {0} with {1} nodes and {2} edges.\t({3} calls, {4} unresolved calls)\n".format(*statistics)
 
 
     def addNode(self, name, id=None, prototype=None):
@@ -144,8 +188,18 @@ class CallGraph(object):
             node = self.name_to_node[name]
         return node
 
-    def getNodes(self):
-        return set(self.name_to_node.keys())
+    def getNodes(self, nids=None):
+
+        if nids is None:
+            return set(self.name_to_node.keys())
+        else:
+            retval = set()
+            for nid in nids:
+                retval.add(self.nid_to_node[nid].name)
+            return retval
+
+    def getNIDs(self):
+        return set(self.nid_to_node.keys())
 
     def addEdge(self, source, target):
         """adds the edge from the (id of) source to the (id of) target.
