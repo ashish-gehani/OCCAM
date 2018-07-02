@@ -2,6 +2,7 @@ import sys
 
 from stringbuffer import StringBuffer
 
+import llvmcpy.llvm as llvm
 
 def isSystemCall(name):
     """returns a tuple consisting of the boolean and the cleaned up name.
@@ -96,10 +97,11 @@ class CallGraph(object):
                 callgraph.indirect_calls += 1
             elif called.is_a_bit_cast_inst():
                 #print("No callee name: BITCAST")
+                #print("called: ", called.print_value_to_string())
                 callgraph.bitcasts += 1
             elif called.is_a_constant():
                 opcode = called.get_const_opcode()
-                assert(opcode == 41) #is there a llvmcpy constant for this? what happened to all the enums?
+                assert(opcode == llvm.Opcode['BitCast'])
                 nops = called.get_num_operands()
                 assert(nops == 1)
                 callee = called.get_operand(0).get_name()

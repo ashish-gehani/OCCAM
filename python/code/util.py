@@ -1,9 +1,9 @@
-from llvmcpy.llvm import *
+import llvmcpy.llvm as llvm
 
 
 def fileToModule(path):
-    buffer = create_memory_buffer_with_contents_of_file(path)
-    context = get_global_context()
+    buffer = llvm.create_memory_buffer_with_contents_of_file(path)
+    context = llvm.get_global_context()
     module = context.parse_ir(buffer)
     return module
 
