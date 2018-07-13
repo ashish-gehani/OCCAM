@@ -1,0 +1,65 @@
+#iam 7/13/2018
+
+THISDIR =  $(shell pwd)
+OS      =  $(shell uname)
+ARCH    =  $(shell uname -p)
+
+LLVMCC ?= gclang
+LLVMCXX ?= gclang++
+LLVMGET ?= get-bc
+
+ifeq (Darwin, $(findstring Darwin, ${OS}))
+LIBEXT=dylib
+else
+LIBEXT=so
+endif
+
+# apr_util depends on apr
+APR_VERSION ?= 1.6.3
+APR=apr-${APR_VERSION}
+APR_INSTALL=${THISDIR}/install/${APR}
+
+
+APR_UTIL_VERSION ?= 1.6.1
+
+APR_UTIL=apr-util-${APR_UTIL_VERSION}
+APR_UTIL_TARBALL=${APR_UTIL}.tar.gz
+APR_UTIL_URL=http://apache.mirrors.pair.com/apr/${APR_UTIL_TARBALL}
+APR_UTIL_LIB=libaprutil-1.${LIBEXT}
+APR_UTIL_BITCODE=${APR_UTIL_LIB}.bc
+APR_UTIL_INSTALL=${THISDIR}/install/${APR_UTIL}
+
+
+all: ${APR_UTIL_BITCODE}
+
+${APR_UTIL_TARBALL}:
+	wget ${APR_UTIL_URL}
+
+${APR_UTIL}.tar: ${APR_UTIL}.tar.gz
+	gunzip -k ${APR_UTIL}.tar.gz
+
+${APR_UTIL}: ${APR_UTIL_TARBALL}
+	tar xvf ${APR_UTIL_TARBALL}
+
+${APR_UTIL_INSTALL}/lib/${APR_UTIL_LIB}: ${APR_UTIL}
+	cd ${APR_UTIL}                                                         && \
+	CC=${LLVMCC} ../${APR_UTIL}/configure --prefix=${APR_UTIL_INSTALL}        \
+                                              --with-apr=${APR_INSTALL}        && \
+	CC=${LLVMCC} make                                                      && \
+	make install
+
+
+${APR_UTIL_BITCODE}: ${APR_UTIL_INSTALL}/lib/${APR_UTIL_LIB}
+	cd ${APR_UTIL_INSTALL}/lib                                             && \
+	${LLVMGET} ${APR_UTIL_LIB}                                             && \
+	cp ${APR_UTIL_LIB}.*.bc ${THISDIR}/${APR_UTIL_BITCODE}
+
+clean:
+	rm -rf *~  ${APR_UTIL_BITCODE}
+
+
+very_clean: clean
+	rm -rf ${APR_UTIL} ${APR_UTIL_INSTALL} 
+
+spotless: very_clean
+	rm -rf ${APR_UTIL_TARBALL}
