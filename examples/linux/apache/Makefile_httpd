@@ -41,7 +41,8 @@ ${HTTPD_TARBALL}:
 	wget ${HTTPD_URL}
 
 ${HTTPD}: ${HTTPD_TARBALL}
-	tar xvf ${HTTPD}.tar
+	tar xvf ${HTTPD_TARBALL} && touch ${HTTPD}
+# the touch is to make the unpacked directory have the unpacked timestamp, not the packing timestamp.
 
 Makefile_pcre:
 	$(error Makefile_pcre is missing but required)
@@ -63,15 +64,12 @@ ${APR_UTIL_INSTALL}: Makefile_apr_util
 
 
 ${HTTPD_INSTALL}: ${PCRE_INSTALL} ${APR_INSTALL} ${APR_UTIL_INSTALL} ${HTTPD}
-	mkdir -p ${HTTPD}_build                                                           && \
-	cd  ${HTTPD}_build                                                                && \
-	CC=${LLVMCC} ../${HTTPD}/configure --prefix=${HTTPD_INSTALL}                         \
+	cd ${HTTPD}                                                                       && \
+	CC=${LLVMCC} ./configure --prefix=${HTTPD_INSTALL}                                   \
                                        --with-pcre=${PCRE_INSTALL}/bin/pcre-config           \
                                        --with-apr=${APR_INSTALL}                             \
 				       --with-apr-util=${APR_UTIL_INSTALL}                && \
 	CC=${LLVMCC} make                                                                 && \
-	${LLVMGET} httpd                                                                  && \
-	cp httpd.bc ../                                                                   && \
 	make install
 
 

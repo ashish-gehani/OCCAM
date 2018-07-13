@@ -39,10 +39,10 @@ ${PCRE_INSTALL}/lib/libpcre.so: ${PCRE}
 	CXX=${LLVMCXX} CC=${LLVMCC} make 	                                           && \
 	make install
 
-${PCRE_BITCODE}: ${PCRE_INSTALL}/lib/libpcre.so
+${PCRE_BITCODE}: ${PCRE_INSTALL}/lib/${PCRE_LIB}
 	cd  ${PCRE_INSTALL}/lib/                                                           && \
-	${LLVMGET} libpcre.so                                                              && \
-	cp libpcre.so.*.bc ${THISDIR}/libpcre.so.bc                                             
+	${LLVMGET} ${PCRE_LIB}                                                             && \
+	cp ${PCRE_LIB}.*.bc ${THISDIR}/${PCRE_BITCODE}
 
 clean:
 	rm -rf *~ ${PCRE_BITCODE}

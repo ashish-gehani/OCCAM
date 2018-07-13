@@ -39,10 +39,10 @@ ${APR_INSTALL}/lib/libapr-1.so: ${APR}
 	CC=${LLVMCC} make                                            && \
 	make install
 
-${APR_BITCODE}: ${APR_INSTALL}/lib/libapr-1.so
+${APR_BITCODE}: ${APR_INSTALL}/lib/${APR_LIB}
 	cd ${APR_INSTALL}/lib                                        && \
-	${LLVMGET} libapr-1.so                                       && \
-	cp libapr-1.so.*.bc ${THISDIR}/libapr-1.so.bc
+	${LLVMGET} ${APR_LIB}                                        && \
+	cp ${APR_LIB}.*.bc ${THISDIR}/${APR_BITCODE}
 
 clean:
 	rm -rf *~  ${APR_BITCODE}
