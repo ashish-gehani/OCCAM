@@ -15,9 +15,6 @@ LIBEXT=so
 endif
 
 
-INSTALL=${PWD}/install
-
-
 PCRE_VERSION ?= 8.42
 
 
@@ -32,9 +29,6 @@ all: ${PCRE_BITCODE}
 
 ${PCRE_TARBALL}:
 	wget ${PCRE_URL}
-
-${PCRE}.tar: ${PCRE}.tar.gz
-	gunzip -k ${PCRE}.tar.gz
 
 ${PCRE}: ${PCRE_TARBALL}
 	tar xvfz ${PCRE_TARBALL}
@@ -55,7 +49,7 @@ clean:
 
 
 very_clean: clean
-	rm -rf ${PCRE} ${INSTALL}/${PCRE}
+	rm -rf ${PCRE} ${PCRE_INSTALL}
 
 spotless: very_clean
 	rm -rf ${PCRE_TARBALL}
