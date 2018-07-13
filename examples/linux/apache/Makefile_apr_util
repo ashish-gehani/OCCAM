@@ -59,7 +59,8 @@ clean:
 
 
 very_clean: clean
-	rm -rf ${APR_UTIL} ${APR_UTIL_INSTALL} 
+	make -C ${APR_UTIL} clean
+	rm -rf ${APR_UTIL_INSTALL} 
 
 spotless: very_clean
-	rm -rf ${APR_UTIL_TARBALL}
+	rm -rf ${APR_UTIL_TARBALL} ${APR_UTIL} 

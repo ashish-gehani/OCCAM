@@ -49,7 +49,8 @@ clean:
 
 
 very_clean: clean
-	rm -rf ${PCRE} ${PCRE_INSTALL}
+	make -C ${PCRE} clean
+	rm -rf ${PCRE_INSTALL}
 
 spotless: very_clean
-	rm -rf ${PCRE_TARBALL}
+	rm -rf ${PCRE_TARBALL} ${PCRE} 
