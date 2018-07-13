@@ -33,7 +33,7 @@ ${APR_TARBALL}:
 ${APR}: ${APR_TARBALL}
 	tar xvfz ${APR_TARBALL}
 
-${APR_INSTALL}/lib/libapr-1.so: ${APR}
+${APR_INSTALL}/lib/${APR_LIB}: ${APR}
 	cd ${APR}                                                    && \
 	CC=${LLVMCC} ./configure --prefix=${APR_INSTALL}             && \
 	CC=${LLVMCC} make                                            && \
@@ -42,7 +42,7 @@ ${APR_INSTALL}/lib/libapr-1.so: ${APR}
 ${APR_BITCODE}: ${APR_INSTALL}/lib/${APR_LIB}
 	cd ${APR_INSTALL}/lib                                        && \
 	${LLVMGET} ${APR_LIB}                                        && \
-	cp ${APR_LIB}.*.bc ${THISDIR}/${APR_BITCODE}
+	cp libapr-1*${LIBEXT}*.bc ${THISDIR}/${APR_BITCODE}
 
 clean:
 	rm -rf *~  ${APR_BITCODE}

@@ -52,7 +52,7 @@ ${APR_UTIL_INSTALL}/lib/${APR_UTIL_LIB}: ${APR_UTIL}
 ${APR_UTIL_BITCODE}: ${APR_UTIL_INSTALL}/lib/${APR_UTIL_LIB}
 	cd ${APR_UTIL_INSTALL}/lib                                             && \
 	${LLVMGET} ${APR_UTIL_LIB}                                             && \
-	cp ${APR_UTIL_LIB}.*.bc ${THISDIR}/${APR_UTIL_BITCODE}
+	cp libaprutil-1*${LIBEXT}*.bc ${THISDIR}/${APR_UTIL_BITCODE}
 
 clean:
 	rm -rf *~  ${APR_UTIL_BITCODE}
