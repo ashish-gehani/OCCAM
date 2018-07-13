@@ -33,7 +33,7 @@ ${PCRE_TARBALL}:
 ${PCRE}: ${PCRE_TARBALL}
 	tar xvfz ${PCRE_TARBALL}
 
-${PCRE_INSTALL}/lib/libpcre.so: ${PCRE}
+${PCRE_INSTALL}/lib/${PCRE_LIB}: ${PCRE}
 	cd ${PCRE}                                                                         && \
 	CXX=${LLVMCXX} CC=${LLVMCC} ./configure --prefix=${PCRE_INSTALL}                   && \
 	CXX=${LLVMCXX} CC=${LLVMCC} make 	                                           && \
@@ -42,7 +42,7 @@ ${PCRE_INSTALL}/lib/libpcre.so: ${PCRE}
 ${PCRE_BITCODE}: ${PCRE_INSTALL}/lib/${PCRE_LIB}
 	cd  ${PCRE_INSTALL}/lib/                                                           && \
 	${LLVMGET} ${PCRE_LIB}                                                             && \
-	cp ${PCRE_LIB}.*.bc ${THISDIR}/${PCRE_BITCODE}
+	cp libpcre*${LIBEXT}*.bc ${THISDIR}/${PCRE_BITCODE}
 
 clean:
 	rm -rf *~ ${PCRE_BITCODE}
