@@ -1,0 +1,61 @@
+#iam 7/13/2018
+
+THISDIR =  $(shell pwd)
+OS      =  $(shell uname)
+ARCH    =  $(shell uname -p)
+
+LLVMCC ?= gclang
+LLVMCXX ?= gclang++
+LLVMGET ?= get-bc
+
+ifeq (Darwin, $(findstring Darwin, ${OS}))
+LIBEXT=dylib
+else
+LIBEXT=so
+endif
+
+
+INSTALL=${PWD}/install
+
+
+PCRE_VERSION ?= 8.42
+
+
+PCRE=pcre-${PCRE_VERSION}
+PCRE_TARBALL=${PCRE}.tar.gz
+PCRE_URL=https://ftp.pcre.org/pub/pcre/${PCRE_TARBALL}
+PCRE_LIB=libpcre.${LIBEXT}
+PCRE_BITCODE=${PCRE_LIB}.bc
+PCRE_INSTALL=${THISDIR}/install/${PCRE}
+
+all: ${PCRE_BITCODE}
+
+${PCRE_TARBALL}:
+	wget ${PCRE_URL}
+
+${PCRE}.tar: ${PCRE}.tar.gz
+	gunzip -k ${PCRE}.tar.gz
+
+${PCRE}: ${PCRE_TARBALL}
+	tar xvfz ${PCRE_TARBALL}
+
+${PCRE_INSTALL}/lib/libpcre.so: ${PCRE}
+	cd ${PCRE}                                                                         && \
+	CXX=${LLVMCXX} CC=${LLVMCC} ./configure --prefix=${PCRE_INSTALL}                   && \
+	CXX=${LLVMCXX} CC=${LLVMCC} make 	                                           && \
+	make install
+
+${PCRE_BITCODE}: ${PCRE_INSTALL}/lib/libpcre.so
+	cd  ${PCRE_INSTALL}/lib/                                                           && \
+	${LLVMGET} libpcre.so                                                              && \
+	cp libpcre.so.*.bc ${THISDIR}/libpcre.so.bc                                             
+
+clean:
+	rm -rf *~ ${PCRE_BITCODE}
+
+
+very_clean: clean
+	rm -rf ${PCRE} ${INSTALL}/${PCRE}
+
+spotless: very_clean
+	rm -rf ${PCRE_TARBALL}
