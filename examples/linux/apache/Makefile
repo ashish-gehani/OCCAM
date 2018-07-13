@@ -11,7 +11,6 @@ all: Makefile_httpd
 Makefile_httpd:
 	$(error Makefile_httpd is missing but required)
 
-
 clean: Makefile_httpd
 	make -f Makefile_httpd clean
 

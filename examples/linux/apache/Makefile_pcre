@@ -10,6 +10,10 @@ LLVMGET ?= get-bc
 
 ifeq (Darwin, $(findstring Darwin, ${OS}))
 LIBEXT=dylib
+# ian's FAILED latest magic to get LLVM's clang++ to work like Apple's clang++
+# RESOURCE_DIR = $(shell /usr/bin/clang++ --print-resource-dir)
+# INCLUDE_DIR = ${RESOURCE_DIR}/include
+# CXXFLAGS =  "-I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include/c++/v1 -I/usr/local/include -I${INCLUDE_DIR} -I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include "
 else
 LIBEXT=so
 endif
@@ -34,9 +38,9 @@ ${PCRE}: ${PCRE_TARBALL}
 	tar xvfz ${PCRE_TARBALL}
 
 ${PCRE_INSTALL}/lib/${PCRE_LIB}: ${PCRE}
-	cd ${PCRE}                                                                         && \
-	CXX=${LLVMCXX} CC=${LLVMCC} ./configure --prefix=${PCRE_INSTALL}                   && \
-	CXX=${LLVMCXX} CC=${LLVMCC} make 	                                           && \
+	cd ${PCRE}                                                                              && \
+	CXX=${LLVMCXX} CC=${LLVMCC} CXXFLAGS=${CXXFLAGS} ./configure --prefix=${PCRE_INSTALL}   && \
+	CXX=${LLVMCXX} CC=${LLVMCC} make 	                                                && \
 	make install
 
 ${PCRE_BITCODE}: ${PCRE_INSTALL}/lib/${PCRE_LIB}
