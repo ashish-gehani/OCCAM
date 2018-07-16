@@ -14,6 +14,8 @@ LIBEXT=dylib
 # RESOURCE_DIR = $(shell /usr/bin/clang++ --print-resource-dir)
 # INCLUDE_DIR = ${RESOURCE_DIR}/include
 # CXXFLAGS =  "-I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include/c++/v1 -I/usr/local/include -I${INCLUDE_DIR} -I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include "
+# wanna find out why Jorge's build works but not mine.
+CXXFLAGS =  "-v"
 else
 LIBEXT=so
 endif
