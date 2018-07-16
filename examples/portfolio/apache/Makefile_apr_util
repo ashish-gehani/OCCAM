@@ -25,8 +25,9 @@ APR_UTIL_VERSION ?= 1.6.1
 APR_UTIL=apr-util-${APR_UTIL_VERSION}
 APR_UTIL_TARBALL=${APR_UTIL}.tar.gz
 APR_UTIL_URL=http://apache.mirrors.pair.com/apr/${APR_UTIL_TARBALL}
-APR_UTIL_LIB=libaprutil-1.${LIBEXT}
-APR_UTIL_BITCODE=${APR_UTIL_LIB}.bc
+APR_UTIL_BASENAME=libaprutil-1
+APR_UTIL_LIB=${APR_UTIL_BASENAME}.${LIBEXT}
+APR_UTIL_BITCODE=${APR_UTIL_BASENAME}.shared.bc
 APR_UTIL_INSTALL=${THISDIR}/install/${APR_UTIL}
 
 
@@ -52,7 +53,7 @@ ${APR_UTIL_INSTALL}/lib/${APR_UTIL_LIB}: ${APR_UTIL}
 ${APR_UTIL_BITCODE}: ${APR_UTIL_INSTALL}/lib/${APR_UTIL_LIB}
 	cd ${APR_UTIL_INSTALL}/lib                                             && \
 	${LLVMGET} ${APR_UTIL_LIB}                                             && \
-	cp libaprutil-1*${LIBEXT}*.bc ${THISDIR}/${APR_UTIL_BITCODE}
+	cp ${APR_UTIL_BASENAME}*${LIBEXT}*.bc ${THISDIR}/${APR_UTIL_BITCODE}
 
 clean:
 	rm -rf *~  ${APR_UTIL_BITCODE}

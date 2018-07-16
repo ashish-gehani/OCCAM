@@ -21,8 +21,9 @@ APR_VERSION ?= 1.6.3
 APR=apr-${APR_VERSION}
 APR_TARBALL=${APR}.tar.gz
 APR_URL=http://apache.mirrors.ionfish.org/apr/${APR_TARBALL}
-APR_LIB=libapr-1.${LIBEXT}
-APR_BITCODE=${APR_LIB}.bc
+APR_BASENAME=libapr-1
+APR_LIB=${APR_BASENAME}.${LIBEXT}
+APR_BITCODE=${APR_BASENAME}.shared.bc
 APR_INSTALL=${THISDIR}/install/${APR}
 
 all: ${APR_BITCODE}
@@ -42,7 +43,7 @@ ${APR_INSTALL}/lib/${APR_LIB}: ${APR}
 ${APR_BITCODE}: ${APR_INSTALL}/lib/${APR_LIB}
 	cd ${APR_INSTALL}/lib                                        && \
 	${LLVMGET} ${APR_LIB}                                        && \
-	cp libapr-1*${LIBEXT}*.bc ${THISDIR}/${APR_BITCODE}
+	cp ${APR_BASENAME}*${LIBEXT}*.bc ${THISDIR}/${APR_BITCODE}
 
 clean:
 	rm -rf *~  ${APR_BITCODE}

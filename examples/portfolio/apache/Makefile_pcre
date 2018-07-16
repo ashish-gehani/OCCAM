@@ -25,8 +25,9 @@ PCRE_VERSION ?= 8.42
 PCRE=pcre-${PCRE_VERSION}
 PCRE_TARBALL=${PCRE}.tar.gz
 PCRE_URL=https://ftp.pcre.org/pub/pcre/${PCRE_TARBALL}
-PCRE_LIB=libpcre.${LIBEXT}
-PCRE_BITCODE=${PCRE_LIB}.bc
+PCRE_BASENAME=libpcre
+PCRE_LIB=${PCRE_BASENAME}.${LIBEXT}
+PCRE_BITCODE=${PCRE_BASENAME}.shared.bc
 PCRE_INSTALL=${THISDIR}/install/${PCRE}
 
 all: ${PCRE_BITCODE}
@@ -46,7 +47,7 @@ ${PCRE_INSTALL}/lib/${PCRE_LIB}: ${PCRE}
 ${PCRE_BITCODE}: ${PCRE_INSTALL}/lib/${PCRE_LIB}
 	cd  ${PCRE_INSTALL}/lib/                                                           && \
 	${LLVMGET} ${PCRE_LIB}                                                             && \
-	cp libpcre*${LIBEXT}*.bc ${THISDIR}/${PCRE_BITCODE}
+	cp ${PCRE_BASENAME}*${LIBEXT}*.bc ${THISDIR}/${PCRE_BITCODE}
 
 clean:
 	rm -rf *~ ${PCRE_BITCODE}

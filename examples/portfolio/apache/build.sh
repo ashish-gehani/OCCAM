@@ -11,21 +11,21 @@ export OCCAM_LOGFILE=${PWD}/slash/occam.log
 cat > httpd.manifest <<EOF
 { "main" : "httpd.bc"
 , "binary"  : "httpd_slashed"
-, "modules"    : ["libapr-1.so.bc", "libaprutil-1.so.bc", "libpcre.so.bc"]
+, "modules"    : ["libapr-1.shared.bc", "libaprutil-1.shared.bc", "libpcre.shared.bc"]
 , "native_libs" : ["-lcrypt", "-ldl", "-lpthread", "-lexpat"]
 , "args"    : ["-d", "/vagrant/www"]
 , "name"    : "httpd"
 }
 EOF
-#, "libexpat.so.bc"
+#, "libexpat.shared.bc"
 
 # Previrtualize
 slash --stats --devirt --work-dir=slash httpd.manifest
 
 cp slash/httpd_slashed .
 
-llvm-link httpd.bc libapr-1.so.bc libaprutil-1.so.bc libpcre.so.bc -o linked_httpd.bc
-#libexpat.so.bc
+llvm-link httpd.bc libapr-1.shared.bc libaprutil-1.shared.bc libpcre.shared.bc -o linked_httpd.bc
+#libexpat.shared.bc
 
 # Build the manifest file
 cat > linked_httpd.manifest <<EOF
