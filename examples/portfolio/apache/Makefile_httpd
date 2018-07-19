@@ -76,8 +76,8 @@ ${HTTPD_INSTALL}: ${PCRE_INSTALL} ${APR_INSTALL} ${APR_UTIL_INSTALL} ${HTTPD}
 ${HTTPD_BITCODE}: ${HTTPD_INSTALL}
 	cd ${HTTPD_INSTALL}/bin                                             && \
 	${LLVMGET} httpd                                                    && \
-	cp ${HTTPD_BITCODE} ${THISDIR}/${HTTPD_BITCODE}
-
+	cp ${HTTPD_BITCODE} ${THISDIR}/${HTTPD_BITCODE}			    && \
+	cp ${HTTPD_EXE} ${THISDIR}/${HTTPD_EXE}_orig
 
 clean:
 	rm -rf *~  ${HTTPD_BITCODE}
