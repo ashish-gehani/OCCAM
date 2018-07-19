@@ -1,6 +1,6 @@
 # Benchmark runner for OCCAM #
 
-To run OCCAM on a set of benchmarks and show statistics, type:
+To run OCCAM on a set of benchmarks and show metrics, type:
 
 	runbench.py 
 	runbench.py --rop
@@ -15,17 +15,19 @@ before and after specialization.
 
 The options `--cpu` and `--mem` set limits on CPU (in seconds) and
 memory (in MB) for running OCCAM. The compilation of the programs is
-unlimited.
+unconstrained.
 
 `runbench.py` reads from the `*.set` files to select which benchmarks
-to run.  Each `*.set` file has a line per benchmark. Each line is a
-relative path, wrt environment `OCCAM_HOME` variable, to a
-directory. That directory must contain `Makefile` and `build.sh`. The
-makefile generates the bitcode for the benchmark, and `build.sh` runs
-OCCAM on it. The assumption is that after running `build.sh` two
-executables are generated: one with suffix `_orig` and the other with
-suffix `_slashed`. The executables are used by option `--rop` so it is
-important to follow this convention.
+to run.  Each `*.set` file is in JSON format. For each benchmark,
+there are at three fields: `dirname`, a relative path wrt environment
+`OCCAM_HOME` variable, `execname`, the name of the executable, and
+`enabled` whether the benchmark is enabled or not. That directory must
+contain `Makefile` and `build.sh`. The makefile generates the bitcode
+for the benchmark, and `build.sh` runs OCCAM on it. The assumption is
+that after running `build.sh` two executables are generated: one with
+suffix `_orig` and the other with suffix `_slashed`. The executables
+are used by option `--rop` so it is important to follow this
+convention.
 
 For instance, the output of `runbench.py` might look like this:
 

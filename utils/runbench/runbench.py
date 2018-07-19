@@ -6,10 +6,7 @@
 
 # NOTE: this script reads from the standard output/error to extract
 # information about OCCAM and ROPgadget. Thus, any change in these
-# tools will probably break this script. This script relies also on how
-# OCCAM does the naming of the executables before and after
-# specialization. Any change in the naming will again break this
-# script.
+# tools might break this script. 
 
 import sys
 import os
@@ -44,22 +41,17 @@ def get_ropgadget():
     return ropgadget
     
 def get_benchmarks(name):
-    dirs = list ()
-    with open (name + ".set", 'r') as fd:
-        for line in fd:
-            # skip comment
-            if line[0] == '#':
-                continue
-            line = line.strip()
-            # skip blank lines
-            if line == "":
-                continue
-            dirname = os.path.join(get_occam_home(), 'examples', line.strip())
-            if not os.path.isdir(dirname):
-                cmd.raise_error(dirname + " is not a directory")
-            dirs.append(dirname)
-    fd.close()
-    return dirs
+    import json
+    with open(name + ".set", "r") as f:
+        benchs = list()
+        try:
+            d = json.load(f)
+            benchs = d['benchmarks']
+        except ValueError as msg:
+            print "Error: while decoding JSON file " + name + ".set"
+            print msg
+    f.close()
+    return benchs
 
 def read_occam_output(logfile):
     b_funcs, b_insts, b_mem = 0, 0, 0
@@ -189,8 +181,9 @@ def pretty_printing_ropgadget(results):
     pptable.pprint_table(out,table)
     
     
-def run_occam(dirname, workdir, cpu, mem):
-    benchmark_name = os.path.basename(os.path.normpath(dirname))
+def run_occam(dirname, execname, workdir, cpu, mem):
+    #benchmark_name = os.path.basename(os.path.normpath(dirname))
+    benchmark_name = execname
     outfile = benchmark_name + ".occam.out"
     errfile = benchmark_name + ".occam.err"
     outfd = open(os.path.join(workdir, outfile), "w")
@@ -220,7 +213,7 @@ def run_occam(dirname, workdir, cpu, mem):
 
 #Pre: run_occam has been executed already and thus, there are two 
 #executables in dirname: the original one and the one after occam.        
-def run_ropgadget(dirname, workdir, cpu, mem):
+def run_ropgadget(dirname, execname, workdir, cpu, mem):
     def run_ropgadget_on_pair(bench_name, prog_before, prog_after, opts, \
                               logfile, outfd, errfd):
         outfd.seek(0,0)
@@ -245,7 +238,8 @@ def run_ropgadget(dirname, workdir, cpu, mem):
                 
         return (res_before, res_after)
 
-    benchname = os.path.basename(os.path.normpath(dirname))
+    #benchname = os.path.basename(os.path.normpath(dirname))
+    benchname = execname
     outfile = benchname + ".ropgadget.out"
     errfile = benchname + ".ropgadget.err"
     outfd = open(os.path.join(workdir, outfile), "w")
@@ -318,11 +312,21 @@ def main (argv):
     dt = datetime.datetime.now ().strftime ('%d/%m/%Y %H:%M:%S')    
     print "[" + dt + "] " +  "STARTED runbench"    
     for s in sets:
-        for b in get_benchmarks(s):
-            res = run_occam(b, workdir, args.cpu, args.mem)
+        for t in get_benchmarks(s):
+            if t['enabled'] == 'false':
+                continue
+            
+            dirname = t['dirname']
+            if not os.path.isdir(dirname):
+                dirname = os.path.join(get_occam_home(), dirname)
+                if not os.path.isdir(dirname):
+                    cmd.raise_error(t['dirname'] + " is not a directory")
+                    
+            execname = t['execname']
+            res = run_occam(dirname, execname, workdir, args.cpu, args.mem)
             occam_tab.append(res)
             if args.rop:
-                res = run_ropgadget(b, workdir, args.cpu, args.mem)
+                res = run_ropgadget(dirname, execname, workdir, args.cpu, args.mem)
                 ropgadget_tab.append(res)
 
     dt = datetime.datetime.now ().strftime ('%d/%m/%Y %H:%M:%S')                
