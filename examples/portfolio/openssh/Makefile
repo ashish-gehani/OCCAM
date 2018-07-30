@@ -15,6 +15,7 @@ OPENSSL_INSTALL=${THISDIR}/install/openssl
 
 ZLIB_INSTALL=${THISDIR}/install/zlib
 
+CURDIR=$(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 
 LLVMCC ?= gclang
 LLVMGET ?= get-bc
@@ -38,13 +39,14 @@ LIBEXT=so
 endif
 
 
-CFLAGS="-I${OPENSSL_INSTALL}/include -Wl,-rpath,${OPENSSL_INSTALL}/lib"
+#CFLAGS="-I${OPENSSL_INSTALL}/include -Wl,-rpath,${OPENSSL_INSTALL}/lib   -Xclang-disable-O0-optnone"
+CFLAGS="-I${OPENSSL_INSTALL}/include -Wl,-rpath,${OPENSSL_INSTALL}/lib   -O3"
 LDFLAGS="-L${OPENSSL_INSTALL}/lib"
 
 
 BITCODE=ssh.bc sshd.bc
 
-all: ${BITCODE} slash
+all: ${BITCODE}
 
 
 Makefile_zlib:
@@ -66,30 +68,25 @@ ${OPENSSH_TARBALL}:
 ${OPENSSH}: ${OPENSSH_TARBALL}
 	tar xvfz ${OPENSSH_TARBALL}
 
-${OPENSSH}/Makefile:  ${ZLIB_INSTALL} ${OPENSSL_INSTALL} ${OPENSSH} 
+${OPENSSH}/Makefile:  ${ZLIB_INSTALL} ${OPENSSL_INSTALL} ${OPENSSH}
 	cd ${OPENSSH}; autoconf
-	cd ${OPENSSH}; CC=${LLVMCC} LDFLAGS=${LDFLAGS} CFLAGS=${CFLAGS} ./configure  --prefix=${OPENSSH_INSTALL}  --with-openssl-dir=${OPENSSL_INSTALL}
+	cd ${OPENSSH}; CC=${LLVMCC} LDFLAGS=${LDFLAGS} CFLAGS=${CFLAGS} ./configure  --disable-strip --prefix=${OPENSSH_INSTALL}  --with-openssl-dir=${OPENSSL_INSTALL}
 
-${OPENSSH}/ssh: ${OPENSSH}/Makefile
+${OPENSSH_INSTALL}/bin/ssh: ${OPENSSH}/Makefile
 	cd ${OPENSSH}; CC=${LLVMCC} make && make install
 
-ifeq ("$(wildcard ./ssh.bc)","")
-ssh.bc: ${OPENSSH}/ssh
+ssh.bc: ${OPENSSH_INSTALL}/bin/ssh
 	cd ${OPENSSH_INSTALL}/bin; ${LLVMGET} ssh; mv ssh.bc ${THISDIR}
-else
-ssh.bc: echo "Found ssh.bc: do nothing"
-endif
 
-ifeq ("$(wildcard ./sshd.bc)","")
-sshd.bc: #${OPENSSH}/ssh
+sshd.bc: ${OPENSSH_INSTALL}/bin/ssh
 	cd ${OPENSSH_INSTALL}/sbin; ${LLVMGET} sshd; mv sshd.bc ${THISDIR}
-else
-sshd.bc: echo "Found sshd.bc: do nothing"
-endif
 
 .PHONY: slash
 slash:
-	./build.sh
+	${CURDIR}/build.sh
+
+ssh.json: ${OPENSSH_INSTALL}/bin/ssh
+	ROPgadget --silent --binary ${OPENSSH_INSTALL}/bin/ssh --fns2map ssh.json; echo "Done"
 
 clean:
 	rm -f ${BITCODE} libz.a.bc libssl.a.bc libcrypto.a.bc
@@ -106,4 +103,3 @@ very_clean:
 spotless: very_clean
 	rm -rf ${OPENSSH_TARBALL}
 	make -C . -f Makefile_openssl spotless
-

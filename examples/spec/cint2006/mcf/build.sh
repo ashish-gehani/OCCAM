@@ -20,7 +20,7 @@ done
 export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
 
-rm -rf slash ssh_slashed
+rm -rf slash mcf_slashed
 
 # Build the manifest file
 cat > mcf.manifest <<EOF
@@ -34,6 +34,6 @@ EOF
 
 
 # Run OCCAM
+cp ./mcf ./mcf_orig
 slash --stats --devirt --work-dir=slash mcf.manifest
-
 cp ./slash/mcf_slashed .

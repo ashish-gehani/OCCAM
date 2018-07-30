@@ -8,9 +8,13 @@ from code.callgraph import CallGraph
 from code.util import fileToModule
 
 def main(args):
-    if len(args) > 1:
+    if len(args) > 2:
 
         module = fileToModule(args[1])
+
+        leaf = args[2]
+
+        frontier = [leaf]
 
         if module is None:
             return 0
@@ -19,13 +23,18 @@ def main(args):
 
         callgraph = CallGraph.fromModule(gname, module, False) # True means we skip system calls
 
-        print(callgraph)
-        #print(callgraph.toDotString())
+        nids = callgraph.close_up(frontier)
+
+        #print(callgraph)
+        #print (frontier)
+        #print (nids)
+
+        print(callgraph.toDotString(nids))
 
         return 0
 
     else:
-        print("Usage: {0} <llvm bitcode or ir>\n".format(args[0]))
+        print("Usage: {0} <llvm bitcode or ir> <function name>\n".format(args[0]))
         return 1
 
 

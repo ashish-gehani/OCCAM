@@ -1,0 +1,54 @@
+{
+    "benchmarks": [
+        {
+            "dirname" : "examples/spec/cint2006/bzip2", 
+            "execname": "bzip2",
+	    "enabled" : "true"
+        }, 
+        {
+            "dirname" : "examples/spec/cint2006/mcf", 
+            "execname": "mcf",
+	    "enabled" : "true"	    
+        },
+        {
+            "dirname" : "examples/spec/cint2006/gobmk", 
+            "execname": "gobmk",
+	    "enabled" : "true"	    
+        },
+        {
+            "dirname" : "examples/spec/cint2006/h264ref", 
+            "execname": "h264ref",
+	    "enabled" : "true"	    
+        },
+        {
+            "dirname" : "examples/spec/cint2006/hmmer", 
+            "execname": "hmmer",
+	    "enabled" : "true"	    
+        },
+        {
+            "dirname" : "examples/spec/cint2006/libquantum", 
+            "execname": "libquantum",
+	    "enabled" : "true"	    
+        },
+        {
+            "dirname" : "examples/spec/cint2006/sjeng", 
+            "execname": "sjeng",
+	    "enabled" : "true"	    
+        },
+        {
+            "dirname" : "examples/spec/cint2006/specrand", 
+            "execname": "specrand",
+	    "enabled" : "true"	    
+        },
+        {
+            "dirname" : "examples/spec/cint2006/gcc", 
+            "execname": "gcc",
+	    "enabled" : "false"	    
+        },
+        {
+            "dirname" : "examples/spec/cint2006/perlbench", 
+            "execname": "perlbench",
+	    "enabled" : "false"	    
+        }
+    ]
+}

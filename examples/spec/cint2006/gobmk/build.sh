@@ -20,7 +20,7 @@ done
 export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
 
-rm -rf slash ssh_slashed
+rm -rf slash gobmk_slashed
 
 # Build the manifest file
 cat > gobmk.manifest <<EOF
@@ -34,6 +34,6 @@ EOF
 
 
 # Run OCCAM
+cp ./gobmk ./gobmk_orig
 slash --stats --devirt --work-dir=slash gobmk.manifest
-
 cp ./slash/gobmk_slashed .

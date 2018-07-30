@@ -1,14 +1,15 @@
 #!/usr/bin/env python
 
 import sys
-from llvmcpy.llvm import *
+
+from os.path import basename
 
 
 from code.callgraph import CallGraph
 
 from code.util import (fileToModule, file2Array)
 
-#./forclt ../examples/portfolio/openssh/ssh.bc ../examples/portfolio/openssh/frontier-clt.txt
+#./4clt ../examples/portfolio/openssh/ssh.bc ../examples/portfolio/openssh/frontier-clt.txt
 
 sample = (
     'EVP_aes_128_cbc',
@@ -38,7 +39,7 @@ def main(args):
         if module is None:
             return 0
 
-        name = sys.argv[1].replace('.', '_')
+        name = basename(sys.argv[1]).replace('.', '_')
 
         callgraph = CallGraph.fromModule(name, module, True)
 
@@ -51,17 +52,17 @@ def main(args):
 
         nids = callgraph.close_up(sample)
 
+        nids_down = callgraph.close_down(['main'])
+
+        nids = nids.intersection(nids_down)
+
         #print(len(nids))
 
         callgraph.dump_prototypes('/tmp/prototypes.txt', nids)
 
-        print(callgraph.graphInfo(nids))
+        #print(callgraph.graphInfo(nids))
 
-        #print(callgraph.toDotString(nids))
-
-        #nids_down = callgraph.close_down(['main'])
-
-        #print(callgraph.toDotString(nids))
+        print(callgraph.toDotString(nids, False, sample, 'lightblue'))
 
         return 0
 

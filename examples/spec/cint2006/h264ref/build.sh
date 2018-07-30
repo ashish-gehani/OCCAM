@@ -20,7 +20,7 @@ done
 export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
 
-rm -rf slash ssh_slashed
+rm -rf slash h264ref_slashed
 
 # Build the manifest file
 cat > h264ref.manifest <<EOF
@@ -34,6 +34,6 @@ EOF
 
 
 # Run OCCAM
+cp ./h264ref ./h264ref_orig
 slash --stats --devirt --work-dir=slash h264ref.manifest
-
 cp ./slash/h264ref_slashed .

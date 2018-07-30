@@ -2,12 +2,12 @@ import sys
 
 from stringbuffer import StringBuffer
 
-
+import llvmcpy.llvm as llvm
 
 def isSystemCall(name):
     """returns a tuple consisting of the boolean and the cleaned up name.
     """
-    if ord(name[0]) == 1:
+    if name and ord(name[0]) == 1:
         return (True, name[1:])
     else:
         return (False, name)
@@ -26,6 +26,38 @@ class Node(object):
         self.prototype = prototype
         self.attributes = {}
 
+    def set_attribute(self, key, val):
+        self.attributes[key] = val
+
+    def get_attribute(self, key, default=None):
+        self.attributes.get(key, default)
+
+    def toDotString(self, attributes = False, fill = None):
+        cr = r'\n'
+        sb = StringBuffer()
+        has_attribute = False
+        highlight = 'yellow'
+        sb.append(self.nid).append(' [label="').append(self.name)
+        if attributes:
+            if isinstance(attributes, list):
+                for key in self.attributes:
+                    if key in attributes:
+                        has_attribute = True
+                        sb.append(cr).append(key).append(' = ').append(self.attributes[key])
+            else:
+                for key in self.attributes:
+                    #has_attribute = True
+                    sb.append(cr).append(key).append(' = ').append(self.attributes[key])
+        sb.append('"')
+        if fill:
+            sb.append(', color=').append(fill).append(',style=filled')
+        elif has_attribute:
+            sb.append(', color=').append(highlight).append(',style=filled')
+
+        sb.append('];')
+        return str(sb)
+
+
 
 
 class CallGraph(object):
@@ -41,35 +73,88 @@ class CallGraph(object):
         self.edges = set()
         # maps nodes to the set of edges that they participate in.
         self.nids_to_edges = {}
+        # set of externals
+        self.declarations = set()
+        # what to do here?
+        self.calls = 0
+        self.indirect_calls = 0
+        self.bitcasts = 0
 
     @staticmethod
     def fromModule(gname, module, skip_system_calls = False):
         callgraph = CallGraph(gname)
 
+
+        def resolve_callee(call_inst):
+            """Tries to resolve the function called in the call instruction, returns None if it can't."""
+            callee = None
+            called = instruction.get_called()
+            fname = called.get_name()
+            if fname:
+                callee = fname
+            elif called.is_a_load_inst():
+                #print("No callee name: LOAD")
+                callgraph.indirect_calls += 1
+            elif called.is_a_bit_cast_inst():
+                #print("No callee name: BITCAST")
+                #print("called: ", called.print_value_to_string())
+                callgraph.bitcasts += 1
+            elif called.is_a_constant():
+                opcode = called.get_const_opcode()
+                assert(opcode == llvm.Opcode['BitCast'])
+                nops = called.get_num_operands()
+                assert(nops == 1)
+                callee = called.get_operand(0).get_name()
+            else:
+                print("No callee name: unhandled case")
+                asssert(False)
+                #print("Called: ", called)
+                #print("Called: ", called.print_value_to_string())
+                #print("Instr: ", instruction.print_value_to_string())
+                pass
+
+            return callee
+
+
+
         for function in module.iter_functions():
+
             name = function.get_name()
 
+            (isSysCall, name) = isSystemCall(name)
+
+            node = callgraph.addNode(name, None, function.type_of().print_type_to_string())
+            node_id = node.nid
+
             if function.is_declaration():
+                callgraph.declarations.add(node.nid)
                 continue
 
-            node_id = callgraph.addNode(name, None, function.type_of().print_type_to_string())
+            basic_blocks = 0
+            instructions = 0
 
-            if not function.is_declaration():
-                callees = set()
-                for bb in function.iter_basic_blocks():
-                    for instruction in bb.iter_instructions():
-                        if instruction.is_a_call_inst():
-                            fname = instruction.get_called().get_name()
-                            if fname:
-                                (isSysCall, callee) = isSystemCall(fname)
-                                #ignore instrinsics and ...
-                                if callee and not isIntrinsic(callee):
-                                    if not (skip_system_calls and isSysCall):
-                                        callees.add(callee)
-                            #print(instruction.print_value_to_string())
-                            #print(instruction.get_called().get_name())
-                for callee in callees:
-                    callgraph.addEdge(node_id, callee)
+
+            callees = set()
+            for bb in function.iter_basic_blocks():
+                basic_blocks += 1
+                for instruction in bb.iter_instructions():
+                    instructions += 1
+                    if instruction.is_a_call_inst():
+                        callgraph.calls += 1
+                        #print(instruction.print_value_to_string())
+                        #print(instruction.get_called().get_name())
+                        callee = resolve_callee(instruction)
+                        (isSysCall, callee) = isSystemCall(callee)
+                        #ignore instrinsics and ...
+                        if callee and not isIntrinsic(callee):
+                            if not (skip_system_calls and isSysCall):
+                                callees.add(callee)
+
+            for callee in callees:
+                callgraph.addEdge(node_id, callee)
+
+            node.set_attribute('basic_blocks', basic_blocks)
+            node.set_attribute('instructions', instructions)
 
         return callgraph
 
@@ -84,15 +169,16 @@ class CallGraph(object):
         for e in self.edges:
             if (e[0] in nids) and (e[1] in nids):
                 eset.add(e)
-        return "CallGraph {0} with {1} nodes and {2} edges\n".format(self.gname, len(nids), len(eset))
+        statistics = (self.gname, len(nids), len(eset), self.calls, self.indirect_calls + self.bitcasts)
+        return "CallGraph {0} with {1} nodes and {2} edges.\t({3} calls, {4} unresolved calls)\n".format(*statistics)
 
 
     def addNode(self, name, id=None, prototype=None):
-        """adds the node to graph (if necessary), and returns it's id.
+        """creates and adds the node to graph (if necessary), and returns it.
 
         if you happen to know its id you can set that too (useful for making subgraphs).
         """
-        nid = None
+        node = None
         if name not in self.name_to_node:
             nid = self.id_counter if id is None else id
             node = Node(name, nid, prototype)
@@ -102,11 +188,20 @@ class CallGraph(object):
             self.id_counter += 1
         else:
             node = self.name_to_node[name]
-            nid = node.nid
-        return nid
+        return node
 
-    def getNodes(self):
-        return set(self.name_to_node.keys())
+    def getNodes(self, nids=None):
+
+        if nids is None:
+            return set(self.name_to_node.keys())
+        else:
+            retval = set()
+            for nid in nids:
+                retval.add(self.nid_to_node[nid].name)
+            return retval
+
+    def getNIDs(self):
+        return set(self.nid_to_node.keys())
 
     def addEdge(self, source, target):
         """adds the edge from the (id of) source to the (id of) target.
@@ -114,8 +209,8 @@ class CallGraph(object):
         if the source or target is an integer it is treated as the id,
         if it is a string it is presumed to be the name of a node.
         """
-        src_id = source if isinstance(source, int) else self.addNode(source)
-        tgt_id = target if isinstance(target, int) else self.addNode(target)
+        src_id = source if isinstance(source, int) else self.addNode(source).nid
+        tgt_id = target if isinstance(target, int) else self.addNode(target).nid
         edge = (src_id, tgt_id)
         self.edges.add(edge)
 
@@ -126,19 +221,26 @@ class CallGraph(object):
         return edge
 
 
-    def toDotString(self, nodes = None):
+    def toDotString(self, nodes = None, attributes = False, highlights = None, fill = None):
         """produces the dot for either the entire graph, or just restricted to the nodes passed in.
         """
+
+        highighted_nids = set() if highlights is None else self.toNidSet(highlights)
+
         nids = set(self.nid_to_node.keys()) if nodes is None else self.toNidSet(nodes)
 
         sb = StringBuffer()
         sb.append('digraph ').append(self.gname).append(' {\n')
         #sb.append('\tnode [shape=box];\n')
-        for node in self.name_to_node:
-            node_id = self.name_to_node[node].nid
+        for name in self.name_to_node:
+            node = self.name_to_node[name]
+            node_id = node.nid
             if node_id not in nids:
                 continue
-            sb.append('\t').append(node_id).append(' [label="').append(node).append('"];\n')
+            if fill and (node_id in highighted_nids):
+                sb.append('\t').append(node.toDotString(attributes, fill)).append('\n')
+            else:
+                sb.append('\t').append(node.toDotString(attributes)).append('\n')
 
         for edge in self.edges:
             src_id = edge[0]
@@ -160,7 +262,7 @@ class CallGraph(object):
                 #print('node: {0} annotation: {1} value: {2}'.format(name, annotation, val))
                 node.attributes[annotation] = val
             else:
-                print("skipping {0}\n".format(name))
+                sys.stderr.write("skipping {0}\n".format(name))
 
 
 
@@ -192,7 +294,7 @@ class CallGraph(object):
         for node in nodes:
             if node in self.name_to_node:
                 node_id = self.name_to_node[node]
-                node_ids.add(subgraph.addNode(node, node_id))
+                node_ids.add(subgraph.addNode(node, node_id).nid)
 
         for edge in self.edges:
             if (edge[0] in node_ids) and (edge[1] in node_ids):

@@ -20,7 +20,7 @@ done
 export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
 
-rm -rf slash ssh_slashed
+rm -rf slash hmmer_slashed
 
 # Build the manifest file
 cat > hmmer.manifest <<EOF
@@ -34,6 +34,6 @@ EOF
 
 
 # Run OCCAM
+cp ./hmmer ./hmmer_orig
 slash --stats --devirt --work-dir=slash hmmer.manifest
-
 cp ./slash/hmmer_slashed .

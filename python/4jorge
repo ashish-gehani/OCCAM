@@ -1,0 +1,83 @@
+#!/usr/bin/env python
+
+import sys
+
+from os.path import basename
+
+from ropgadget.core import Core
+from ropgadget.args import Args
+
+from code.callgraph import CallGraph
+
+from code.util import fileToModule
+
+# 2 nodes 1 edge
+#./4jorge ../examples/hello/hello ../examples/hello/hello.bc
+
+# 26 nodes 35 edges
+#./4jorge ../examples/darwin/nweb/nweb ../examples/darwin/nweb/nweb.bc
+
+# 197 nodes 459 edges
+#./4jorge ../examples/darwin/thttpd/thttpd ../examples/darwin/thttpd/thttpd.bc
+
+# 1630 nodes 5940 edges
+#./4jorge ../examples/portfolio/openssh/install/openssh/bin/ssh ../examples/portfolio/openssh/ssh.bc
+
+
+
+def main(args):
+
+    if len(args) == 3:
+
+        binary_path = sys.argv[1]
+
+        bitcode_path = sys.argv[2]
+
+        ropmap = compute_ropmap(binary_path)
+
+        callgraph = compute_callgraph(bitcode_path)
+
+        if callgraph is None:
+            return 2
+
+        callgraph.annotate('gadgets', ropmap)
+
+        #print(callgraph)
+        print(callgraph.toDotString(None, ['gadgets']))
+
+        return 0
+
+    else:
+        print("Usage: {0} <executable> <llvm bitcode or ir for executable>\n".format(args[0]))
+        return 1
+
+
+
+def compute_ropmap(binary_path):
+        args_obj = Args(['--binary',  binary_path, '--silent'])
+
+        core = Core(args_obj.getArgs())
+
+        core.analyze()
+
+        functions = core.functions()
+
+        return functions.getMap()
+
+
+
+
+def compute_callgraph(bitcode_path):
+
+    module = fileToModule(bitcode_path)
+
+    if module is None:
+        return None
+
+    gname = basename(bitcode_path).replace('.', '_')
+
+    return CallGraph.fromModule(gname, module, True) # True means we skip system calls
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv))

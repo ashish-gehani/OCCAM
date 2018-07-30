@@ -4,7 +4,7 @@
 set -e
 
 #check that the require dependencies are built
-declare -a bitcode=("tree.bc")
+declare -a bitcode=("readelf.bc")
 
 for bc in "${bitcode[@]}"
 do
@@ -17,16 +17,13 @@ do
     fi
 done
 
-
-
-echo "Linking tree_from_bc"
-clang++ tree.bc -o tree_from_bc
+MANIFEST=readelf.manifest
 
 export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
 
 rm -rf slash
 
-slash --no-strip --stats --devirt --work-dir=slash tree.manifest.constraints
-
-cp slash/tree tree_slashed
+slash --no-strip --stats --devirt --work-dir=slash ${MANIFEST}
+cp slash/readelf readelf_slashed
+cp binutils/binutils/readelf readelf_orig

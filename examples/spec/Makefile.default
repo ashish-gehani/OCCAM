@@ -18,7 +18,7 @@ LLVMGET ?= get-bc
 
 BITCODE= ${PROG}.bc
 
-all: ${BITCODE} slash
+all: ${BITCODE} 
 
 .PHONY: slash
 slash:
