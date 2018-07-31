@@ -92,7 +92,8 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
 
       if(targetFuncs.size() == 0) continue; // No function has been resolved
 
-      for(map<Function*, bool>::iterator it = targetFuncs.begin(); it != targetFuncs.end(); it++)
+      for(std::map<Function*, bool>::iterator it = targetFuncs.begin();
+	  it != targetFuncs.end(); it++)
       {
 
       Function * callee = it->first;
