@@ -344,10 +344,15 @@ class Slash(object):
 
         sys.stderr.write('\nLinking ...\n')
         sys.stderr.write(link_cmd)
-        driver.linker(final_module, binary, linker_args)
-        sys.stderr.write('\ndone.\n')
-        pool.shutdownDefaultPool()
+        try:
+            driver.linker(final_module, binary, linker_args)
+            sys.stderr.write('\ndone.\n')
+        except Exception as e:
+            sys.stderr.write('\nFAILED. Modify the manifest to add libraries and/or linker flags.\n\n')
+            import traceback
+            traceback.print_exc()
 
+        pool.shutdownDefaultPool()
         #Print stats before and after
         if show_stats is not None:
             for (f1,v1), (f2,v2) in zip(profile_map_before.iteritems(), \
