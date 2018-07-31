@@ -141,7 +141,13 @@ class ExtendedCallGraph {
       // call instruction. This instruction extracts the function
       // pointer from a structure type global
       llvm::GetElementPtrInst* GEVInst;
+      std::set<llvm::Instruction*> visited;
       while(inst){
+	if (!visited.insert(inst).second) {
+	  // break cycle
+	  break;
+	}
+	
 	if((GEVInst = llvm::dyn_cast<llvm::GetElementPtrInst>(&*inst))){
 	  break;
 	}
