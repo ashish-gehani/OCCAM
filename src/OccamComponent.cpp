@@ -48,9 +48,13 @@
 
 #include <vector>
 #include <string>
-#include <stdio.h>
 
 using namespace llvm;
+
+static cl::list<std::string>
+DoNotInternalizeList("Poccam-do-not-internalize",
+		     cl::desc("Do not internalize the functions in this list"),
+		     cl::ZeroOrMore);
 
 namespace previrt
 {
@@ -95,12 +99,19 @@ namespace previrt
     errs() << "</interface>\n";
     */
 
-    // Set all functions that are not in the interface to internal linkage only
-    const StringMap<std::vector<CallInfo*> >::const_iterator end =
-        I.calls.end();
+    std::set<std::string> do_not_internalize(DoNotInternalizeList.begin(),
+					     DoNotInternalizeList.end());
+    // Set all functions that are not in the interface to internal linkage only    
     for (Module::iterator f = M.begin(), e = M.end(); f != e; ++f) {
+      
+      if (do_not_internalize.count(f->getName())) {
+	errs() << "Did not internalize " << f->getName()
+	       << " because it is in the do-not-externalize list \n";
+	continue;
+      }
+      
       if (!f->isDeclaration() && f->hasExternalLinkage() &&
-          I.calls.find(f->getName()) == end &&
+          I.calls.find(f->getName()) == I.calls.end() &&
           I.references.find(f->getName()) == I.references.end()) {
 	errs() << "Hiding '" << f->getName() << "'\n";
 	f->setLinkage(GlobalValue::InternalLinkage);
