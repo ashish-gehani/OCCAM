@@ -61,6 +61,13 @@ def get_work_dir(flags):
     return os.path.abspath(d)
 
 
+def get_whitelist(flags):
+    wl = get_flag(flags, 'whitelist')
+    if wl is not None:
+        return os.path.abspath(wl)
+    return None
+
+
 def get_manifest(args):
     manifest = None
     if not args:

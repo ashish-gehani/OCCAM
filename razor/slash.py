@@ -50,28 +50,49 @@ from . import driver
 
 from . import config
 
-def entrypoint():
-    """This is the main entry point
+instructions = """This is the main entry point
 
-    razor [--work-dir=<dir>] <manifest>
+    slash --help
+
+    slash --tool=<llvm tool>
+
+    slash [options] <manifest>
 
     Previrtualize a compilation unit based on its manifest.
 
-        --work-dir <dir>  : Output intermediate files to the given location <dir>
-        --no-strip        : Leave symbol information in the binary
-        --devirt          : Devirtualize indirect function calls
-        --llpe            : Use Smowton's LLPE for intra-module prunning
-        --ipdse           : Apply inter-procedural dead store elimination (experimental)
-        --stats           : Show some stats before and after specialization
-        --no-specialize   : Do not specialize any intermodule calls
-        --tool <tool>     : Print the path to the tool and exit.
+        --work-dir <dir>        : Output intermediate files to the given location <dir>
+        --no-strip              : Leave symbol information in the binary
+        --debug                 : Pass the debug flag into all calls to opt (too much information usually)
+        --debug-manager=<type>  : Debug opt's pass manager (<type> should be either Structure or Details)
+        --debug-pass=<tag>      : Debug opt's pass (<tag> should be the debug pragma string of the pass)
+        --devirt                : Devirtualize indirect function calls
+        --llpe                  : Use Smowton's LLPE for intra-module prunning
+        --help                  : Print this.
+        --ipdse                 : Apply inter-procedural dead store elimination (experimental)
+        --info                  : Display info stats and exit
+        --stats                 : Show some stats before and after specialization
+        --no-specialize         : Do not specialize any intermodule calls
+        --tool=<tool>           : Print the path to the tool and exit.
+        --verbose               : Rint the calls to the llvm tools prior to running them.
+        --whitelist=<file>      : Pass a list of function name to be whitelisted.
+
+    """
+
+def entrypoint():
+    """This is the main entry point.
+
+    slash [--work-dir=<dir>] <manifest>
+
+    For more info:
+
+    slash --help
 
     """
     return Slash(sys.argv).run() if utils.checkOccamLib() else 1
 
 
 def  usage(exe):
-    template = '{0} [--work-dir=<dir>]  [--force] [--no-strip] [--devirt] [--llpe] [--ipdse] [--stats] [--no-specialize] <manifest>\n'
+    template = '{0} [--work-dir=<dir>]  [--force] [--no-strip]  [--debug] [--debug-manager=] [--debug-pass=] [--devirt] [--llpe] [--help] [--ipdse] [--stats] [--verbose] [--no-specialize] [--whitelist=<file>] <manifest>\n'
     sys.stderr.write(template.format(exe))
 
 
@@ -85,11 +106,18 @@ class Slash(object):
                         'force',
                         'no-strip',
                         'devirt',
+                        'debug',
+                        'debug-manager=',
+                        'debug-pass=',
                         'llpe',
+                        'help',
                         'ipdse',
+                        'info',
                         'stats',
                         'no-specialize',
-                        'tool=']
+                        'tool=',
+                        'verbose',
+                        'whitelist=']
             parsedargs = getopt.getopt(argv[1:], None, cmdflags)
             (self.flags, self.args) = parsedargs
 
@@ -98,6 +126,12 @@ class Slash(object):
                 tool = config.get_llvm_tool(tool)
                 print('tool = {0}'.format(tool))
                 sys.exit(0)
+
+            help = utils.get_flag(self.flags, 'help', None)
+            if help is not None:
+                print(instructions)
+                sys.exit(0)
+
 
         except Exception:
             usage(argv[0])
@@ -109,6 +143,17 @@ class Slash(object):
             usage(argv[0])
             self.valid = False
             return
+
+        whitelist = utils.get_whitelist(self.flags)
+        if whitelist is not None:
+            if os.path.exists(whitelist) and os.path.isfile(whitelist):
+                self.whitelist = whitelist
+            else:
+                msg = 'The given whitelist "{0}" is not a file, or does not exist.'
+                print(msg.format(whitelist))
+                self.valid = False
+                return
+
         self.work_dir = utils.get_work_dir(self.flags)
         self.pool = pool.getDefaultPool()
         self.valid = True
@@ -135,6 +180,28 @@ class Slash(object):
 
         no_strip = utils.get_flag(self.flags, 'no-strip', None)
 
+        debug = utils.get_flag(self.flags, 'debug', None)
+        if debug is not None:
+            driver.opt_debug_cmds.append('--debug')
+
+
+        debug_manager = utils.get_flag(self.flags, 'debug-manager', None)
+        if debug_manager is not None:
+            if debug_manager not in ('Structure', 'Details'):
+                print('Unknown --debug-manager value "{0}", should be either "Structure" or "Details"'.format(debug_manager))
+                return 1
+            driver.opt_debug_cmds.append('--debug-pass={0}'.format(debug_manager))
+
+
+        debug_pass = utils.get_flag(self.flags, 'debug-pass', None)
+        if debug_pass is not None:
+            driver.opt_debug_cmds.append('--debug-only={0}'.format(debug_pass))
+
+
+        verbose = utils.get_flag(self.flags, 'verbose', None)
+        if verbose is not None:
+            driver.verbose = True
+
         devirt = utils.get_flag(self.flags, 'devirt', None)
 
         use_llpe = utils.get_flag(self.flags, 'llpe', None)
@@ -143,17 +210,13 @@ class Slash(object):
 
         show_stats = utils.get_flag(self.flags, 'stats', None)
 
+        info = utils.get_flag(self.flags, 'info', None)
+        if info is not None:
+            show_stats = True
+
         no_specialize = utils.get_flag(self.flags, 'no-specialize', None)
 
         sys.stderr.write('\nslash working on {0} wrt {1} ...\n'.format(module, ' '.join(libs)))
-
-        #<delete this once done>
-        #new_libs = []
-        #for lib in libs:
-        #    new_libs.append(os.path.realpath(lib))
-        #
-        #libs = new_libs
-        #</delete this once done>
 
         native_lib_flags = []
 
@@ -172,10 +235,12 @@ class Slash(object):
         files = utils.populate_work_dir(module, libs, self.work_dir)
         os.chdir(self.work_dir)
 
+
         profile_map_before = collections.OrderedDict()
         profile_map_after = collections.OrderedDict()
-        
-        #specialize the arguments ...
+
+
+        #specialize the arguments ... FIXME: jorge why we have to do this before the profile_before step? hint: the f1 == f2 assertion fails.
         if args is not None:
             main = files[module]
             pre = main.get()
@@ -199,7 +264,25 @@ class Slash(object):
                 "Profiling before specialization"
                 passes.profile(m.get(), profile_map_before[m.get()])
             pool.InParallel(_profile_before, files.values(), self.pool)
-        
+
+
+        def _show_stats(f, v, when):
+            sys.stderr.write('\nStatistics for {0} {1} specialization\n'.format(f, when))
+            fd = open(v, 'r')
+            for line in fd:
+                sys.stderr.write('\t')
+                sys.stderr.write(line)
+            fd.close()
+            os.remove(v)
+
+
+        # in this case we just want to show the stats and exit
+        if info is not None:
+            print len(profile_map_before)
+            for (f, v)in profile_map_before.iteritems():
+                _show_stats(f, v, 'before')
+            return
+
         # Internalize everything that we can
         # We can never internalize main
         interface.writeInterface(interface.mainInterface(), 'main.iface')
@@ -246,7 +329,7 @@ class Slash(object):
         for m, _ in files.iteritems():
             base = utils.prevent_collisions(m[:m.rfind('.bc')])
             rewrite_files[m] = provenance.VersionedFile(base, 'rw')
-            
+
         iteration = 0
         while progress:
 
@@ -318,7 +401,7 @@ class Slash(object):
                 passes.internalize(pre, post, [iface_after_file.get()])
             pool.InParallel(prune, files.values(), self.pool)
 
-        #Collect stats after the whole optimization/debloating process finished            
+        #Collect stats after the whole optimization/debloating process finished
         if show_stats is not None:
             for m in files.values():
                 _, name = tempfile.mkstemp()
@@ -352,8 +435,8 @@ class Slash(object):
         if show_stats is not None:
             for (f1,v1), (f2,v2) in zip(profile_map_before.iteritems(), \
                                         profile_map_after.iteritems()) :
-                sys.stderr.write(f1)
-                sys.stderr.write(f2)
+
+                sys.stderr.write('f1 = {0}\nf2 = {1}\n'.format(f1, f2))
 
                 def _splitext(abspath):
                     #Given abspath of the form basename.ext1.ext2....extn
@@ -365,21 +448,11 @@ class Slash(object):
 
                 f1 = _splitext(f1)
                 f2 = _splitext(f2)
+                if f1 != f2:
+                    print('f1 = {0}\nf2 = {1}'.format(f1, f2))
                 assert (f1 == f2)
 
-                sys.stderr.write('\n\nStatistics for %s before specialization\n' % f1)
-                fd = open(v1, 'r')
-                for line in fd:
-                    sys.stderr.write('\t')
-                    sys.stderr.write(line)
-                fd.close()
-                os.remove(v1)
-                sys.stderr.write('Statistics for %s after specialization\n' % f2)
-                fd = open(v2, 'r')
-                for line in fd:
-                    sys.stderr.write('\t')
-                    sys.stderr.write(line)
-                fd.close()
-                os.remove(v2)
+                _show_stats(f1, v1, 'before')
+                _show_stats(f2, v2, 'after')
 
         return 0

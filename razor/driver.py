@@ -34,8 +34,11 @@ import subprocess
 import logging
 
 from . import config
+from . import echo
 
 verbose = False
+
+opt_debug_cmds = []
 
 class ReturnCode(Exception):
     def __init__(self, value, cmd, proc):
@@ -58,22 +61,31 @@ def previrt(fin, fout, args, **opts):
     libs = ['-load={0}'.format(config.get_sea_dsalib()),
             '-load={0}'.format(config.get_llvm_dsalib()),
             '-load={0}'.format(config.get_occamlib())]
-    args = libs + [fin, '-o={0}'.format(fout)] + args
-    if verbose: print config.get_llvm_tool('opt') + ' ' + ' '.join(args)
-    return run(config.get_llvm_tool('opt'), args, **opts)
+
+    args = opt_debug_cmds + libs + [fin, '-o={0}'.format(fout)] + args
+
+    return run('opt', args, **opts)
 
 def previrt_progress(fin, fout, args, output=None):
     libs = ['-load={0}'.format(config.get_sea_dsalib()),
             '-load={0}'.format(config.get_llvm_dsalib()),
             '-load={0}'.format(config.get_occamlib())]
-    args = [config.get_llvm_tool('opt')] + libs + [fin, '-o={0}'.format(fout)] + args
-    if verbose: print ' '.join(args)
+
+    prog = config.get_llvm_tool('opt')
+
+    args = opt_debug_cmds + libs + [fin, '-o={0}'.format(fout)] + args
+
+    report(prog, args)
+
+    args = [prog] + args
+
     proc = subprocess.Popen(args,
                             stderr=subprocess.PIPE,
                             stdout=subprocess.PIPE,
                             stdin=subprocess.PIPE)
     progress = proc.stderr.read()
     retcode = proc.wait()
+
     logging.getLogger().info('%(cmd)s => %(code)d\n%(progress)s',
                              {'cmd'  : ' '.join(args),
                               'code' : retcode,
@@ -85,26 +97,37 @@ def previrt_progress(fin, fout, args, output=None):
 
 def linker(fin, fout, args):
     args = [fin, '-o', fout] + args
-    return run(config.get_llvm_tool('clang++'), args)
+    return run('clang++', args)
 
 
 def run(prog, args):
 
     log = logging.getLogger()
 
+    prog = config.get_llvm_tool(prog)
+
+    report(prog, args)
+
+
     proc = subprocess.Popen([prog] + args,
                             stderr=subprocess.PIPE,
                             stdout=subprocess.PIPE,
                             stdin=subprocess.PIPE)
+
+    log.log(logging.INFO, 'EXECUTING: %s\n', ' '.join([prog] + args))
+    echo.Echo(proc.stderr, log)
+
     retcode = proc.wait()
 
-    log.log(logging.INFO, 'EXECUTING: %(cmd)s => %(code)d\n%(err)s',
-            {'cmd'  : ' '.join([prog] + args),
-             'code' : retcode,
-             'err'  : proc.stderr.read()})
+    log.log(logging.INFO, 'EXECUTING: %(cmd)s RETURNED %(code)d\n',
+            {'cmd'  : ' '.join([prog] + args), 'code' : retcode })
 
     if retcode != 0:
         ex = ReturnCode(retcode, [prog] + args, proc)
         logging.getLogger().error('ERROR: %s', ex)
         raise ex
     return retcode
+
+
+def report(prog, args):
+    if verbose: print 'Calling:\n\t{0}\n'.format(prog + ' ' + ' '.join(args))

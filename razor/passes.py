@@ -78,7 +78,7 @@ def strip(input_file, output_file):
     """
     args = [input_file, '-o', output_file]
     args += ['-strip', '-globaldce', '-globalopt', '-strip-dead-prototypes']
-    return driver.run(config.get_llvm_tool('opt'), args)
+    return driver.run('opt', args)
 
 def devirt(input_file, output_file):
     """ resolve indirect function calls
@@ -86,19 +86,19 @@ def devirt(input_file, output_file):
     args = ['-devirt-ta',
             # XXX: this one is not, in general, sound
             #'-calltarget-ignore-external',
-            '-inline']    
+            '-inline']
     retcode = driver.previrt_progress(input_file, output_file, args)
     if retcode != 0:
         return retcode
 
     #FIXME: previrt_progress returns 0 in cases where --devirt-ta crashes.
-    #Here we check that the output_file exists 
+    #Here we check that the output_file exists
     if not os.path.isfile(output_file):
         #Some return code different from zero
         return 3
     else:
         return retcode
-            
+
 
 def profile(input_file, output_file):
     """ count number of instructions, functions, memory accesses, etc.
@@ -116,7 +116,7 @@ def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, log=None):
     opt.close()
     done.close()
     tmp.close()
-    
+
     #XXX: Optimize using standard llvm transformations before any other pass.
     #Otherwise, these passes will not be very effective.
     retcode = optimize(input_file, done.name)
@@ -133,7 +133,7 @@ def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, log=None):
             sys.stderr.write("ERROR: resolution of indirect calls failed!\n")
             shutil.copy(done.name, output_file)
             return retcode
-        
+
         sys.stderr.write("\tresolved indirect calls finished succesfully\n")
         shutil.copy(tmp.name, done.name)
 
@@ -144,7 +144,7 @@ def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, log=None):
             args = llpe_libs + ['-loop-simplify', '-lcssa', \
                                 '-llpe', '-llpe-omit-checks', '-llpe-single-threaded', \
                                 done.name, '-o=%s' % tmp.name]
-        retcode = driver.run(config.get_llvm_tool('opt'), args)
+        retcode = driver.run('opt', args)
         if retcode != 0:
             sys.stderr.write("ERROR: llpe failed!\n")
             shutil.copy(done.name, output_file)
@@ -188,22 +188,22 @@ def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, log=None):
             else:
                 sys.stderr.write("\tintra module optimization finished succesfully\n")
         else:
-            shutil.copy(done.name, opt.name)            
+            shutil.copy(done.name, opt.name)
 
         # inlining using policies
         passes = ['-Ppeval']
         progress = driver.previrt_progress(opt.name, done.name, passes, output=out)
-        sys.stderr.write("\tintra-module specialization finished\n")        
+        sys.stderr.write("\tintra-module specialization finished\n")
         if progress:
             if log is not None:
                 log.write(out[0])
         else:
             shutil.copy(opt.name, done.name)
             break
-        
+
     shutil.copy(done.name, output_file)
     try:
-        os.unlink(done.name)        
+        os.unlink(done.name)
         os.unlink(opt.name)
         os.unlink(tmp.name)
     except OSError:
@@ -212,7 +212,7 @@ def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, log=None):
 
 def optimize(input_file, output_file):
     args = ['-disable-simplify-libcalls', input_file, '-o', output_file, '-O3']
-    return driver.run(config.get_llvm_tool('opt'), args)
+    return driver.run('opt', args)
 
 def constrain_program_args(input_file, output_file, cnstrs, filename=None):
     """ constrain the program arguments.
