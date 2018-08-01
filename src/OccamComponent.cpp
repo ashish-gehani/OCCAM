@@ -48,13 +48,14 @@
 
 #include <vector>
 #include <string>
+#include <fstream>
 
 using namespace llvm;
 
-static cl::list<std::string>
-DoNotInternalizeList("Poccam-do-not-internalize",
-		     cl::desc("Do not internalize the functions in this list"),
-		     cl::ZeroOrMore);
+static cl::opt<std::string>
+KeepExternalFile("Pkeep-external",
+		 cl::desc("<file> : list of function names to be whitelisted"),
+		 cl::init(""));
 
 namespace previrt
 {
@@ -99,14 +100,24 @@ namespace previrt
     errs() << "</interface>\n";
     */
 
-    std::set<std::string> do_not_internalize(DoNotInternalizeList.begin(),
-					     DoNotInternalizeList.end());
+    std::set<std::string> keep_external;
+    if (KeepExternalFile != "") {
+      std::ifstream infile(KeepExternalFile);
+      if (infile.is_open()) {
+	std::string line;	
+	while (std::getline(infile, line)) {
+	  keep_external.insert(line);
+	}
+	infile.close();
+      } else {
+	errs() << "Warning: ignored whitelist because something failed.\n";
+      }
+    }
+    
     // Set all functions that are not in the interface to internal linkage only    
     for (Module::iterator f = M.begin(), e = M.end(); f != e; ++f) {
-      
-      if (do_not_internalize.count(f->getName())) {
-	errs() << "Did not internalize " << f->getName()
-	       << " because it is in the do-not-externalize list \n";
+      if (keep_external.count(f->getName())) {
+	errs() << "Did not internalize " << f->getName() << " because it is whitelisted.\n";
 	continue;
       }
       
