@@ -42,6 +42,8 @@ EOF
 
 
 # Previrtualize
-slash --verbose --debug-pass=sroa --stats --devirt --work-dir=slash ssh.manifest
+# additional debug flags:
+#  --debug-pass=sroa --verbose --debug-manager=Structure
+slash  --stats --devirt --work-dir=slash ssh.manifest
 
 cp ./slash/ssh_slashed .

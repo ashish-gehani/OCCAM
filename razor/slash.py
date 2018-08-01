@@ -74,7 +74,7 @@ instructions = """This is the main entry point
         --no-specialize         : Do not specialize any intermodule calls
         --tool=<tool>           : Print the path to the tool and exit.
         --verbose               : Rint the calls to the llvm tools prior to running them.
-        --whitelist=<file>      : Pass a list of function name to be whitelisted.
+        --keep-external=<file>  : Pass a list of function name to be whitelisted.
 
     """
 
@@ -92,7 +92,7 @@ def entrypoint():
 
 
 def  usage(exe):
-    template = '{0} [--work-dir=<dir>]  [--force] [--no-strip]  [--debug] [--debug-manager=] [--debug-pass=] [--devirt] [--llpe] [--help] [--ipdse] [--stats] [--verbose] [--no-specialize] [--whitelist=<file>] <manifest>\n'
+    template = '{0} [--work-dir=<dir>]  [--force] [--no-strip]  [--debug] [--debug-manager=] [--debug-pass=] [--devirt] [--llpe] [--help] [--ipdse] [--stats] [--verbose] [--no-specialize] [--keep-external=<file>] <manifest>\n'
     sys.stderr.write(template.format(exe))
 
 
@@ -117,7 +117,7 @@ class Slash(object):
                         'no-specialize',
                         'tool=',
                         'verbose',
-                        'whitelist=']
+                        'keep-external=']
             parsedargs = getopt.getopt(argv[1:], None, cmdflags)
             (self.flags, self.args) = parsedargs
 
@@ -127,8 +127,8 @@ class Slash(object):
                 print('tool = {0}'.format(tool))
                 sys.exit(0)
 
-            help = utils.get_flag(self.flags, 'help', None)
-            if help is not None:
+            helpme = utils.get_flag(self.flags, 'help', None)
+            if helpme is not None:
                 print(instructions)
                 sys.exit(0)
 
@@ -144,12 +144,10 @@ class Slash(object):
             self.valid = False
             return
 
-        whitelist = utils.get_whitelist(self.flags)
-        if whitelist is not None:
-            if os.path.exists(whitelist) and os.path.isfile(whitelist):
-                self.whitelist = whitelist
-            else:
-                msg = 'The given whitelist "{0}" is not a file, or does not exist.'
+        self.whitelist = utils.get_whitelist(self.flags)
+        if self.whitelist is not None:
+            if not os.path.exists(self.whitelist) or not os.path.isfile(self.whitelist):
+                msg = 'The given keep-external list "{0}" is not a file, or does not exist.'
                 print(msg.format(whitelist))
                 self.valid = False
                 return
@@ -178,29 +176,10 @@ class Slash(object):
         (valid, module, binary, libs, native_libs, ldflags, args, name, constraints) = parsed
 
 
+        if not self.driver_config():
+            return 1
+
         no_strip = utils.get_flag(self.flags, 'no-strip', None)
-
-        debug = utils.get_flag(self.flags, 'debug', None)
-        if debug is not None:
-            driver.opt_debug_cmds.append('--debug')
-
-
-        debug_manager = utils.get_flag(self.flags, 'debug-manager', None)
-        if debug_manager is not None:
-            if debug_manager not in ('Structure', 'Details'):
-                print('Unknown --debug-manager value "{0}", should be either "Structure" or "Details"'.format(debug_manager))
-                return 1
-            driver.opt_debug_cmds.append('--debug-pass={0}'.format(debug_manager))
-
-
-        debug_pass = utils.get_flag(self.flags, 'debug-pass', None)
-        if debug_pass is not None:
-            driver.opt_debug_cmds.append('--debug-only={0}'.format(debug_pass))
-
-
-        verbose = utils.get_flag(self.flags, 'verbose', None)
-        if verbose is not None:
-            driver.verbose = True
 
         devirt = utils.get_flag(self.flags, 'devirt', None)
 
@@ -239,7 +218,6 @@ class Slash(object):
         profile_map_before = collections.OrderedDict()
         profile_map_after = collections.OrderedDict()
 
-
         #specialize the arguments ... FIXME: jorge why we have to do this before the profile_before step? hint: the f1 == f2 assertion fails.
         if args is not None:
             main = files[module]
@@ -252,6 +230,9 @@ class Slash(object):
             pre = main.get()
             post = main.new('a')
             passes.constrain_program_args(pre, post, constraints, 'constraints')
+
+
+
 
         #watches were inserted here ...
 
@@ -306,7 +287,7 @@ class Slash(object):
             pre = i.get()
             post = i.new('i')
             ifaces = [refs[f].get() for f in refs.keys() if f != m] + ['main.iface']
-            passes.internalize(pre, post, ifaces)
+            passes.internalize(pre, post, ifaces, self.whitelist)
 
         pool.InParallel(_internalize, vals, self.pool)
 
@@ -398,7 +379,7 @@ class Slash(object):
                 "Pruning dead code/variables"
                 pre = m.get()
                 post = m.new('occam')
-                passes.internalize(pre, post, [iface_after_file.get()])
+                passes.internalize(pre, post, [iface_after_file.get()], self.whitelist)
             pool.InParallel(prune, files.values(), self.pool)
 
         #Collect stats after the whole optimization/debloating process finished
@@ -453,11 +434,38 @@ class Slash(object):
 
                 f1 = _splitext(f1)
                 f2 = _splitext(f2)
-                if f1 != f2:
-                    print('f1 = {0}\nf2 = {1}'.format(f1, f2))
+                print('f1 = {0}\nf2 = {1}'.format(f1, f2))
+
                 assert (f1 == f2)
 
                 _show_stats(f1, v1, 'before')
                 _show_stats(f2, v2, 'after')
 
         return 0
+
+
+
+    def driver_config(self):
+        debug = utils.get_flag(self.flags, 'debug', None)
+        if debug is not None:
+            driver.opt_debug_cmds.append('--debug')
+
+
+        debug_manager = utils.get_flag(self.flags, 'debug-manager', None)
+        if debug_manager is not None:
+            if debug_manager not in ('Structure', 'Details'):
+                print('Unknown --debug-manager value "{0}", should be either "Structure" or "Details"'.format(debug_manager))
+                return False
+            driver.opt_debug_cmds.append('--debug-pass={0}'.format(debug_manager))
+
+
+        debug_pass = utils.get_flag(self.flags, 'debug-pass', None)
+        if debug_pass is not None:
+            driver.opt_debug_cmds.append('--debug-only={0}'.format(debug_pass))
+
+
+        verbose = utils.get_flag(self.flags, 'verbose', None)
+        if verbose is not None:
+            driver.verbose = True
+
+        return True

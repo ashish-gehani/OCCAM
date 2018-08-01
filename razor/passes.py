@@ -67,10 +67,12 @@ def rewrite(input_file, output_file, rewrites, output=None):
     return driver.previrt_progress(input_file, output_file, args, output)
 
 
-def internalize(input_file, output_file, interfaces):
+def internalize(input_file, output_file, interfaces, whitelist):
     """ marks unused symbols as internal/hidden
     """
     args = ['-Poccam'] + driver.all_args('-Poccam-input', interfaces)
+    if whitelist is not None:
+        args = args + ['-Pkeep-external', whitelist]
     return driver.previrt_progress(input_file, output_file, args)
 
 def strip(input_file, output_file):

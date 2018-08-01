@@ -62,7 +62,7 @@ def get_work_dir(flags):
 
 
 def get_whitelist(flags):
-    wl = get_flag(flags, 'whitelist')
+    wl = get_flag(flags, 'keep-external')
     if wl is not None:
         return os.path.abspath(wl)
     return None

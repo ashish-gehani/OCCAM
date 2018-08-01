@@ -35,6 +35,8 @@ import logging
 
 from . import config
 from . import echo
+from . import stringbuffer
+
 
 verbose = False
 
@@ -77,14 +79,23 @@ def previrt_progress(fin, fout, args, output=None):
 
     report(prog, args)
 
+    log = logging.getLogger()
+
+    sb = stringbuffer.StringBuffer()
+
+    log.log(logging.INFO, 'EXECUTING: %s\n', ' '.join([prog] + args))
+
     args = [prog] + args
 
     proc = subprocess.Popen(args,
                             stderr=subprocess.PIPE,
                             stdout=subprocess.PIPE,
                             stdin=subprocess.PIPE)
-    progress = proc.stderr.read()
+
+    echo.Echo(proc.stderr, log, sb)
     retcode = proc.wait()
+
+    progress = str(sb)
 
     logging.getLogger().info('%(cmd)s => %(code)d\n%(progress)s',
                              {'cmd'  : ' '.join(args),
@@ -119,7 +130,7 @@ def run(prog, args):
 
     retcode = proc.wait()
 
-    log.log(logging.INFO, 'EXECUTING: %(cmd)s RETURNED %(code)d\n',
+    log.log(logging.INFO, 'EXECUTED: %(cmd)s WHICH RETURNED %(code)d\n',
             {'cmd'  : ' '.join([prog] + args), 'code' : retcode })
 
     if retcode != 0:
