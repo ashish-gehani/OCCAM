@@ -218,22 +218,6 @@ class Slash(object):
         profile_map_before = collections.OrderedDict()
         profile_map_after = collections.OrderedDict()
 
-        #specialize the arguments ... FIXME: jorge why we have to do this before the profile_before step? hint: the f1 == f2 assertion fails.
-        if args is not None:
-            main = files[module]
-            pre = main.get()
-            post = main.new('a')
-            passes.specialize_program_args(pre, post, args, 'arguments', name=name)
-        elif constraints:
-            sys.stderr.write('Input-user specialization using the constraints: {0}\n'.format(constraints))
-            main = files[module]
-            pre = main.get()
-            post = main.new('a')
-            passes.constrain_program_args(pre, post, constraints, 'constraints')
-
-
-
-
         #watches were inserted here ...
 
         #Collect some stats before we start optimizing/debloating
@@ -264,6 +248,19 @@ class Slash(object):
                 _show_stats(f, v, 'before')
             return
 
+        #specialize the arguments ... 
+        if args is not None:
+            main = files[module]
+            pre = main.get()
+            post = main.new('a')
+            passes.specialize_program_args(pre, post, args, 'arguments', name=name)
+        elif constraints:
+            sys.stderr.write('Input-user specialization using the constraints: {0}\n'.format(constraints))
+            main = files[module]
+            pre = main.get()
+            post = main.new('a')
+            passes.constrain_program_args(pre, post, constraints, 'constraints')
+        
         # Internalize everything that we can
         # We can never internalize main
         interface.writeInterface(interface.mainInterface(), 'main.iface')
@@ -422,22 +419,20 @@ class Slash(object):
             for (f1,v1), (f2,v2) in zip(profile_map_before.iteritems(), \
                                         profile_map_after.iteritems()) :
 
-                sys.stderr.write('f1 = {0}\nf2 = {1}\n'.format(f1, f2))
-
+                #sys.stderr.write('f1 = {0}\nf2 = {1}\n'.format(f1, f2))
                 def _splitext(abspath):
                     #Given abspath of the form basename.ext1.ext2....extn
-                    #return basename.ext1
+                    #return basename
                     base = os.path.basename(abspath)
                     res = base.split(os.extsep)
                     assert(len(res) > 1)
-                    return res[0] + '.' + res[1]
+                    #ext = res[1] 
+                    return res[0]
 
                 f1 = _splitext(f1)
                 f2 = _splitext(f2)
-                print('f1 = {0}\nf2 = {1}'.format(f1, f2))
-
+                #print('f1 = {0}\nf2 = {1}'.format(f1, f2))
                 assert (f1 == f2)
-
                 _show_stats(f1, v1, 'before')
                 _show_stats(f2, v2, 'after')
 
