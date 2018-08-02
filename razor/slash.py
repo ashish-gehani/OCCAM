@@ -60,21 +60,23 @@ instructions = """slash has three modes of use:
 
     Previrtualize a compilation unit based on its manifest.
 
-        --work-dir <dir>        : Output intermediate files to the given location <dir>
-        --no-strip              : Leave symbol information in the binary
-        --debug                 : Pass the debug flag into all calls to opt (too much information usually)
-        --debug-manager=<type>  : Debug opt's pass manager (<type> should be either Structure or Details)
-        --debug-pass=<tag>      : Debug opt's pass (<tag> should be the debug pragma string of the pass)
-        --devirt                : Devirtualize indirect function calls
-        --llpe                  : Use Smowton's LLPE for intra-module prunning
         --help                  : Print this.
-        --ipdse                 : Apply inter-procedural dead store elimination (experimental)
+
+        --tool=<tool>           : Print the path to the tool and exit.
+
+        --work-dir <dir>        : Output intermediate files to the given location <dir>
         --info                  : Display info stats and exit
         --stats                 : Show some stats before and after specialization
-        --no-specialize         : Do not specialize any intermodule calls
-        --tool=<tool>           : Print the path to the tool and exit.
+        --no-strip              : Leave symbol information in the binary
         --verbose               : Print the calls to the llvm tools prior to running them.
-        --keep-external=<file>  : Pass a list of function name to be whitelisted.
+        --debug-manager=<type>  : Debug opt's pass manager (<type> should be either Structure or Details)
+        --debug-pass=<tag>      : Debug opt's pass (<tag> should be the debug pragma string of the pass)
+        --debug                 : Pass the debug flag into all calls to opt (too much information usually)
+        --devirt                : Devirtualize indirect function calls
+        --llpe                  : Use Smowton's LLPE for intra-module prunning
+        --ipdse                 : Apply inter-procedural dead store elimination (experimental)
+        --no-specialize         : Do not specialize any intermodule calls
+        --keep-external=<file>  : Pass a list of function names that should remain external.
 
     """
 
