@@ -50,7 +50,7 @@ from . import driver
 
 from . import config
 
-instructions = """This is the main entry point
+instructions = """slash has three modes of use:
 
     slash --help
 
@@ -73,7 +73,7 @@ instructions = """This is the main entry point
         --stats                 : Show some stats before and after specialization
         --no-specialize         : Do not specialize any intermodule calls
         --tool=<tool>           : Print the path to the tool and exit.
-        --verbose               : Rint the calls to the llvm tools prior to running them.
+        --verbose               : Print the calls to the llvm tools prior to running them.
         --keep-external=<file>  : Pass a list of function name to be whitelisted.
 
     """
@@ -248,7 +248,7 @@ class Slash(object):
                 _show_stats(f, v, 'before')
             return
 
-        #specialize the arguments ... 
+        #specialize the arguments ...
         if args is not None:
             main = files[module]
             pre = main.get()
@@ -260,7 +260,7 @@ class Slash(object):
             pre = main.get()
             post = main.new('a')
             passes.constrain_program_args(pre, post, constraints, 'constraints')
-        
+
         # Internalize everything that we can
         # We can never internalize main
         interface.writeInterface(interface.mainInterface(), 'main.iface')
@@ -426,7 +426,7 @@ class Slash(object):
                     base = os.path.basename(abspath)
                     res = base.split(os.extsep)
                     assert(len(res) > 1)
-                    #ext = res[1] 
+                    #ext = res[1]
                     return res[0]
 
                 f1 = _splitext(f1)
