@@ -36,7 +36,7 @@ import logging
 
 class Echo:
 
-    def __init__(self, stream, logger, stringbuffer=None):
+    def __init__(self, stream, logger, sb=None):
         """Echos the stream to the logger.
         """
         self.stream = stream
@@ -44,13 +44,18 @@ class Echo:
 
 
         def thread_main(stream, logger):
-            while True:
-                line = stream.readline()
-                if line == '':
-                    return
-                else:
-                    if stringbuffer is not None: stringbuffer.append(line)
-                    logger.log(logging.INFO, line.rstrip())
+            try:
+                while True:
+                    line = stream.readline()
+                    if line == '':
+                        return
+                    else:
+                        if sb is not None: sb.append(line)
+                        logger.log(logging.INFO, line.rstrip())
+            except:
+                # sometimes we have the rug pulled out from under us...
+                pass
+
 
         self.thread = Thread(target = thread_main, args = (self.stream, self.logger))
 
