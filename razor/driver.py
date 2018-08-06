@@ -92,7 +92,12 @@ def previrt_progress(fin, fout, args, output=None):
                             stdout=subprocess.PIPE,
                             stdin=subprocess.PIPE)
 
-    echo.Echo(proc.stderr, log, sb)
+    eobj = echo.Echo(proc.stderr, log, sb)
+
+    # wait for the echo thread to finish.
+    eobj.wait()
+
+    # this should be already finished.
     retcode = proc.wait()
 
     progress = str(sb)

@@ -27,7 +27,7 @@ echo "clang -static -nostdlib main.o libc.a.o crt1.o libc.a /usr/lib/gcc/x86_64-
 clang -static -nostdlib main.o libc.a.o crt1.o libc.a /usr/lib/gcc/x86_64-linux-gnu/5/libgcc.a -o main_static
 
 # Previrtualize
-slash --work-dir=slash main.manifest
+slash --no-strip --work-dir=slash main.manifest
 
 cp slash/main_slash .
 
@@ -35,3 +35,7 @@ cp slash/main_slash .
 for bitcode in slash/*.bc; do
     llvm-dis  "$bitcode" &> /dev/null
 done
+cp slash/libc.a-final.ll ./
+cp slash/libc.a.ll ./
+cp slash/main.o-final.ll  ./
+cp slash/main.o.ll  ./

@@ -44,21 +44,20 @@ class Echo:
 
 
         def thread_main(stream, logger):
-            try:
-                while True:
-                    line = stream.readline()
-                    if line == '':
-                        return
-                    else:
-                        if sb is not None: sb.append(line)
-                        logger.log(logging.INFO, line.rstrip())
-            except:
-                # sometimes we have the rug pulled out from under us...
-                pass
-
+            while True:
+                line = stream.readline()
+                if line == '':
+                    return
+                else:
+                    if sb is not None: sb.append(line)
+                    logger.log(logging.INFO, line.rstrip())
 
         self.thread = Thread(target = thread_main, args = (self.stream, self.logger))
 
         self.thread.daemon = True
 
         self.thread.start()
+
+
+    def wait(self):
+        self.thread.join()
