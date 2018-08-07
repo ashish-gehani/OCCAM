@@ -20,9 +20,10 @@ main.o.bc:
 	gclang -g main.c -c  && get-bc main.o
 
 clean:
-	rm -rf *.ll *.bc .*.bc *.o *.a slash main_static main_slash
+	rm -rf slash main_static main_slash
 
 very_clean: clean
+	rm -rf *.ll *.bc .*.bc *.o *.a
 	make -C ./musllvm clean
 
 spotless:

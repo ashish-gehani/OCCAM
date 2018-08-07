@@ -104,8 +104,9 @@ namespace previrt
     if (KeepExternalFile != "") {
       std::ifstream infile(KeepExternalFile);
       if (infile.is_open()) {
-	std::string line;	
+	std::string line;
 	while (std::getline(infile, line)) {
+      //errs() << "Adding " << line << " to the white list.\n";
 	  keep_external.insert(line);
 	}
 	infile.close();
@@ -113,14 +114,14 @@ namespace previrt
 	errs() << "Warning: ignored whitelist because something failed.\n";
       }
     }
-    
-    // Set all functions that are not in the interface to internal linkage only    
+
+    // Set all functions that are not in the interface to internal linkage only
     for (Module::iterator f = M.begin(), e = M.end(); f != e; ++f) {
       if (keep_external.count(f->getName())) {
 	errs() << "Did not internalize " << f->getName() << " because it is whitelisted.\n";
 	continue;
       }
-      
+
       if (!f->isDeclaration() && f->hasExternalLinkage() &&
           I.calls.find(f->getName()) == I.calls.end() &&
           I.references.find(f->getName()) == I.references.end()) {
@@ -134,14 +135,14 @@ namespace previrt
     // Set all initialized global variables that are not referenced in
     // the interface to "localized linkage" only
     for (Module::global_iterator i = M.global_begin(), e = M.global_end(); i != e; ++i) {
-      if ((i->hasExternalLinkage() || i->hasCommonLinkage()) && 
+      if ((i->hasExternalLinkage() || i->hasCommonLinkage()) &&
 	  i->hasInitializer() &&
           I.references.find(i->getName()) == I.references.end()) {
-	errs() << "internalizing '" << i->getName() << "'\n";	
+	errs() << "internalizing '" << i->getName() << "'\n";
         i->setLinkage(localizeLinkage(i->getLinkage()));
 	internalized++;
         modified = true;
-      } 
+      }
     }
     /* TODO: We want to do this, but libc has some problems...
     for (Module::alias_iterator i = M.alias_begin(), e = M.alias_end(); i != e; ++i) {

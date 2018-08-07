@@ -1,8 +1,8 @@
 #include <time.h>
-
+#include <stdio.h>
 
 
 int main(){
-  time(NULL);
+  printf("%ld\n", time(NULL));
   return 0;
 }

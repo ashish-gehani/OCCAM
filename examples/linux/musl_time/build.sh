@@ -10,7 +10,7 @@ cat > main.manifest <<EOF
 , "binary"  : "main_slash"
 , "modules"    : ["libc.a.bc"]
 , "native_libs" : ["crt1.o", "libc.a", "/usr/lib/gcc/x86_64-linux-gnu/5/libgcc.a"]
-, "ldflags" : ["-static", "-nostdlib"]
+, "ldflags" : ["-static", "-nostdlib", "-g"]
 , "args"    : []
 , "name"    : "main"
 }
@@ -27,11 +27,12 @@ echo "clang -static -nostdlib main.o libc.a.o crt1.o libc.a /usr/lib/gcc/x86_64-
 clang -static -nostdlib main.o libc.a.o crt1.o libc.a /usr/lib/gcc/x86_64-linux-gnu/5/libgcc.a -o main_static
 
 # Previrtualize
-slash --no-strip --work-dir=slash main.manifest
+slash --no-strip --work-dir=slash --keep-external=untouchables.txt main.manifest
 
 cp slash/main_slash .
 
 #debugging stuff below:
+echo "disassembling bitcode"
 for bitcode in slash/*.bc; do
     llvm-dis  "$bitcode" &> /dev/null
 done
