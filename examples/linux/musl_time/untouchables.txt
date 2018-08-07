@@ -1,3 +1,1 @@
-__libc_start_main
-__init_libc
-__libc_start_init
+__libc
