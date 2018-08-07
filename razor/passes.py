@@ -285,3 +285,17 @@ def deep(libs, ifaces):
 
     os.unlink(tf.name)
     return iface
+
+def precise_dce(input_file, output_file):
+    """ use a model-checker to remove dead functions.
+    """
+    
+    # 1. cost-benefit pass to identify potential functions.
+    # 2. TODO: instrument the program with "assert(false)" at the entry of the selected functions.
+    # 3. TODO: run model-checker (seahorn).
+    # 4. TODO: instrument the program with "assume(false)" and run standard dce and globaldce.
+    
+    args = ['--cost-benefit-cg']
+    #args = ['-Pprofiler']
+    #args += ['-profile-outfile={0}'.format(output_file)]
+    return driver.previrt(input_file, '/dev/null', args)

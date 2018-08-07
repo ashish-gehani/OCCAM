@@ -222,6 +222,11 @@ class Slash(object):
 
         #watches were inserted here ...
 
+        def write_timestamp(msg):
+            import datetime
+            dt = datetime.datetime.now ().strftime ('%d/%m/%Y %H:%M:%S')
+            sys.stderr.write("[%s] %s...\n" % (dt, msg))
+        
         #Collect some stats before we start optimizing/debloating
         if show_stats is not None:
             for m in files.values():
@@ -310,6 +315,7 @@ class Slash(object):
             base = utils.prevent_collisions(m[:m.rfind('.bc')])
             rewrite_files[m] = provenance.VersionedFile(base, 'rw')
 
+        write_timestamp("Started global fixpoint ...")
         iteration = 0
         while progress:
 
@@ -381,6 +387,20 @@ class Slash(object):
                 passes.internalize(pre, post, [iface_after_file.get()], self.whitelist)
             pool.InParallel(prune, files.values(), self.pool)
 
+        write_timestamp("Finished global fixpoint.")        
+            
+        def precise_dce(m):
+            "Pruning dead functions using model-checking"
+            pre = m.get()
+            #post = m.new('sea')
+            post = pre
+            try:
+                passes.precise_dce(pre, post)
+            except Exception as e:
+                print "Precise dce failed on " + str(pre)
+                pass
+        pool.InParallel(precise_dce, files.values(), self.pool)
+
         #Collect stats after the whole optimization/debloating process finished
         if show_stats is not None:
             for m in files.values():
@@ -390,7 +410,7 @@ class Slash(object):
                 "Profiling after specialization"
                 passes.profile(m.get(), profile_map_after[m.get()])
             pool.InParallel(_profile_after, files.values(), self.pool)
-
+                
         # Make symlinks for the "final" versions
         for x in files.values():
             trg = x.base('-final')

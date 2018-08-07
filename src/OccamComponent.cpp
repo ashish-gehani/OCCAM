@@ -114,19 +114,17 @@ namespace previrt
 	errs() << "Warning: ignored whitelist because something failed.\n";
       }
     }
-
-    // Set all functions that are not in the interface to internal linkage only
-    for (Module::iterator f = M.begin(), e = M.end(); f != e; ++f) {
-      if (keep_external.count(f->getName())) {
-	errs() << "Did not internalize " << f->getName() << " because it is whitelisted.\n";
+    // Set all functions that are not in the interface to internal linkage only    
+    for (auto &f: M) {
+      if (keep_external.count(f.getName())) {
+	errs() << "Did not internalize " << f.getName() << " because it is whitelisted.\n";
 	continue;
       }
-
-      if (!f->isDeclaration() && f->hasExternalLinkage() &&
-          I.calls.find(f->getName()) == I.calls.end() &&
-          I.references.find(f->getName()) == I.references.end()) {
-	errs() << "Hiding '" << f->getName() << "'\n";
-	f->setLinkage(GlobalValue::InternalLinkage);
+      if (!f.isDeclaration() && f.hasExternalLinkage() &&
+          I.calls.find(f.getName()) == I.calls.end() &&
+          I.references.find(f.getName()) == I.references.end()) {
+	errs() << "Hiding '" << f.getName() << "'\n";
+	f.setLinkage(GlobalValue::InternalLinkage);
 	hidden++;
 	modified = true;
       }
@@ -134,16 +132,22 @@ namespace previrt
 
     // Set all initialized global variables that are not referenced in
     // the interface to "localized linkage" only
-    for (Module::global_iterator i = M.global_begin(), e = M.global_end(); i != e; ++i) {
-      if ((i->hasExternalLinkage() || i->hasCommonLinkage()) &&
-	  i->hasInitializer() &&
-          I.references.find(i->getName()) == I.references.end()) {
-	errs() << "internalizing '" << i->getName() << "'\n";
-        i->setLinkage(localizeLinkage(i->getLinkage()));
+    for (auto &gv: M.globals()) {
+      if (gv.hasName() && keep_external.count(gv.getName())) {
+	errs() << "Did not internalize " << gv.getName() << " because it is whitelisted.\n";
+	continue;
+      }
+      if ((gv.hasExternalLinkage() || gv.hasCommonLinkage()) && 
+	  gv.hasInitializer() &&
+          I.references.find(gv.getName()) == I.references.end()) {
+	errs() << "internalizing '" << gv.getName() << "'\n";	
+        gv.setLinkage(localizeLinkage(gv.getLinkage()));
 	internalized++;
         modified = true;
       }
     }
+
+    
     /* TODO: We want to do this, but libc has some problems...
     for (Module::alias_iterator i = M.alias_begin(), e = M.alias_end(); i != e; ++i) {
       if (i->hasExternalLinkage() &&
