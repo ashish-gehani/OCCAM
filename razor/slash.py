@@ -75,6 +75,7 @@ instructions = """slash has three modes of use:
         --devirt                : Devirtualize indirect function calls
         --llpe                  : Use Smowton's LLPE for intra-module prunning
         --ipdse                 : Apply inter-procedural dead store elimination (experimental)
+        --precise-dce           : Use model-checking to perform intra-module dead code elimination
         --no-specialize         : Do not specialize any intermodule calls
         --keep-external=<file>  : Pass a list of function names that should remain external.
 
@@ -94,7 +95,7 @@ def entrypoint():
 
 
 def  usage(exe):
-    template = '{0} [--work-dir=<dir>]  [--force] [--no-strip]  [--debug] [--debug-manager=] [--debug-pass=] [--devirt] [--llpe] [--help] [--ipdse] [--stats] [--verbose] [--no-specialize] [--keep-external=<file>] <manifest>\n'
+    template = '{0} [--work-dir=<dir>]  [--force] [--no-strip]  [--debug] [--debug-manager=] [--debug-pass=] [--devirt] [--llpe] [--help] [--ipdse] [--precise-dce] [--stats] [--verbose] [--no-specialize] [--keep-external=<file>] <manifest>\n'
     sys.stderr.write(template.format(exe))
 
 
@@ -114,6 +115,7 @@ class Slash(object):
                         'llpe',
                         'help',
                         'ipdse',
+                        'precise-dce',
                         'info',
                         'stats',
                         'no-specialize',
@@ -189,6 +191,8 @@ class Slash(object):
 
         use_ipdse = utils.get_flag(self.flags, 'ipdse', None)
 
+        use_precise_dce = utils.get_flag(self.flags, 'precise-dce', None)
+
         show_stats = utils.get_flag(self.flags, 'stats', None)
 
         info = utils.get_flag(self.flags, 'info', None)
@@ -216,43 +220,55 @@ class Slash(object):
         files = utils.populate_work_dir(module, libs, self.work_dir)
         os.chdir(self.work_dir)
 
-
-        profile_map_before = collections.OrderedDict()
-        profile_map_after = collections.OrderedDict()
-
         #watches were inserted here ...
+
+        profile_maps, profile_map_titles = [], []
+        
+        def add_profile_map(title):
+            profile_map = collections.OrderedDict()
+            for m in files.values():
+                _, name = tempfile.mkstemp()
+                profile_map[m.get()] = name
+            def _profile(m):
+                "Profiling "                
+                passes.profile(m.get(), profile_map[m.get()])
+            _profile.__doc__ += title
+            pool.InParallel(_profile, files.values(), self.pool)
+            profile_maps.extend([profile_map])
+            profile_map_titles.extend([title])
+            
+        def print_profile_maps(f = lambda x: x):
+            def print_file(f, v, when):
+                sys.stderr.write('\nStatistics for {0} {1}\n'.format(f, when))
+                fd = open(v, 'r')
+                for line in fd:
+                    sys.stderr.write('\t')
+                    sys.stderr.write(line)
+                fd.close()
+                os.remove(v)
+            for ll in map(lambda t: list(t),
+                          zip(*map(lambda OrdDic: OrdDic.iteritems(), profile_maps))):
+                k, j = None, 0
+                assert (len(ll) == len(profile_map_titles))
+                for (ki, vi) in ll:
+                    ki = f(ki)
+                    if k is None: k = ki
+                    else: assert(k == ki)
+                    print_file(k, vi, profile_map_titles[j])
+                    j += 1
 
         def write_timestamp(msg):
             import datetime
             dt = datetime.datetime.now ().strftime ('%d/%m/%Y %H:%M:%S')
             sys.stderr.write("[%s] %s...\n" % (dt, msg))
-        
+            
         #Collect some stats before we start optimizing/debloating
         if show_stats is not None:
-            for m in files.values():
-                _, name = tempfile.mkstemp()
-                profile_map_before[m.get()] = name
-            def _profile_before(m):
-                "Profiling before specialization"
-                passes.profile(m.get(), profile_map_before[m.get()])
-            pool.InParallel(_profile_before, files.values(), self.pool)
-
-
-        def _show_stats(f, v, when):
-            sys.stderr.write('\nStatistics for {0} {1} specialization\n'.format(f, when))
-            fd = open(v, 'r')
-            for line in fd:
-                sys.stderr.write('\t')
-                sys.stderr.write(line)
-            fd.close()
-            os.remove(v)
-
+            add_profile_map('before specialization')
 
         # in this case we just want to show the stats and exit
         if info is not None:
-            print len(profile_map_before)
-            for (f, v)in profile_map_before.iteritems():
-                _show_stats(f, v, 'before')
+            print_profile_maps()
             return
 
         #specialize the arguments ...
@@ -389,27 +405,9 @@ class Slash(object):
 
         write_timestamp("Finished global fixpoint.")        
             
-        def precise_dce(m):
-            "Pruning dead functions using model-checking"
-            pre = m.get()
-            #post = m.new('sea')
-            post = pre
-            try:
-                passes.precise_dce(pre, post)
-            except Exception as e:
-                print "Precise dce failed on " + str(pre)
-                pass
-        pool.InParallel(precise_dce, files.values(), self.pool)
-
         #Collect stats after the whole optimization/debloating process finished
         if show_stats is not None:
-            for m in files.values():
-                _, name = tempfile.mkstemp()
-                profile_map_after[m.get()] = name
-            def _profile_after(m):
-                "Profiling after specialization"
-                passes.profile(m.get(), profile_map_after[m.get()])
-            pool.InParallel(_profile_after, files.values(), self.pool)
+            add_profile_map('after specialization')
                 
         # Make symlinks for the "final" versions
         for x in files.values():
@@ -427,39 +425,82 @@ class Slash(object):
 
         sys.stderr.write('\nLinking ...\n')
         sys.stderr.write(link_cmd)
+        linking_ok = False
         try:
             driver.linker(final_module, binary, linker_args)
             sys.stderr.write('\ndone.\n')
+            linking_ok = True
         except Exception as e:
             sys.stderr.write('\nFAILED. Modify the manifest to add libraries and/or linker flags.\n\n')
             import traceback
             traceback.print_exc()
 
+        if use_precise_dce is not None and linking_ok:
+            # Perform precise dce guided by maximizing the number of
+            # removed ROP gadgets
+            def get_ropgadget():
+                def is_exec (fpath):
+                    if fpath == None: return False
+                    return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+                def which(program):
+                    fpath, fname = os.path.split(program)
+                    if fpath:
+                        if is_exec (program): return program
+                    else:
+                        for path in os.environ["PATH"].split(os.pathsep):
+                            exe_file = os.path.join(path, program)
+                            if is_exec (exe_file): return exe_file
+                    return None
+        
+                ropgadget = None
+                if 'ROPGADGET' in os.environ: ROPGADGET = os.environ ['ROPGADGET']
+                if not is_exec(ropgadget): ropgadget = which('ropgadget')
+                if not is_exec(ropgadget): ropgadget = which('ROPgadget.py')    
+                return ropgadget
+            
+            def precise_dce((m, ropfile)):
+                "Pruning dead functions using model-checking"
+                pre = m.get()
+                post = m.new('precise_dse')
+                try:
+                    passes.precise_dce(pre, ropfile, post)
+                except Exception as e:
+                    sys.stderr.write("Precise dce failed on " + str(pre))
+                    pass
+                
+            ropgadget_cmd = get_ropgadget()
+            if ropgadget_cmd is not None:
+                binary = os.path.join(os.path.dirname(os.path.abspath(final_module)), binary)
+                ropfile = binary + '.ropgadget.txt'
+                ropgadget_args = ['--binary', binary, '--silent', '--fns2lines', ropfile]
+                driver.run(ropgadget_cmd, ropgadget_args)
+                precise_dce_args = []
+                for m in files.values():
+                    precise_dce_args.append((m, ropfile))
+                    
+                pool.InParallel(precise_dce, precise_dce_args , self.pool)
+                if show_stats is not None:
+                    add_profile_map('after precise dce')
+                # TODO: LINK AGAIN with the new .bc files
+            else:
+                sys.stderr.write("ropgadget not found. Aborting precise dce ...")
+                    
+            
         pool.shutdownDefaultPool()
-        #Print stats before and after
+        
+        #Print stats 
         if show_stats is not None:
-            for (f1,v1), (f2,v2) in zip(profile_map_before.iteritems(), \
-                                        profile_map_after.iteritems()) :
-
-                #sys.stderr.write('f1 = {0}\nf2 = {1}\n'.format(f1, f2))
-                def _splitext(abspath):
-                    #Given abspath of the form basename.ext1.ext2....extn
-                    #return basename
-                    base = os.path.basename(abspath)
-                    res = base.split(os.extsep)
-                    assert(len(res) > 1)
-                    #ext = res[1]
-                    return res[0]
-
-                f1 = _splitext(f1)
-                f2 = _splitext(f2)
-                #print('f1 = {0}\nf2 = {1}'.format(f1, f2))
-                assert (f1 == f2)
-                _show_stats(f1, v1, 'before')
-                _show_stats(f2, v2, 'after')
-
+            def _splitext(abspath):
+                #Given abspath of the form basename.ext1.ext2....extn
+                #return basename
+                base = os.path.basename(abspath)
+                res = base.split(os.extsep)
+                assert(len(res) > 1)
+                #ext = res[1]
+                return res[0]
+            print_profile_maps(_splitext)
+            
         return 0
-
 
 
     def driver_config(self):
