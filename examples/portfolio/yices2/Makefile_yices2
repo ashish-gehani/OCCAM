@@ -14,18 +14,19 @@ else
 LIBEXT=so
 endif
 
-# apr_util depends on apr
-APR_VERSION ?= 1.6.3
-APR=apr-${APR_VERSION}
-APR_INSTALL=${THISDIR}/install/${APR}
+# yices needs libpoly 
+LIBPOLY_VERSION ?= 0.1.7
+LIBPOLY=libpoly-${LIBPOLY_VERSION}
+LIBPOLY_INSTALL=${THISDIR}/install/${LIBPOLY}
 
 
-yices2_VERSION ?= 1.6.1
+yices2_VERSION ?= 2.6.0
 
-yices2=apr-util-${yices2_VERSION}
+yices2=Yices-${yices2_VERSION}
 yices2_TARBALL=${yices2}.tar.gz
-yices2_URL=http://apache.mirrors.pair.com/apr/${yices2_TARBALL}
-yices2_BASENAME=libaprutil-1
+yices2_URL=https://github.com/SRI-CSL/yices2/archive/${yices2_TARBALL}
+yices2_BASENAME=libyices
+yices2_SRC=yices2-${yices2}
 yices2_LIB=${yices2_BASENAME}.${LIBEXT}
 yices2_BITCODE=${yices2_BASENAME}.shared.bc
 yices2_INSTALL=${THISDIR}/install/${yices2}
@@ -39,14 +40,17 @@ ${yices2_TARBALL}:
 ${yices2}.tar: ${yices2}.tar.gz
 	gunzip -k ${yices2}.tar.gz
 
-${yices2}: ${yices2_TARBALL}
+${yices2_SRC}: ${yices2_TARBALL}
 	tar xvf ${yices2_TARBALL}
 
-${yices2_INSTALL}/lib/${yices2_LIB}: ${yices2}
-	cd ${yices2}                                                         && \
-	CC=${LLVMCC} ../${yices2}/configure --prefix=${yices2_INSTALL}        \
-                                              --with-apr=${APR_INSTALL}        && \
-	CC=${LLVMCC} make                                                      && \
+${yices2_INSTALL}/lib/${yices2_LIB}: ${yices2_SRC}
+	cd ${yices2_SRC}                                                         && \
+	autoconf                                                             && \
+	./configure --enable-mcsat --prefix=${yices2_INSTALL} \
+	                       CC=${LLVMCC}   \
+			       CPPFLAGS="-I${LIBPOLY_INSTALL}/include"  \
+			       LDFLAGS="-L${LIBPOLY_INSTALL}/lib"  && \
+	make                                                                         && \
 	make install
 
 
