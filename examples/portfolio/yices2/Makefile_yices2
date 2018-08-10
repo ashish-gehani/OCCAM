@@ -1,0 +1,67 @@
+#iam 8/10/2018
+
+THISDIR =  $(shell pwd)
+OS      =  $(shell uname)
+ARCH    =  $(shell uname -p)
+
+LLVMCC ?= gclang
+LLVMCXX ?= gclang++
+LLVMGET ?= get-bc
+
+ifeq (Darwin, $(findstring Darwin, ${OS}))
+LIBEXT=dylib
+else
+LIBEXT=so
+endif
+
+# apr_util depends on apr
+APR_VERSION ?= 1.6.3
+APR=apr-${APR_VERSION}
+APR_INSTALL=${THISDIR}/install/${APR}
+
+
+yices2_VERSION ?= 1.6.1
+
+yices2=apr-util-${yices2_VERSION}
+yices2_TARBALL=${yices2}.tar.gz
+yices2_URL=http://apache.mirrors.pair.com/apr/${yices2_TARBALL}
+yices2_BASENAME=libaprutil-1
+yices2_LIB=${yices2_BASENAME}.${LIBEXT}
+yices2_BITCODE=${yices2_BASENAME}.shared.bc
+yices2_INSTALL=${THISDIR}/install/${yices2}
+
+
+all: ${yices2_BITCODE}
+
+${yices2_TARBALL}:
+	wget ${yices2_URL}
+
+${yices2}.tar: ${yices2}.tar.gz
+	gunzip -k ${yices2}.tar.gz
+
+${yices2}: ${yices2_TARBALL}
+	tar xvf ${yices2_TARBALL}
+
+${yices2_INSTALL}/lib/${yices2_LIB}: ${yices2}
+	cd ${yices2}                                                         && \
+	CC=${LLVMCC} ../${yices2}/configure --prefix=${yices2_INSTALL}        \
+                                              --with-apr=${APR_INSTALL}        && \
+	CC=${LLVMCC} make                                                      && \
+	make install
+
+
+${yices2_BITCODE}: ${yices2_INSTALL}/lib/${yices2_LIB}
+	cd ${yices2_INSTALL}/lib                                             && \
+	${LLVMGET} ${yices2_LIB}                                             && \
+	cp ${yices2_BASENAME}*${LIBEXT}*.bc ${THISDIR}/${yices2_BITCODE}
+
+clean:
+	rm -rf *~  ${yices2_BITCODE}
+
+
+very_clean: clean
+	make -C ${yices2} clean
+	rm -rf ${yices2_INSTALL} 
+
+spotless: very_clean
+	rm -rf ${yices2_TARBALL} ${yices2} 

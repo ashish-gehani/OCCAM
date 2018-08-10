@@ -6,7 +6,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
-//#include "llvm/Transforms/Scalar.h" 
+//#include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/LinkAllPasses.h" //createAlwaysInlinerLegacyPass
 
@@ -40,7 +40,7 @@ static cl::opt<std::string> InputFilename
  cl::init(""),
  cl::Hidden,
  cl::desc("Specify the filename with input arguments"));
-						       
+
 
 ArgumentsConstraint::ArgumentsConstraint()
   : ModulePass (ID) {}
@@ -56,7 +56,7 @@ bool parse_input_line(std::string line, unsigned &index, std::string &s) {
   if (found != std::string::npos) {
     tokens.push_back(line.substr(pos, found - pos));
     pos = found+1;
-    tokens.push_back(line.substr(pos));    
+    tokens.push_back(line.substr(pos));
   } else {
     errs () << "Could not parse " << line << "\n";
     return false;
@@ -72,7 +72,7 @@ bool parse_input_line(std::string line, unsigned &index, std::string &s) {
     // catch (const std::invalid_argument &ia) {
     //   return false;
     // }
-    s = tokens[1];    
+    s = tokens[1];
     return true;
   }
 }
@@ -86,7 +86,7 @@ void populate_program_arguments(std::string filename,
   if (fd.is_open()) {
     std::string argc_line;
     getline(fd,argc_line);
-    argc = std::stoi(argc_line);    
+    argc = std::stoi(argc_line);
     while (getline(fd,line)) {
       unsigned i; std::string val;
       if (parse_input_line(line, i, val)) {
@@ -106,7 +106,7 @@ bool ArgumentsConstraint::runOnModule(Module &M) {
     new_argv, such that
 
     new_argv[0]       = x1,
-    new_argv[1]       = x2, 
+    new_argv[1]       = x2,
     ...
     new_argv[k]       = xk,
     new_argv[k+1]     = argv[1],
@@ -132,11 +132,11 @@ bool ArgumentsConstraint::runOnModule(Module &M) {
     return false;
   }
 
-  // Create partial map from indexes to strings  
+  // Create partial map from indexes to strings
   std::map<unsigned, std::string> argv_map;
   int extra_argc = -1;
   populate_program_arguments(InputFilename, argv_map, extra_argc);
-  
+
   if (argv_map.empty()) {
     errs () << "User did not provide program parameters. Ignoring ...\n";
     return false;
@@ -146,35 +146,35 @@ bool ArgumentsConstraint::runOnModule(Module &M) {
     errs () << "argv[0] does not exist in the manifest. Ignoring ...\n";
     return false;
   }
-  
+
   IRBuilder<> builder(M.getContext());
   IntegerType* intptrty =
     cast<IntegerType>(M.getDataLayout().getIntPtrType(M.getContext(), 0));
   Type* const strty =
-    PointerType::getUnqual(IntegerType::get(M.getContext(),8));  
+    PointerType::getUnqual(IntegerType::get(M.getContext(),8));
 
-  // new_main 
+  // new_main
   Function *new_main = Function::Create(main->getFunctionType(),
    					main->getLinkage(), "", &M);
-  new_main->takeName(main);  
+  new_main->takeName(main);
   Function::arg_iterator ai = new_main->arg_begin();
-  Value* argc = (Value*) &(*ai);    
-  Value* argv = (Value*) &(*(++ai));  
-  
-  BasicBlock *entry = BasicBlock::Create(M.getContext(),"entry", new_main);  
+  Value* argc = (Value*) &(*ai);
+  Value* argv = (Value*) &(*(++ai));
+
+  BasicBlock *entry = BasicBlock::Create(M.getContext(),"entry", new_main);
   builder.SetInsertPoint(entry);
 
   // Add sanity check: if argc-1 != manifest's first argument then return 1
   Value* matchArgcCond = builder.CreateICmpEQ(argc, ConstantInt::get(argc->getType(), extra_argc + 1));
-  BasicBlock* entry_cont = BasicBlock::Create(M.getContext(),"entry", new_main);  
-  BasicBlock* errorBB = BasicBlock::Create(M.getContext(),"incorrect_argc", new_main);  
+  BasicBlock* entry_cont = BasicBlock::Create(M.getContext(),"entry", new_main);
+  BasicBlock* errorBB = BasicBlock::Create(M.getContext(),"incorrect_argc", new_main);
   // wire up entry with entry_cont and errorBB blocks
   builder.CreateCondBr(matchArgcCond, entry_cont, errorBB);
   builder.SetInsertPoint(errorBB);
   builder.CreateRet(ConstantInt::get(new_main->getReturnType(), 1));
 
   entry = entry_cont;
-  builder.SetInsertPoint(entry);  
+  builder.SetInsertPoint(entry);
   // new argc
   Value* new_argc =
     builder.CreateAdd(argc,
@@ -189,7 +189,7 @@ bool ArgumentsConstraint::runOnModule(Module &M) {
   } else {
     errs () << "No argc given in the manifest so specialization might not take place\n";
   }
-  
+
   // new argv
   Value* new_argv = builder.CreateAlloca(strty, new_argc, "new_argv");
 
@@ -204,24 +204,24 @@ bool ArgumentsConstraint::runOnModule(Module &M) {
     Value *gv_i_ref =
       builder.CreateConstGEP2_32(
 	      cast<PointerType>(gv_i->getType())->getElementType(),gv_i, 0, 0);
-    // store the global variable into new_argv[i]    
+    // store the global variable into new_argv[i]
     Value *new_argv_i = builder.CreateConstGEP1_32(new_argv,i);
     builder.CreateStore(gv_i_ref, new_argv_i);
     i++;
   }
 
   /* Loop that copies argv into new_argv starting at index k
-     
+
     Before
      Entry
-     
+
    After
      Entry:
        ...
        goto PreHeader
      PreHeader:
        %j = alloca i32
-       store 0 %j  
+       store 0 %j
        goto Header
      Header:
        %t1 = load %j
@@ -239,7 +239,7 @@ bool ArgumentsConstraint::runOnModule(Module &M) {
        %r = call main(%newargc, %new_argv);
        ret %r
   */
-  
+
   BasicBlock *pre_header = BasicBlock::Create(M.getContext(),"pre_header", new_main);
   builder.CreateBr(pre_header);
   builder.SetInsertPoint(pre_header);
@@ -266,13 +266,13 @@ bool ArgumentsConstraint::runOnModule(Module &M) {
   Value *o2 = builder.CreateZExtOrTrunc(t1, intptrty);
   Value *a2 = builder.CreateInBoundsGEP(argv, o2);
   builder.CreateStore(builder.CreateLoad(a2),a1);
-  Value *t2 = builder.CreateAdd(t1, ConstantInt::get(intTy,1));    
+  Value *t2 = builder.CreateAdd(t1, ConstantInt::get(intTy,1));
   builder.CreateStore(t2, j);
   builder.CreateBr(header);
   //tail
   builder.SetInsertPoint(tail);
 
-  
+
   // call the code of the original main with new argc and new argv
   Value* res = builder.CreateCall(main, {new_argc, new_argv});
   builder.CreateRet(res);
@@ -296,8 +296,8 @@ bool ArgumentsConstraint::runOnModule(Module &M) {
   /* Old code that overrides argv with the arguments from the
      manifest */
   // Function::arg_iterator ai = main->arg_begin();
-  // Value* argv = (Value*) &(*(++ai));  
-      
+  // Value* argv = (Value*) &(*(++ai));
+
   // for (auto &kv: argv_map) {
   //   // create a global variable with the content of argv[i]
   //   GlobalVariable* gv_i = materializeStringLiteral(M, kv.second.c_str());
@@ -305,15 +305,15 @@ bool ArgumentsConstraint::runOnModule(Module &M) {
   //   Value *gv_i_ref =
   //     builder.CreateConstGEP2_32(cast<PointerType>(gv_i->getType())->getElementType(),
   // 				 gv_i, 0, 0);
-  //   // compute a gep instruction that access to argv[i] 
+  //   // compute a gep instruction that access to argv[i]
   //   Value* argv_i = builder.CreateConstGEP1_32(argv, kv.first);
   //   // store the global variable into argv[i]
-  //   builder.CreateStore(gv_i_ref, argv_i); 
+  //   builder.CreateStore(gv_i_ref, argv_i);
   // }
-  
+
   // legacy::PassManager mgr;
   // mgr.add(createGlobalOptimizerPass());
-  // mgr.add(createGlobalDCEPass());  
+  // mgr.add(createGlobalDCEPass());
   // mgr.run(M);
 
   return true;
