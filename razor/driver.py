@@ -116,7 +116,7 @@ def linker(fin, fout, args):
     return run('clang++', args)
 
 
-def run(prog, args):
+def run(prog, args, sb=None):
 
     log = logging.getLogger()
 
@@ -131,7 +131,10 @@ def run(prog, args):
                             stdin=subprocess.PIPE)
 
     log.log(logging.INFO, 'EXECUTING: %s\n', ' '.join([prog] + args))
-    echo.Echo(proc.stderr, log)
+    echo.Echo(proc.stderr, log, sb)
+    if sb is not None:
+        echo.Echo(proc.stdout, None, sb)
+
 
     retcode = proc.wait()
 

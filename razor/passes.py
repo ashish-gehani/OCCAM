@@ -42,6 +42,21 @@ from . import driver
 
 from . import interface as inter
 
+from . import stringbuffer
+
+"""
+
+sb = stingbuffer.StringBuffer()
+
+driver.run(..., None , sb)
+
+output = str(sb)
+
+
+"""
+
+
+
 def interface(input_file, output_file, wrt):
     """ computing the interfaces.
     """

@@ -50,7 +50,7 @@ class Echo:
                     return
                 else:
                     if sb is not None: sb.append(line)
-                    logger.log(logging.INFO, line.rstrip())
+                    if logger is not None: logger.log(logging.INFO, line.rstrip())
 
         self.thread = Thread(target = thread_main, args = (self.stream, self.logger))
 
