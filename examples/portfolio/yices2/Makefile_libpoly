@@ -54,8 +54,8 @@ clean:
 
 
 very_clean: clean
-	#make -C ${LIBPOLY_SRC} clean
+	make -C ${LIBPOLY_SRC} clean
 	rm -rf ${LIBPOLY_INSTALL}
 
 spotless: very_clean
-	rm -rf ${LIBPOLY_TARBALL} ${LIBPOLY_SRC} 
+	rm -rf ${LIBPOLY_TARBALL} ${LIBPOLY_SRC}

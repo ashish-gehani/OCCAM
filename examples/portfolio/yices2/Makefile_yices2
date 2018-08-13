@@ -14,10 +14,13 @@ else
 LIBEXT=so
 endif
 
-# yices needs libpoly 
-LIBPOLY_VERSION ?= 0.1.7
-LIBPOLY=libpoly-${LIBPOLY_VERSION}
-LIBPOLY_INSTALL=${THISDIR}/install/${LIBPOLY}
+# yices needs libpoly (the export is used by Makefile_libpoly)
+export LIBPOLY_VERSION = 0.1.7
+
+LIBPOLY_BASENAME=libpoly
+LIBPOLY_SRC=${LIBPOLY_BASENAME}-${LIBPOLY_VERSION}
+LIBPOLY_INSTALL=${THISDIR}/install/${LIBPOLY_SRC}
+LIBPOLY_BITCODE=${LIBPOLY_BASENAME}.shared.bc
 
 
 yices2_VERSION ?= 2.6.0
@@ -32,7 +35,14 @@ yices2_BITCODE=${yices2_BASENAME}.shared.bc
 yices2_INSTALL=${THISDIR}/install/${yices2}
 
 
-all: ${yices2_BITCODE}
+all: ${LIBPOLY_BITCODE} ${yices2_BITCODE}
+
+Makefile_libpoly:
+	$(error Makefile_libpoly is missing but required)
+
+
+${LIBPOLY_BITCODE}:
+	make  -C . -f Makefile_libpoly
 
 ${yices2_TARBALL}:
 	wget ${yices2_URL}
@@ -43,7 +53,7 @@ ${yices2}.tar: ${yices2}.tar.gz
 ${yices2_SRC}: ${yices2_TARBALL}
 	tar xvf ${yices2_TARBALL}
 
-${yices2_INSTALL}/lib/${yices2_LIB}: ${yices2_SRC}
+${yices2_INSTALL}/lib/${yices2_LIB}: ${LIBPOLY_BITCODE} ${yices2_SRC}
 	cd ${yices2_SRC}                                                         && \
 	autoconf                                                             && \
 	./configure --enable-mcsat --prefix=${yices2_INSTALL} \
@@ -61,11 +71,13 @@ ${yices2_BITCODE}: ${yices2_INSTALL}/lib/${yices2_LIB}
 
 clean:
 	rm -rf *~  ${yices2_BITCODE}
-
+	make -C . -f Makefile_libpoly clean
 
 very_clean: clean
-	make -C ${yices2} clean
-	rm -rf ${yices2_INSTALL} 
+	make -C ${yices2_SRC} clean
+	make -C . -f Makefile_libpoly very_clean
+	rm -rf ${yices2_INSTALL}
 
 spotless: very_clean
-	rm -rf ${yices2_TARBALL} ${yices2} 
+	rm -rf ${yices2_TARBALL} ${yices2}
+	make -C . -f Makefile_libpoly spotless
