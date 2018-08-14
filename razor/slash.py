@@ -437,66 +437,46 @@ class Slash(object):
 
         if use_precise_dce is not None and linking_ok:
             # Perform precise dce guided by maximizing the number of
-            # removed ROP gadgets
-            def get_ropgadget():
-                def is_exec (fpath):
-                    if fpath == None: return False
-                    return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
-                def which(program):
-                    fpath, fname = os.path.split(program)
-                    if fpath:
-                        if is_exec (program): return program
-                    else:
-                        for path in os.environ["PATH"].split(os.pathsep):
-                            exe_file = os.path.join(path, program)
-                            if is_exec (exe_file): return exe_file
-                    return None
-        
-                ropgadget = None
-                if 'ROPGADGET' in os.environ: ROPGADGET = os.environ ['ROPGADGET']
-                if not is_exec(ropgadget): ropgadget = which('ropgadget')
-                if not is_exec(ropgadget): ropgadget = which('ROPgadget.py')    
-                return ropgadget
-            
+            # removed ROP gadgets            
             def precise_dce((m, ropfile)):
-                "Pruning dead functions using model-checking"
+                "Pruning using precise dce"
                 pre = m.get()
                 post = m.new('precise_dse')
                 try:
-                    passes.precise_dce(pre, ropfile, post)
+                    return passes.precise_dce(pre, ropfile, post)
                 except Exception as e:
                     sys.stderr.write("Precise dce failed on " + str(pre))
-                    pass
+                    return False
                 
-            ropgadget_cmd = get_ropgadget()
+            ropgadget_cmd = utils.get_ropgadget()
             if ropgadget_cmd is not None:
                 binary = os.path.join(os.path.dirname(os.path.abspath(final_module)), binary)
                 ropfile = binary + '.ropgadget.txt'
                 ropgadget_args = ['--binary', binary, '--silent', '--fns2lines', ropfile]
                 driver.run(ropgadget_cmd, ropgadget_args)
-                precise_dce_args = []
-                for m in files.values():
-                    precise_dce_args.append((m, ropfile))
-                    
-                pool.InParallel(precise_dce, precise_dce_args , self.pool)
-                if show_stats is not None:
-                    add_profile_map('after precise dce')
-                # TODO: LINK AGAIN with the new .bc files
+                
+                precise_dce_args = map(lambda m: (m,ropfile), files.values())
+                rws = pool.InParallel(precise_dce, precise_dce_args , self.pool)
+                progress = any(rws)
+                if progress:
+                    if show_stats is not None:
+                        add_profile_map('after precise dce')
+                        
+                    sys.stderr.write("TODO: link again .bc files after precise dce was done")
             else:
                 sys.stderr.write("ropgadget not found. Aborting precise dce ...")
                     
             
         pool.shutdownDefaultPool()
         
-        #Print stats 
         if show_stats is not None:
             def _splitext(abspath):
-                #Given abspath of the form basename.ext1.ext2....extn
-                #return basename
+                """
+                Given abspath of the form basename.ext1.ext2....extn return basename
+                """
                 base = os.path.basename(abspath)
                 res = base.split(os.extsep)
                 assert(len(res) > 1)
-                #ext = res[1]
                 return res[0]
             print_profile_maps(_splitext)
             
