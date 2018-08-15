@@ -22,6 +22,14 @@ LIBPOLY_SRC=${LIBPOLY_BASENAME}-${LIBPOLY_VERSION}
 LIBPOLY_INSTALL=${THISDIR}/install/${LIBPOLY_SRC}
 LIBPOLY_BITCODE=${LIBPOLY_BASENAME}.shared.bc
 
+# yices needs libgmp (the export is used by Makefile_gmp)
+GMP_VERSION = 6.1.2
+
+GMP_BASENAME=gmp
+GMP=${GMP_BASENAME}-${GMP_VERSION}
+GMP_INSTALL=${THISDIR}/install/${GMP_BASENAME}
+GMP_BITCODE=lib${GMP_BASENAME}.shared.bc
+
 
 yices2_VERSION ?= 2.6.0
 
@@ -35,7 +43,14 @@ yices2_BITCODE=${yices2_BASENAME}.shared.bc
 yices2_INSTALL=${THISDIR}/install/${yices2}
 
 
-all: ${LIBPOLY_BITCODE} ${yices2_BITCODE}
+all: ${GMP_BITCODE} ${LIBPOLY_BITCODE} ${yices2_BITCODE}
+
+Makefile_gmp:
+	$(error Makefile_gmp is missing but required)
+
+
+${GMP_BITCODE}:
+	make  -C . -f Makefile_gmp
 
 Makefile_libpoly:
 	$(error Makefile_libpoly is missing but required)
@@ -58,8 +73,8 @@ ${yices2_INSTALL}/lib/${yices2_LIB}: ${LIBPOLY_BITCODE} ${yices2_SRC}
 	autoconf                                                             && \
 	./configure --enable-mcsat --prefix=${yices2_INSTALL} \
 	                       CC=${LLVMCC}   \
-			       CPPFLAGS="-I${LIBPOLY_INSTALL}/include"  \
-			       LDFLAGS="-L${LIBPOLY_INSTALL}/lib"  && \
+			       CPPFLAGS="-I${LIBPOLY_INSTALL}/include -I${GMP_INSTALL}/include"  \
+			       LDFLAGS="-L${LIBPOLY_INSTALL}/lib -L${GMP_INSTALL}/lib"  && \
 	make                                                                         && \
 	make install
 
@@ -71,13 +86,16 @@ ${yices2_BITCODE}: ${yices2_INSTALL}/lib/${yices2_LIB}
 
 clean:
 	rm -rf *~  ${yices2_BITCODE}
+	make -C . -f Makefile_gmp clean
 	make -C . -f Makefile_libpoly clean
 
 very_clean: clean
 	make -C ${yices2_SRC} clean
+	make -C . -f Makefile_gmp very_clean
 	make -C . -f Makefile_libpoly very_clean
 	rm -rf ${yices2_INSTALL}
 
 spotless: very_clean
 	rm -rf ${yices2_TARBALL} ${yices2}
+	make -C . -f Makefile_gmp spotless
 	make -C . -f Makefile_libpoly spotless
