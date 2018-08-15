@@ -263,3 +263,33 @@ def setLogger():
         level = logging.WARNING
     logger.setLevel(level)
     logger.info(">> %s\n", ' '.join(sys.argv))
+
+def is_exec (fpath):
+    if fpath == None: return False
+    return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+    
+def which(program):
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exec (program): return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            exe_file = os.path.join(path, program)
+            if is_exec (exe_file): return exe_file
+    return None
+
+# Try to find ROPgadget binary
+def get_ropgadget():
+    ropgadget = None
+    if 'ROPGADGET' in os.environ: ropgadget = os.environ ['ROPGADGET']
+    if not is_exec(ropgadget): ropgadget = which('ropgadget')
+    if not is_exec(ropgadget): ropgadget = which('ROPgadget.py')    
+    return ropgadget
+
+# Try to find seahorn binary
+def get_seahorn():
+    seahorn = None
+    if 'SEAHORN' in os.environ: seahorn = os.environ ['SEAHORN']
+    if not is_exec(seahorn): seahorn = which('sea')
+    return seahorn
+
