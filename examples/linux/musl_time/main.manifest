@@ -1,0 +1,8 @@
+{ "main" :  "main.o.bc"
+, "binary"  : "main_slash"
+, "modules"    : ["libc.a.bc"]
+, "native_libs" : ["crt1.o", "libc.a", "/usr/lib/gcc/x86_64-linux-gnu/5/libgcc.a"]
+, "ldflags" : ["-static", "-nostdlib", "-g"]
+, "args"    : []
+, "name"    : "main"
+}

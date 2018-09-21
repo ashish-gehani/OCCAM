@@ -42,6 +42,13 @@ from . import driver
 
 from . import interface as inter
 
+from . import stringbuffer
+
+from . import pool
+
+from . import utils  
+
+
 def interface(input_file, output_file, wrt):
     """ computing the interfaces.
     """
@@ -67,10 +74,12 @@ def rewrite(input_file, output_file, rewrites, output=None):
     return driver.previrt_progress(input_file, output_file, args, output)
 
 
-def internalize(input_file, output_file, interfaces):
+def internalize(input_file, output_file, interfaces, whitelist):
     """ marks unused symbols as internal/hidden
     """
     args = ['-Poccam'] + driver.all_args('-Poccam-input', interfaces)
+    if whitelist is not None:
+        args = args + ['-Pkeep-external', whitelist]
     return driver.previrt_progress(input_file, output_file, args)
 
 def strip(input_file, output_file):
@@ -78,7 +87,7 @@ def strip(input_file, output_file):
     """
     args = [input_file, '-o', output_file]
     args += ['-strip', '-globaldce', '-globalopt', '-strip-dead-prototypes']
-    return driver.run(config.get_llvm_tool('opt'), args)
+    return driver.run('opt', args)
 
 def devirt(input_file, output_file):
     """ resolve indirect function calls
@@ -86,19 +95,19 @@ def devirt(input_file, output_file):
     args = ['-devirt-ta',
             # XXX: this one is not, in general, sound
             #'-calltarget-ignore-external',
-            '-inline']    
+            '-inline']
     retcode = driver.previrt_progress(input_file, output_file, args)
     if retcode != 0:
         return retcode
 
     #FIXME: previrt_progress returns 0 in cases where --devirt-ta crashes.
-    #Here we check that the output_file exists 
+    #Here we check that the output_file exists
     if not os.path.isfile(output_file):
         #Some return code different from zero
         return 3
     else:
         return retcode
-            
+
 
 def profile(input_file, output_file):
     """ count number of instructions, functions, memory accesses, etc.
@@ -116,7 +125,7 @@ def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, log=None):
     opt.close()
     done.close()
     tmp.close()
-    
+
     #XXX: Optimize using standard llvm transformations before any other pass.
     #Otherwise, these passes will not be very effective.
     retcode = optimize(input_file, done.name)
@@ -133,7 +142,7 @@ def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, log=None):
             sys.stderr.write("ERROR: resolution of indirect calls failed!\n")
             shutil.copy(done.name, output_file)
             return retcode
-        
+
         sys.stderr.write("\tresolved indirect calls finished succesfully\n")
         shutil.copy(tmp.name, done.name)
 
@@ -144,7 +153,7 @@ def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, log=None):
             args = llpe_libs + ['-loop-simplify', '-lcssa', \
                                 '-llpe', '-llpe-omit-checks', '-llpe-single-threaded', \
                                 done.name, '-o=%s' % tmp.name]
-        retcode = driver.run(config.get_llvm_tool('opt'), args)
+        retcode = driver.run('opt', args)
         if retcode != 0:
             sys.stderr.write("ERROR: llpe failed!\n")
             shutil.copy(done.name, output_file)
@@ -188,22 +197,22 @@ def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, log=None):
             else:
                 sys.stderr.write("\tintra module optimization finished succesfully\n")
         else:
-            shutil.copy(done.name, opt.name)            
+            shutil.copy(done.name, opt.name)
 
         # inlining using policies
         passes = ['-Ppeval']
         progress = driver.previrt_progress(opt.name, done.name, passes, output=out)
-        sys.stderr.write("\tintra-module specialization finished\n")        
+        sys.stderr.write("\tintra-module specialization finished\n")
         if progress:
             if log is not None:
                 log.write(out[0])
         else:
             shutil.copy(opt.name, done.name)
             break
-        
+
     shutil.copy(done.name, output_file)
     try:
-        os.unlink(done.name)        
+        os.unlink(done.name)
         os.unlink(opt.name)
         os.unlink(tmp.name)
     except OSError:
@@ -211,8 +220,10 @@ def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, log=None):
     return retcode
 
 def optimize(input_file, output_file):
+    """ run opt -O3
+    """
     args = ['-disable-simplify-libcalls', input_file, '-o', output_file, '-O3']
-    return driver.run(config.get_llvm_tool('opt'), args)
+    return driver.run('opt', args)
 
 def constrain_program_args(input_file, output_file, cnstrs, filename=None):
     """ constrain the program arguments.
@@ -283,3 +294,105 @@ def deep(libs, ifaces):
 
     os.unlink(tf.name)
     return iface
+
+def run_seahorn(sea_cmd, input_file, fname, is_loop_free, cpu, mem):
+    """ running SeaHorn
+    """
+    
+    def check_status(output_str):
+        if "unsat" in output_str: return True
+        elif "sat" in output_str: return False
+        else: return None
+            
+    # 1. Instrument the program with assertions 
+    sea_infile = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
+    sea_infile.close()
+    args = ['--Padd-verifier-calls',
+            '--Padd-verifier-call-in-function={0}'.format(fname)]
+    driver.previrt(input_file, sea_infile.name, args)
+
+    # 2. Run SeaHorn
+    # TODO: If is_loop_free is true we should run SeaHorn BMC engine instead.
+    #       By default, we run SeaHorn with loop invariant capabilities.
+    sea_args = ['pf'
+                , '--strip-extern'
+                , '--enable-indvar'
+                , '--enable-loop-idiom'
+                , '--symbolize-constant-loop-bounds'
+                , '--unfold-loops-for-dsa'
+                , '--simplify-pointer-loops'
+                , '--horn-global-constraints=true'
+                , '--horn-singleton-aliases=true'
+                , '--horn-ignore-calloc=false'
+                , '--horn-sea-dsa-local-mod'
+                , '--dsa=sea-cs'
+                , '--cpu={0}'.format(cpu)
+                , '--mem={0}'.format(mem)
+                , sea_infile.name]
+    sb = stringbuffer.StringBuffer()
+    driver.run(sea_cmd, sea_args, sb)
+    status = check_status(str(sb))
+    
+    if status:
+        # 3. If SeaHorn proved unreachability of the function then we
+        #    add assume(false) at the entry of that function.
+        sys.stderr.write('SeaHorn proved unreachability of {0}\n'.format(fname))
+        sea_outfile = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
+        sea_outfile.close()
+        args = ['--Preplace-verifier-calls-with-unreachable']
+        driver.previrt_progress(sea_infile.name, sea_outfile.name, args)
+        # 4. And, we run the optimized to remove that function
+        sea_opt_outfile = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
+        sea_opt_outfile.close()
+        optimize(sea_outfile.name, sea_opt_outfile.name)
+        return sea_opt_outfile.name
+    else:
+        sys.stderr.write('SeaHorn could not prove unreachability of {0}\n'.format(fname))
+        return input_file
+
+def precise_dce(input_file, ropfile, output_file):
+    """ use SeaHorn model-checker to remove dead functions
+    """
+    sea_cmd = utils.get_seahorn()
+    if sea_cmd is None:
+        sys.stderr.write('SeaHorn not found. Aborting precise dce ...')
+        shutil_copy(input_file, output_file)
+        return False
+        
+    cost_benefit_out = tempfile.NamedTemporaryFile(delete=False)
+    args  = ['--Pcost-benefit-cg']
+    args += ['--Pbenefits-filename={0}'.format(ropfile)]
+    args += ['--Pcost-benefit-output={0}'.format(cost_benefit_out.name)]
+    driver.previrt(input_file, '/dev/null', args)
+    
+    ## TODO: make these parameters user-definable:
+    benefit_threshold = 20  ## number of ROP gadgets
+    cost_threshold =  3     ## number of loops
+    timeout = 5             ## SeaHorn timeout in seconds
+    memlimit = 4096         ## SeaHorn memory limit in MB
+
+    seahorn_queries = []    
+    for line in cost_benefit_out:
+        tokens = line.split()        
+        # Expected format of each token: FUNCTION BENEFIT COST
+        # where FUNCTION is a string, BENEFIT is an integer, and COST is an integer
+        if len(tokens) < 3:
+            sys.stderr.write('ERROR: unexpected format of {0}\n'.format(cost_benefit_out.name))
+            return False
+        fname = tokens[0]
+        fbenefit= int(tokens[1])
+        fcost = int(tokens[2])
+        if fbenefit >= benefit_threshold and fcost <= cost_threshold:
+            seahorn_queries.extend([(fname, fcost == 0)])
+    cost_benefit_out.close()
+    
+    ## TODO: run SeaHorn instances in parallel
+    change = False
+    curfile = input_file
+    for (fname, is_loop_free) in seahorn_queries:
+        nextfile = run_seahorn(sea_cmd, curfile, fname, is_loop_free, timeout, memlimit)
+        change = change | (curfile <> nextfile)
+        curfile = nextfile
+    shutil.copy(curfile, output_file)
+    return change
+

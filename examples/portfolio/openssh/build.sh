@@ -3,10 +3,7 @@
 # Make sure we exit if there is a failure
 set -e
 
-# Make sure we exit if there is a failure
-set -e
-
-#check that the require dependencies are built
+#check that the required dependencies are built
 declare -a bitcode=("ssh.bc" "libcrypto.a.bc" "libz.a.bc")
 
 for bc in "${bitcode[@]}"
@@ -45,6 +42,8 @@ EOF
 
 
 # Previrtualize
-slash --stats --devirt --work-dir=slash ssh.manifest
+# additional debug flags:
+#  --debug-pass=sroa --verbose --debug-manager=Structure
+slash  --stats --devirt --work-dir=slash ssh.manifest
 
 cp ./slash/ssh_slashed .

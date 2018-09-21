@@ -1,0 +1,61 @@
+#iam 8/10/2018
+
+THISDIR =  $(shell pwd)
+OS      =  $(shell uname)
+ARCH    =  $(shell uname -p)
+
+LLVMCC ?= gclang
+LLVMCXX ?= gclang++
+LLVMGET ?= get-bc
+
+ifeq (Darwin, $(findstring Darwin, ${OS}))
+LIBEXT=dylib
+else
+LIBEXT=so
+endif
+
+
+
+LIBPOLY_VERSION ?= 0.1.7
+
+#The LIBPOLY_BUILD_TYPEe above is should be either "Debug" or "Release"
+LIBPOLY_BUILD_TYPE=Debug
+
+LIBPOLY=v${LIBPOLY_VERSION}
+LIBPOLY_TARBALL=${LIBPOLY}.tar.gz
+LIBPOLY_URL=https://github.com/SRI-CSL/libpoly/archive/${LIBPOLY_TARBALL}
+LIBPOLY_BASENAME=libpoly
+LIBPOLY_SRC=${LIBPOLY_BASENAME}-${LIBPOLY_VERSION}
+LIBPOLY_LIB=${LIBPOLY_BASENAME}.${LIBEXT}
+LIBPOLY_BITCODE=${LIBPOLY_BASENAME}.shared.bc
+LIBPOLY_INSTALL=${THISDIR}/install/${LIBPOLY_SRC}
+
+all: ${LIBPOLY_BITCODE}
+
+${LIBPOLY_TARBALL}:
+	wget ${LIBPOLY_URL}
+
+${LIBPOLY_SRC}: ${LIBPOLY_TARBALL}
+	tar xvfz ${LIBPOLY_TARBALL}
+
+${LIBPOLY_INSTALL}/lib/${LIBPOLY_LIB}: ${LIBPOLY_SRC}
+	cd ${LIBPOLY_SRC}/build                                                                                               && \
+	CC=${LLVMCC} cmake .. -DCMAKE_BUILD_TYPE=${LIBPOLY_BUILD_TYPEx} -DCMAKE_INSTALL_PREFIX=${LIBPOLY_INSTALL}    && \
+	make                                                                                                         && \
+	make install
+
+${LIBPOLY_BITCODE}: ${LIBPOLY_INSTALL}/lib/${LIBPOLY_LIB}
+	cd ${LIBPOLY_INSTALL}/lib                                        && \
+	${LLVMGET} ${LIBPOLY_LIB}                                        && \
+	cp ${LIBPOLY_BASENAME}*${LIBEXT}*.bc ${THISDIR}/${LIBPOLY_BITCODE}
+
+clean:
+	rm -rf *~  ${LIBPOLY_BITCODE}
+
+
+very_clean: clean
+	make -C ${LIBPOLY_SRC} clean
+	rm -rf ${LIBPOLY_INSTALL}
+
+spotless: very_clean
+	rm -rf ${LIBPOLY_TARBALL} ${LIBPOLY_SRC}

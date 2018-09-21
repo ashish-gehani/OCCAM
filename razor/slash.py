@@ -50,28 +50,52 @@ from . import driver
 
 from . import config
 
-def entrypoint():
-    """This is the main entry point
+instructions = """slash has three modes of use:
 
-    razor [--work-dir=<dir>] <manifest>
+    slash --help
+
+    slash --tool=<llvm tool>
+
+    slash [options] <manifest>
 
     Previrtualize a compilation unit based on its manifest.
 
-        --work-dir <dir>  : Output intermediate files to the given location <dir>
-        --no-strip        : Leave symbol information in the binary
-        --devirt          : Devirtualize indirect function calls
-        --llpe            : Use Smowton's LLPE for intra-module prunning
-        --ipdse           : Apply inter-procedural dead store elimination (experimental)
-        --stats           : Show some stats before and after specialization
-        --no-specialize   : Do not specialize any intermodule calls
-        --tool <tool>     : Print the path to the tool and exit.
+        --help                  : Print this.
+
+        --tool=<tool>           : Print the path to the tool and exit.
+
+        --work-dir <dir>        : Output intermediate files to the given location <dir>
+        --info                  : Display info stats and exit
+        --stats                 : Show some stats before and after specialization
+        --no-strip              : Leave symbol information in the binary
+        --verbose               : Print the calls to the llvm tools prior to running them.
+        --debug-manager=<type>  : Debug opt's pass manager (<type> should be either Structure or Details)
+        --debug-pass=<tag>      : Debug opt's pass (<tag> should be the debug pragma string of the pass)
+        --debug                 : Pass the debug flag into all calls to opt (too much information usually)
+        --devirt                : Devirtualize indirect function calls
+        --llpe                  : Use Smowton's LLPE for intra-module prunning
+        --ipdse                 : Apply inter-procedural dead store elimination (experimental)
+        --precise-dce           : Use model-checking to perform intra-module dead code elimination
+        --no-specialize         : Do not specialize any intermodule calls
+        --keep-external=<file>  : Pass a list of function names that should remain external.
+
+    """
+
+def entrypoint():
+    """This is the main entry point.
+
+    slash [--work-dir=<dir>] <manifest>
+
+    For more info:
+
+    slash --help
 
     """
     return Slash(sys.argv).run() if utils.checkOccamLib() else 1
 
 
 def  usage(exe):
-    template = '{0} [--work-dir=<dir>]  [--force] [--no-strip] [--devirt] [--llpe] [--ipdse] [--stats] [--no-specialize] <manifest>\n'
+    template = '{0} [--work-dir=<dir>]  [--force] [--no-strip]  [--debug] [--debug-manager=] [--debug-pass=] [--devirt] [--llpe] [--help] [--ipdse] [--precise-dce] [--stats] [--verbose] [--no-specialize] [--keep-external=<file>] <manifest>\n'
     sys.stderr.write(template.format(exe))
 
 
@@ -85,11 +109,19 @@ class Slash(object):
                         'force',
                         'no-strip',
                         'devirt',
+                        'debug',
+                        'debug-manager=',
+                        'debug-pass=',
                         'llpe',
+                        'help',
                         'ipdse',
+                        'precise-dce',
+                        'info',
                         'stats',
                         'no-specialize',
-                        'tool=']
+                        'tool=',
+                        'verbose',
+                        'keep-external=']
             parsedargs = getopt.getopt(argv[1:], None, cmdflags)
             (self.flags, self.args) = parsedargs
 
@@ -98,6 +130,12 @@ class Slash(object):
                 tool = config.get_llvm_tool(tool)
                 print('tool = {0}'.format(tool))
                 sys.exit(0)
+
+            helpme = utils.get_flag(self.flags, 'help', None)
+            if helpme is not None:
+                print(instructions)
+                sys.exit(0)
+
 
         except Exception:
             usage(argv[0])
@@ -109,6 +147,15 @@ class Slash(object):
             usage(argv[0])
             self.valid = False
             return
+
+        self.whitelist = utils.get_whitelist(self.flags)
+        if self.whitelist is not None:
+            if not os.path.exists(self.whitelist) or not os.path.isfile(self.whitelist):
+                msg = 'The given keep-external list "{0}" is not a file, or does not exist.'
+                print(msg.format(whitelist))
+                self.valid = False
+                return
+
         self.work_dir = utils.get_work_dir(self.flags)
         self.pool = pool.getDefaultPool()
         self.valid = True
@@ -133,6 +180,9 @@ class Slash(object):
         (valid, module, binary, libs, native_libs, ldflags, args, name, constraints) = parsed
 
 
+        if not self.driver_config():
+            return 1
+
         no_strip = utils.get_flag(self.flags, 'no-strip', None)
 
         devirt = utils.get_flag(self.flags, 'devirt', None)
@@ -141,19 +191,17 @@ class Slash(object):
 
         use_ipdse = utils.get_flag(self.flags, 'ipdse', None)
 
+        use_precise_dce = utils.get_flag(self.flags, 'precise-dce', None)
+
         show_stats = utils.get_flag(self.flags, 'stats', None)
+
+        info = utils.get_flag(self.flags, 'info', None)
+        if info is not None:
+            show_stats = True
 
         no_specialize = utils.get_flag(self.flags, 'no-specialize', None)
 
         sys.stderr.write('\nslash working on {0} wrt {1} ...\n'.format(module, ' '.join(libs)))
-
-        #<delete this once done>
-        #new_libs = []
-        #for lib in libs:
-        #    new_libs.append(os.path.realpath(lib))
-        #
-        #libs = new_libs
-        #</delete this once done>
 
         native_lib_flags = []
 
@@ -172,9 +220,57 @@ class Slash(object):
         files = utils.populate_work_dir(module, libs, self.work_dir)
         os.chdir(self.work_dir)
 
-        profile_map_before = collections.OrderedDict()
-        profile_map_after = collections.OrderedDict()
+        #watches were inserted here ...
+
+        profile_maps, profile_map_titles = [], []
         
+        def add_profile_map(title):
+            profile_map = collections.OrderedDict()
+            for m in files.values():
+                _, name = tempfile.mkstemp()
+                profile_map[m.get()] = name
+            def _profile(m):
+                "Profiling "                
+                passes.profile(m.get(), profile_map[m.get()])
+            _profile.__doc__ += title
+            pool.InParallel(_profile, files.values(), self.pool)
+            profile_maps.extend([profile_map])
+            profile_map_titles.extend([title])
+            
+        def print_profile_maps(f = lambda x: x):
+            def print_file(f, v, when):
+                sys.stderr.write('\nStatistics for {0} {1}\n'.format(f, when))
+                fd = open(v, 'r')
+                for line in fd:
+                    sys.stderr.write('\t')
+                    sys.stderr.write(line)
+                fd.close()
+                os.remove(v)
+            for ll in map(lambda t: list(t),
+                          zip(*map(lambda OrdDic: OrdDic.iteritems(), profile_maps))):
+                k, j = None, 0
+                assert (len(ll) == len(profile_map_titles))
+                for (ki, vi) in ll:
+                    ki = f(ki)
+                    if k is None: k = ki
+                    else: assert(k == ki)
+                    print_file(k, vi, profile_map_titles[j])
+                    j += 1
+
+        def write_timestamp(msg):
+            import datetime
+            dt = datetime.datetime.now ().strftime ('%d/%m/%Y %H:%M:%S')
+            sys.stderr.write("[%s] %s...\n" % (dt, msg))
+            
+        #Collect some stats before we start optimizing/debloating
+        if show_stats is not None:
+            add_profile_map('before specialization')
+
+        # in this case we just want to show the stats and exit
+        if info is not None:
+            print_profile_maps()
+            return
+
         #specialize the arguments ...
         if args is not None:
             main = files[module]
@@ -188,18 +284,6 @@ class Slash(object):
             post = main.new('a')
             passes.constrain_program_args(pre, post, constraints, 'constraints')
 
-        #watches were inserted here ...
-
-        #Collect some stats before we start optimizing/debloating
-        if show_stats is not None:
-            for m in files.values():
-                _, name = tempfile.mkstemp()
-                profile_map_before[m.get()] = name
-            def _profile_before(m):
-                "Profiling before specialization"
-                passes.profile(m.get(), profile_map_before[m.get()])
-            pool.InParallel(_profile_before, files.values(), self.pool)
-        
         # Internalize everything that we can
         # We can never internalize main
         interface.writeInterface(interface.mainInterface(), 'main.iface')
@@ -223,7 +307,7 @@ class Slash(object):
             pre = i.get()
             post = i.new('i')
             ifaces = [refs[f].get() for f in refs.keys() if f != m] + ['main.iface']
-            passes.internalize(pre, post, ifaces)
+            passes.internalize(pre, post, ifaces, self.whitelist)
 
         pool.InParallel(_internalize, vals, self.pool)
 
@@ -246,7 +330,8 @@ class Slash(object):
         for m, _ in files.iteritems():
             base = utils.prevent_collisions(m[:m.rfind('.bc')])
             rewrite_files[m] = provenance.VersionedFile(base, 'rw')
-            
+
+        write_timestamp("Started global fixpoint ...")
         iteration = 0
         while progress:
 
@@ -315,19 +400,15 @@ class Slash(object):
                 "Pruning dead code/variables"
                 pre = m.get()
                 post = m.new('occam')
-                passes.internalize(pre, post, [iface_after_file.get()])
+                passes.internalize(pre, post, [iface_after_file.get()], self.whitelist)
             pool.InParallel(prune, files.values(), self.pool)
 
-        #Collect stats after the whole optimization/debloating process finished            
+        write_timestamp("Finished global fixpoint.")        
+            
+        #Collect stats after the whole optimization/debloating process finished
         if show_stats is not None:
-            for m in files.values():
-                _, name = tempfile.mkstemp()
-                profile_map_after[m.get()] = name
-            def _profile_after(m):
-                "Profiling after specialization"
-                passes.profile(m.get(), profile_map_after[m.get()])
-            pool.InParallel(_profile_after, files.values(), self.pool)
-
+            add_profile_map('after specialization')
+                
         # Make symlinks for the "final" versions
         for x in files.values():
             trg = x.base('-final')
@@ -344,42 +425,85 @@ class Slash(object):
 
         sys.stderr.write('\nLinking ...\n')
         sys.stderr.write(link_cmd)
-        driver.linker(final_module, binary, linker_args)
-        sys.stderr.write('\ndone.\n')
+        linking_ok = False
+        try:
+            driver.linker(final_module, binary, linker_args)
+            sys.stderr.write('\ndone.\n')
+            linking_ok = True
+        except Exception as e:
+            sys.stderr.write('\nFAILED. Modify the manifest to add libraries and/or linker flags.\n\n')
+            import traceback
+            traceback.print_exc()
+
+        if use_precise_dce is not None and linking_ok:
+            # Perform precise dce guided by maximizing the number of
+            # removed ROP gadgets            
+            def precise_dce((m, ropfile)):
+                "Pruning using precise dce"
+                pre = m.get()
+                post = m.new('precise_dse')
+                try:
+                    return passes.precise_dce(pre, ropfile, post)
+                except Exception as e:
+                    sys.stderr.write("Precise dce failed on " + str(pre))
+                    return False
+                
+            ropgadget_cmd = utils.get_ropgadget()
+            if ropgadget_cmd is not None:
+                binary = os.path.join(os.path.dirname(os.path.abspath(final_module)), binary)
+                ropfile = binary + '.ropgadget.txt'
+                ropgadget_args = ['--binary', binary, '--silent', '--fns2lines', ropfile]
+                driver.run(ropgadget_cmd, ropgadget_args)
+                
+                precise_dce_args = map(lambda m: (m,ropfile), files.values())
+                rws = pool.InParallel(precise_dce, precise_dce_args , self.pool)
+                progress = any(rws)
+                if progress:
+                    if show_stats is not None:
+                        add_profile_map('after precise dce')
+                        
+                    sys.stderr.write("TODO: link again .bc files after precise dce was done")
+            else:
+                sys.stderr.write("ropgadget not found. Aborting precise dce ...")
+                    
+            
         pool.shutdownDefaultPool()
-
-        #Print stats before and after
+        
         if show_stats is not None:
-            for (f1,v1), (f2,v2) in zip(profile_map_before.iteritems(), \
-                                        profile_map_after.iteritems()) :
-                sys.stderr.write(f1)
-                sys.stderr.write(f2)
-
-                def _splitext(abspath):
-                    #Given abspath of the form basename.ext1.ext2....extn
-                    #return basename.ext1
-                    base = os.path.basename(abspath)
-                    res = base.split(os.extsep)
-                    assert(len(res) > 1)
-                    return res[0] + '.' + res[1]
-
-                f1 = _splitext(f1)
-                f2 = _splitext(f2)
-                assert (f1 == f2)
-
-                sys.stderr.write('\n\nStatistics for %s before specialization\n' % f1)
-                fd = open(v1, 'r')
-                for line in fd:
-                    sys.stderr.write('\t')
-                    sys.stderr.write(line)
-                fd.close()
-                os.remove(v1)
-                sys.stderr.write('Statistics for %s after specialization\n' % f2)
-                fd = open(v2, 'r')
-                for line in fd:
-                    sys.stderr.write('\t')
-                    sys.stderr.write(line)
-                fd.close()
-                os.remove(v2)
-
+            def _splitext(abspath):
+                """
+                Given abspath of the form basename.ext1.ext2....extn return basename
+                """
+                base = os.path.basename(abspath)
+                res = base.split(os.extsep)
+                assert(len(res) > 1)
+                return res[0]
+            print_profile_maps(_splitext)
+            
         return 0
+
+
+    def driver_config(self):
+        debug = utils.get_flag(self.flags, 'debug', None)
+        if debug is not None:
+            driver.opt_debug_cmds.append('--debug')
+
+
+        debug_manager = utils.get_flag(self.flags, 'debug-manager', None)
+        if debug_manager is not None:
+            if debug_manager not in ('Structure', 'Details'):
+                print('Unknown --debug-manager value "{0}", should be either "Structure" or "Details"'.format(debug_manager))
+                return False
+            driver.opt_debug_cmds.append('--debug-pass={0}'.format(debug_manager))
+
+
+        debug_pass = utils.get_flag(self.flags, 'debug-pass', None)
+        if debug_pass is not None:
+            driver.opt_debug_cmds.append('--debug-only={0}'.format(debug_pass))
+
+
+        verbose = utils.get_flag(self.flags, 'verbose', None)
+        if verbose is not None:
+            driver.verbose = True
+
+        return True

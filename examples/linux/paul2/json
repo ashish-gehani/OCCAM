@@ -1,0 +1,8 @@
+{ "main" :  "main.o.bc"
+, "binary"  : "slh_ext"
+, "modules"    : []
+, "native_libs" : ["extern-test.o"]
+, "ldflags" : []
+, "args"    : []
+, "name"    : "extern-var"
+}

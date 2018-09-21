@@ -48,9 +48,14 @@
 
 #include <vector>
 #include <string>
-#include <stdio.h>
+#include <fstream>
 
 using namespace llvm;
+
+static cl::opt<std::string>
+KeepExternalFile("Pkeep-external",
+		 cl::desc("<file> : list of function names to be whitelisted"),
+		 cl::init(""));
 
 namespace previrt
 {
@@ -95,15 +100,31 @@ namespace previrt
     errs() << "</interface>\n";
     */
 
-    // Set all functions that are not in the interface to internal linkage only
-    const StringMap<std::vector<CallInfo*> >::const_iterator end =
-        I.calls.end();
-    for (Module::iterator f = M.begin(), e = M.end(); f != e; ++f) {
-      if (!f->isDeclaration() && f->hasExternalLinkage() &&
-          I.calls.find(f->getName()) == end &&
-          I.references.find(f->getName()) == I.references.end()) {
-	errs() << "Hiding '" << f->getName() << "'\n";
-	f->setLinkage(GlobalValue::InternalLinkage);
+    std::set<std::string> keep_external;
+    if (KeepExternalFile != "") {
+      std::ifstream infile(KeepExternalFile);
+      if (infile.is_open()) {
+	std::string line;
+	while (std::getline(infile, line)) {
+      //errs() << "Adding " << line << " to the white list.\n";
+	  keep_external.insert(line);
+	}
+	infile.close();
+      } else {
+	errs() << "Warning: ignored whitelist because something failed.\n";
+      }
+    }
+    // Set all functions that are not in the interface to internal linkage only    
+    for (auto &f: M) {
+      if (keep_external.count(f.getName())) {
+	errs() << "Did not internalize " << f.getName() << " because it is whitelisted.\n";
+	continue;
+      }
+      if (!f.isDeclaration() && f.hasExternalLinkage() &&
+          I.calls.find(f.getName()) == I.calls.end() &&
+          I.references.find(f.getName()) == I.references.end()) {
+	errs() << "Hiding '" << f.getName() << "'\n";
+	f.setLinkage(GlobalValue::InternalLinkage);
 	hidden++;
 	modified = true;
       }
@@ -111,16 +132,22 @@ namespace previrt
 
     // Set all initialized global variables that are not referenced in
     // the interface to "localized linkage" only
-    for (Module::global_iterator i = M.global_begin(), e = M.global_end(); i != e; ++i) {
-      if ((i->hasExternalLinkage() || i->hasCommonLinkage()) && 
-	  i->hasInitializer() &&
-          I.references.find(i->getName()) == I.references.end()) {
-	errs() << "internalizing '" << i->getName() << "'\n";	
-        i->setLinkage(localizeLinkage(i->getLinkage()));
+    for (auto &gv: M.globals()) {
+      if (gv.hasName() && keep_external.count(gv.getName())) {
+	errs() << "Did not internalize " << gv.getName() << " because it is whitelisted.\n";
+	continue;
+      }
+      if ((gv.hasExternalLinkage() || gv.hasCommonLinkage()) && 
+	  gv.hasInitializer() &&
+          I.references.find(gv.getName()) == I.references.end()) {
+	errs() << "internalizing '" << gv.getName() << "'\n";	
+        gv.setLinkage(localizeLinkage(gv.getLinkage()));
 	internalized++;
         modified = true;
-      } 
+      }
     }
+
+    
     /* TODO: We want to do this, but libc has some problems...
     for (Module::alias_iterator i = M.alias_begin(), e = M.alias_end(); i != e; ++i) {
       if (i->hasExternalLinkage() &&
