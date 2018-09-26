@@ -116,7 +116,7 @@ def linker(fin, fout, args):
     return run('clang++', args)
 
 
-def run(prog, args, sb=None):
+def run(prog, args, sb=None, fail_on_error=True):
 
     log = logging.getLogger()
 
@@ -141,7 +141,7 @@ def run(prog, args, sb=None):
     log.log(logging.INFO, 'EXECUTED: %(cmd)s WHICH RETURNED %(code)d\n',
             {'cmd'  : ' '.join([prog] + args), 'code' : retcode })
 
-    if retcode != 0:
+    if fail_on_error and retcode != 0:
         ex = ReturnCode(retcode, [prog] + args, proc)
         logging.getLogger().error('ERROR: %s', ex)
         raise ex
