@@ -310,33 +310,47 @@ def run_seahorn(sea_cmd, input_file, fname, is_loop_free, cpu, mem):
     args = ['--Padd-verifier-calls',
             '--Padd-verifier-call-in-function={0}'.format(fname)]
     driver.previrt(input_file, sea_infile.name, args)
-
+    
     # 2. Run SeaHorn
-    # TODO: If is_loop_free is true we should run SeaHorn BMC engine instead.
-    #       By default, we run SeaHorn with loop invariant capabilities.
-    sea_args = ['pf'
-                , '--strip-extern'
+    sea_args = [  '--strip-extern'
                 , '--enable-indvar'
                 , '--enable-loop-idiom'
                 , '--symbolize-constant-loop-bounds'
                 , '--unfold-loops-for-dsa'
                 , '--simplify-pointer-loops'
-                , '--horn-global-constraints=true'
-                , '--horn-singleton-aliases=true'
-                , '--horn-ignore-calloc=false'
                 , '--horn-sea-dsa-local-mod'
+                , '--horn-sea-dsa-split'
                 , '--dsa=sea-cs'
                 , '--cpu={0}'.format(cpu)
-                , '--mem={0}'.format(mem)
-                , sea_infile.name]
+                , '--mem={0}'.format(mem)]
+
+    if is_loop_free:
+        # the bound shouldn't affect for proving unreachability of the
+        # function but we need a global bound for all loops.
+        sea_args = ['bpf', '--bmc=mono', '--bound=3'] + \
+                   sea_args + \
+                   [   '--horn-bv-global-constraints=true'
+                     , '--horn-bv-singleton-aliases=true'
+                     , '--horn-bv-ignore-calloc=false'
+                     , '--horn-at-most-one-predecessor']
+        sys.stderr.write('\tRunning SeaHorn with BMC engine on {0} ...\n'.format(fname))        
+    else:
+        sea_args = ['pf'] + \
+                   sea_args + \
+                   [   '--horn-global-constraints=true'
+                     , '--horn-singleton-aliases=true'
+                     , '--horn-ignore-calloc=false'
+                     , '--crab', '--crab-dom=int']
+        sys.stderr.write('\tRunning SeaHorn with Spacer+AI engine on {0} ...\n'.format(fname))
+    sea_args = sea_args + [sea_infile.name]
+        
     sb = stringbuffer.StringBuffer()
-    driver.run(sea_cmd, sea_args, sb)
+    retcode= driver.run(sea_cmd, sea_args, sb, False)
     status = check_status(str(sb))
-    
-    if status:
+    if retcode == 0 and status:
         # 3. If SeaHorn proved unreachability of the function then we
         #    add assume(false) at the entry of that function.
-        sys.stderr.write('SeaHorn proved unreachability of {0}\n'.format(fname))
+        sys.stderr.write('SeaHorn proved unreachability of {0}!\n'.format(fname))
         sea_outfile = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
         sea_outfile.close()
         args = ['--Preplace-verifier-calls-with-unreachable']
@@ -347,7 +361,11 @@ def run_seahorn(sea_cmd, input_file, fname, is_loop_free, cpu, mem):
         optimize(sea_outfile.name, sea_opt_outfile.name)
         return sea_opt_outfile.name
     else:
-        sys.stderr.write('SeaHorn could not prove unreachability of {0}\n'.format(fname))
+        sys.stderr.write('\tSeaHorn could not prove unreachability of {0}.\n'.format(fname))
+        if retcode <> 0:
+            sys.stderr.write('\t\tPossibly timeout or memory limits reached\n')
+        elif not status:
+            sys.stderr.write('\t\tSeaHorn got a counterexample\n')
         return input_file
 
 def precise_dce(input_file, ropfile, output_file):
@@ -364,11 +382,13 @@ def precise_dce(input_file, ropfile, output_file):
     args += ['--Pbenefits-filename={0}'.format(ropfile)]
     args += ['--Pcost-benefit-output={0}'.format(cost_benefit_out.name)]
     driver.previrt(input_file, '/dev/null', args)
-    
+
+    ####
     ## TODO: make these parameters user-definable:
+    ####
     benefit_threshold = 20  ## number of ROP gadgets
     cost_threshold =  3     ## number of loops
-    timeout = 5             ## SeaHorn timeout in seconds
+    timeout = 120           ## SeaHorn timeout in seconds
     memlimit = 4096         ## SeaHorn memory limit in MB
 
     seahorn_queries = []    
@@ -385,11 +405,20 @@ def precise_dce(input_file, ropfile, output_file):
         if fbenefit >= benefit_threshold and fcost <= cost_threshold:
             seahorn_queries.extend([(fname, fcost == 0)])
     cost_benefit_out.close()
-    
+
+    if seahorn_queries == []:
+        print "No queries for SeaHorn ..."
+
+    #####        
     ## TODO: run SeaHorn instances in parallel
+    #####
     change = False
     curfile = input_file
     for (fname, is_loop_free) in seahorn_queries:
+        if fname == 'main' or \
+           fname.startswith('devirt') or \
+           fname.startswith('seahorn'):
+            continue
         nextfile = run_seahorn(sea_cmd, curfile, fname, is_loop_free, timeout, memlimit)
         change = change | (curfile <> nextfile)
         curfile = nextfile
