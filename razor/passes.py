@@ -374,7 +374,7 @@ def precise_dce(input_file, ropfile, output_file):
     sea_cmd = utils.get_seahorn()
     if sea_cmd is None:
         sys.stderr.write('SeaHorn not found. Aborting precise dce ...')
-        shutil_copy(input_file, output_file)
+        shutil.copy(input_file, output_file)
         return False
         
     cost_benefit_out = tempfile.NamedTemporaryFile(delete=False)

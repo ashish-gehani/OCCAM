@@ -269,7 +269,7 @@ def is_exec (fpath):
     return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
     
 def which(program):
-    fpath, fname = os.path.split(program)
+    fpath, _ = os.path.split(program)
     if fpath:
         if is_exec (program): return program
     else:

@@ -152,7 +152,7 @@ class Slash(object):
         if self.whitelist is not None:
             if not os.path.exists(self.whitelist) or not os.path.isfile(self.whitelist):
                 msg = 'The given keep-external list "{0}" is not a file, or does not exist.'
-                print(msg.format(whitelist))
+                print(msg.format(self.whitelist))
                 self.valid = False
                 return
 
@@ -430,7 +430,7 @@ class Slash(object):
             driver.linker(final_module, binary, linker_args)
             sys.stderr.write('\ndone.\n')
             linking_ok = True
-        except Exception as e:
+        except Exception:
             sys.stderr.write('\nFAILED. Modify the manifest to add libraries and/or linker flags.\n\n')
             import traceback
             traceback.print_exc()
@@ -444,7 +444,7 @@ class Slash(object):
                 post = m.new('precise_dse')
                 try:
                     return passes.precise_dce(pre, ropfile, post)
-                except Exception as e:
+                except Exception:
                     sys.stderr.write("Precise dce failed on " + str(pre))
                     return False
                 
