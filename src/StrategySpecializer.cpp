@@ -273,9 +273,9 @@ SpecializerPass::runOnModule(Module &M)
   }
 
   if (modified){
-    errs() << "progress...\n";
+    errs() << "...progress...\n";
   } else {
-    errs() << "NO progress...\n";
+    errs() << "...no progress...\n";
   }
 
   policy->release();
