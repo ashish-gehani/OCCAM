@@ -408,49 +408,53 @@ class Slash(object):
         #Collect stats after the whole optimization/debloating process finished
         if show_stats is not None:
             add_profile_map('after specialization')
-                
-        # Make symlinks for the "final" versions
-        for x in files.values():
-            trg = x.base('-final')
-            if os.path.exists(trg):
-                os.unlink(trg)
-            os.symlink(x.get(), trg)
+                                
+        def link(binary, files, libs, native_libs, native_lib_flags, ldflags):
+            final_libs = [files[x].get() for x in libs]
+            final_module = files[module].get()
+            linker_args = final_libs + native_libs + native_lib_flags + ldflags
+            link_cmd = '\nclang++ {0} -o {1} {2}\n'.format(final_module, binary, ' '.join(linker_args))
+            sys.stderr.write('\nLinking ...\n')
+            sys.stderr.write(link_cmd)
+            try:
+                driver.linker(final_module, binary, linker_args)
+                sys.stderr.write('\ndone.\n')
+                return True
+            except Exception:
+                sys.stderr.write('\nFAILED. Modify the manifest to add libraries and/or linker flags.\n\n')
+                import traceback
+                traceback.print_exc()
+                return False
 
-
-        final_libs = [files[x].get() for x in libs]
-        final_module = files[module].get()
-
-        linker_args = final_libs + native_libs + native_lib_flags + ldflags
-        link_cmd = '\nclang++ {0} -o {1} {2}\n'.format(final_module, binary, ' '.join(linker_args))
-
-        sys.stderr.write('\nLinking ...\n')
-        sys.stderr.write(link_cmd)
-        linking_ok = False
-        try:
-            driver.linker(final_module, binary, linker_args)
-            sys.stderr.write('\ndone.\n')
-            linking_ok = True
-        except Exception:
-            sys.stderr.write('\nFAILED. Modify the manifest to add libraries and/or linker flags.\n\n')
-            import traceback
-            traceback.print_exc()
-
-        if use_precise_dce is not None and linking_ok:
-            # Perform precise dce guided by maximizing the number of
-            # removed ROP gadgets            
+        link_ok = link(binary, files, libs, native_libs, native_lib_flags, ldflags)
+        
+        if use_precise_dce is not None and link_ok:
             def precise_dce((m, ropfile)):
-                "Pruning using precise dce"
+                ''' Pruning using precise dce guided by maximizing the number of removed ROP gadgets '''
                 pre = m.get()
                 post = m.new('precise_dse')
                 try:
-                    return passes.precise_dce(pre, ropfile, post)
+                    ## TODO: extract entries from the interfaces. Right
+                    ## now, we will only perform precise dse for the
+                    ## program but not for libraries.
+                    entries = ['main']
+                    
+                    ## TODO: make user options
+                    benefit_threshold = 20
+                    cost_threshold = 3
+                    timeout = 120
+                    memlimit = 4096
+                    return passes.precise_dce(pre, entries, ropfile, post,
+                                              benefit_threshold, cost_threshold,
+                                              timeout, memlimit)
                 except Exception:
                     sys.stderr.write("Precise dce failed on " + str(pre))
                     return False
                 
             ropgadget_cmd = utils.get_ropgadget()
             if ropgadget_cmd is not None:
-                binary = os.path.join(os.path.dirname(os.path.abspath(final_module)), binary)
+                binary = os.path.join(os.path.dirname(os.path.abspath(files[module].get())), \
+                                      binary)
                 ropfile = binary + '.ropgadget.txt'
                 ropgadget_args = ['--binary', binary, '--silent', '--fns2lines', ropfile]
                 driver.run(ropgadget_cmd, ropgadget_args)
@@ -461,12 +465,17 @@ class Slash(object):
                 if progress:
                     if show_stats is not None:
                         add_profile_map('after precise dce')
-                        
-                    sys.stderr.write("TODO: link again .bc files after precise dce was done")
+                link(binary, files, libs, native_libs, native_lib_flags, ldflags)
             else:
                 sys.stderr.write("ropgadget not found. Aborting precise dce ...")
-                    
-            
+
+        # Make symlinks for the "final" versions
+        for x in files.values():
+            trg = x.base('-final')
+            if os.path.exists(trg):
+                os.unlink(trg)
+            os.symlink(x.get(), trg)
+                
         pool.shutdownDefaultPool()
         
         if show_stats is not None:

@@ -333,7 +333,7 @@ def run_seahorn(sea_cmd, input_file, fname, is_loop_free, cpu, mem):
                      , '--horn-bv-singleton-aliases=true'
                      , '--horn-bv-ignore-calloc=false'
                      , '--horn-at-most-one-predecessor']
-        sys.stderr.write('\tRunning SeaHorn with BMC engine on {0} ...\n'.format(fname))        
+        sys.stderr.write('Running SeaHorn with BMC engine on {0} ...\n'.format(fname))        
     else:
         sea_args = ['pf'] + \
                    sea_args + \
@@ -341,7 +341,7 @@ def run_seahorn(sea_cmd, input_file, fname, is_loop_free, cpu, mem):
                      , '--horn-singleton-aliases=true'
                      , '--horn-ignore-calloc=false'
                      , '--crab', '--crab-dom=int']
-        sys.stderr.write('\tRunning SeaHorn with Spacer+AI engine on {0} ...\n'.format(fname))
+        sys.stderr.write('Running SeaHorn with Spacer+AI engine on {0} ...\n'.format(fname))
     sea_args = sea_args + [sea_infile.name]
         
     sb = stringbuffer.StringBuffer()
@@ -350,7 +350,7 @@ def run_seahorn(sea_cmd, input_file, fname, is_loop_free, cpu, mem):
     if retcode == 0 and status:
         # 3. If SeaHorn proved unreachability of the function then we
         #    add assume(false) at the entry of that function.
-        sys.stderr.write('SeaHorn proved unreachability of {0}!\n'.format(fname))
+        sys.stderr.write('\tSeaHorn proved unreachability of {0}!\n'.format(fname))
         sea_outfile = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
         sea_outfile.close()
         args = ['--Preplace-verifier-calls-with-unreachable']
@@ -361,14 +361,27 @@ def run_seahorn(sea_cmd, input_file, fname, is_loop_free, cpu, mem):
         optimize(sea_outfile.name, sea_opt_outfile.name)
         return sea_opt_outfile.name
     else:
-        sys.stderr.write('\tSeaHorn could not prove unreachability of {0}.\n'.format(fname))
+        sys.stderr.write('\tSeaHorn could not prove unreachability of {0}:\n'.format(fname))
         if retcode <> 0:
-            sys.stderr.write('\t\tPossibly timeout or memory limits reached\n')
+            sys.stderr.write('\t\tpossible timeout or memory limits reached\n')
         elif not status:
             sys.stderr.write('\t\tSeaHorn got a counterexample\n')
         return input_file
 
-def precise_dce(input_file, ropfile, output_file):
+def precise_dce(input_file,
+                # entry functions 
+                entries,
+                # file with ROP gadgets
+                ropfile,
+                output_file,
+                ## number of ROP gadgets
+                benefit_threshold,
+                ## number of loops
+                cost_threshold,
+                ## SeaHorn timeout in seconds
+                timeout,
+                ## SeaHorn memory limit in MB
+                memlimit):
     """ use SeaHorn model-checker to remove dead functions
     """
     sea_cmd = utils.get_seahorn()
@@ -381,16 +394,10 @@ def precise_dce(input_file, ropfile, output_file):
     args  = ['--Pcost-benefit-cg']
     args += ['--Pbenefits-filename={0}'.format(ropfile)]
     args += ['--Pcost-benefit-output={0}'.format(cost_benefit_out.name)]
+    for e in entries:
+        args += ['--Pcallgraph-roots={0}'.format(e)]
+        
     driver.previrt(input_file, '/dev/null', args)
-
-    ####
-    ## TODO: make these parameters user-definable:
-    ####
-    benefit_threshold = 20  ## number of ROP gadgets
-    cost_threshold =  3     ## number of loops
-    timeout = 120           ## SeaHorn timeout in seconds
-    memlimit = 4096         ## SeaHorn memory limit in MB
-
     seahorn_queries = []    
     for line in cost_benefit_out:
         tokens = line.split()        
