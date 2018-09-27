@@ -108,7 +108,6 @@ def devirt(input_file, output_file):
     else:
         return retcode
 
-
 def profile(input_file, output_file):
     """ count number of instructions, functions, memory accesses, etc.
     """
@@ -116,7 +115,29 @@ def profile(input_file, output_file):
     args += ['-profile-outfile={0}'.format(output_file)]
     return driver.previrt(input_file, '/dev/null', args)
 
-def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, log=None):
+def crabllvm(cmd, input_file, output_file):
+    """ running crab-llvm (https://github.com/seahorn/crab-llvm) 
+    """
+    dom = 'zones'
+    sum_dom = 'zones'
+    args = [# analysis options
+              '--crab-dom={0}'.format(dom)
+            #, '--crab-lower-select'
+            , '--crab-track=arr'
+            , '--crab-singleton-aliases'
+            , '--crab-inter'
+            , '--crab-inter-sum-dom={0}'.format(sum_dom)
+            # options to insert invariants as llvm.assume instructions
+            , '--crab-add-invariants=block-entry'
+            , '--crab-promote-assume'
+            # for verbose messages
+            #, '--crab-verbose=1'
+            , '--crab-stats']
+    args += [input_file, '--o={0}'.format(output_file)]
+    sb = stringbuffer.StringBuffer()
+    return  driver.run(cmd, args, sb, False)
+
+def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, use_ai, log=None):
     """ intra module previrtualization
     """
     opt = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
@@ -126,16 +147,20 @@ def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, log=None):
     done.close()
     tmp.close()
 
-    #XXX: Optimize using standard llvm transformations before any other pass.
-    #Otherwise, these passes will not be very effective.
-    retcode = optimize(input_file, done.name)
-    if retcode != 0:
-        sys.stderr.write("ERROR: intra module optimization failed!\n")
-        shutil.copy(input_file, output_file)
+    def _optimize(input_file, output_file):
+        retcode = optimize(input_file, output_file)
+        if retcode != 0:
+            sys.stderr.write("ERROR: intra module optimization failed!\n")
+            shutil.copy(input_file, output_file)
+        else:
+            sys.stderr.write("\tintra module optimization finished succesfully\n")
         return retcode
-    else:
-        sys.stderr.write("\tintra module optimization finished succesfully\n")
 
+    # Optimize using standard llvm transformations before any other
+    # optional pass. Otherwise, these passes will not be very effective.
+    retcode = _optimize(input_file, done.name)
+    if retcode != 0: return retcode
+    
     if use_devirt is not None:
         retcode = devirt(done.name, tmp.name)
         if retcode != 0:
@@ -183,6 +208,26 @@ def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, log=None):
             sys.stderr.write("\tipdse finished succesfully\n")
         shutil.copy(tmp.name, done.name)
 
+    if use_ai is not None:
+        
+        crabllvm_cmd = utils.get_crabllvm()
+        if crabllvm_cmd is None:
+            sys.stderr.write('CrabLlvm not found. Aborting ai invariants ...')
+        else:
+            retcode = crabllvm(crabllvm_cmd, done.name, tmp.name)
+            if retcode != 0:
+                sys.stderr.write("ERROR: crabllvm failed!\n")
+                shutil.copy(done.name, output_file)
+                return retcode
+            else:
+                sys.stderr.write("\tcrab-llvm finished succesfully\n")
+                shutil.copy(tmp.name, done.name)
+                # After crab-llvm insert llvm.assume instructions we must run
+                # the optimizer again.
+                retcode = _optimize(tmp.name, done.name)
+                if retcode != 0:
+                    return retcode
+        
     out = ['']
     iteration = 0
     while True:
@@ -190,12 +235,9 @@ def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, log=None):
         if iteration > 1 or \
            (use_llpe is not None or use_ipdse is not None):
             # optimize using standard llvm transformations
-            retcode = optimize(done.name, opt.name)
+            retcode = _optimize(done.name, opt.name)
             if retcode != 0:
-                sys.stderr.write("ERROR: intra-module optimization failed!\n")
                 break;
-            else:
-                sys.stderr.write("\tintra module optimization finished succesfully\n")
         else:
             shutil.copy(done.name, opt.name)
 
@@ -295,8 +337,8 @@ def deep(libs, ifaces):
     os.unlink(tf.name)
     return iface
 
-def run_seahorn(sea_cmd, input_file, fname, is_loop_free, cpu, mem):
-    """ running SeaHorn
+def seahorn(sea_cmd, input_file, fname, is_loop_free, cpu, mem):
+    """ running SeaHorn (https://github.com/seahorn/seahorn)
     """
     
     def check_status(output_str):
@@ -416,9 +458,6 @@ def precise_dce(input_file,
     if seahorn_queries == []:
         print "No queries for SeaHorn ..."
 
-    #####        
-    ## TODO: run SeaHorn instances in parallel
-    #####
     change = False
     curfile = input_file
     for (fname, is_loop_free) in seahorn_queries:
@@ -426,7 +465,7 @@ def precise_dce(input_file,
            fname.startswith('devirt') or \
            fname.startswith('seahorn'):
             continue
-        nextfile = run_seahorn(sea_cmd, curfile, fname, is_loop_free, timeout, memlimit)
+        nextfile = seahorn(sea_cmd, curfile, fname, is_loop_free, timeout, memlimit)
         change = change | (curfile <> nextfile)
         curfile = nextfile
     shutil.copy(curfile, output_file)

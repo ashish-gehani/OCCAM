@@ -73,12 +73,12 @@ instructions = """slash has three modes of use:
         --debug-pass=<tag>      : Debug opt's pass (<tag> should be the debug pragma string of the pass)
         --debug                 : Pass the debug flag into all calls to opt (too much information usually)
         --devirt                : Devirtualize indirect function calls
-        --llpe                  : Use Smowton's LLPE for intra-module prunning
-        --ipdse                 : Apply inter-procedural dead store elimination (experimental)
-        --precise-dce           : Use model-checking to perform intra-module dead code elimination
         --no-specialize         : Do not specialize any intermodule calls
         --keep-external=<file>  : Pass a list of function names that should remain external.
-
+        --llpe                  : Use Smowton's LLPE for intra-module prunning (experimental)
+        --ipdse                 : Apply inter-procedural dead store elimination (experimental)
+        --precise-dce           : Use model-checking to perform intra-module dead code elimination (experimental)
+        --ai-invariants         : Add invariants inferred by abstract interpretation as llvm.assume instructions (experimental)
     """
 
 def entrypoint():
@@ -95,7 +95,7 @@ def entrypoint():
 
 
 def  usage(exe):
-    template = '{0} [--work-dir=<dir>]  [--force] [--no-strip]  [--debug] [--debug-manager=] [--debug-pass=] [--devirt] [--llpe] [--help] [--ipdse] [--precise-dce] [--stats] [--verbose] [--no-specialize] [--keep-external=<file>] <manifest>\n'
+    template = '{0} [--work-dir=<dir>]  [--force] [--help] [--stats] [--no-strip] [--verbose] [--debug-manager=] [--debug-pass=] [--debug] [--devirt] [--no-specialize] [--keep-external=<file>] [--llpe] [--ipdse] [--precise-dce] [--ai-invariants] <manifest>\n'
     sys.stderr.write(template.format(exe))
 
 
@@ -116,6 +116,7 @@ class Slash(object):
                         'help',
                         'ipdse',
                         'precise-dce',
+                        'ai-invariants',
                         'info',
                         'stats',
                         'no-specialize',
@@ -192,6 +193,8 @@ class Slash(object):
         use_ipdse = utils.get_flag(self.flags, 'ipdse', None)
 
         use_precise_dce = utils.get_flag(self.flags, 'precise-dce', None)
+
+        use_ai = utils.get_flag(self.flags, 'ai-invariants', None)        
 
         show_stats = utils.get_flag(self.flags, 'stats', None)
 
@@ -348,7 +351,7 @@ class Slash(object):
                 post = m.new('p')
                 post_base = os.path.basename(post)
                 fn = 'previrt_%s-%s' % (pre_base, post_base)
-                passes.peval(pre, post, devirt, use_llpe, use_ipdse, log=open(fn, 'w'))
+                passes.peval(pre, post, devirt, use_llpe, use_ipdse, use_ai, log=open(fn, 'w'))
 
             pool.InParallel(intra, files.values(), self.pool)
 
