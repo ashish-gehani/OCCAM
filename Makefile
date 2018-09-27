@@ -150,6 +150,7 @@ zippity:
 limpio:
 	$(MAKE) -C src clean
 	$(MAKE) -C test clean
+	$(MAKE) -C examples clean
 
 clean: limpio
 	rm -rf razor/proto
