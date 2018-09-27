@@ -121,14 +121,14 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
 
       }
 
-      // Hashim: Internal linkage functions skiping should be reconsidered
-      else {
-	// This is too much traceing
-	if (callee->hasInternalLinkage()) {
-	  //errs() << "Skipping function with internal linkage: " << callee->getName() << "\n";
-	  continue;
-	}
-      }
+ //      // Hashim: Internal linkage functions skiping should be reconsidered
+ //      else {
+	// // This is too much traceing
+	// if (callee->hasInternalLinkage()) {
+	//   //errs() << "Skipping function with internal linkage: " << callee->getName() << "\n";
+	//   continue;
+	// }
+ //      }
 
       Value* const * specScheme = policy->specializeOn(callee,
           call.arg_begin(), call.arg_end());
