@@ -29,13 +29,9 @@ static llvm::cl::opt<std::string> cost_benefit_output(
      llvm::cl::init(""),
      llvm::cl::Hidden);
 
-/* FIXME: This won't work on libraries. If there is no main then we
-   need to pass all the entry points. If not available, then we should
-   assume all library functions are potential entry points. */
-static llvm::cl::opt<std::string> cg_root(
-     "Pcallgraph-root",
-     llvm::cl::desc("Root of the Module callgraph"),
-     llvm::cl::init("main"),
+static llvm::cl::list<std::string> cg_roots(
+     "Pcallgraph-roots",
+     llvm::cl::desc("Roots of the Module callgraph"),
      llvm::cl::Hidden);
 
 static llvm::cl::opt<unsigned> benefit_threshold(
@@ -239,7 +235,7 @@ using namespace llvm;
 			  ModulePass* pass,
 			  unsigned benefit_threshold,
 			  unsigned cost_threshold,
-			  std::string cg_root) {
+			  const std::vector<Function*>& roots) {
     
     // abort if we don't have benefits for callgraph nodes
     if (benefit_filename == "") {
@@ -248,8 +244,7 @@ using namespace llvm;
     }
     
     // abort if we don't have a root for the callgraph
-    Function* root = m_M.getFunction(cg_root);
-    if (!root) {
+    if (roots.empty()) {
       errs() << "No callgraph root given. Aborting ...\n";
       return;
     }
@@ -299,20 +294,22 @@ using namespace llvm;
     
     CBCG_LOG(errs () << "Starting top-down phase computing costs...\n");
 
-    LoopInfo& li_root =
-      pass->getAnalysis<LoopInfoWrapperPass>
-      (*(const_cast<Function*>(root))).getLoopInfo();
-
-    CBCG_LOG(errs() << "LOOP INFO FOR " << root->getName() << ":\n";
-	     if (li_root.empty())
-	       errs() << "NO LOOPS\n";
-	     else
-	       li_root.print(errs()););
-
-    unsigned num_visited_loops = 0;
-    find_loops(root->getEntryBlock(), li_root , pass, stack, visited,
-	       func_to_loop_map, num_visited_loops);
-	       
+    for (auto root: roots) {
+      LoopInfo& li_root =
+	pass->getAnalysis<LoopInfoWrapperPass>
+	(*(const_cast<Function*>(root))).getLoopInfo();
+      
+      CBCG_LOG(errs() << "LOOP INFO FOR " << root->getName() << ":\n";
+	       if (li_root.empty())
+		 errs() << "NO LOOPS\n";
+	       else
+		 li_root.print(errs()););
+      
+      unsigned num_visited_loops = 0;
+      find_loops(root->getEntryBlock(), li_root , pass, stack, visited,
+		 func_to_loop_map, num_visited_loops);
+    }
+    
     CBCG_LOG(// sanity check
 	     unsigned total_bb = 0;
 	     unsigned total_loops = 0;
@@ -374,9 +371,21 @@ using namespace llvm;
   bool CostBenefitCGPass::runOnModule(Module &M) {
     // -- the call graph
     auto &cg = getAnalysis<CallGraphWrapperPass>().getCallGraph();
-    m_cbcg = new CostBenefitCG(M, cg);
-    m_cbcg->run(benefits_filename, this, benefit_threshold, cost_threshold, cg_root);
 
+    std::vector<Function*> roots;
+    roots.reserve(std::distance(cg_roots.begin(), cg_roots.end()));
+    for (auto s: cg_roots) {
+      Function* f = M.getFunction(s);
+      if (!f) {
+	errs() << "No function found for name " << s << "\n";
+      } else {
+	roots.push_back(f);
+      }
+    }
+    
+    m_cbcg = new CostBenefitCG(M, cg);    
+    m_cbcg->run(benefits_filename, this, benefit_threshold, cost_threshold, roots);
+    
     std::error_code error_code;
     raw_fd_ostream fd(cost_benefit_output, error_code, llvm::sys::fs::F_None);
     if (error_code) {
