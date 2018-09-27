@@ -212,6 +212,7 @@ namespace previrt
       } else {
 	newInst = CallInst::Create(nfunc, newOperands);
       }
+      dyn_cast<CallInst>(newInst)->setTailCallKind(ci->getTailCallKind());
     } else if (InvokeInst* ci = dyn_cast<InvokeInst>(I)) {
 
       std::vector<Value*> newOperands;
@@ -227,7 +228,8 @@ namespace previrt
       assert(false && "specializeCallSite got non-callsite");
       return NULL; // Unreachable
     }
-
+    CallSite NewCS = CallSite(newInst);
+    NewCS.setCallingConv(nfunc->getCallingConv());
     return newInst;
   }
 
