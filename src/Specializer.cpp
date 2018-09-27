@@ -264,7 +264,7 @@ namespace previrt
     for (inst_iterator I = inst_begin(f), E = inst_end(f); I != E; ++I) {
       if (CallInst* ci = dyn_cast<CallInst>(&*I)) {
         if (ci->isInlineAsm()) {
-          canSpec = canSpec & !checkAlias(f, ci, AA);
+          // canSpec = canSpec & !checkAlias(f, ci, AA);
         }
       }
     }
