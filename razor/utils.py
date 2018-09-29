@@ -269,7 +269,7 @@ def is_exec (fpath):
     return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
     
 def which(program):
-    fpath, fname = os.path.split(program)
+    fpath, _ = os.path.split(program)
     if fpath:
         if is_exec (program): return program
     else:
@@ -292,4 +292,11 @@ def get_seahorn():
     if 'SEAHORN' in os.environ: seahorn = os.environ ['SEAHORN']
     if not is_exec(seahorn): seahorn = which('sea')
     return seahorn
+
+# Try to find crabllvm binary
+def get_crabllvm():
+    crabllvm = None
+    if 'CRABLLVM' in os.environ: crabllvm = os.environ ['CRABLLVM']
+    if not is_exec(crabllvm): crabllvm = which('crabllvm')
+    return crabllvm
 

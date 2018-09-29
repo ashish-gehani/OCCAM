@@ -98,8 +98,8 @@ private:
 	   unsigned benefit_threshold,
 	   // threshold to consider a function too costly
 	   unsigned cost_threshold,
-	   // call graph root
-	   std::string cg_root = "main");
+	   // call graph roots
+	   const std::vector<llvm::Function*>& roots);
   
   iterator begin();
   iterator end();
