@@ -1,8 +1,11 @@
-CFG_PATH=../test
 OUTPUT_LOG=./out.log
 
 LIT           = $(shell which lit)
 FILECHECK     = $(shell which FileCheck)
+
+# Usage: lit --param=test_dir=SRC_DIR CFG_DIR
+# where SRC_DIR is the directory where test sources are located
+#       CFG_DIR is the directory where cfg file is located
 
 test: clean
 ifeq ($(LIT),)
@@ -12,7 +15,7 @@ ifeq ($(FILECHECK),)
 	$(error you need to install FileCheck (see README.md))
 endif
 # Test simple features
-	${LIT} --param=test_dir=../examples ${CFG_PATH} -v -o ${OUTPUT_LOG}
+	${LIT} --param=test_dir=../examples ../test/simple -v -o ${OUTPUT_LOG}
 # Test inter-procedural dead store elimination
 	${LIT} --param=test_dir=../test/ipdse ../test/ipdse -v -o ${OUTPUT_LOG}
 
