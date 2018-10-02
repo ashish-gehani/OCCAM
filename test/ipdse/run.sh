@@ -14,7 +14,17 @@ fi
 CLANG=${LLVM_HOME}/bin/clang
 OPT=${LLVM_HOME}/bin/opt
 DIS=${LLVM_HOME}/bin/llvm-dis
-LIBS="-load=${OCCAM_HOME}/lib/libSeaDsa.dylib -load=${OCCAM_HOME}/lib/libprevirt.dylib"
+
+if [[ $(uname -s) == Linux ]]; then
+    LIBS="-load=${OCCAM_HOME}/lib/libSeaDsa.so -load=${OCCAM_HOME}/lib/libprevirt.so"         
+else
+    if [[ $(uname -s) == Darwin ]]; then
+	LIBS="-load=${OCCAM_HOME}/lib/libSeaDsa.dylib -load=${OCCAM_HOME}/lib/libprevirt.dylib"	
+    else	 
+	echo "Unsupported OS"
+	exit 1
+    fi
+fi
 
 dirpath=$(dirname "$1")
 filename=$(basename -- "$1")
