@@ -13,6 +13,7 @@ fi
 
 CLANG=${LLVM_HOME}/bin/clang
 OPT=${LLVM_HOME}/bin/opt
+DIS=${LLVM_HOME}/bin/llvm-dis
 LIBS="-load=${OCCAM_HOME}/lib/libSeaDsa.dylib -load=${OCCAM_HOME}/lib/libprevirt.dylib"
 
 dirpath=$(dirname "$1")
@@ -35,3 +36,4 @@ IN=$OUT
 OUT=$dirpath/$filename.o.bc
 echo "$OPT $LIBS -ip-dse -strip-memory-ssa-inst -globaldce -Psccp -dce -globaldce $IN -o $OUT"
 $OPT $LIBS -ip-dse -strip-memory-ssa-inst -globaldce -Psccp -dce -globaldce $IN -o $OUT
+$DIS $OUT -o $1.output # for lit

@@ -11,7 +11,10 @@ endif
 ifeq ($(FILECHECK),)
 	$(error you need to install FileCheck (see README.md))
 endif
+# Test simple features
 	${LIT} --param=test_dir=../examples ${CFG_PATH} -v -o ${OUTPUT_LOG}
+# Test inter-procedural dead store elimination
+	${LIT} --param=test_dir=../test/ipdse ../test/ipdse -v -o ${OUTPUT_LOG}
 
 clean:
 	rm -f out.log
@@ -22,3 +25,4 @@ clean:
 	$(MAKE) -C ../examples/funcs/2 clean
 	$(MAKE) -C ../examples/funcs/3 clean
 	$(MAKE) -C ../examples/funcs/4 clean
+	$(MAKE) -C ../test/ipdse clean
