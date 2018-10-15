@@ -1,5 +1,8 @@
-#include <stdio.h>
+// RUN: %cmd "%s"
+// RUN: cat "%s".output 2>&1  | FileCheck  "%s"
+// CHECK-NOT: You should not see this message
 
+#include <stdio.h>
 extern int nd_int(void);
 
 static int x;   // DEAD INITIALIZATION

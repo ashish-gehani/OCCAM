@@ -48,6 +48,7 @@ namespace transforms {
     case MEM_SSA_ARG_NEW:       
     case MEM_SSA_FUN_IN:      
     case MEM_SSA_FUN_OUT:  return CS.getArgument(3)->stripPointerCasts();
+    default: return nullptr;
     }
   }
   

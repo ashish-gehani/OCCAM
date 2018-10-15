@@ -13,7 +13,18 @@ fi
 
 CLANG=${LLVM_HOME}/bin/clang
 OPT=${LLVM_HOME}/bin/opt
-LIBS="-load=${OCCAM_HOME}/lib/libSeaDsa.dylib -load=${OCCAM_HOME}/lib/libprevirt.dylib"
+DIS=${LLVM_HOME}/bin/llvm-dis
+
+if [[ $(uname -s) == Linux ]]; then
+    LIBS="-load=${OCCAM_HOME}/lib/libSeaDsa.so -load=${OCCAM_HOME}/lib/libprevirt.so"         
+else
+    if [[ $(uname -s) == Darwin ]]; then
+	LIBS="-load=${OCCAM_HOME}/lib/libSeaDsa.dylib -load=${OCCAM_HOME}/lib/libprevirt.dylib"	
+    else	 
+	echo "Unsupported OS"
+	exit 1
+    fi
+fi
 
 dirpath=$(dirname "$1")
 filename=$(basename -- "$1")
@@ -35,3 +46,4 @@ IN=$OUT
 OUT=$dirpath/$filename.o.bc
 echo "$OPT $LIBS -ip-dse -strip-memory-ssa-inst -globaldce -Psccp -dce -globaldce $IN -o $OUT"
 $OPT $LIBS -ip-dse -strip-memory-ssa-inst -globaldce -Psccp -dce -globaldce $IN -o $OUT
+$DIS $OUT -o $1.output # for lit
