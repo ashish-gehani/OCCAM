@@ -1,0 +1,33 @@
+export HOME=/home/vagrant
+
+export REPOS=${HOME}/Repositories
+
+####  llvm
+
+export LLVM_HOME=/usr/lib/llvm-5.0/
+
+######## whole-program-llvm configuration #############
+
+export GOPATH=$HOME/go
+
+export PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
+
+export LLVM_COMPILER=clang
+
+export WLLVM_OUTPUT=WARNING
+
+########  Occam configuration ################
+
+export OCCAM_HOME=${HOME}/occam
+
+export OCCAM_LOGFILE=${HOME}/occam.log
+
+export OCCAM_LOGLEVEL=INFO
+
+export LLVM_CONFIG=llvm-config
+
+export CC=gclang
+
+export CXX=gclang++
+
+export PATH=${LLVM_HOME}/bin:${PATH}
