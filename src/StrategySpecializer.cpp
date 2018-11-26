@@ -111,35 +111,32 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
       //iam: the old version is when this is true
       //iam: the current 3/2/2016 version has this false.
       bool break_the_nostrip_version = false;
-
       if(break_the_nostrip_version){
-	// This is too much traceing
-	if (callee->getName().equals("")) {
-	  //errs() << "Skipping function with no name.\n";
-	  continue;
-	}
-
+	      // This is too much traceing
+      	if (callee->getName().equals("")) {
+	      //errs() << "Skipping function with no name.\n";
+	      continue;
+	      }
       }
 
- //      // Hashim: Internal linkage functions skiping should be reconsidered
- //      else {
-	// // This is too much traceing
-	// if (callee->hasInternalLinkage()) {
-	//   //errs() << "Skipping function with internal linkage: " << callee->getName() << "\n";
-	//   continue;
-	// }
- //      }
+      //// Hashim: Internal linkage functions skiping should be reconsidered
+      // else {
+	    //// This is too much traceing
+	    //  if (callee->hasInternalLinkage()) {
+	    ////  errs() << "Skipping function with internal linkage: " << callee->getName() << "\n";
+	    //    continue;
+	    //  }
+      // }
 
       Value* const * specScheme = policy->specializeOn(callee,
           call.arg_begin(), call.arg_end());
 
-      if (specScheme == NULL)
-      {
+      if (specScheme == NULL) {
         continue;
       }
 
       // == BEGIN DEBUGGING =============================================
-#if DUMP
+      #if DUMP
       errs() << "Specializing call to '" << callee->getName()
           << "' in function '" << f->getName() << "' on arguments [";
       for (unsigned int i = 0, cnt = 0; i < callee->arg_size(); ++i) {
@@ -155,7 +152,7 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
         }
       }
       errs() << "]\n";
-#endif
+      #endif
       // == END DEBUGGING ===============================================
 
       std::vector<const SpecializationTable::Specialization*> versions;
@@ -272,12 +269,13 @@ SpecializerPass::runOnModule(Module &M)
     M.getFunctionList().push_back(f);
   }
 
-  if (modified){
+
+  if (modified) {
     errs() << "...progress...\n";
   } else {
     errs() << "...no progress...\n";
   }
-
+  
   policy->release();
   if (optimizer)
     delete optimizer;

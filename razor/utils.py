@@ -293,3 +293,10 @@ def get_seahorn():
     if not is_exec(seahorn): seahorn = which('sea')
     return seahorn
 
+# Try to find crabllvm binary
+def get_crabllvm():
+    crabllvm = None
+    if 'CRABLLVM' in os.environ: crabllvm = os.environ ['CRABLLVM']
+    if not is_exec(crabllvm): crabllvm = which('crabllvm')
+    return crabllvm
+

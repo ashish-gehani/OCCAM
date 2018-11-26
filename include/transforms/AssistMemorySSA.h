@@ -18,7 +18,8 @@ namespace transforms {
     MEM_SSA_ARG_REF_MOD, /* (read-and-modified) input/output actual parameter */
     MEM_SSA_ARG_NEW,     /* output actual parameter */
     MEM_SSA_FUN_IN,      /* input formal parameter */
-    MEM_SSA_FUN_OUT      /* output formal parameter */
+    MEM_SSA_FUN_OUT,     /* output formal parameter */
+    NON_MEM_SSA          
   };
   
   inline MemSSAOp MemSSAStrToOp(llvm::StringRef name) {
@@ -31,8 +32,7 @@ namespace transforms {
     if (name.equals("mem.ssa.arg.new"))     return MEM_SSA_ARG_NEW;
     if (name.equals("mem.ssa.in"))          return MEM_SSA_FUN_IN;
     if (name.equals("mem.ssa.out"))         return MEM_SSA_FUN_OUT;
-    assert (false && "This should be unreachable");
-    llvm_unreachable("Unrecognized memory SSA name");
+    return NON_MEM_SSA;
   }
 
   // Return the "singleton" field from a memory ssa operation
@@ -48,6 +48,7 @@ namespace transforms {
     case MEM_SSA_ARG_NEW:       
     case MEM_SSA_FUN_IN:      
     case MEM_SSA_FUN_OUT:  return CS.getArgument(3)->stripPointerCasts();
+    default: return nullptr;
     }
   }
   

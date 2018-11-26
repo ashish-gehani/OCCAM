@@ -1,0 +1,2 @@
+#first do: vagrant ssh-config > key.cfg
+ssh -Y -F key.cfg default
