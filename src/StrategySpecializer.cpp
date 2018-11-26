@@ -112,19 +112,21 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
       //iam: the current 3/2/2016 version has this false.
       bool break_the_nostrip_version = false;
       if(break_the_nostrip_version){
-	// This is too much traceing
-	if (callee->getName().equals("")) {
-	  //errs() << "Skipping function with no name.\n";
-	  continue;
-	}
-      } else {
-	// Hashim: Internal linkage functions skiping should be reconsidered	
-	// This is too much traceing
-	if (callee->hasInternalLinkage()) {
-	  //errs() << "Skipping function with internal linkage: " << callee->getName() << "\n";
-	  continue;
-	}
+	      // This is too much traceing
+      	if (callee->getName().equals("")) {
+	      //errs() << "Skipping function with no name.\n";
+	      continue;
+	      }
       }
+
+      //// Hashim: Internal linkage functions skiping should be reconsidered
+      // else {
+	    //// This is too much traceing
+	    //  if (callee->hasInternalLinkage()) {
+	    ////  errs() << "Skipping function with internal linkage: " << callee->getName() << "\n";
+	    //    continue;
+	    //  }
+      // }
 
       Value* const * specScheme = policy->specializeOn(callee,
           call.arg_begin(), call.arg_end());
@@ -266,6 +268,7 @@ SpecializerPass::runOnModule(Module &M)
 
     M.getFunctionList().push_back(f);
   }
+
 
   if (modified) {
     errs() << "...progress...\n";
