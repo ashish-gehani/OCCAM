@@ -371,25 +371,25 @@ class Slash(object):
 
                 pool.InParallel(_spec, files.items(), self.pool)
 
-            # Rewrite
-            def rewrite((nm, m)):
-                "Inter-module module rewriting"
-                pre = m.get()
-                post = m.new('r')
-                rws = [rewrite_files[x].get() for x in files.keys()
-                       if x != nm]
-                out = [None]
-                retcode = passes.rewrite(pre, post, rws, output=out)
-                fn = 'rewrite_%s-%s' % (os.path.basename(pre),
-                                        os.path.basename(post))
-                dbg = open(fn, 'w')
-                dbg.write(out[0])
-                dbg.close()
-                return retcode
+                # Rewrite
+                def rewrite((nm, m)):
+                    "Inter-module module rewriting"
+                    pre = m.get()
+                    post = m.new('r')
+                    rws = [rewrite_files[x].get() for x in files.keys()
+                           if x != nm]
+                    out = [None]
+                    retcode = passes.rewrite(pre, post, rws, output=out)
+                    fn = 'rewrite_%s-%s' % (os.path.basename(pre),
+                                            os.path.basename(post))
+                    dbg = open(fn, 'w')
+                    dbg.write(out[0])
+                    dbg.close()
+                    return retcode
 
-            rws = pool.InParallel(rewrite, files.items(), self.pool)
-            progress = any(rws)
-
+                rws = pool.InParallel(rewrite, files.items(), self.pool)
+                progress = any(rws)
+            
             # Aggressive internalization
             pool.InParallel(_references, vals, self.pool)
             pool.InParallel(_internalize, vals, self.pool)
@@ -404,6 +404,7 @@ class Slash(object):
                 pre = m.get()
                 post = m.new('occam')
                 passes.internalize(pre, post, [iface_after_file.get()], self.whitelist)
+                
             pool.InParallel(prune, files.values(), self.pool)
 
         write_timestamp("Finished global fixpoint.")        
