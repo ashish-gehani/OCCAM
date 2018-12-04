@@ -56,13 +56,15 @@ def interface(input_file, output_file, wrt):
     args += driver.all_args('-Pinterface-entry', wrt)
     return driver.previrt(input_file, '/dev/null', args)
 
-def specialize(input_file, output_file, rewrite_file, interfaces):
+def specialize(input_file, output_file, rewrite_file, interfaces, policy):
     """ inter module specialization.
     """
     args = ['-Pspecialize']
     if not rewrite_file is None:
         args += ['-Pspecialize-output', rewrite_file]
     args += driver.all_args('-Pspecialize-input', interfaces)
+    if policy <> 'none':
+        args += ['-Pspecialize-policy={0}'.format(policy)]
     if output_file is None:
         output_file = '/dev/null'
     return driver.previrt(input_file, output_file, args)
@@ -137,7 +139,7 @@ def crabllvm(cmd, input_file, output_file):
     sb = stringbuffer.StringBuffer()
     return  driver.run(cmd, args, sb, False)
 
-def peval(input_file, output_file, no_intra_spec, use_devirt, use_llpe, use_ipdse, use_ai, log=None):
+def peval(input_file, output_file, policy, use_devirt, use_llpe, use_ipdse, use_ai, log=None):
     """ intra module specialization/optimization
     """
     opt = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
@@ -228,7 +230,7 @@ def peval(input_file, output_file, no_intra_spec, use_devirt, use_llpe, use_ipds
                 if retcode != 0:
                     return retcode
 
-    if no_intra_spec is None:
+    if policy <> 'none':
         out = ['']
         iteration = 0
         while True:
@@ -243,7 +245,7 @@ def peval(input_file, output_file, no_intra_spec, use_devirt, use_llpe, use_ipds
                 shutil.copy(done.name, opt.name)
 
             # inlining using policies
-            passes = ['-Ppeval']
+            passes = ['-Ppeval', '-Ppeval-policy={0}'.format(policy)]
             progress = driver.previrt_progress(opt.name, done.name, passes, output=out)
             sys.stderr.write("\tintra-module specialization finished\n")
             if progress:

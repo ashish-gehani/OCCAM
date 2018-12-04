@@ -27,6 +27,6 @@ export OCCAM_LOGFILE=${PWD}/slash/occam.log
 
 rm -rf slash
 
-slash --no-strip --stats --devirt --work-dir=slash tree.manifest.constraints
+slash --inter-spec-policy=none --no-strip --stats --devirt --work-dir=slash tree.manifest.constraints
 
 cp slash/tree tree_slashed

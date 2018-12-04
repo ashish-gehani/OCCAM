@@ -60,26 +60,26 @@ instructions = """slash has three modes of use:
 
     Previrtualize a compilation unit based on its manifest.
 
-        --help                  : Print this.
+        --help                     : Print this.
 
-        --tool=<tool>           : Print the path to the tool and exit.
+        --tool=<tool>              : Print the path to the tool and exit.
 
-        --work-dir <dir>        : Output intermediate files to the given location <dir>
-        --info                  : Display info stats and exit
-        --stats                 : Show some stats before and after specialization
-        --no-strip              : Leave symbol information in the binary
-        --verbose               : Print the calls to the llvm tools prior to running them.
-        --debug-manager=<type>  : Debug opt's pass manager (<type> should be either Structure or Details)
-        --debug-pass=<tag>      : Debug opt's pass (<tag> should be the debug pragma string of the pass)
-        --debug                 : Pass the debug flag into all calls to opt (too much information usually)
-        --devirt                : Devirtualize indirect function calls
-        --no-intra-specialize   : Do not specialize any intramodule calls
-        --no-inter-specialize   : Do not specialize any intermodule calls
-        --keep-external=<file>  : Pass a list of function names that should remain external.
-        --llpe                  : Use Smowton's LLPE for intra-module prunning (experimental)
-        --ipdse                 : Apply inter-procedural dead store elimination (experimental)
-        --precise-dce           : Use model-checking to perform intra-module dead code elimination (experimental)
-        --ai-invariants         : Add invariants inferred by abstract interpretation as llvm.assume instructions (experimental)
+        --work-dir <dir>           : Output intermediate files to the given location <dir>
+        --info                     : Display info stats and exit
+        --stats                    : Show some stats before and after specialization
+        --no-strip                 : Leave symbol information in the binary
+        --verbose                  : Print the calls to the llvm tools prior to running them.
+        --debug-manager=<type>     : Debug opt's pass manager (<type> should be either Structure or Details)
+        --debug-pass=<tag>         : Debug opt's pass (<tag> should be the debug pragma string of the pass)
+        --debug                    : Pass the debug flag into all calls to opt (too much information usually)
+        --devirt                   : Devirtualize indirect function calls
+        --intra-spec-policy=<type> : Specialization policy for intramodule calls (<type> should be either none, aggressive or nonrec-aggressive)
+        --inter-spec-policy=<type> : Specialization policy for intermodule calls (<type> should be either none, aggressive or nonrec-aggressive)
+        --keep-external=<file>     : Pass a list of function names that should remain external.
+        --llpe                     : Use Smowton's LLPE for intra-module prunning (experimental)
+        --ipdse                    : Apply inter-procedural dead store elimination (experimental)
+        --precise-dce              : Use model-checking to perform intra-module dead code elimination (experimental)
+        --ai-invariants            : Add invariants inferred by abstract interpretation as llvm.assume instructions (experimental)
     """
 
 def entrypoint():
@@ -96,9 +96,8 @@ def entrypoint():
 
 
 def  usage(exe):
-    template = '{0} [--work-dir=<dir>]  [--force] [--help] [--stats] [--no-strip] [--verbose] [--debug-manager=] [--debug-pass=] [--debug] [--devirt] [--no-intra-specialize] [--no-inter-specialize] [--keep-external=<file>] [--llpe] [--ipdse] [--precise-dce] [--ai-invariants] <manifest>\n'
+    template = '{0} [--work-dir=<dir>]  [--force] [--help] [--stats] [--no-strip] [--verbose] [--debug-manager=] [--debug-pass=] [--debug] [--devirt] [--intra-spec-policy=<type>] [--inter-spec-policy=<type>] [--keep-external=<file>] [--llpe] [--ipdse] [--precise-dce] [--ai-invariants] <manifest>\n'
     sys.stderr.write(template.format(exe))
-
 
 class Slash(object):
 
@@ -120,8 +119,8 @@ class Slash(object):
                         'ai-invariants',
                         'info',
                         'stats',
-                        'no-intra-specialize',
-                        'no-inter-specialize',                        
+                        'intra-spec-policy=',
+                        'inter-spec-policy=',
                         'tool=',
                         'verbose',
                         'keep-external=']
@@ -173,6 +172,18 @@ class Slash(object):
         if not utils.make_work_dir(self.work_dir):
             return 1
 
+        def check_spec_policy(policy):
+            """ Supported policies: none, aggressive, nonrec-aggressive """
+            
+            if policy <> 'none' and \
+               policy <> 'aggressive' and \
+               policy <> 'nonrec-aggressive':
+                sys.stderr.write('Error: unsupported specialization policy. ' + \
+                                 'Valid policies: none, aggressive, nonrec-aggressive')
+                return False
+            else:
+                return True
+                
         parsed = utils.check_manifest(self.manifest)
 
         valid = parsed[0]
@@ -204,10 +215,14 @@ class Slash(object):
         if info is not None:
             show_stats = True
 
-        no_intra_specialize = utils.get_flag(self.flags, 'no-intra-specialize', None)
+        intra_spec_policy = utils.get_flag(self.flags, 'intra-spec-policy', 'nonrec-aggressive')
+        if not check_spec_policy(intra_spec_policy):
+            return 1
         
-        no_inter_specialize = utils.get_flag(self.flags, 'no-inter-specialize', None)        
-
+        inter_spec_policy = utils.get_flag(self.flags, 'inter-spec-policy', 'nonrec-aggressive')
+        if not check_spec_policy(inter_spec_policy):
+            return 1
+        
         sys.stderr.write('\nslash working on {0} wrt {1} ...\n'.format(module, ' '.join(libs)))
 
         native_lib_flags = []
@@ -355,7 +370,7 @@ class Slash(object):
                 post_base = os.path.basename(post)
                 fn = 'previrt_%s-%s' % (pre_base, post_base)
                 passes.peval(pre, post, \
-                             no_intra_specialize, devirt, use_llpe, use_ipdse, use_ai, \
+                             intra_spec_policy, devirt, use_llpe, use_ipdse, use_ai, \
                              log=open(fn, 'w'))
 
             pool.InParallel(intra, files.values(), self.pool)
@@ -366,13 +381,13 @@ class Slash(object):
             interface.writeInterface(iface, iface_before_file.new())
 
             # Inter-specialize
-            if no_inter_specialize is None:
+            if inter_spec_policy <> 'none':
                 def inter_spec((nm, m)):
                     "Inter-module module specialization"
                     pre = m.get()
                     post = m.new('s')
                     rw = rewrite_files[nm].new()
-                    passes.specialize(pre, post, rw, [iface_before_file.get()])
+                    passes.specialize(pre, post, rw, [iface_before_file.get()], inter_spec_policy)
 
                 pool.InParallel(inter_spec, files.items(), self.pool)
 
