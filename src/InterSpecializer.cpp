@@ -33,18 +33,16 @@
 
 /**
  *  Inter-module specialization.
+ *  Interfaces are modified but callsites are not. The callsites will
+ *  be modified by InterRewriter
  **/
 
 #include "llvm/Pass.h"
-#include "llvm/ADT/StringMap.h"
-#include "llvm/IR/User.h"
-#include "llvm/IR/InstVisitor.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/Transforms/IPO.h"
-#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -214,17 +212,18 @@ namespace previrt
 
 namespace previrt {
   
-  class SpecializeComponentPass : public ModulePass {
-    
+  class InterSpecializerPass : public ModulePass {
   public:
+    
     ComponentInterfaceTransform transform;
     static char ID;
 
   public:
-    SpecializeComponentPass()
-      : ModulePass(ID) {    
-      errs() << "SpecializeComponentPass():\n";
-
+    
+    InterSpecializerPass()
+      : ModulePass(ID) {
+      
+      errs() << "InterSpecializerPass():\n";
       for (cl::list<std::string>::const_iterator b = SpecCompIn.begin(),
 	     e = SpecCompIn.end(); b != e; ++b) {
         errs() << "Reading file '" << *b << "'...";
@@ -243,7 +242,7 @@ namespace previrt {
       }
     }
     
-    virtual ~SpecializeComponentPass() {}
+    virtual ~InterSpecializerPass() {}
           
     virtual bool runOnModule(Module& M) {    
       if (!transform.interface) {
@@ -267,7 +266,7 @@ namespace previrt {
       }
 
       assert(policy);      
-      errs() << "SpecializeComponentPass::runOnModule(): " << M.getModuleIdentifier() << "\n";
+      errs() << "InterSpecializerPass::runOnModule(): " << M.getModuleIdentifier() << "\n";
       std::vector<Function*> to_add;
       bool modified = SpecializeComponent(M, transform, policy, to_add);
       
@@ -312,10 +311,10 @@ namespace previrt {
     }
     
   };
-  char SpecializeComponentPass::ID;
+  char InterSpecializerPass::ID;
 } // end namespace previrt
 
-static RegisterPass<previrt::SpecializeComponentPass>
+static RegisterPass<previrt::InterSpecializerPass>
 X("Pspecialize",
-  "Specialize the given module",
+  "Specialize the inter-module interface",
   false, false);

@@ -47,7 +47,6 @@
 #include "llvm/Analysis/CallGraph.h"
 
 #include "PrevirtualizeInterfaces.h"
-#include "ArgIterator.h"
 
 #include <vector>
 #include <set>

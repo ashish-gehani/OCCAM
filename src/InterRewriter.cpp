@@ -42,7 +42,6 @@
 
 #include "PrevirtualizeInterfaces.h"
 #include "Specializer.h"
-#include "ArgIterator.h"
 
 #include <vector>
 #include <string>
@@ -152,18 +151,19 @@ namespace previrt
     return modified;
   }
 
-  class RewriteComponentPass : public ModulePass {
+  class InterRewriterPass : public ModulePass {
   public:
     
     ComponentInterfaceTransform transform;
     static char ID;
     
   public:
-    RewriteComponentPass()
+    
+    InterRewriterPass()
       : ModulePass(ID)
       , transform() {
-      errs() << "RewriteComponentPass()\n";
-
+      
+      errs() << "InterRewriterPass()\n";
       for (cl::list<std::string>::const_iterator b = RewriteComponentInput.begin(),
 	     e = RewriteComponentInput.end(); b != e; ++b) {
         errs() << "Reading file '" << *b << "'...";
@@ -177,13 +177,13 @@ namespace previrt
       errs() << "Done reading (" << transform.rewriteCount() << " rewrites)\n";
     }
     
-    virtual ~RewriteComponentPass() {}
+    virtual ~InterRewriterPass() {}
     
     virtual bool runOnModule(Module& M) {
       if (!transform.interface) {
         return false;
       }
-      errs() << "RewriteComponentPass:runOnModule: " << M.getModuleIdentifier() << "\n";
+      errs() << "InterRewriterPass:runOnModule: " << M.getModuleIdentifier() << "\n";
       bool modified = TransformComponent(M, this->transform);
       if (modified) {
         errs() << "...progress...\n";
@@ -195,11 +195,11 @@ namespace previrt
     
   };
   
-  char RewriteComponentPass::ID;
+  char InterRewriterPass::ID;
 }
 
-static RegisterPass<previrt::RewriteComponentPass>
+static RegisterPass<previrt::InterRewriterPass>
 X("Prewrite",
-  "previrtualize the given module (requires parameters)",
+  "Rewrite callsites after inter-module interface specialization ",
   false, false);
 
