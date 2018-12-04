@@ -31,14 +31,10 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-#include "llvm/IR/Function.h"
-#include "llvm/Analysis/CallGraph.h"
-#include "llvm/Support/raw_ostream.h"
 
-#include "SpecializationPolicy.h"
+#include "RecursiveGuardSpecPolicy.h"
 
 #include <algorithm>
-#include <map>
 #include <set>
 #include <list>
 #include <utility>
@@ -47,56 +43,12 @@ using namespace llvm;
 
 namespace previrt
 {
-  class RecursiveGuardSpecPolicy : public SpecializationPolicy
-  {
-  public:
-    typedef std::map<Function*, int> SCC;
 
-  private:
-    CallGraphWrapperPass& cg;
-    SpecializationPolicy* const delegate;
-    SCC sccs;
-
-  private:
-    RecursiveGuardSpecPolicy(SpecializationPolicy* delegate, CallGraphWrapperPass& CG);
-
-  public:
-    virtual
-    ~RecursiveGuardSpecPolicy();
-    virtual void
-    release();
-
-  private:
-    bool
-    allowSpecialization(Function* f) const;
-
-  public:
-    virtual llvm::Value**
-    specializeOn(llvm::Function* F, llvm::User::op_iterator begin,
-        llvm::User::op_iterator end) const;
-
-    virtual bool
-    specializeOn(llvm::Function* F, const PrevirtType* begin,
-        const PrevirtType* end, llvm::SmallBitVector& slice) const;
-
-    virtual bool
-    specializeOn(llvm::Function* F,
-        std::vector<PrevirtType>::const_iterator begin,
-        std::vector<PrevirtType>::const_iterator end,
-        llvm::SmallBitVector& slice) const;
-
-  private:
-    friend SpecializationPolicy*
-    SpecializationPolicy::recursiveGuard(SpecializationPolicy*,
-        llvm::CallGraphWrapperPass&);
-  };
-
-  static void
-  strongconnect(CallGraphNode* from, CallGraphWrapperPass& cg,
-      std::list<Function*>& stack, std::set<Function*>& stack_contents,
-      std::map<const Function*, std::pair<int, int> >& indicies, int& next_idx,
-      RecursiveGuardSpecPolicy::SCC& result)
-  {
+  void RecursiveGuardSpecPolicy::
+  strongconnect(CallGraphNode* from, 
+		std::list<Function*>& stack, std::set<Function*>& stack_contents,
+		DenseMap<const Function*, std::pair<int, int>>& indicies, int& next_idx,
+		RecursiveGuardSpecPolicy::SCC& result) {
     int base_idx = next_idx;
     Function* f = from->getFunction();
     indicies[f] = std::pair<int, int>(next_idx, next_idx);
@@ -104,13 +56,12 @@ namespace previrt
     stack.push_back(f);
 
     bool self = false;
-
     for (CallGraphNode::iterator i = from->begin(), e = from->end(); i != e; ++i) {
       Function* fi = i->second->getFunction();
       if (fi == NULL) continue;
       if (fi == f) self = true;
       if (indicies.find(fi) == indicies.end()) {
-        strongconnect(i->second, cg, stack, stack_contents, indicies, next_idx, result);
+        strongconnect(i->second, stack, stack_contents, indicies, next_idx, result);
         std::pair<int,int>& wi = indicies[fi];
         std::pair<int,int>& vi = indicies[f];
         vi.second = std::min(vi.second, wi.second);
@@ -136,90 +87,70 @@ namespace previrt
     }
   }
 
-  static void
-  scc(CallGraphWrapperPass &cg, RecursiveGuardSpecPolicy::SCC& scc)
-  {
-    std::map<const Function*, std::pair<int, int> > indicies;
+  void RecursiveGuardSpecPolicy::build_scc(RecursiveGuardSpecPolicy::SCC& out) {
+    DenseMap<const Function*, std::pair<int, int>> indicies;
     std::list<Function*> stack;
     std::set<Function*> stack_contents;
     int index = 0;
 
     for (CallGraphWrapperPass::iterator i = cg.begin(), e = cg.end(); i != e; ++i) {
       if (indicies.find(i->first) == indicies.end()) {
-        strongconnect(&(*(i->second)), cg, stack, stack_contents, indicies, index, scc);
+        strongconnect(&(*(i->second)), stack, stack_contents, indicies, index, out);
       }
     }
   }
 
-  RecursiveGuardSpecPolicy::RecursiveGuardSpecPolicy(
-      SpecializationPolicy* _delegate, CallGraphWrapperPass& _cg) :
-    cg(_cg), delegate(_delegate)
-  {
-    assert(delegate != NULL);
-
-    scc(cg, this->sccs);
+  RecursiveGuardSpecPolicy::RecursiveGuardSpecPolicy(SpecializationPolicy* _delegate,
+						     CallGraph& _cg)
+    : cg(_cg)
+    , delegate(_delegate) {
+    
+    assert(delegate);
+    build_scc(sccs);
   }
-  RecursiveGuardSpecPolicy::~RecursiveGuardSpecPolicy()
-  {
-    delegate->release();
-  }
-  void
-  RecursiveGuardSpecPolicy::release()
-  {
-    delete this;
-  }
-
-  bool
-  RecursiveGuardSpecPolicy::allowSpecialization(Function* F) const
-  {
-    SCC::const_iterator i = this->sccs.find(F);
-    if (i == this->sccs.end()) {
-      return true;
-    } else {
-      //errs() << "Skipping specialization of recursive function '" << F->getName() << "'\n";
-      return false;
+  
+  RecursiveGuardSpecPolicy::~RecursiveGuardSpecPolicy() {
+    if (delegate) {
+      delete delegate;
     }
   }
 
-  Value**
-  RecursiveGuardSpecPolicy::specializeOn(Function* F, User::op_iterator begin,
-      User::op_iterator end) const
-  {
-    if (allowSpecialization(F)) {
-      return this->delegate->specializeOn(F, begin, end);
-    } else {
-      return NULL;
-    }
+  // Return true if F is not recursive  
+  bool RecursiveGuardSpecPolicy::allowSpecialization(Function* F) const {
+    return (sccs.find(F) == sccs.end());
   }
 
-  bool
-  RecursiveGuardSpecPolicy::specializeOn(Function* F, const PrevirtType* begin,
-      const PrevirtType* end, SmallBitVector& slice) const
-  {
-    if (allowSpecialization(F)) {
-      return this->delegate->specializeOn(F, begin, end, slice);
+  bool RecursiveGuardSpecPolicy::specializeOn(CallSite CS,
+					      std::vector<Value*>& slice) const {
+    Function* callee = CS.getCalledFunction();
+    if (callee && allowSpecialization(callee)) {
+      return delegate->specializeOn(CS, slice);
     } else {
       return false;
     }
   }
 
-  bool
-  RecursiveGuardSpecPolicy::specializeOn(Function* F,
-      std::vector<PrevirtType>::const_iterator begin,
-      std::vector<PrevirtType>::const_iterator end, SmallBitVector& slice) const
-  {
+  bool RecursiveGuardSpecPolicy::specializeOn(Function* F,
+					      const PrevirtType* begin,
+					      const PrevirtType* end,
+					      SmallBitVector& slice) const {
     if (allowSpecialization(F)) {
-      return this->delegate->specializeOn(F, begin, end, slice);
+      return delegate->specializeOn(F, begin, end, slice);
     } else {
       return false;
     }
   }
 
-  SpecializationPolicy*
-  SpecializationPolicy::recursiveGuard(SpecializationPolicy* policy,
-      llvm::CallGraphWrapperPass& cg)
-  {
-    return new RecursiveGuardSpecPolicy(policy, cg);
+  bool RecursiveGuardSpecPolicy::specializeOn(Function* F,
+					      std::vector<PrevirtType>::const_iterator begin,
+					      std::vector<PrevirtType>::const_iterator end,
+					      SmallBitVector& slice) const {
+    if (allowSpecialization(F)) {
+      return delegate->specializeOn(F, begin, end, slice);
+    } else {
+      return false;
+    }
   }
-}
+
+} // end namespace previrt
 

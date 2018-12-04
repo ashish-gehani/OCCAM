@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2012, SRI International
+// Copyright (c) 2011-2018, SRI International
 //
 //  All rights reserved.
 //
@@ -31,112 +31,95 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
+/**
+ * Intra-module specialization.
+ **/
+
+#include "llvm/Pass.h"
+#include "llvm/ADT/StringRef.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Analysis/CallGraph.h"
-#include "llvm/Analysis/AliasAnalysis.h"
-#include "llvm/Analysis/BasicAliasAnalysis.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
-#include "llvm/Transforms/IPO/PassManagerBuilder.h"
+//#include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
 #include "SpecializationTable.h"
-#include "SpecializationPolicy.h"
-#include "StrategySpecializer.h"
 #include "Specializer.h"
-#include "ExtendedCallGraph.h"
-
-#include <list>
-#include <set>
-#include <vector>
+/* here specialization policies */
+#include "AggressiveSpecPolicy.h"
+#include "RecursiveGuardSpecPolicy.h"
 
 using namespace llvm;
 using namespace previrt;
 
-#define DUMP 1
+static cl::opt<bool>
+OptSpecialized("Ppeval-opt", cl::Hidden,
+	       cl::init(false),
+	       cl::desc("Optimize new specialized functions"));
 
+static cl::opt<SpecializationPolicyType>
+SpecPolicy("Ppeval-policy",
+	   cl::desc("Intra-module specialization policy"),
+	   cl::values
+	   (clEnumValN (NOSPECIALIZE, "nospecialize",
+			"Skip intra-module specialization"),
+	    clEnumValN (AGGRESSIVE, "aggressive",
+			"Specialize always if some constant argument"),
+	    clEnumValN (NONRECURSIVE_WITH_AGGRESSIVE, "nonrec-aggressive",
+			"aggressive + non-recursive function")),
+	   cl::init(NONRECURSIVE_WITH_AGGRESSIVE));
 
-static bool
-trySpecializeFunction(Function* f, SpecializationTable& table,
-    SpecializationPolicy* policy, std::list<Function*>& to_add, AAResults & AA, ExtendedCallGraph * ecg)
+namespace previrt
 {
+
+/**
+   Return true if any callsite in f is specialized using policy.
+**/
+static bool trySpecializeFunction(Function* f, SpecializationTable& table,
+				  SpecializationPolicy* policy,
+				  std::vector<Function*>& to_add) {
+  
   bool modified = false;
-  for (Function::iterator bb = f->begin(), bbe = f->end(); bb != bbe; ++bb) {
-    for (BasicBlock::iterator I = bb->begin(), E = bb->end(); I != E; ++I) {
-      CallSite call;
-      CallInst * ci;
-      if ((ci = dyn_cast<CallInst>(&(*I)))) {
-        call = CallSite(ci);
-      } else if (InvokeInst* ii = dyn_cast<InvokeInst>(&(*I))) {
-        call = CallSite(ii);
-      } else {
+  
+  for (BasicBlock& bb: *f) {
+    for (Instruction& I: bb) {
+
+      Instruction* ci = dyn_cast<CallInst>(&I);
+      if (!ci) ci = dyn_cast<InvokeInst>(&I);
+      if (!ci) continue;
+      CallSite call(ci);
+
+      Function* callee = call.getCalledFunction();
+      if (!callee) {
+	continue; 
+      }
+      
+      if (callee->isDeclaration() || callee->isVarArg()) {
         continue;
       }
-
-      bool indirect = false;
-      std::map<Function*, bool> targetFuncs;
-      Function* calleeFunction = call.getCalledFunction();
-      if (calleeFunction == NULL) { // dynamic call, can't resolve
-         ecg->resolveCall(ci, *f->getParent(), targetFuncs);
-         indirect = true;
-      }
-      else{
-         targetFuncs[calleeFunction] = true;
-      }
-
-      if(targetFuncs.size() == 0) continue; // No function has been resolved
-
-      for(std::map<Function*, bool>::iterator it = targetFuncs.begin();
-	  it != targetFuncs.end(); it++)
-      {
-
-      Function * callee = it->first;
-      const unsigned int callee_arg_count = callee->arg_size();
-      if (callee == NULL || !canSpecialize(callee, AA) || callee->isVarArg())
-      {
+      
+      if (callee->hasFnAttribute(Attribute::NoInline) ||
+	  callee->hasFnAttribute(Attribute::OptimizeNone)) {
         continue;
       }
-
-      if (callee->hasFnAttribute(Attribute::NoInline)) {
-
-        continue;
-      }
-
-      //iam: the old version is when this is true
-      //iam: the current 3/2/2016 version has this false.
-      bool break_the_nostrip_version = false;
-      if(break_the_nostrip_version){
-	      // This is too much traceing
-      	if (callee->getName().equals("")) {
-	      //errs() << "Skipping function with no name.\n";
-	      continue;
-	      }
-      }
-
-      //// Hashim: Internal linkage functions skiping should be reconsidered
-      // else {
-	    //// This is too much traceing
-	    //  if (callee->hasInternalLinkage()) {
-	    ////  errs() << "Skipping function with internal linkage: " << callee->getName() << "\n";
-	    //    continue;
-	    //  }
-      // }
-
-      Value* const * specScheme = policy->specializeOn(callee,
-          call.arg_begin(), call.arg_end());
-
-      if (specScheme == NULL) {
+           
+      // specScheme[i] = nullptr if the i-th parameter of the callsite cannot be specialized.
+      //                 c       if the i-th parameter of the callsite is a constant c
+      std::vector<Value*> specScheme;
+      bool specialize = policy->specializeOn(call, specScheme);
+      if (!specialize) {
         continue;
       }
 
       // == BEGIN DEBUGGING =============================================
-      #if DUMP
+      #if 0
       errs() << "Specializing call to '" << callee->getName()
           << "' in function '" << f->getName() << "' on arguments [";
       for (unsigned int i = 0, cnt = 0; i < callee->arg_size(); ++i) {
@@ -155,120 +138,115 @@ trySpecializeFunction(Function* f, SpecializationTable& table,
       #endif
       // == END DEBUGGING ===============================================
 
+      // --- build a specialized function if specScheme is more
+      //     refined than all existing specialized versions.
+      Function* specializedVersion = nullptr;
       std::vector<const SpecializationTable::Specialization*> versions;
       table.getSpecializations(callee, specScheme, versions);
-
-      Function* specializedVersion = NULL;
       for (std::vector<const SpecializationTable::Specialization*>::iterator i =
           versions.begin(), e = versions.end(); i != e; ++i) {
-        if (SpecializationTable::Specialization::refines(callee_arg_count,
-            specScheme, (*i)->args)) {
+        if (SpecializationTable::Specialization::refines(specScheme, (*i)->args)) {
           specializedVersion = (*i)->handle;
           break;
         }
       }
-
-      if (NULL == specializedVersion) {
-        // need to build a specialized version
+      
+      if (!specializedVersion) {
         specializedVersion = specializeFunction(callee, specScheme);
-        if(specializedVersion == NULL) continue; // Hashim: hacking
-
+        if(!specializedVersion) {
+	  continue;
+	}
         table.addSpecialization(callee, specScheme, specializedVersion);
-
         to_add.push_back(specializedVersion);
       }
 
-      assert(specializedVersion != NULL);
-      const unsigned int specialized_arg_count =
-          specializedVersion->arg_size();
-
+      // -- build the specialized callsite
+      const unsigned int specialized_arg_count = specializedVersion->arg_size();
       std::vector<unsigned> argPerm;
       argPerm.reserve(specialized_arg_count);
-      for (unsigned from = 0; from < callee_arg_count; from++) {
-        if (specScheme[from] == NULL)
+      for (unsigned from = 0; from < callee->arg_size(); from++) {
+        if (!specScheme[from])
           argPerm.push_back(from);
       }
       assert(specialized_arg_count == argPerm.size());
 
-      if(!indirect){
-        Instruction* newInst = specializeCallSite(&*I, specializedVersion, argPerm);
-        llvm::ReplaceInstWithInst(bb->getInstList(), I, newInst);
-      }
-      else{
-       // errs()<<"****** INDIRECT SPECIALISED ******* \n";
-      }
-
+      Instruction* newInst = specializeCallSite(&I, specializedVersion, argPerm);
+      llvm::ReplaceInstWithInst(&I, newInst);
+      
       modified = true;
-
-      } // Hashim: End of looping functions
-
     }
   }
 
   return modified;
 }
 
-bool
-SpecializerPass::runOnModule(Module &M)
-{
-  // Creating and initiazing an ExtendedCallGraph object
-  // This is an imprecise and incomplete callgraph for indirect function calls
-  auto ecg = new ExtendedCallGraph();
-  ecg->initializeCallGraph(M);
-  CallGraphWrapperPass& CG = this->getAnalysis<CallGraphWrapperPass> ();
+/* Intra-module specialization */
+class SpecializerPass : public llvm::ModulePass {
+private:
+  bool optimize;
+    
+public:
+  static char ID;
 
-  // Perform SCC analysis
-  // (I can't seem to do this with the SCC pass because I'm not going to preserve it)
-  // TODO: I don't like hard-coding this
-  SpecializationPolicy* policy = SpecializationPolicy::recursiveGuard(
-      SpecializationPolicy::aggressivePolicy(), CG);
+  SpecializerPass(bool);
+  virtual ~SpecializerPass();
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const;
+  virtual bool runOnModule(llvm::Module &M);
+  virtual llvm::StringRef getPassName() const {
+    return "Specializer";
+  }
+};
+  
+bool SpecializerPass::runOnModule(Module &M) {
 
-  std::set<Function*> empty_set;
-  std::list<Function*> to_add;
-  SpecializationTable table(&M);
-
-  llvm::legacy::FunctionPassManager* optimizer = NULL;
-
-  if (this->optimize) {
-    optimizer = new llvm::legacy::FunctionPassManager(&M);
-    PassManagerBuilder builder;
-    builder.OptLevel = 3;
-    builder.populateFunctionPassManager(*optimizer);
+  // -- Create the specialization policy. Bail out if no policy.
+  SpecializationPolicy* policy = nullptr;    
+  switch (SpecPolicy) {
+    case NOSPECIALIZE:
+      return false;
+    case AGGRESSIVE:
+      policy = new AggressiveSpecPolicy();
+      break;
+    case NONRECURSIVE_WITH_AGGRESSIVE: {
+      SpecializationPolicy* subpolicy = new AggressiveSpecPolicy();
+      CallGraph& cg = getAnalysis<CallGraphWrapperPass>().getCallGraph();      
+      policy = new RecursiveGuardSpecPolicy(subpolicy, cg);
+      break;
+    }
   }
 
+  // -- Specialize functions defined in M
+  std::vector<Function*> to_add;
+  SpecializationTable table(&M);  
   bool modified = false;
-
-  for (Module::iterator f = M.begin(), fe = M.end(); f != fe; ++f) {
-    Function * func = &*f;
-    if(func->isDeclaration() || func == NULL) continue;
-    // Hashim: No Alias Analysis available for declarations
-    // Hashim: Using Alias analysis info for aggressive specialisation with inline asm
-    AliasAnalysis & AA = getAnalysis<AAResultsWrapperPass>(*func).getAAResults();
-    modified = trySpecializeFunction(&*f, table, policy, to_add, AA, ecg) || modified;
+  for (auto &f: M) {
+    if(f.isDeclaration()) continue;
+    modified |= trySpecializeFunction(&f, table, policy, to_add);
+  }
+  
+  // -- Optimize new function and add it into the module
+  llvm::legacy::FunctionPassManager* optimizer = nullptr;
+  if (optimize) {
+    optimizer = new llvm::legacy::FunctionPassManager(&M);
+    //PassManagerBuilder builder;
+    //builder.OptLevel = 3;
+    //builder.populateFunctionPassManager(*optimizer);
   }
 
   while (!to_add.empty()) {
-    Function* f = to_add.front();
-    to_add.pop_front();
-
-    if (f->getParent() == &M  || f->isDeclaration() || f == NULL) {
+    Function* f = to_add.back();
+    to_add.pop_back();
+    if (f->getParent() == &M  || f->isDeclaration()) {
       // The function was already in the module or
       // has already been added in this round of
       // specialization, no need to add it twice
       continue;
     }
-
     if (optimizer) {
       optimizer->run(*f);
     }
-
-    //errs()<<"func2: "<<f->getName()<<"\n";
-    //AliasAnalysis & AA = getAnalysis<AAResultsWrapperPass>(*f).getAAResults();
-    //trySpecializeFunction(f, table, policy, to_add, AA, ecg);
-
     M.getFunctionList().push_back(f);
   }
-
 
   if (modified) {
     errs() << "...progress...\n";
@@ -276,65 +254,39 @@ SpecializerPass::runOnModule(Module &M)
     errs() << "...no progress...\n";
   }
   
-  policy->release();
-  if (optimizer)
+  if (policy) {
+    delete policy;
+  }
+  
+  if (optimizer) {
     delete optimizer;
+  }
 
   return modified;
 }
 
-void
-SpecializerPass::getAnalysisUsage(AnalysisUsage &AU) const {
-
+void SpecializerPass::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<CallGraphWrapperPass>();
-  AU.addRequired<AAResultsWrapperPass>();
   AU.setPreservesAll();
 }
 
-namespace previrt
-{
-  char SpecializerPass::ID;
-
-  SpecializerPass::SpecializerPass(bool _opt) :
-    ModulePass(SpecializerPass::ID), optimize(_opt)
-  {
-    errs() << "SpecializerPass(" << _opt << ")\n";
-  }
-
-  SpecializerPass::~SpecializerPass()
-  {
-  }
-
-  SpecializationPolicy::SpecializationPolicy()
-  {
-  }
-
-  SpecializationPolicy::~SpecializationPolicy()
-  {
-  }
+SpecializerPass::SpecializerPass(bool opt)
+  : ModulePass(SpecializerPass::ID)
+  , optimize(opt) {
+  errs() << "SpecializerPass(" << optimize << ")\n";
 }
 
-namespace
-{
-  using namespace previrt;
+SpecializerPass::~SpecializerPass() {}
 
-  static cl::opt<bool> OptSpecialized("Ppeval-opt", cl::Hidden,
-      cl::init(false), cl::desc("optimize specialized function instances?"));
+class ParEvalOptPass : public SpecializerPass {
+public:
+  ParEvalOptPass()
+    : SpecializerPass(OptSpecialized.getValue()) {}
+};
 
-  class ParEvalOptPass : public SpecializerPass
-  {
-  public:
-    ParEvalOptPass() :
-      SpecializerPass(OptSpecialized.getValue())
-    {
-    }
+char SpecializerPass::ID;
 
-    ~ParEvalOptPass()
-    {
-    }
+} // end namespace previrt
 
-  };
-
-  static RegisterPass<ParEvalOptPass> X("Ppeval",
-      "partial evaluation (inlining)", false, false);
-}
+static RegisterPass<previrt::ParEvalOptPass>
+X("Ppeval", "Intra-module partial evaluation", false, false);

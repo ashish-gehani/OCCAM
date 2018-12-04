@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2016, SRI International
+// Copyright (c) 2011-2018, SRI International
 //
 //  All rights reserved.
 //
@@ -31,14 +31,10 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-#include "llvm/ADT/StringMap.h"
-#include "llvm/IR/User.h"
-#include "llvm/IR/InstVisitor.h"
-#include "llvm/IR/InstIterator.h"
-#include "llvm/IR/Module.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/CallSite.h"
-#include "llvm/Transforms/IPO.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/User.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
@@ -50,51 +46,52 @@
 
 #include <vector>
 #include <string>
-#include <stdio.h>
-
-#define DUMP 1
 
 using namespace llvm;
 
+static cl::list<std::string>
+RewriteComponentInput("Prewrite-input",
+		      cl::NotHidden,
+		      cl::desc("specifies the interface to specialize module"));
+
 namespace previrt
 {
-  static Instruction*
-  applyRewriteToCall(Module& M, const CallRewrite* const rw, CallSite cs)
-  {
+
+  static Instruction* applyRewriteToCall(Module& M, const CallRewrite* const rw,
+					 CallSite cs) {
+    
     Function* target = cs.getCalledFunction();
-    assert(target != NULL);
+    assert(target);
 
     Function* newTarget = M.getFunction(rw->function);
-    if (newTarget == NULL) {
+    if (!newTarget) {
       // There isn't a function, we need to construct it
       FunctionType* newType = target->getFunctionType();
       std::vector<Type*> argTypes;
       for (std::vector<unsigned>::const_iterator i = rw->args.begin(), e =
-          rw->args.end(); i != e; ++i)
+	     rw->args.end(); i != e; ++i) {
         argTypes.push_back(newType->getParamType(*i));
+      }
+      
       ArrayRef<Type*> params(argTypes);
       newType = FunctionType::get(target->getReturnType(), params, target->isVarArg());
-
-      newTarget = dyn_cast<Function> (M.getOrInsertFunction(rw->function,
-          newType));
+      newTarget = cast<Function> (M.getOrInsertFunction(rw->function, newType));
     }
-
-    assert(newTarget != NULL);
-
+    assert(newTarget);
     return specializeCallSite(cs.getInstruction(), newTarget, rw->args);
   }
-  
-  bool
-  TransformComponentWithUse(Module& M, ComponentInterfaceTransform& T)
-  {
+
+  // Specialize M's callsites if the callee is external according to T
+  bool TransformComponent(Module& M, ComponentInterfaceTransform& T) { 
     bool modified = false;
-    for (ComponentInterfaceTransform::FMap::const_iterator i = T.rewrites.begin(), e = T.rewrites.end(); i != e; ++i) {
+    for (ComponentInterfaceTransform::FMap::const_iterator i = T.rewrites.begin(), e = T.rewrites.end();
+	 i != e; ++i) {
 
       errs() << "Looking for calls to " << i->first << "\n";
-      
       Function* f = M.getFunction(i->first);
-      if (f == NULL) continue;
+      if (!f) continue;
 
+      // Go over all uses of the function
       for (Function::use_iterator ui = f->use_begin(), ue = f->use_end(); ui != ue; ++ui) {
 	Use* use = &(*ui);
 	User* user = ui->getUser();
@@ -108,9 +105,9 @@ namespace previrt
 	  if(!cs.isCallee(use)){ continue; }
 	  
 	  const CallRewrite* const rw = T.lookupRewrite(i->first, cs.arg_begin(), cs.arg_end());
-	  if (rw == NULL){ continue; }
+	  if (!rw){ continue; }
 	  
-          #if DUMP
+          #if 0
 	  BasicBlock* owner = cs.getInstruction()->getParent();
 	  errs() << "Specializing (inter-module) call to '" << cs.getCalledFunction()->getName()
 		 << "' in function '" << (owner == NULL ? "??" : owner->getParent()->getName())
@@ -152,106 +149,23 @@ namespace previrt
 	}
       }
     }
-	
-
     return modified;
   }
 
-  /*
-   * Rewrite the given module according to the ComponentInterfaceTransformer.
-   */
-  bool
-  TransformComponentWithoutUse(Module& M, ComponentInterfaceTransform& T)
-  {
-    assert(T.interface != NULL);
-    bool modified = false;
-    for (Module::iterator f = M.begin(), e = M.end(); f != e; ++f) {
-      for (Function::iterator bb = f->begin(), bbe = f->end(); bb != bbe; ++bb) {
-        for (BasicBlock::iterator I = bb->begin(), E = bb->end(); I != E; ++I) {
-          // TODO: Handle the operands
-
-
-          CallSite call;
-          if (CallInst* ci = dyn_cast<CallInst>(&*I)) {
-            if (ci->isInlineAsm())
-              continue;
-            call = CallSite(ci);
-          } else if (InvokeInst* ci = dyn_cast<InvokeInst>(&*I)) {
-            call = CallSite(ci);
-          } else {
-            // TODO: We need to find all references, including ones stored in variables
-            //       we'll be conservative and say that if it is stored in a variable then
-            //       we can't optimize it at all
-            continue;
-          }
-
-          Function* target = call.getCalledFunction();
-          if (target == NULL || !target->isDeclaration()) {
-            continue;
-          }
-
-          //iam          const CallRewrite* const rw = T.lookupRewrite(target->getNameStr(), call.arg_begin(), call.arg_end());
-          const CallRewrite* const rw = T.lookupRewrite(target->getName().str(), call.arg_begin(), call.arg_end());
-
-          if (rw == NULL) {
-            // There is no rewrite for this function
-            continue;
-          }
-
-          // Get/Create the function
-          Function* newTarget = M.getFunction(rw->function);
-          if (newTarget == NULL) {
-            // There isn't a function, we need to construct it
-            FunctionType* newType = target->getFunctionType();
-            std::vector<Type*> argTypes;
-            for (std::vector<unsigned>::const_iterator i = rw->args.begin(), e =
-                rw->args.end(); i != e; ++i)
-              argTypes.push_back(newType->getParamType(*i));
-            ArrayRef<Type*> params(argTypes);
-            newType = FunctionType::get(target->getReturnType(), params, target->isVarArg());
-
-            newTarget = dyn_cast<Function> (M.getOrInsertFunction(rw->function,
-                newType));
-          }
-
-          assert(newTarget != NULL);
-
-          Instruction * inst = &*I;
-          Instruction* newInst = specializeCallSite(inst, newTarget, rw->args);
-          llvm::ReplaceInstWithInst(inst, newInst);
-          modified = true;
-        }
-      }
-    }
-    return modified;
-  }
-
-  bool
-  TransformComponent(Module& M, ComponentInterfaceTransform& T)
-  {
-    return TransformComponentWithUse(M, T);
-  }
-
-
-  static cl::list<std::string> RewriteComponentInput("Prewrite-input",
-      cl::NotHidden, cl::desc(
-          "specifies the interface to rewrite using"));
-
-  class RewriteComponentPass : public ModulePass
-  {
+  class RewriteComponentPass : public ModulePass {
   public:
+    
     ComponentInterfaceTransform transform;
     static char ID;
     
   public:
-    RewriteComponentPass() :
-      ModulePass(ID), transform()
-    {
-
+    RewriteComponentPass()
+      : ModulePass(ID)
+      , transform() {
       errs() << "RewriteComponentPass()\n";
 
-      for (cl::list<std::string>::const_iterator b = RewriteComponentInput.begin(), e = RewriteComponentInput.end();
-           b != e; ++b) {
+      for (cl::list<std::string>::const_iterator b = RewriteComponentInput.begin(),
+	     e = RewriteComponentInput.end(); b != e; ++b) {
         errs() << "Reading file '" << *b << "'...";
         if (transform.readTransformFromFile(*b)) {
           errs() << "success\n";
@@ -259,26 +173,17 @@ namespace previrt
           errs() << "failed\n";
         }
       }
-
       transform.dump();
-
       errs() << "Done reading (" << transform.rewriteCount() << " rewrites)\n";
     }
-    virtual
-    ~RewriteComponentPass()
-    {
-    }
-  public:
-    virtual bool
-    runOnModule(Module& M)
-    {
-      if (this->transform.interface == NULL) {
+    
+    virtual ~RewriteComponentPass() {}
+    
+    virtual bool runOnModule(Module& M) {
+      if (!transform.interface) {
         return false;
       }
-      
       errs() << "RewriteComponentPass:runOnModule: " << M.getModuleIdentifier() << "\n";
-
-
       bool modified = TransformComponent(M, this->transform);
       if (modified) {
         errs() << "...progress...\n";
@@ -287,10 +192,14 @@ namespace previrt
       }
       return modified;
     }
+    
   };
+  
   char RewriteComponentPass::ID;
-
-  static RegisterPass<RewriteComponentPass> X("Prewrite",
-      "previrtualize the given module (requires parameters)", false, false);
-
 }
+
+static RegisterPass<previrt::RewriteComponentPass>
+X("Prewrite",
+  "previrtualize the given module (requires parameters)",
+  false, false);
+

@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2016, SRI International
+// Copyright (c) 2011-2018, SRI International
 //
 //  All rights reserved.
 //
@@ -31,37 +31,33 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-#include "llvm/Pass.h"
+#pragma once
 
-#include "PrevirtualizeInterfaces.h"
-#include "SpecializationTable.h"
-
-namespace llvm {
-  class AnalysisUsage;
-}
+#include "SpecializationPolicy.h"
 
 namespace previrt
 {
-  class SpecializationPolicy;
-
-  class SpecializerPass : public llvm::ModulePass
+  /* Specialize always a callsite if some argument is a constant */
+  class AggressiveSpecPolicy : public SpecializationPolicy
   {
-  private:
-    bool optimize;
+  public:
+
+    AggressiveSpecPolicy();
     
-  public:
-    static char ID;
+    virtual ~AggressiveSpecPolicy();
 
-  public:
-    SpecializerPass(bool);
-    virtual
-    ~SpecializerPass();
+    virtual bool specializeOn(llvm::CallSite CS,
+			      std::vector<llvm::Value*>& slice) const override;
 
-  public:
-    virtual void
-    getAnalysisUsage(llvm::AnalysisUsage &AU) const;
-
-    virtual bool
-    runOnModule(llvm::Module &M);
+    virtual bool specializeOn(llvm::Function* F,
+			      const PrevirtType* begin,
+			      const PrevirtType* end,
+			      llvm::SmallBitVector& slice) const override;
+    
+    virtual bool specializeOn(llvm::Function* F,
+			      std::vector<PrevirtType>::const_iterator begin,
+			      std::vector<PrevirtType>::const_iterator end,
+			      llvm::SmallBitVector& slice) const override;
   };
-}
+
+} // end namespace

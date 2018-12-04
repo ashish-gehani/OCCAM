@@ -19,6 +19,8 @@ CXX_FLAGS += $(shell  ${LLVM_CFG} --cxxflags) -I${LLVM_INCLUDE} -I../include -I/
 
 CXX_FLAGS += -Ianalysis/sea-dsa/include
 
+CXX_FLAGS += -Ianalysis/llvm-dsa/include 
+
 C_FLAGS = $(shell  ${LLVM_CFG} --cflags)
 
 CPP_FLAGS += $(shell  ${LLVM_CFG} --cppflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include

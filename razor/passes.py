@@ -52,8 +52,8 @@ from . import utils
 def interface(input_file, output_file, wrt):
     """ computing the interfaces.
     """
-    args = ['-Pinterface2', '-Pinterface2-output', output_file]
-    args += driver.all_args('-Pinterface2-entry', wrt)
+    args = ['-Pinterface', '-Pinterface-output', output_file]
+    args += driver.all_args('-Pinterface-entry', wrt)
     return driver.previrt(input_file, '/dev/null', args)
 
 def specialize(input_file, output_file, rewrite_file, interfaces):
@@ -77,7 +77,7 @@ def rewrite(input_file, output_file, rewrites, output=None):
 def internalize(input_file, output_file, interfaces, whitelist):
     """ marks unused symbols as internal/hidden
     """
-    args = ['-Poccam'] + driver.all_args('-Poccam-input', interfaces)
+    args = ['-Pinternalize'] + driver.all_args('-Pinternalize-input', interfaces)
     if whitelist is not None:
         args = args + ['-Pkeep-external', whitelist]
     return driver.previrt_progress(input_file, output_file, args)
@@ -138,7 +138,7 @@ def crabllvm(cmd, input_file, output_file):
     return  driver.run(cmd, args, sb, False)
 
 def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, use_ai, log=None):
-    """ intra module previrtualization
+    """ intra module specialization/optimization
     """
     opt = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
     done = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)

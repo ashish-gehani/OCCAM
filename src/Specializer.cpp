@@ -55,11 +55,8 @@ using namespace llvm;
 
 namespace previrt
 {
-  std::string
-  specializeName(Function* f, std::vector<std::string>& args)
-  {
+  std::string specializeName(Function* f, std::vector<std::string>& args) {
     args.clear();
-    //iam    std::string fn = f->getNameStr();
     std::string fn = f->getName().str();
 
     int idx = fn.find('(');
@@ -94,18 +91,14 @@ namespace previrt
     } else {
       unsigned alen = f->arg_size();
       args.reserve(alen);
-      for (unsigned int i = 0; i < alen; ++i)
+      for (unsigned int i = 0; i < alen; ++i) {
         args.push_back("?");
-      //iam      return f->getNameStr();
+      }
       return f->getName().str();
     }
   }
 
-  Function*
-  specializeFunction(Function *f, Value*const* args)
-  // make a copy of f
-  // specialize on the arguments, a null means that that argument isn't known
-  {
+  Function* specializeFunction(Function *f, const std::vector<Value*>& args) {
     assert(!f->isDeclaration());
     ValueToValueMapTy vmap;
 
@@ -126,27 +119,14 @@ namespace previrt
         vmap.insert(typename ValueToValueMapTy::value_type (arg, args[i]));
         PrevirtType pt = PrevirtType::abstract(args[i]);
         argNames[j] = pt.to_string();
-        /*
-        if (const ConstantInt* ci = dyn_cast<const ConstantInt> (args[i])) {
-          argNames[j] = ci->getValue().toString(10, true);
-        } else if (const Constant* c = dyn_cast<const Constant>(args[i])) {
-          if (c->isNullValue()) {
-            argNames[j] = "null";
-          } else {
-            assert(false);
-          }
-        } else if (const )
-        } else {
-          assert(false);
-        }
-        */
       }
       j++;
     }
     assert (i == f->arg_size());
 
     baseName += "(";
-    for (std::vector<std::string>::const_iterator it = argNames.begin(), be = argNames.begin(), en = argNames.end(); it != en; ++it) {
+    for (std::vector<std::string>::const_iterator it = argNames.begin(), be = argNames.begin(),
+	   en = argNames.end(); it != en; ++it) {
       if (it != be) baseName += ",";
       baseName += *it;
     }
@@ -165,65 +145,43 @@ namespace previrt
     return result;
   }
 
-  Function*
-  specializeFunction(Function *f, const std::vector<Value*>& args)
-  {
-    assert(!f->isDeclaration());
-    assert(f->arg_size() == args.size());
-    Function *nfunc = specializeFunction(f, args.data());
-
-    // Debugging code for detecting some mis-specializations.
-    // Requires #include "llvm/Analysis/Verifier.h"
-    //errs() << "\nSpecializing " << f->getName() << "...\n";
-    //errs() << "Verifying " << nfunc->getName() << "... ";
-    //if (llvm::verifyFunction(*nfunc, llvm::ReturnStatusAction)) {
-    //	errs() << "ok\n";
-    //} else {
-    //  errs() << "bad\n";
-    //}
-
-    return nfunc;
-  }
-
   /*
-   * Specialize a call site and return the new instruction
+   * Specialize a call site and return the new instruction.
    */
-  Instruction*
-  specializeCallSite(Instruction* I,
-      llvm::Function* nfunc, const std::vector<unsigned>& perm)
-  {
-    assert((nfunc->isVarArg() && nfunc->arg_size() <= perm.size())
-        || (!nfunc->isVarArg() && nfunc->arg_size() == perm.size()));
+  Instruction* specializeCallSite(Instruction* I,
+				  llvm::Function* nfunc,
+				  const std::vector<unsigned>& perm) {
+    
+    assert((nfunc->isVarArg()  && nfunc->arg_size() <= perm.size()) || 
+	   (!nfunc->isVarArg() && nfunc->arg_size() == perm.size()));
+    
     const size_t specialized_arg_count = perm.size(); //nfunc->arg_size();
 
     Instruction* newInst = NULL;
     if (CallInst* ci = dyn_cast<CallInst>(I)) {
-
-
       std::vector<Value*> newOperands;
       newOperands.reserve (specialized_arg_count);
 
       for (size_t j = 0; j < specialized_arg_count; ++j) {
         newOperands.push_back (ci->getArgOperand(perm[j]));
       }
-
+      
       if (ci->hasName()) {
 	newInst = CallInst::Create(nfunc, newOperands, ci->getName());
       } else {
 	newInst = CallInst::Create(nfunc, newOperands);
       }
       dyn_cast<CallInst>(newInst)->setTailCallKind(ci->getTailCallKind());
+      
     } else if (InvokeInst* ci = dyn_cast<InvokeInst>(I)) {
-
       std::vector<Value*> newOperands;
       newOperands.reserve(specialized_arg_count);
       for (size_t j = 0; j < specialized_arg_count; ++j) {
         newOperands.push_back(ci->getArgOperand(perm[j]));
       }
-
       newInst = InvokeInst::Create(nfunc, ci->getNormalDest(),
 				   ci->getUnwindDest(), newOperands, ci->getName());
-
+      
     } else {
       assert(false && "specializeCallSite got non-callsite");
       return NULL; // Unreachable
@@ -233,60 +191,16 @@ namespace previrt
     return newInst;
   }
 
-
-  bool checkAlias(Function * f, CallInst * ci, AAResults & AA){
-
-      bool debug = false;
-      if(debug) errs()<<"Checking Alias \n";
-
-      for(unsigned int i = 0; i < ci->getNumOperands(); i++){
-        Value * callArg = ci->getOperand(i);
-        for(Function::arg_iterator itr = f->arg_begin(); itr != f->arg_end(); itr++, i++) {
-          Value * funcArg = (Value*) &(*itr);
-          if(!AA.isNoAlias(callArg, funcArg))
-          {
-             if(debug)
-               errs()<<*callArg<<" and "<<*funcArg<<" may ALIAS **** \n";
-             return true;
-          }
-        }
-      }
-
-      return false;
-  }
-
-
-  bool
-  canSpecialize(Function* f, AAResults & AA)
-  {
-    if (f->isDeclaration())
-      return false;
-
-    bool canSpec = true;
-    for (inst_iterator I = inst_begin(f), E = inst_end(f); I != E; ++I) {
-      if (CallInst* ci = dyn_cast<CallInst>(&*I)) {
-        if (ci->isInlineAsm()) {
-          // canSpec = canSpec & !checkAlias(f, ci, AA);
-        }
-      }
-    }
-
-    return canSpec;
-  }
-
-  GlobalVariable*
-  materializeStringLiteral(llvm::Module& m, const char* data)
-  {
+  GlobalVariable* materializeStringLiteral(llvm::Module& m, const char* data) {
     Constant* ary = llvm::ConstantDataArray::getString(m.getContext(), data, true);
-    GlobalVariable* gv = new GlobalVariable(m, ary->getType(), true, GlobalValue::LinkageTypes::PrivateLinkage, ary, "");
+    GlobalVariable* gv = new GlobalVariable(m, ary->getType(), true,
+					    GlobalValue::LinkageTypes::PrivateLinkage, ary, "");
     gv->setConstant(true);
 
     return gv;
   }
 
-  Constant*
-  charStarFromStringConstant(llvm::Module& m, llvm::Constant* v)
-  {
+  Constant* charStarFromStringConstant(llvm::Module& m, llvm::Constant* v) {
     errs()<<"CHAR STAR \n\n\n\n\n" ;
     Constant* zero = ConstantInt::getSigned(IntegerType::getInt32Ty(m.getContext()), 0);
     Constant* args[2] = {zero, zero};

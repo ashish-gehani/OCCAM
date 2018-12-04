@@ -6,3 +6,4 @@
 *.so.*
 *.dylib
 *.DS_Store
+examples/*

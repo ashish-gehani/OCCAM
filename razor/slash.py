@@ -343,7 +343,7 @@ class Slash(object):
 
             # Intra-module pruning
             def intra(m):
-                "Intra-module previrtualization"
+                "Intra-module specialization/optimization"
                 # for m in files.values():
                 # intra-module previrt
                 pre = m.get()
