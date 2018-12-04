@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2012, SRI International
+// Copyright (c) 2011-2018, SRI International
 //
 //  All rights reserved.
 //
@@ -30,7 +30,6 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-
 
 #include "RecursiveGuardSpecPolicy.h"
 
@@ -88,6 +87,11 @@ namespace previrt
   }
 
   void RecursiveGuardSpecPolicy::build_scc(RecursiveGuardSpecPolicy::SCC& out) {
+    // FIXME: no need of writing a custom implementation for computing
+    // scc.  We can use scc_iterator and ask how many functions per
+    // scc component in order to figure out if a function is
+    // recursive.
+    
     DenseMap<const Function*, std::pair<int, int>> indicies;
     std::list<Function*> stack;
     std::set<Function*> stack_contents;
