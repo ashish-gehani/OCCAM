@@ -137,7 +137,7 @@ def crabllvm(cmd, input_file, output_file):
     sb = stringbuffer.StringBuffer()
     return  driver.run(cmd, args, sb, False)
 
-def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, use_ai, log=None):
+def peval(input_file, output_file, no_intra_spec, use_devirt, use_llpe, use_ipdse, use_ai, log=None):
     """ intra module specialization/optimization
     """
     opt = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
@@ -227,30 +227,31 @@ def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, use_ai, log=
                 retcode = _optimize(tmp.name, done.name)
                 if retcode != 0:
                     return retcode
-        
-    out = ['']
-    iteration = 0
-    while True:
-        iteration += 1
-        if iteration > 1 or \
-           (use_llpe is not None or use_ipdse is not None):
-            # optimize using standard llvm transformations
-            retcode = _optimize(done.name, opt.name)
-            if retcode != 0:
-                break;
-        else:
-            shutil.copy(done.name, opt.name)
 
-        # inlining using policies
-        passes = ['-Ppeval']
-        progress = driver.previrt_progress(opt.name, done.name, passes, output=out)
-        sys.stderr.write("\tintra-module specialization finished\n")
-        if progress:
-            if log is not None:
-                log.write(out[0])
-        else:
-            shutil.copy(opt.name, done.name)
-            break
+    if no_intra_spec is None:
+        out = ['']
+        iteration = 0
+        while True:
+            iteration += 1
+            if iteration > 1 or \
+               (use_llpe is not None or use_ipdse is not None):
+                # optimize using standard llvm transformations
+                retcode = _optimize(done.name, opt.name)
+                if retcode != 0:
+                    break;
+            else:
+                shutil.copy(done.name, opt.name)
+
+            # inlining using policies
+            passes = ['-Ppeval']
+            progress = driver.previrt_progress(opt.name, done.name, passes, output=out)
+            sys.stderr.write("\tintra-module specialization finished\n")
+            if progress:
+                if log is not None:
+                    log.write(out[0])
+            else:
+                shutil.copy(opt.name, done.name)
+                break
 
     shutil.copy(done.name, output_file)
     try:

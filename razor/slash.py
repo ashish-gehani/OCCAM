@@ -73,7 +73,8 @@ instructions = """slash has three modes of use:
         --debug-pass=<tag>      : Debug opt's pass (<tag> should be the debug pragma string of the pass)
         --debug                 : Pass the debug flag into all calls to opt (too much information usually)
         --devirt                : Devirtualize indirect function calls
-        --no-specialize         : Do not specialize any intermodule calls
+        --no-intra-specialize   : Do not specialize any intramodule calls
+        --no-inter-specialize   : Do not specialize any intermodule calls
         --keep-external=<file>  : Pass a list of function names that should remain external.
         --llpe                  : Use Smowton's LLPE for intra-module prunning (experimental)
         --ipdse                 : Apply inter-procedural dead store elimination (experimental)
@@ -95,7 +96,7 @@ def entrypoint():
 
 
 def  usage(exe):
-    template = '{0} [--work-dir=<dir>]  [--force] [--help] [--stats] [--no-strip] [--verbose] [--debug-manager=] [--debug-pass=] [--debug] [--devirt] [--no-specialize] [--keep-external=<file>] [--llpe] [--ipdse] [--precise-dce] [--ai-invariants] <manifest>\n'
+    template = '{0} [--work-dir=<dir>]  [--force] [--help] [--stats] [--no-strip] [--verbose] [--debug-manager=] [--debug-pass=] [--debug] [--devirt] [--no-intra-specialize] [--no-inter-specialize] [--keep-external=<file>] [--llpe] [--ipdse] [--precise-dce] [--ai-invariants] <manifest>\n'
     sys.stderr.write(template.format(exe))
 
 
@@ -119,7 +120,8 @@ class Slash(object):
                         'ai-invariants',
                         'info',
                         'stats',
-                        'no-specialize',
+                        'no-intra-specialize',
+                        'no-inter-specialize',                        
                         'tool=',
                         'verbose',
                         'keep-external=']
@@ -202,7 +204,9 @@ class Slash(object):
         if info is not None:
             show_stats = True
 
-        no_specialize = utils.get_flag(self.flags, 'no-specialize', None)
+        no_intra_specialize = utils.get_flag(self.flags, 'no-intra-specialize', None)
+        
+        no_inter_specialize = utils.get_flag(self.flags, 'no-inter-specialize', None)        
 
         sys.stderr.write('\nslash working on {0} wrt {1} ...\n'.format(module, ' '.join(libs)))
 
@@ -337,42 +341,43 @@ class Slash(object):
         write_timestamp("Started global fixpoint ...")
         iteration = 0
         while progress:
-
+            ## FIXME run this loop while progress and iteration < THRESHOLD.
+            ## The threshold should be selected by the user.
             iteration += 1
             progress = False
 
             # Intra-module pruning
             def intra(m):
                 "Intra-module specialization/optimization"
-                # for m in files.values():
-                # intra-module previrt
                 pre = m.get()
                 pre_base = os.path.basename(pre)
                 post = m.new('p')
                 post_base = os.path.basename(post)
                 fn = 'previrt_%s-%s' % (pre_base, post_base)
-                passes.peval(pre, post, devirt, use_llpe, use_ipdse, use_ai, log=open(fn, 'w'))
+                passes.peval(pre, post, \
+                             no_intra_specialize, devirt, use_llpe, use_ipdse, use_ai, \
+                             log=open(fn, 'w'))
 
             pool.InParallel(intra, files.values(), self.pool)
 
-            # Inter-module previrt
+            # Gather Inter-module interfaces
             iface = passes.deep([x.get() for x in files.values()],
                                 ['main.iface'])
             interface.writeInterface(iface, iface_before_file.new())
 
-            # Specialize
-            if no_specialize is None:
-                def _spec((nm, m)):
+            # Inter-specialize
+            if no_inter_specialize is None:
+                def inter_spec((nm, m)):
                     "Inter-module module specialization"
                     pre = m.get()
                     post = m.new('s')
                     rw = rewrite_files[nm].new()
                     passes.specialize(pre, post, rw, [iface_before_file.get()])
 
-                pool.InParallel(_spec, files.items(), self.pool)
+                pool.InParallel(inter_spec, files.items(), self.pool)
 
                 # Rewrite
-                def rewrite((nm, m)):
+                def inter_rewrite((nm, m)):
                     "Inter-module module rewriting"
                     pre = m.get()
                     post = m.new('r')
@@ -387,7 +392,7 @@ class Slash(object):
                     dbg.close()
                     return retcode
 
-                rws = pool.InParallel(rewrite, files.items(), self.pool)
+                rws = pool.InParallel(inter_rewrite, files.items(), self.pool)
                 progress = any(rws)
             
             # Aggressive internalization
