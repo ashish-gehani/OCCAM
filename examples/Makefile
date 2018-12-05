@@ -14,5 +14,6 @@ clean:
 	make -C funcs/6 clean
 	make -C argv clean
 	make -C fib clean
+	make -C fiblib clean
 	rm -Rf Output
 

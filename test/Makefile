@@ -28,4 +28,6 @@ clean:
 	$(MAKE) -C ../examples/funcs/2 clean
 	$(MAKE) -C ../examples/funcs/3 clean
 	$(MAKE) -C ../examples/funcs/4 clean
+	$(MAKE) -C ../examples/fib clean
+	$(MAKE) -C ../examples/fiblib clean
 	$(MAKE) -C ../test/ipdse clean
