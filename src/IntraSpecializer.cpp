@@ -86,8 +86,7 @@ static bool trySpecializeFunction(Function* f, SpecializationTable& table,
 				  SpecializationPolicy* policy,
 				  std::vector<Function*>& to_add) {
   
-  bool modified = false;
-  
+  std::vector<Instruction*> worklist;
   for (BasicBlock& bb: *f) {
     for (Instruction& I: bb) {
 
@@ -104,79 +103,94 @@ static bool trySpecializeFunction(Function* f, SpecializationTable& table,
       if (callee->isDeclaration() || callee->isVarArg()) {
         continue;
       }
-      
+
       if (callee->hasFnAttribute(Attribute::NoInline) ||
-	  callee->hasFnAttribute(Attribute::OptimizeNone)) {
+      	  callee->hasFnAttribute(Attribute::OptimizeNone)) {
         continue;
       }
-           
-      // specScheme[i] = nullptr if the i-th parameter of the callsite cannot be specialized.
-      //                 c       if the i-th parameter of the callsite is a constant c
-      std::vector<Value*> specScheme;
-      bool specialize = policy->specializeOn(call, specScheme);
-      if (!specialize) {
-        continue;
-      }
-
-      // == BEGIN DEBUGGING =============================================
-      #if 0
-      errs() << "Specializing call to '" << callee->getName()
-          << "' in function '" << f->getName() << "' on arguments [";
-      for (unsigned int i = 0, cnt = 0; i < callee->arg_size(); ++i) {
-        if (specScheme[i] != NULL) {
-          if (cnt++ != 0)
-            errs() << ",";
-          Value* v = call.getInstruction()->getOperand(i);
-          if (GlobalValue* gv = dyn_cast<GlobalValue>(v)) {
-            errs() << i << "=(@" << gv->getName() << ")";
-          } else {
-            errs() << i << "=(" << *call.getInstruction()->getOperand(i) << ")";
-          }
-        }
-      }
-      errs() << "]\n";
-      #endif
-      // == END DEBUGGING ===============================================
-
-      // --- build a specialized function if specScheme is more
-      //     refined than all existing specialized versions.
-      Function* specializedVersion = nullptr;
-      std::vector<const SpecializationTable::Specialization*> versions;
-      table.getSpecializations(callee, specScheme, versions);
-      for (std::vector<const SpecializationTable::Specialization*>::iterator i =
-          versions.begin(), e = versions.end(); i != e; ++i) {
-        if (SpecializationTable::Specialization::refines(specScheme, (*i)->args)) {
-          specializedVersion = (*i)->handle;
-          break;
-        }
-      }
       
-      if (!specializedVersion) {
-        specializedVersion = specializeFunction(callee, specScheme);
-        if(!specializedVersion) {
-	  continue;
-	}
-        table.addSpecialization(callee, specScheme, specializedVersion);
-        to_add.push_back(specializedVersion);
-      }
-
-      // -- build the specialized callsite
-      const unsigned int specialized_arg_count = specializedVersion->arg_size();
-      std::vector<unsigned> argPerm;
-      argPerm.reserve(specialized_arg_count);
-      for (unsigned from = 0; from < callee->arg_size(); from++) {
-        if (!specScheme[from])
-          argPerm.push_back(from);
-      }
-      assert(specialized_arg_count == argPerm.size());
-
-      Instruction* newInst = specializeCallSite(&I, specializedVersion, argPerm);
-      llvm::ReplaceInstWithInst(&I, newInst);
-      
-      modified = true;
+      worklist.push_back(ci);
     }
   }
 
+  bool modified = false;  
+  while (!worklist.empty()) {
+    Instruction* ci = worklist.back();
+    worklist.pop_back();
+    
+    CallSite cs(ci);
+    Function* callee = cs.getCalledFunction();
+    assert(callee);
+    
+    // specScheme[i] = nullptr if the i-th parameter of the callsite
+    //                         cannot be specialized.
+    //                 c if the i-th parameter of the callsite is a
+    //                   constant c
+    std::vector<Value*> specScheme;
+    bool specialize = policy->specializeOn(cs, specScheme);
+    
+    #if 1
+    errs() << "Intra-specializing call to '" << callee->getName()
+	   << "' in function '" << ci->getParent()->getParent()->getName()
+	   << "' on arguments [";
+    for (unsigned int i = 0, cnt = 0; i < callee->arg_size(); ++i) {
+      if (specScheme[i] != NULL) {
+	if (cnt++ != 0)
+	  errs() << ",";
+          Value* v = cs.getInstruction()->getOperand(i);
+          if (GlobalValue* gv = dyn_cast<GlobalValue>(v)) {
+            errs() << i << "=(@" << gv->getName() << ")";
+          } else {
+            errs() << i << "=(" << *cs.getInstruction()->getOperand(i) << ")";
+          }
+      }
+    }
+    errs() << "]\n";
+    #endif
+      
+    if (!specialize) {
+      continue;
+    }
+    
+    
+    // --- build a specialized function if specScheme is more
+    //     refined than all existing specialized versions.
+    Function* specializedVersion = nullptr;
+    std::vector<const SpecializationTable::Specialization*> versions;
+    table.getSpecializations(callee, specScheme, versions);
+    for (std::vector<const SpecializationTable::Specialization*>::iterator i =
+	   versions.begin(), e = versions.end(); i != e; ++i) {
+      if (SpecializationTable::Specialization::refines(specScheme, (*i)->args)) {
+	specializedVersion = (*i)->handle;
+	break;
+      }
+    }
+    
+    if (!specializedVersion) {
+      specializedVersion = specializeFunction(callee, specScheme);
+      if(!specializedVersion) {
+	continue;
+      }
+      table.addSpecialization(callee, specScheme, specializedVersion);
+      to_add.push_back(specializedVersion);
+    }
+    
+    // -- build the specialized callsite
+    const unsigned int specialized_arg_count = specializedVersion->arg_size();
+    std::vector<unsigned> argPerm;
+    argPerm.reserve(specialized_arg_count);
+    for (unsigned from = 0; from < callee->arg_size(); from++) {
+      if (!specScheme[from])
+	argPerm.push_back(from);
+      }
+    assert(specialized_arg_count == argPerm.size());
+    
+    Instruction* newInst = specializeCallSite(ci, specializedVersion, argPerm);
+    llvm::ReplaceInstWithInst(ci, newInst);
+    
+    modified = true;
+  }
+  
   return modified;
 }
 
@@ -193,7 +207,7 @@ public:
   virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const;
   virtual bool runOnModule(llvm::Module &M);
   virtual llvm::StringRef getPassName() const {
-    return "Specializer";
+    return "Intra-module specializer";
   }
 };
   
