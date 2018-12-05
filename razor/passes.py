@@ -94,15 +94,13 @@ def strip(input_file, output_file):
 def devirt(input_file, output_file):
     """ resolve indirect function calls
     """
-    args = ['-devirt-ta',
-            # XXX: this one is not, in general, sound
-            #'-calltarget-ignore-external',
+    args = ['-devirt-functions-aliasing',
             '-inline']
     retcode = driver.previrt_progress(input_file, output_file, args)
     if retcode != 0:
         return retcode
 
-    #FIXME: previrt_progress returns 0 in cases where --devirt-ta crashes.
+    #FIXME: previrt_progress returns 0 in cases where --devirt-functions-aliasing may crash.
     #Here we check that the output_file exists
     if not os.path.isfile(output_file):
         #Some return code different from zero
