@@ -6,4 +6,6 @@
 *.so.*
 *.dylib
 *.DS_Store
-examples/*
+examples/portfolio/*
+examples/linux/*
+examples/spec/*
