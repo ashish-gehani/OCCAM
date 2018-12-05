@@ -33,76 +33,12 @@
 
 #include "RecursiveGuardSpecPolicy.h"
 
-#include <algorithm>
-#include <set>
-#include <list>
-#include <utility>
+#include "llvm/ADT/SCCIterator.h"
 
 using namespace llvm;
 
 namespace previrt
 {
-
-  void RecursiveGuardSpecPolicy::
-  strongconnect(CallGraphNode* from, 
-		std::list<Function*>& stack, std::set<Function*>& stack_contents,
-		DenseMap<const Function*, std::pair<int, int>>& indicies, int& next_idx,
-		RecursiveGuardSpecPolicy::SCC& result) {
-    int base_idx = next_idx;
-    Function* f = from->getFunction();
-    indicies[f] = std::pair<int, int>(next_idx, next_idx);
-    next_idx++;
-    stack.push_back(f);
-
-    bool self = false;
-    for (CallGraphNode::iterator i = from->begin(), e = from->end(); i != e; ++i) {
-      Function* fi = i->second->getFunction();
-      if (fi == NULL) continue;
-      if (fi == f) self = true;
-      if (indicies.find(fi) == indicies.end()) {
-        strongconnect(i->second, stack, stack_contents, indicies, next_idx, result);
-        std::pair<int,int>& wi = indicies[fi];
-        std::pair<int,int>& vi = indicies[f];
-        vi.second = std::min(vi.second, wi.second);
-      } else if (stack_contents.find(fi) != stack_contents.end()) {
-        std::pair<int,int>& wi = indicies[fi];
-        std::pair<int,int>& vi = indicies[f];
-        vi.second = std::min(vi.second, wi.first);
-      }
-    }
-
-    std::pair<int,int>& vi = indicies[f];
-    if (vi.first == vi.second) {
-      if (stack.back() == f && !self) {
-        stack.pop_back();
-        return;
-      }
-      Function* w = NULL;
-      do {
-        w = stack.back();
-        stack.pop_back();
-        result[w] = base_idx;
-      } while (w != f);
-    }
-  }
-
-  void RecursiveGuardSpecPolicy::build_scc(RecursiveGuardSpecPolicy::SCC& out) {
-    // FIXME: no need of writing a custom implementation for computing
-    // scc.  We can use scc_iterator and ask how many functions per
-    // scc component in order to figure out if a function is
-    // recursive.
-    
-    DenseMap<const Function*, std::pair<int, int>> indicies;
-    std::list<Function*> stack;
-    std::set<Function*> stack_contents;
-    int index = 0;
-
-    for (CallGraphWrapperPass::iterator i = cg.begin(), e = cg.end(); i != e; ++i) {
-      if (indicies.find(i->first) == indicies.end()) {
-        strongconnect(&(*(i->second)), stack, stack_contents, indicies, index, out);
-      }
-    }
-  }
 
   RecursiveGuardSpecPolicy::RecursiveGuardSpecPolicy(SpecializationPolicy* _delegate,
 						     CallGraph& _cg)
@@ -110,7 +46,7 @@ namespace previrt
     , delegate(_delegate) {
     
     assert(delegate);
-    build_scc(sccs);
+    markRecursiveFunctions();
   }
   
   RecursiveGuardSpecPolicy::~RecursiveGuardSpecPolicy() {
@@ -119,9 +55,38 @@ namespace previrt
     }
   }
 
+  void RecursiveGuardSpecPolicy::markRecursiveFunctions() {
+    for (auto it = scc_begin(&cg); !it.isAtEnd(); ++it) {
+      auto &scc = *it;
+      bool recursive = false;
+      
+      if (scc.size() == 1 && it.hasLoop()) {
+	// direct recursive
+	recursive = true;
+      } else if (scc.size() > 1) {
+	// indirect recursive
+	recursive = true;
+      }
+
+      if (recursive) {
+	for (CallGraphNode *cgn : scc) {
+	  Function *fn = cgn->getFunction();
+	  if (!fn || fn->isDeclaration() || fn->empty()) {
+	    continue;
+	  }
+	  rec_functions.insert(fn);
+	}
+      }
+    }
+  }
+
+  bool RecursiveGuardSpecPolicy::isRecursive(Function* F) const {
+    return rec_functions.count(F);
+  }
+  
   // Return true if F is not recursive  
   bool RecursiveGuardSpecPolicy::allowSpecialization(Function* F) const {
-    return (sccs.find(F) == sccs.end());
+    return (!isRecursive(F));
   }
 
   bool RecursiveGuardSpecPolicy::specializeOn(CallSite CS,

@@ -32,15 +32,10 @@
 //
 #pragma once
 
-#include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/SmallSet.h"
 #include "llvm/Analysis/CallGraph.h"
 
 #include "SpecializationPolicy.h"
-
-#include <algorithm>
-#include <set>
-#include <list>
-#include <utility>
 
 namespace previrt
 {
@@ -48,29 +43,18 @@ namespace previrt
   /* This class takes as argument another specialization policy p.
      Specialize a callsite if the callee function is not recursive AND
      p also decides to specialize. */
-  class RecursiveGuardSpecPolicy : public SpecializationPolicy
-  {
+  class RecursiveGuardSpecPolicy : public SpecializationPolicy {
     
-    typedef llvm::DenseMap<llvm::Function*, int> SCC;
+    typedef llvm::SmallSet<llvm::Function*, 32> FunctionSet;
 
     llvm::CallGraph& cg;
     SpecializationPolicy* const delegate;
-    SCC sccs;
-
+    FunctionSet rec_functions;
+    
+    void markRecursiveFunctions();
+    bool isRecursive(llvm::Function* f) const;    
     bool allowSpecialization(llvm::Function* f) const;
 
-    /* Compute SCC of a callgraph */
-    // FIXME: we can use scc stuff from LLVM to answer the question
-    // whether a function is recursive or not. 
-    void strongconnect(llvm::CallGraphNode* from, 
-		       std::list<llvm::Function*>& stack,
-		       std::set<llvm::Function*>& stack_contents,
-		       llvm::DenseMap<const llvm::Function*, std::pair<int, int>>& indicies,
-		       int& next_idx,
-		       SCC& out);
-    
-    void build_scc(SCC& out);
-    
   public:
     
     RecursiveGuardSpecPolicy(SpecializationPolicy* delegate, llvm::CallGraph& cg);
