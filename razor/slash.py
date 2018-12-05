@@ -1,7 +1,7 @@
 """
  OCCAM
 
- Copyright (c) 2011-2017, SRI International
+ Copyright (c) 2011-2018, SRI International
 
   All rights reserved.
 
@@ -361,7 +361,7 @@ class Slash(object):
             iteration += 1
             progress = False
 
-            # Intra-module pruning
+            # Intra-module partial evaluation and debloating
             def intra(m):
                 "Intra-module specialization/optimization"
                 pre = m.get()
@@ -418,14 +418,13 @@ class Slash(object):
             iface = passes.deep([x.get() for x in files.values()], ['main.iface'])
             interface.writeInterface(iface, iface_after_file.new())
 
-            # Prune
-            def prune(m):
-                "Pruning dead code/variables"
-                pre = m.get()
-                post = m.new('occam')
-                passes.internalize(pre, post, [iface_after_file.get()], self.whitelist)
-                
-            pool.InParallel(prune, files.values(), self.pool)
+            # # Prune
+            # def prune(m):
+            #     "Pruning dead code/variables"
+            #     pre = m.get()
+            #     post = m.new('occam')
+            #     passes.internalize(pre, post, [iface_after_file.get()], self.whitelist)
+            # pool.InParallel(prune, files.values(), self.pool)
 
         write_timestamp("Finished global fixpoint.")        
             
