@@ -245,7 +245,7 @@ def peval(input_file, output_file, policy, use_devirt, use_llpe, use_ipdse, use_
                 shutil.copy(done.name, opt.name)
 
             # inlining using policies
-            passes = ['-Ppeval', '-Ppeval-policy={0}'.format(policy)]
+            passes = ['-Ppeval', '-Ppeval-policy={0}'.format(policy), '-Ppeval-opt']
             progress = driver.previrt_progress(opt.name, done.name, passes, output=out)
             sys.stderr.write("\tintra-module specialization finished\n")
             if progress:
