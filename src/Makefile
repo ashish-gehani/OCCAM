@@ -58,7 +58,7 @@ SOURCES += $(wildcard transforms/*.cpp)
 
 SOURCES += $(wildcard utils/*.cpp)
 
-OBJECTS := proto/Previrt.pb.o proto/Watch.pb.o $(patsubst %.cpp,%.o,${SOURCES}) 
+OBJECTS := proto/Previrt.pb.o $(patsubst %.cpp,%.o,${SOURCES}) 
 
 INSTALL = install
 
@@ -102,9 +102,8 @@ proto/%.o: proto/%.cc proto/%.h
 	$(CXX)  ${CXX_FLAGS} $< -c -o $@
 
 
-protoc: Watch.proto Previrt.proto
+protoc: Previrt.proto
 	mkdir -p proto
-	${PROTOC} Watch.proto --cpp_out=proto
 	${PROTOC} Previrt.proto --cpp_out=proto
 
 clean: 
