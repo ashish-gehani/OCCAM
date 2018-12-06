@@ -18,7 +18,8 @@
 #include "llvm/Support/ErrorHandling.h"
 
 namespace previrt {
-
+namespace transforms {
+  
   class CallSiteResolver {
   protected:
     CallSiteResolver() {}
@@ -81,7 +82,7 @@ namespace previrt {
     TypeAliasSetMap m_typeAliasSets;
     
     // Call graph of the program
-    llvm::CallGraph * m_cg;    
+    // llvm::CallGraph * m_cg;    
     
     bool m_allowIndirectCalls;
    
@@ -120,4 +121,5 @@ namespace previrt {
     void visitInvokeInst(llvm::InvokeInst &II);
   };
   
-}
+} // end namespace
+} // end namespace 

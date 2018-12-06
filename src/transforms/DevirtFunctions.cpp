@@ -8,7 +8,8 @@
 using namespace llvm;
 
 namespace previrt {
-
+namespace transforms {
+  
   static bool isIndirectCall(CallSite &CS) {
     Value *v = CS.getCalledValue ();
     if (!v) return false;
@@ -126,11 +127,11 @@ namespace previrt {
       CallInst* directCall = CallInst::Create (const_cast<Function*>(FL),
                                                fargs, "", BL);
       // update call graph
-      if (m_cg) {
-        auto fl_cg = m_cg->getOrInsertFunction (const_cast<Function*> (FL));
-        auto cf_cg = m_cg->getOrInsertFunction (directCall->getCalledFunction ());
-        fl_cg->addCalledFunction (CallSite (directCall), cf_cg);
-      }
+      // if (m_cg) {
+      //   auto fl_cg = m_cg->getOrInsertFunction (const_cast<Function*> (FL));
+      //   auto cf_cg = m_cg->getOrInsertFunction (directCall->getCalledFunction ());
+      //   fl_cg->addCalledFunction (CallSite (directCall), cf_cg);
+      // }
       
       // Add the return instruction for the basic block
       if (CS.getType()->isVoidTy())
@@ -228,11 +229,11 @@ namespace previrt {
                                        CI);
 
       // update call graph
-      if (m_cg) {
-        m_cg->getOrInsertFunction (const_cast<Function*> (bounceFn));
-        (*m_cg)[CI->getParent ()->getParent ()]->addCalledFunction
-          (CallSite (CN), (*m_cg)[CN->getCalledFunction ()]);
-      }
+      // if (m_cg) {
+      //   m_cg->getOrInsertFunction (const_cast<Function*> (bounceFn));
+      //   (*m_cg)[CI->getParent ()->getParent ()]->addCalledFunction
+      //     (CallSite (CN), (*m_cg)[CN->getCalledFunction ()]);
+      // }
 
       CN->setDebugLoc (CI->getDebugLoc ());
       CI->replaceAllUsesWith(CN);
@@ -257,11 +258,11 @@ namespace previrt {
                                            CI);
 
       // update call graph
-      if (m_cg) {
-        m_cg->getOrInsertFunction (const_cast<Function*> (bounceFn));
-        (*m_cg)[CI->getParent ()->getParent ()]->addCalledFunction
-          (CallSite (CN), (*m_cg)[CN->getCalledFunction ()]);
-      }
+      // if (m_cg) {
+      //   m_cg->getOrInsertFunction (const_cast<Function*> (bounceFn));
+      //   (*m_cg)[CI->getParent ()->getParent ()]->addCalledFunction
+      //     (CallSite (CN), (*m_cg)[CN->getCalledFunction ()]);
+      // }
 
       CN->setDebugLoc (CI->getDebugLoc ());
       CI->replaceAllUsesWith(CN);
@@ -309,8 +310,8 @@ namespace previrt {
 
   DevirtualizeFunctions::DevirtualizeFunctions(llvm::CallGraph* cg,
 					       bool allowIndirectCalls)
-    : m_cg(cg)
-    , m_allowIndirectCalls(allowIndirectCalls)
+    : /*m_cg(cg), */
+      m_allowIndirectCalls(allowIndirectCalls)
   {}
       
   void DevirtualizeFunctions::computeTypeAliasSets(Module& M) {
@@ -365,4 +366,5 @@ namespace previrt {
     return Changed;
   }
   
+} // end namespace
 } // end namespace

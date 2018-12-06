@@ -10,45 +10,7 @@
 using namespace llvm;
 
 namespace previrt {
-
-  /* Resolve indirect calls using only type information */
-  class DevirtualizeFunctionsPass:  public ModulePass {
-    
-    bool m_allowIndirectCalls;
-    
-   public:
-    
-    static char ID;
-    
-    DevirtualizeFunctionsPass(bool allowIndirectCalls = false)
-      : ModulePass(ID)
-      , m_allowIndirectCalls(allowIndirectCalls)
-    {}
-
-    virtual bool runOnModule (Module & M) override {
-      // -- Get the call graph
-      CallGraph* CG = &(getAnalysis<CallGraphWrapperPass> ().getCallGraph ());
-      
-      DevirtualizeFunctions DF(CG, m_allowIndirectCalls);
-      CallSiteResolver* CSR = new NoAliasResolver();    
-      bool res = DF.resolveCallSites(M, CSR);
-      delete CSR;
-      return res;
-    }
-  
-    virtual void getAnalysisUsage(AnalysisUsage &AU) const override {
-      AU.addRequired<CallGraphWrapperPass> ();
-      // FIXME: DevirtualizeFunctions does not fully update the call
-      // graph so we don't claim it's preserved.      
-      // AU.setPreservesAll ();
-      // AU.addPreserved<CallGraphWrapperPass> ();
-    }
-
-    virtual StringRef getPassName() const override {
-      return "Devirtualize indirect calls using only types";
-    }
-  };
-
+namespace transforms {  
 
   /* Resolver indirect calls using aliasing and types */
   class DevirtualizeFunctionsDsaPass:  public ModulePass {
@@ -153,18 +115,11 @@ namespace previrt {
     }
   };
   
-  char DevirtualizeFunctionsPass::ID = 0;
-  
   char DevirtualizeFunctionsDsaPass::ID = 0;
 } // end namespace
+} // end namespace
 
-
-// Pass registration
-RegisterPass<previrt::DevirtualizeFunctionsPass>
-X ("devirt-functions-types",
-   "Devirtualize indirect function calls using only types");
-
-RegisterPass<previrt::DevirtualizeFunctionsDsaPass>
-Y ("devirt-functions-aliasing",
-   "Devirtualize indirect function calls using aliasing and types");
+RegisterPass<previrt::transforms::DevirtualizeFunctionsDsaPass>
+X("devirt-functions-aliasing",
+  "Devirtualize indirect function calls using aliasing and types");
 
