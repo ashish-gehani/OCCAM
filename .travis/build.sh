@@ -19,6 +19,14 @@ if [ "${RETURN}" != "0" ]; then
     exit 1
 fi
 
+# TEMPORARY FOR DEBUGGING
+cd examples/funcs/3
+./build.sh
+cd slash
+cat main-final.ll
+cat library.so.final.ll
+cd ../../../../
+
 make test
 RETURN="$?"
 
