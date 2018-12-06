@@ -115,6 +115,19 @@ namespace transforms {
     // Create an entry basic block for the function.  All it should do is perform
     // some cast instructions and branch to the first comparison basic block.
     BasicBlock* entryBB = BasicBlock::Create (M->getContext(), "entry", F);
+
+    // XXX: we sort Targets based on the name because otherwise the
+    // order of the "case" statements in the switch can be different
+    // with different OS or compiler. This has been a problem with
+    // travis.
+    std::sort(Targets.begin(), Targets.end(),
+	      [](const Function *F1, const Function *F2) {
+		if (F1->hasName() && F2->hasName()) {
+		  return F1->getName() < F2->getName();
+		} else {
+		  return F1 < F2;
+		}
+	      });
     
     // For each function target, create a basic block that will call that
     // function directly.
@@ -328,8 +341,8 @@ namespace transforms {
       // -- by calling through the function pointer argument in the
       // -- default case of bounce function
       
-      // XXX: In OCCAM, we can take the address of an
-      // external function if declared in another library.
+      // XXX: In OCCAM, it's common to take the address of an external
+      // function if declared in another library.
       // 
       //if (F.isDeclaration ()) continue;
       
