@@ -119,7 +119,7 @@ namespace transforms {
 } // end namespace
 } // end namespace
 
-RegisterPass<previrt::transforms::DevirtualizeFunctionsDsaPass>
+static RegisterPass<previrt::transforms::DevirtualizeFunctionsDsaPass>
 X("devirt-functions-aliasing",
   "Devirtualize indirect function calls using aliasing and types");
 
