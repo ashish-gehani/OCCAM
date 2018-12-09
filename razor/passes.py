@@ -52,17 +52,19 @@ from . import utils
 def interface(input_file, output_file, wrt):
     """ computing the interfaces.
     """
-    args = ['-Pinterface2', '-Pinterface2-output', output_file]
-    args += driver.all_args('-Pinterface2-entry', wrt)
+    args = ['-Pinterface', '-Pinterface-output', output_file]
+    args += driver.all_args('-Pinterface-entry', wrt)
     return driver.previrt(input_file, '/dev/null', args)
 
-def specialize(input_file, output_file, rewrite_file, interfaces):
+def specialize(input_file, output_file, rewrite_file, interfaces, policy):
     """ inter module specialization.
     """
     args = ['-Pspecialize']
     if not rewrite_file is None:
         args += ['-Pspecialize-output', rewrite_file]
     args += driver.all_args('-Pspecialize-input', interfaces)
+    if policy <> 'none':
+        args += ['-Pspecialize-policy={0}'.format(policy)]
     if output_file is None:
         output_file = '/dev/null'
     return driver.previrt(input_file, output_file, args)
@@ -77,7 +79,7 @@ def rewrite(input_file, output_file, rewrites, output=None):
 def internalize(input_file, output_file, interfaces, whitelist):
     """ marks unused symbols as internal/hidden
     """
-    args = ['-Poccam'] + driver.all_args('-Poccam-input', interfaces)
+    args = ['-Pinternalize'] + driver.all_args('-Pinternalize-input', interfaces)
     if whitelist is not None:
         args = args + ['-Pkeep-external', whitelist]
     return driver.previrt_progress(input_file, output_file, args)
@@ -92,15 +94,13 @@ def strip(input_file, output_file):
 def devirt(input_file, output_file):
     """ resolve indirect function calls
     """
-    args = ['-devirt-ta',
-            # XXX: this one is not, in general, sound
-            #'-calltarget-ignore-external',
+    args = ['-devirt-functions-aliasing',
             '-inline']
     retcode = driver.previrt_progress(input_file, output_file, args)
     if retcode != 0:
         return retcode
 
-    #FIXME: previrt_progress returns 0 in cases where --devirt-ta crashes.
+    #FIXME: previrt_progress returns 0 in cases where --devirt-functions-aliasing may crash.
     #Here we check that the output_file exists
     if not os.path.isfile(output_file):
         #Some return code different from zero
@@ -137,8 +137,8 @@ def crabllvm(cmd, input_file, output_file):
     sb = stringbuffer.StringBuffer()
     return  driver.run(cmd, args, sb, False)
 
-def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, use_ai, log=None):
-    """ intra module previrtualization
+def peval(input_file, output_file, policy, use_devirt, use_llpe, use_ipdse, use_ai, log=None):
+    """ intra module specialization/optimization
     """
     opt = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
     done = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
@@ -227,30 +227,31 @@ def peval(input_file, output_file, use_devirt, use_llpe, use_ipdse, use_ai, log=
                 retcode = _optimize(tmp.name, done.name)
                 if retcode != 0:
                     return retcode
-        
-    out = ['']
-    iteration = 0
-    while True:
-        iteration += 1
-        if iteration > 1 or \
-           (use_llpe is not None or use_ipdse is not None):
-            # optimize using standard llvm transformations
-            retcode = _optimize(done.name, opt.name)
-            if retcode != 0:
-                break;
-        else:
-            shutil.copy(done.name, opt.name)
 
-        # inlining using policies
-        passes = ['-Ppeval']
-        progress = driver.previrt_progress(opt.name, done.name, passes, output=out)
-        sys.stderr.write("\tintra-module specialization finished\n")
-        if progress:
-            if log is not None:
-                log.write(out[0])
-        else:
-            shutil.copy(opt.name, done.name)
-            break
+    if policy <> 'none':
+        out = ['']
+        iteration = 0
+        while True:
+            iteration += 1
+            if iteration > 1 or \
+               (use_llpe is not None or use_ipdse is not None):
+                # optimize using standard llvm transformations
+                retcode = _optimize(done.name, opt.name)
+                if retcode != 0:
+                    break;
+            else:
+                shutil.copy(done.name, opt.name)
+
+            # inlining using policies
+            passes = ['-Ppeval', '-Ppeval-policy={0}'.format(policy), '-Ppeval-opt']
+            progress = driver.previrt_progress(opt.name, done.name, passes, output=out)
+            sys.stderr.write("\tintra-module specialization finished\n")
+            if progress:
+                if log is not None:
+                    log.write(out[0])
+            else:
+                shutil.copy(opt.name, done.name)
+                break
 
     shutil.copy(done.name, output_file)
     try:

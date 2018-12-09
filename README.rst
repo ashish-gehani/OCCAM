@@ -72,15 +72,19 @@ This may require sudo priviliges. Either way you can now use slash:
 
 ::
 
-    slash [--work-dir=<dir>]  [--force] [--no-strip] [--no-specialize] <manifest>
+    slash [--work-dir=<dir>]  [--force] [--no-strip] [--intra-spec-policy=<type>] [--inter-spec-policy=<type>] <manifest>
 
-``slash`` also accepts the following new command line option:
+where
 
 ::
 
-    --no-specialize
+    type=none|aggressive|nonrec-aggressive
 
-which will prevent any inter-module specializations.
+The value ``none`` will prevent any inter or intra-module
+specialization. The value ``aggressive`` specializes a call if any
+parameter is a constant. The value ``nonrec-aggressive`` specializes a
+call if the function is non-recursive and any parameter is a constant.
+
 
 The Manifest(o)
 ===============

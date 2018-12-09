@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2016, SRI International
+// Copyright (c) 2011-2018, SRI International
 //
 //  All rights reserved.
 //
@@ -32,67 +32,57 @@
 //
 
 /*
- * IntPolicy.h
- *
- *  Created on: Jul 11, 2011
- *      Author: malecha
+ *  Initial implementation created on: Jul 11, 2011
+ *  Author: malecha
  */
 
-#ifndef __SPECPOLICY_H__
-#define __SPECPOLICY_H__
+#pragma once
 
-#include "Previrtualize.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/Value.h"
+#include "llvm/IR/Constants.h"
+#include "llvm/IR/CallSite.h"
+#include "llvm/ADT/SmallBitVector.h"
+
 #include "PrevirtTypes.h"
 
-namespace llvm
-{
-  class CallGraphWrapperPass;
-}
+#include <vector>
 
 namespace previrt
 {
+  
+  /* Here specialization policies */
+  enum SpecializationPolicyType {
+    NOSPECIALIZE,
+    AGGRESSIVE,
+    NONRECURSIVE_WITH_AGGRESSIVE
+  };
+  
   class SpecializationPolicy
   {
   protected:
-    SpecializationPolicy();
-
-  public:
-    virtual
-    ~SpecializationPolicy(); // Don't call this
-    virtual void
-    release() = 0;
-
-  public:
-    virtual llvm::Value**
-    specializeOn(llvm::Function*, llvm::User::op_iterator,
-        llvm::User::op_iterator) const = 0;
-
-    virtual bool
-    specializeOn(llvm::Function*, const PrevirtType*,
-        const PrevirtType*, llvm::SmallBitVector&) const = 0;
-
-    virtual bool
-    specializeOn(llvm::Function*, std::vector<PrevirtType>::const_iterator,
-        std::vector<PrevirtType>::const_iterator, llvm::SmallBitVector&) const = 0;
-
-  public:
-    static bool
-    isConstantSpecializable(llvm::Constant* cst)
-    {
-      if (cst == NULL) return false;
+    
+    SpecializationPolicy(){}
+    
+    static bool isConstantSpecializable(llvm::Constant* cst) {
+      if (!cst) return false;
       return PrevirtType::abstract(cst).isConcrete();
-    }
-
+    }    
+    
   public:
-    static SpecializationPolicy*
-    aggressivePolicy();
+    
+    virtual ~SpecializationPolicy(){}
+    
+    virtual bool specializeOn(llvm::CallSite, std::vector<llvm::Value*>&) const = 0;
+			      
+    virtual bool specializeOn(llvm::Function*,
+			      const PrevirtType*, const PrevirtType*,
+			      llvm::SmallBitVector&) const = 0;
 
-    static SpecializationPolicy*
-    conservativePolicy();
+    virtual bool specializeOn(llvm::Function*,
+			      std::vector<PrevirtType>::const_iterator,
+			      std::vector<PrevirtType>::const_iterator,
+			      llvm::SmallBitVector&) const = 0;
 
-    static SpecializationPolicy*
-    recursiveGuard(SpecializationPolicy*, llvm::CallGraphWrapperPass&);
   };
-}
-
-#endif /* __SPECPOLICY_H__ */
+} // end namespace

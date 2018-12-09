@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2012, SRI International
+// Copyright (c) 2011-2018, SRI International
 //
 //  All rights reserved.
 //
@@ -32,10 +32,8 @@
 //
 
 /*
- * SpecializationTable.cpp
- *
- *  Created on: Jun 22, 2011
- *      Author: malecha
+ *  Initial implementation created on: Jun 22, 2011
+ *  Author: malecha
  */
 
 #include "SpecializationTable.h"
@@ -46,19 +44,18 @@
 #include "llvm/IR/Constants.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include <string.h>
-
 using namespace llvm;
 
 namespace previrt
 {
+  
   typedef SpecializationTable::Specialization Specialization;
 
-  bool
-  Specialization::refines(int len, ConstSpecScheme l, ConstSpecScheme r)
-  {
-    for (int i = 0; i < len; i++) {
-      if (r[i] == NULL)
+  /* Return true if l refines r */
+  bool Specialization::refines(SpecScheme l, SpecScheme r) {
+    assert(l.size() == r.size());
+    for (unsigned i = 0, e = l.size(); i < e; i++) {
+      if (!r[i])
         continue;
       if (r[i] == l[i])
         continue;
@@ -67,41 +64,19 @@ namespace previrt
     return true;
   }
 
-  bool
-  Specialization::refinesExt(const SmallBitVector &wrt, ConstSpecScheme l,
-      ConstSpecScheme r)
-  {
-    // wrt is the set of indicies included in r, e.g.
-    // wrt = [1,0,1,0,0] means:
-    //   args 0,1,3 are NOT included in r
-    //   args 2,3 are included in r
-    const int len = wrt.size();
-    for (int lp = 0, rp = 0; lp < len; lp++) {
-      if (wrt[lp]) {
-        if (r[rp] == NULL || l[lp] == r[rp])
-          rp++;
-        else
-          return false;
-      }
-    }
-    return true;
-  }
+  SpecializationTable::SpecializationTable()
+    : module(NULL) {}
 
-  SpecializationTable::SpecializationTable() :
-    module(NULL)
-  {
-  }
-
-  SpecializationTable::SpecializationTable(Module* m) :
-      module(NULL)
-  {
+  SpecializationTable::SpecializationTable(Module* m)
+    : module(NULL) {
     this->initialize(m);
   }
 
-  void
-  SpecializationTable::initialize(Module* m)
-  {
+  void SpecializationTable::initialize(Module* m) {
+    // XXX: RECORD_IN_METADATA seems an old option.
+    //      TODO: figure out if we can remove this code.
     assert(this->module == NULL);
+    
     this->module = m;
 #ifdef RECORD_IN_METADATA
     // Parse the module metadata to populate the table
@@ -134,15 +109,16 @@ namespace previrt
       if (funNode->getNumOperands() != 2 + arg_count) {
         continue;
       }
-
-      SpecScheme scheme = new Value*[arg_count];
+      
+      SpecScheme scheme;
+      scheme.reserve(arg_count);
       for (unsigned int i = 0; i < arg_count; i++) {
         Value* opr = funNode->getOperand(2 + i);
         if (opr == NULL) {
-          scheme[i] = NULL;
+          scheme.push_back(nullptr);
         } else {
           assert (dyn_cast<Constant>(opr) != NULL);
-          scheme[i] = opr;
+          scheme.push_pack(opr);
         }
       }
 
@@ -152,82 +128,28 @@ namespace previrt
 #endif /* RECORD_IN_METADATA */
   }
 
-  SpecializationTable::~SpecializationTable()
-  {
+  SpecializationTable::~SpecializationTable() {
     for (SpecTable::iterator i = this->specialized.begin(), e =
-        this->specialized.end(); i != e; ++i) {
+	   this->specialized.end(); i != e; ++i) {
       delete i->second;
     }
   }
 
-#if 0
-  static void
-  collectRefinements(const Specialization* spec, SmallBitVector wrt,
-      SpecializationTable::ConstSpecScheme scheme, std::vector<
-      const Specialization*>& result)
-  {
-    assert (spec != NULL);
-    if (Specialization::refinesExt(wrt, spec->args, scheme)) {
-      result.push_back(spec);
 
-      SmallBitVector wrt2 = wrt;
-      for (int lp = 0, rp = 0; (unsigned) lp < wrt.size(); lp++) {
-        if (!wrt[rp]) {
-          rp++;
-          continue;
-        }
-        if (spec->args[rp] != NULL) {
-          wrt2.set(rp);
-        }
-      }
-
-      for (std::vector<Specialization*>::const_iterator b =
-          spec->children.begin(), e = spec->children.end(); b != e; ++b) {
-        collectRefinements(*b, wrt2, scheme, result);
-      }
-    }
-  }
-
-  static inline void
-  upSpecScheme(const Specialization* at, SpecializationTable::SpecScheme result)
-  {
-    const Specialization* up = at->parent;
-    int to = up->handle->getArgumentList().size();
-    int from = at->handle->getArgumentList().size();
-
-    while (to != from) {
-      assert (to >= 0 && from >= 0);
-      if (up->args[to] == NULL) {
-        result[to] = result[from];
-        to--;
-        from--;
-      } else {
-        result[to] = up->args[from];
-        to--;
-      }
-    }
-  }
-#endif
-
-  void
-  SpecializationTable::getSpecializations(Function* f, ConstSpecScheme scheme,
-      std::vector<const Specialization*>& result) const
+  void SpecializationTable::getSpecializations(Function* f, SpecScheme scheme,
+					       std::vector<const Specialization*>& result) const
   {
     const Specialization* current = this->getSpecialization(f);
-    const int arg_count = f->arg_size();
-
     for (std::vector<Specialization*>::const_iterator i =
         current->children.begin(), e = current->children.end(); i != e; ++i) {
-      if (Specialization::refines(arg_count, (*i)->args, scheme)) {
+      if (Specialization::refines((*i)->args, scheme)) {
         result.push_back(*i);
       }
     }
   }
 
-  bool
-  SpecializationTable::addSpecialization(Function* parent,
-      ConstSpecScheme scheme, Function* specialization, bool record)
-  {
+  bool SpecializationTable::addSpecialization(Function* parent, SpecScheme scheme,
+					      Function* specialization, bool record) {
     assert(parent != NULL);
     assert(specialization != NULL);
 
@@ -238,11 +160,10 @@ namespace previrt
     }
 
     Specialization* parentSpec = this->getSpecialization(parent);
-
     Specialization* spec = new Specialization();
     spec->handle = specialization;
     spec->parent = parentSpec;
-    spec->args = scheme;
+    std::copy(scheme.begin(), scheme.end(), std::back_inserter(spec->args));
     this->specialized[specialization] = spec;
 
     //.GetOrCreateValue(specialization->getName(), spec);
@@ -272,13 +193,10 @@ namespace previrt
     return true;
   }
 
-  Specialization*
-  SpecializationTable::getSpecialization(Function* f) const
-  {
+  Specialization* SpecializationTable::getSpecialization(Function* f) const {
     SpecTable::const_iterator itr = this->specialized.find(f);
     if (itr == this->specialized.end()) {
       Specialization* spec = new Specialization();
-      spec->args = NULL;
       spec->parent = NULL;
       spec->handle = f;
       const_cast<SpecializationTable*> (this)->specialized[f] = spec;
@@ -287,20 +205,11 @@ namespace previrt
     return itr->second;
   }
 
-  const Specialization*
-  SpecializationTable::getPrincipalSpecialization(Function* f) const
-  {
+  const Specialization* SpecializationTable::getPrincipalSpecialization(Function* f) const {
     const Specialization* spec = this->getSpecialization(f);
     while (spec->parent != NULL) {
       spec = spec->parent;
     }
     return spec;
   }
-/*
- std::string
- SpecializationTable::specializationName(const Function*, SpecScheme) const
- {
-
- }
- */
 }

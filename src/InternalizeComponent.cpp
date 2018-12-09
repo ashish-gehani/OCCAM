@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2016, SRI International
+// Copyright (c) 2011-2018, SRI International
 //
 //  All rights reserved.
 //
@@ -31,15 +31,10 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-#include "llvm/ADT/StringMap.h"
-#include "llvm/IR/User.h"
-#include "llvm/IR/InstVisitor.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/Transforms/IPO.h"
-#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Pass.h"
-//#include "llvm/IR/PassManager.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
@@ -52,16 +47,25 @@
 
 using namespace llvm;
 
+static cl::list<std::string>
+InterfaceInput("Pinternalize-input",
+	       cl::NotHidden,
+	       cl::desc("specifies the interface to internalize with respect to"));
+
 static cl::opt<std::string>
 KeepExternalFile("Pkeep-external",
 		 cl::desc("<file> : list of function names to be whitelisted"),
 		 cl::init(""));
 
+static cl::opt<unsigned>
+FixpointTreshold("Pinternalize-fixpoint-threshold",
+		 cl::desc("Limit of fixpoint iterations during global dead code elimination refinement"),
+		 cl::init(5));
+
 namespace previrt
 {
   static inline GlobalValue::LinkageTypes
-  localizeLinkage(GlobalValue::LinkageTypes l)
-  {
+  localizeLinkage(GlobalValue::LinkageTypes l) {
     switch (l) {
     case GlobalValue::ExternalLinkage:
       return GlobalValue::InternalLinkage;
@@ -75,7 +79,7 @@ namespace previrt
       // optimizations are applicable.
       //return GlobalValue::WeakODRLinkage;
       return GlobalValue::InternalLinkage;
-    // TODO I'm not sure if all external definitions have an
+      // XXX: not sure if all external definitions have an
     // appropriate internal counterpart
     default:
       errs() << "Got other linkage! " << l << "\n";
@@ -87,18 +91,13 @@ namespace previrt
    * Remove all code from the given module that is not necessary to
    * implement the given interface.
    */
-  bool
-  MinimizeComponent(Module& M, const ComponentInterface& I)
-  {
+  bool MinimizeComponent(Module& M, const ComponentInterface& I) {
+
+    errs() << "InternalizePass::runOnModule: " << M.getModuleIdentifier() << "\n";
+    
     bool modified = false;
     int hidden = 0;
     int internalized = 0;
-
-    /*
-    errs() << "<interface>\n";
-    I.dump();
-    errs() << "</interface>\n";
-    */
 
     std::set<std::string> keep_external;
     if (KeepExternalFile != "") {
@@ -106,7 +105,6 @@ namespace previrt
       if (infile.is_open()) {
 	std::string line;
 	while (std::getline(infile, line)) {
-      //errs() << "Adding " << line << " to the white list.\n";
 	  keep_external.insert(line);
 	}
 	infile.close();
@@ -114,6 +112,7 @@ namespace previrt
 	errs() << "Warning: ignored whitelist because something failed.\n";
       }
     }
+    
     // Set all functions that are not in the interface to internal linkage only    
     for (auto &f: M) {
       if (keep_external.count(f.getName())) {
@@ -147,78 +146,55 @@ namespace previrt
       }
     }
 
-    
-    /* TODO: We want to do this, but libc has some problems...
-    for (Module::alias_iterator i = M.alias_begin(), e = M.alias_end(); i != e; ++i) {
-      if (i->hasExternalLinkage() &&
-          I.references.find(i->getName()) == I.references.end() &&
-          I.calls.find(i->getName()) == end) {
-        errs() << "internalizing '" << i->getName() << "'\n";
-        i->setLinkage(localizeLinkage(i->getLinkage()));
-        modified = true;
-      }
+    if (!modified) {
+      // We don't run DCE if we didn't modify any linkage
+      return false;
     }
-    */
-
-
-
-    // Perform global dead code elimination
-    // TODO: To what extent should we do this here, versus
-    //       doing it elsewhere?
-    legacy::PassManager cdeMgr;
-    legacy::PassManager mcMgr;
+    
+    // Perform global dead code elimination until fixpoint or
+    // threshold is reached.
+    legacy::PassManager dceMgr, mcMgr;
     ModulePass* modulePassDCE = createGlobalDCEPass();
-    cdeMgr.add(modulePassDCE);
-    //mfMgr.add(createMergeFunctionsPass());
-
     ModulePass* constantMergePass = createConstantMergePass();
-
+    dceMgr.add(modulePassDCE);    
     mcMgr.add(constantMergePass);
+    
     bool moreToDo = true;
+    bool change_dce = false;
+    bool change_mc = false;
     unsigned int iters = 0;
-    while (moreToDo && iters < 10000) {
-      moreToDo = false;
-      if (cdeMgr.run(M)) moreToDo = true;
-      // (originally commented) if (mfMgr.run(M)) moreToDo = true;
-      if (mcMgr.run(M)) moreToDo = true;
-      modified = modified || moreToDo;
+    
+    while (moreToDo && iters < FixpointTreshold) {
+      change_dce = dceMgr.run(M);
+      change_mc = mcMgr.run(M);
+      moreToDo = (change_dce || change_mc);
       ++iters;
     }
 
-    if (moreToDo) {
-      if (cdeMgr.run(M))
-	errs() << "GlobalDCE still had more to do\n";
-      //if (mfMgr.run(M)) errs() << "MergeFunctions still had more to do\n";
-
-      if (mcMgr.run(M))
-	errs() << "MergeConstants still had more to do\n";
+    if (change_dce) {
+      errs() << "GlobalDCE still had more to do\n";
     }
-
-    if (modified) {
-      errs() << "Progress: hidden = " << hidden << " internalized " << internalized << "\n";
+    if (change_mc) {
+      errs() << "MergeConstants still had more to do\n";
     }
-
-    return modified;
+    
+    errs() << "Progress: hidden = " << hidden << " internalized " << internalized << "\n";
+    return true;
   }
 
-  static cl::list<std::string> OccamComponentInput(
-      "Poccam-input", cl::NotHidden, cl::desc(
-          "specifies the interface to prune with respect to"));
-  class OccamPass : public ModulePass
-  {
+  
+  class InternalizePass : public ModulePass {
   public:
     ComponentInterface interface;
     static char ID;
+    
   public:
-    OccamPass() :
-      ModulePass(ID)
-    {
-
-      errs() << "OccamPass()\n";
-
+    
+    InternalizePass(): ModulePass(ID) { 
+      errs() << "InternalizePass()\n";
       for (cl::list<std::string>::const_iterator b =
-          OccamComponentInput.begin(), e = OccamComponentInput.end(); b
-          != e; ++b) {
+	     InterfaceInput.begin(), e = InterfaceInput.end();
+	   b != e; ++b) {
         errs() << "Reading file '" << *b << "'...";
         if (interface.readFromFile(*b)) {
           errs() << "success\n";
@@ -228,21 +204,20 @@ namespace previrt
       }
       errs() << "Done reading.\n";
     }
-    virtual
-    ~OccamPass()
-    {
-    }
-  public:
-    virtual bool
-    runOnModule(Module& M)
-    {
-      errs() << "OccamPass::runOnModule: " << M.getModuleIdentifier() << "\n";
-      return MinimizeComponent(M, this->interface);
+    
+    virtual ~InternalizePass() {}
+    
+    virtual bool runOnModule(Module& M) {
+      return MinimizeComponent(M, interface);
     }
   };
-  char OccamPass::ID;
+  
+  char InternalizePass::ID;
+} // end namespace previrt
 
-  static RegisterPass<OccamPass> X("Poccam",
-      "hide/eliminate all non-external dependencies", false, false);
 
-}
+static RegisterPass<previrt::InternalizePass>
+X("Pinternalize",
+  "hide/eliminate all non-external dependencies",
+  false, false);
+

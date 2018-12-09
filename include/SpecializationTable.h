@@ -38,14 +38,13 @@
  *      Author: Gregory Malecha
  */
 
-#ifndef SPECIALIZATIONTABLE_H_
-#define SPECIALIZATIONTABLE_H_
+#pragma once
 
 #include "llvm/ADT/StringMap.h"
+#include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallBitVector.h"
 
 #include <vector>
-#include <map>
 
 namespace llvm
 {
@@ -59,57 +58,44 @@ namespace previrt
   class SpecializationTable
   {
   public:
-    typedef llvm::Value** SpecScheme;
-    typedef llvm::Value*const* ConstSpecScheme;
+    typedef std::vector<llvm::Value*> SpecScheme;
 
-    struct Specialization
-    {
+    struct Specialization {
       llvm::Function* handle;
-      ConstSpecScheme args;
+      SpecScheme args;
       const Specialization* parent;
       std::vector<Specialization*> children;
 
-      // Is l at least as restrictive as r
-      static bool
-      refines(int len, ConstSpecScheme l, ConstSpecScheme r);
-      // ??
-      static bool
-      refinesExt(const llvm::SmallBitVector& wrt, ConstSpecScheme l,
-          ConstSpecScheme r);
+      // Return true if l is more specific than r
+      static bool refines(SpecScheme l, SpecScheme r);
     };
 
   private:
-    typedef std::map<llvm::Function*,Specialization*> SpecTable;
+    
+    typedef llvm::DenseMap<llvm::Function*,Specialization*> SpecTable;
     mutable SpecTable specialized;
     llvm::Module* module;
 
   public:
+    
     SpecializationTable();
+    
     SpecializationTable(llvm::Module*);
-    virtual
-    ~SpecializationTable();
+    
+    virtual ~SpecializationTable();
+      
+    void initialize(llvm::Module*);
+      
+    void getSpecializations(llvm::Function*, SpecScheme,
+			    std::vector<const Specialization*>&) const;
+    
+    bool addSpecialization(llvm::Function*, SpecScheme, llvm::Function*, bool record=true);
 
-  public:
-    void
-    initialize(llvm::Module*);
-
-  public:
-    void
-    getSpecializations(llvm::Function*, ConstSpecScheme,
-        std::vector<const Specialization*>&) const;
-
-    bool
-    addSpecialization(llvm::Function*, ConstSpecScheme, llvm::Function*, bool record=true);
-
-    const Specialization*
-    getPrincipalSpecialization(llvm::Function*) const;
-
-    Specialization*
-    getSpecialization(llvm::Function*) const;
-
-    const llvm::Function*
-    getPrincipalFunction(const llvm::Function*) const;
+    const Specialization* getPrincipalSpecialization(llvm::Function*) const;
+      
+    Specialization* getSpecialization(llvm::Function*) const;
+    
+    const llvm::Function* getPrincipalFunction(const llvm::Function*) const;
+    
   };
 }
-
-#endif /* SPECIALIZATIONTABLE_H_ */

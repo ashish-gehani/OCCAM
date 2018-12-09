@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2016, SRI International
+// Copyright (c) 2011-2018, SRI International
 //
 //  All rights reserved.
 //
@@ -32,7 +32,6 @@
 //
 
 #include <vector>
-#include "llvm/Analysis/AliasAnalysis.h"
 
 namespace llvm
 {
@@ -44,22 +43,28 @@ namespace llvm
 
 namespace previrt
 {
-  llvm::Function*
-  specializeFunction(llvm::Function *f, llvm::Value*const* args);
+  /*
+   * Make a copy of f and specialize f wrt to args. args[i] is null if
+   * the argument is not known, otherwise args[i] is a Constant.
+  */
+  llvm::Function* specializeFunction(llvm::Function *f,
+				     const std::vector<llvm::Value*>& args);
 
-  llvm::Function*
-  specializeFunction(llvm::Function *f, const std::vector<llvm::Value*>& args);
+  /*
+   * Specialize a call site and return the new instruction.
+   * Return null if I is not CallInst or InvokeInst.
+   * 
+   * Create a new callsite whose arguments are the actual parameters
+   * {perm[0],...,perm[perm.size()-1]} of the original callsite.
+   */
+  llvm::Instruction* specializeCallSite(llvm::Instruction* cs,
+					llvm::Function*,
+					const std::vector<unsigned>&perm);
 
-  llvm::Instruction*
-  specializeCallSite(llvm::Instruction*,
-      llvm::Function*, const std::vector<unsigned>&);
+  /*
+   * Create a LLVM global variable from a string.
+   */
+  llvm::GlobalVariable* materializeStringLiteral(llvm::Module& m, const char* data);
 
-  bool
-  canSpecialize(llvm::Function* f, llvm::AAResults & AA);
-
-  llvm::GlobalVariable*
-  materializeStringLiteral(llvm::Module& m, const char* data);
-
-  llvm::Constant*
-  charStarFromStringConstant(llvm::Module& m, llvm::Constant* v);
+  llvm::Constant* charStarFromStringConstant(llvm::Module& m, llvm::Constant* v);
 }

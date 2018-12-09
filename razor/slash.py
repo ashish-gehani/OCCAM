@@ -1,7 +1,7 @@
 """
  OCCAM
 
- Copyright (c) 2011-2017, SRI International
+ Copyright (c) 2011-2018, SRI International
 
   All rights reserved.
 
@@ -60,25 +60,26 @@ instructions = """slash has three modes of use:
 
     Previrtualize a compilation unit based on its manifest.
 
-        --help                  : Print this.
+        --help                     : Print this.
 
-        --tool=<tool>           : Print the path to the tool and exit.
+        --tool=<tool>              : Print the path to the tool and exit.
 
-        --work-dir <dir>        : Output intermediate files to the given location <dir>
-        --info                  : Display info stats and exit
-        --stats                 : Show some stats before and after specialization
-        --no-strip              : Leave symbol information in the binary
-        --verbose               : Print the calls to the llvm tools prior to running them.
-        --debug-manager=<type>  : Debug opt's pass manager (<type> should be either Structure or Details)
-        --debug-pass=<tag>      : Debug opt's pass (<tag> should be the debug pragma string of the pass)
-        --debug                 : Pass the debug flag into all calls to opt (too much information usually)
-        --devirt                : Devirtualize indirect function calls
-        --no-specialize         : Do not specialize any intermodule calls
-        --keep-external=<file>  : Pass a list of function names that should remain external.
-        --llpe                  : Use Smowton's LLPE for intra-module prunning (experimental)
-        --ipdse                 : Apply inter-procedural dead store elimination (experimental)
-        --precise-dce           : Use model-checking to perform intra-module dead code elimination (experimental)
-        --ai-invariants         : Add invariants inferred by abstract interpretation as llvm.assume instructions (experimental)
+        --work-dir <dir>           : Output intermediate files to the given location <dir>
+        --info                     : Display info stats and exit
+        --stats                    : Show some stats before and after specialization
+        --no-strip                 : Leave symbol information in the binary
+        --verbose                  : Print the calls to the llvm tools prior to running them.
+        --debug-manager=<type>     : Debug opt's pass manager (<type> should be either Structure or Details)
+        --debug-pass=<tag>         : Debug opt's pass (<tag> should be the debug pragma string of the pass)
+        --debug                    : Pass the debug flag into all calls to opt (too much information usually)
+        --devirt                   : Devirtualize indirect function calls
+        --intra-spec-policy=<type> : Specialization policy for intramodule calls (<type> should be either none, aggressive or nonrec-aggressive)
+        --inter-spec-policy=<type> : Specialization policy for intermodule calls (<type> should be either none, aggressive or nonrec-aggressive)
+        --keep-external=<file>     : Pass a list of function names that should remain external.
+        --llpe                     : Use Smowton's LLPE for intra-module prunning (experimental)
+        --ipdse                    : Apply inter-procedural dead store elimination (experimental)
+        --precise-dce              : Use model-checking to perform intra-module dead code elimination (experimental)
+        --ai-invariants            : Add invariants inferred by abstract interpretation as llvm.assume instructions (experimental)
     """
 
 def entrypoint():
@@ -95,9 +96,8 @@ def entrypoint():
 
 
 def  usage(exe):
-    template = '{0} [--work-dir=<dir>]  [--force] [--help] [--stats] [--no-strip] [--verbose] [--debug-manager=] [--debug-pass=] [--debug] [--devirt] [--no-specialize] [--keep-external=<file>] [--llpe] [--ipdse] [--precise-dce] [--ai-invariants] <manifest>\n'
+    template = '{0} [--work-dir=<dir>]  [--force] [--help] [--stats] [--no-strip] [--verbose] [--debug-manager=] [--debug-pass=] [--debug] [--devirt] [--intra-spec-policy=<type>] [--inter-spec-policy=<type>] [--keep-external=<file>] [--llpe] [--ipdse] [--precise-dce] [--ai-invariants] <manifest>\n'
     sys.stderr.write(template.format(exe))
-
 
 class Slash(object):
 
@@ -119,7 +119,8 @@ class Slash(object):
                         'ai-invariants',
                         'info',
                         'stats',
-                        'no-specialize',
+                        'intra-spec-policy=',
+                        'inter-spec-policy=',
                         'tool=',
                         'verbose',
                         'keep-external=']
@@ -171,6 +172,18 @@ class Slash(object):
         if not utils.make_work_dir(self.work_dir):
             return 1
 
+        def check_spec_policy(policy):
+            """ Supported policies: none, aggressive, nonrec-aggressive """
+            
+            if policy <> 'none' and \
+               policy <> 'aggressive' and \
+               policy <> 'nonrec-aggressive':
+                sys.stderr.write('Error: unsupported specialization policy. ' + \
+                                 'Valid policies: none, aggressive, nonrec-aggressive')
+                return False
+            else:
+                return True
+                
         parsed = utils.check_manifest(self.manifest)
 
         valid = parsed[0]
@@ -202,8 +215,14 @@ class Slash(object):
         if info is not None:
             show_stats = True
 
-        no_specialize = utils.get_flag(self.flags, 'no-specialize', None)
-
+        intra_spec_policy = utils.get_flag(self.flags, 'intra-spec-policy', 'nonrec-aggressive')
+        if not check_spec_policy(intra_spec_policy):
+            return 1
+        
+        inter_spec_policy = utils.get_flag(self.flags, 'inter-spec-policy', 'nonrec-aggressive')
+        if not check_spec_policy(inter_spec_policy):
+            return 1
+        
         sys.stderr.write('\nslash working on {0} wrt {1} ...\n'.format(module, ' '.join(libs)))
 
         native_lib_flags = []
@@ -337,59 +356,60 @@ class Slash(object):
         write_timestamp("Started global fixpoint ...")
         iteration = 0
         while progress:
-
+            ## FIXME run this loop while progress and iteration < THRESHOLD.
+            ## The threshold should be selected by the user.
             iteration += 1
             progress = False
 
-            # Intra-module pruning
+            # Intra-module partial evaluation and debloating
             def intra(m):
-                "Intra-module previrtualization"
-                # for m in files.values():
-                # intra-module previrt
+                "Intra-module specialization/optimization"
                 pre = m.get()
                 pre_base = os.path.basename(pre)
                 post = m.new('p')
                 post_base = os.path.basename(post)
                 fn = 'previrt_%s-%s' % (pre_base, post_base)
-                passes.peval(pre, post, devirt, use_llpe, use_ipdse, use_ai, log=open(fn, 'w'))
+                passes.peval(pre, post, \
+                             intra_spec_policy, devirt, use_llpe, use_ipdse, use_ai, \
+                             log=open(fn, 'w'))
 
             pool.InParallel(intra, files.values(), self.pool)
 
-            # Inter-module previrt
+            # Gather Inter-module interfaces
             iface = passes.deep([x.get() for x in files.values()],
                                 ['main.iface'])
             interface.writeInterface(iface, iface_before_file.new())
 
-            # Specialize
-            if no_specialize is None:
-                def _spec((nm, m)):
+            # Inter-specialize
+            if inter_spec_policy <> 'none':
+                def inter_spec((nm, m)):
                     "Inter-module module specialization"
                     pre = m.get()
                     post = m.new('s')
                     rw = rewrite_files[nm].new()
-                    passes.specialize(pre, post, rw, [iface_before_file.get()])
+                    passes.specialize(pre, post, rw, [iface_before_file.get()], inter_spec_policy)
 
-                pool.InParallel(_spec, files.items(), self.pool)
+                pool.InParallel(inter_spec, files.items(), self.pool)
 
-            # Rewrite
-            def rewrite((nm, m)):
-                "Inter-module module rewriting"
-                pre = m.get()
-                post = m.new('r')
-                rws = [rewrite_files[x].get() for x in files.keys()
-                       if x != nm]
-                out = [None]
-                retcode = passes.rewrite(pre, post, rws, output=out)
-                fn = 'rewrite_%s-%s' % (os.path.basename(pre),
-                                        os.path.basename(post))
-                dbg = open(fn, 'w')
-                dbg.write(out[0])
-                dbg.close()
-                return retcode
+                # Rewrite
+                def inter_rewrite((nm, m)):
+                    "Inter-module module rewriting"
+                    pre = m.get()
+                    post = m.new('r')
+                    rws = [rewrite_files[x].get() for x in files.keys()
+                           if x != nm]
+                    out = [None]
+                    retcode = passes.rewrite(pre, post, rws, output=out)
+                    fn = 'rewrite_%s-%s' % (os.path.basename(pre),
+                                            os.path.basename(post))
+                    dbg = open(fn, 'w')
+                    dbg.write(out[0])
+                    dbg.close()
+                    return retcode
 
-            rws = pool.InParallel(rewrite, files.items(), self.pool)
-            progress = any(rws)
-
+                rws = pool.InParallel(inter_rewrite, files.items(), self.pool)
+                progress = any(rws)
+            
             # Aggressive internalization
             pool.InParallel(_references, vals, self.pool)
             pool.InParallel(_internalize, vals, self.pool)
@@ -398,13 +418,13 @@ class Slash(object):
             iface = passes.deep([x.get() for x in files.values()], ['main.iface'])
             interface.writeInterface(iface, iface_after_file.new())
 
-            # Prune
-            def prune(m):
-                "Pruning dead code/variables"
-                pre = m.get()
-                post = m.new('occam')
-                passes.internalize(pre, post, [iface_after_file.get()], self.whitelist)
-            pool.InParallel(prune, files.values(), self.pool)
+            # # Prune
+            # def prune(m):
+            #     "Pruning dead code/variables"
+            #     pre = m.get()
+            #     post = m.new('occam')
+            #     passes.internalize(pre, post, [iface_after_file.get()], self.whitelist)
+            # pool.InParallel(prune, files.values(), self.pool)
 
         write_timestamp("Finished global fixpoint.")        
             

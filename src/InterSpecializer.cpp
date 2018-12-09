@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2012, SRI International
+// Copyright (c) 2011-2018, SRI International
 //
 //  All rights reserved.
 //
@@ -31,49 +31,73 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
+/**
+ *  Inter-module specialization.
+ *  Interfaces are modified but callsites are not. The callsites will
+ *  be modified by InterRewriter
+ **/
+
 #include "llvm/Pass.h"
-#include "llvm/ADT/StringMap.h"
-#include "llvm/IR/User.h"
-#include "llvm/IR/InstVisitor.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/Transforms/IPO.h"
-#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include "PrevirtualizeInterfaces.h"
 #include "Specializer.h"
 #include "SpecializationPolicy.h"
+/* here specialization policies */
+#include "AggressiveSpecPolicy.h"
+#include "RecursiveGuardSpecPolicy.h"
 
 #include <vector>
-#include <list>
 #include <string>
 #include <fstream>
 #include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
 
+static cl::opt<previrt::SpecializationPolicyType>
+SpecPolicy("Pspecialize-policy",
+	   cl::desc("Inter-module specialization policy"),
+	   cl::values
+	   (clEnumValN (previrt::NOSPECIALIZE, "nospecialize",
+			"Skip inter-module specialization"),
+	    clEnumValN (previrt::AGGRESSIVE, "aggressive",
+			"Specialize always if some constant argument"),
+	    clEnumValN (previrt::NONRECURSIVE_WITH_AGGRESSIVE, "nonrec-aggressive",
+			"aggressive + non-recursive function")),
+	   cl::init(previrt::NONRECURSIVE_WITH_AGGRESSIVE));
+  
+static cl::list<std::string>
+SpecCompIn("Pspecialize-input",
+	   cl::NotHidden,
+	   cl::desc("Specify the interface to specialize with respect to"));
+  
+static cl::opt<std::string>
+SpecCompOut("Pspecialize-output",
+	    cl::init(""),
+	    cl::NotHidden,
+	    cl::desc("Specify the output file for the specialized module"));
+
 namespace previrt
 {
 
-  static Function*
-  resolveFunction(Module& M, StringRef name)
-  {
-    Function* f = M.getFunction(name);
-    if (f != NULL)
+  static Function* resolveFunction(Module& M, StringRef name) {
+    if (Function* f = M.getFunction(name)) {
       return f;
-    GlobalAlias* ga = M.getNamedAlias(name);
-    if (ga != NULL) {
+    }
+    
+    if (GlobalAlias* ga = M.getNamedAlias(name)) {
       const GlobalValue* v = ga->getBaseObject();
-      f = dyn_cast<Function>(const_cast<GlobalValue*>(v));
-      if (f != NULL) {
-        errs() << "Resolved alias " << name << " to " << f->getName() << "\n";
+      if (Function* f = dyn_cast<Function>(const_cast<GlobalValue*>(v))) {
         return f;
       }
     }
-    return NULL;
+    return nullptr;
   }
 
   /*
@@ -83,13 +107,10 @@ namespace previrt
    * Generate a ComponentInterfaceTransform for clients to rewrite their
    * code to use the new API
    */
-  bool
-  SpecializeComponent(Module& M, ComponentInterfaceTransform& T,
-      SpecializationPolicy &policy, std::list<Function*>& to_add)
-  {
-
+  static bool SpecializeComponent(Module& M, ComponentInterfaceTransform& T,
+				  SpecializationPolicy* policy,
+				  std::vector<Function*>& to_add) {
     errs() << "SpecializeComponent()\n";
-
 
     int rewrite_count = 0;
     const ComponentInterface& I = T.getInterface();
@@ -101,8 +122,7 @@ namespace previrt
       StringRef name = ff->first();
       Function* func = resolveFunction(M, name);
 
-      if (func == NULL || func->isDeclaration()) {
-        // We don't specialize declarations because we don't own them
+      if (!func || func->isDeclaration()) {
         continue;
       }
 
@@ -110,11 +130,8 @@ namespace previrt
       for (ComponentInterface::CallIterator cc = I.call_begin(name), ce =
           I.call_end(name); cc != ce; ++cc) {
         const CallInfo* const call = *cc;
-
         const unsigned arg_count = call->args.size();
-
         if (func->isVarArg()) {
-          // TODO: I don't know how to specialize variable argument functions yet
           continue;
         }
 
@@ -125,11 +142,13 @@ namespace previrt
         }
 
 	/*
-	  should we specialize? if yes then each bit in slice will indicate whether the argument is
-	  a specializable constant
+	  should we specialize? if yes then each bit in slice will
+	  indicate whether the argument is a specializable constant
 	 */
         SmallBitVector slice(arg_count);
-        bool shouldSpecialize = policy.specializeOn(func, call->args.begin(), call->args.end(), slice);
+        bool shouldSpecialize = policy->specializeOn(func,
+						     call->args.begin(), call->args.end(),
+						     slice);
 
         if (!shouldSpecialize)
           continue;
@@ -150,30 +169,26 @@ namespace previrt
             argPerm.push_back(i);
           }
         }
+	
 	/*
 	  args is a list of pointers to values
-	   --  if the pointer is NULL then that argument is not specialized
-	   -- if the pointer is not NULL then the argument will be/has been specialized to that value
+	   -- if the pointer is NULL then that argument is not
+               specialized.
+	   -- if the pointer is not NULL then the argument will be/has
+              been specialized to that value.
 
 	  argsPerm is a list on integers; the indices of the non-special arguments
-
 	  args[i] = NULL iff i is in argsPerm for i < arg_count.
-
 	*/
 
         Function* nfunc = specializeFunction(func, args);
         nfunc->setLinkage(GlobalValue::ExternalLinkage);
-
         FunctionHandle rewriteTo = nfunc->getName();
-
         T.rewrite(name, call, rewriteTo, argPerm);
-
         to_add.push_back(nfunc);
-
-
 	errs() << "Specialized  " << name << " to " << rewriteTo << "\n";
 
-#if 0
+        #if 0
 	for (unsigned i = 0; i < arg_count; i++) {
 	  errs() << "i = " << i << ": slice[i] = " << slice[i]
 		 << " args[i] = " << args.at(i) << "\n";
@@ -183,7 +198,7 @@ namespace previrt
 	  errs() << argPerm.at(i) << " ";
 	}
 	errs() << "]\n";
-#endif
+        #endif
 
        rewrite_count++;
       }
@@ -195,31 +210,22 @@ namespace previrt
   }
 }
 
-namespace {
-  using namespace previrt;
-
-  static cl::list<std::string> SpecializeComponentInput("Pspecialize-input",
-      cl::NotHidden, cl::desc(
-          "specifies the interface to specialize with respect to"));
-  static cl::opt<std::string> SpecializeComponentOutput("Pspecialize-output",
-        cl::init(""), cl::NotHidden, cl::desc(
-            "specifies the output file for the rewrite specification"));
-
-  class SpecializeComponentPass : public ModulePass
-  {
+namespace previrt {
+  
+  class InterSpecializerPass : public ModulePass {
   public:
+    
     ComponentInterfaceTransform transform;
     static char ID;
 
   public:
-    SpecializeComponentPass() :
-      ModulePass(ID)
-    {
-
-      errs() << "SpecializeComponentPass():\n";
-
-      for (cl::list<std::string>::const_iterator b = SpecializeComponentInput.begin(), e = SpecializeComponentInput.end();
-           b != e; ++b) {
+    
+    InterSpecializerPass()
+      : ModulePass(ID) {
+      
+      errs() << "InterSpecializerPass():\n";
+      for (cl::list<std::string>::const_iterator b = SpecCompIn.begin(),
+	     e = SpecCompIn.end(); b != e; ++b) {
         errs() << "Reading file '" << *b << "'...";
         if (transform.readInterfaceFromFile(*b)) {
           errs() << "success\n";
@@ -227,6 +233,7 @@ namespace {
           errs() << "failed\n";
         }
       }
+      
       errs() << "Done reading.\n";
       if (transform.interface != NULL) {
         errs() << transform.interface->calls.size() << " calls\n";
@@ -234,34 +241,43 @@ namespace {
         errs() << "No interfaces read.\n";
       }
     }
-    virtual
-    ~SpecializeComponentPass()
-    {
-    }
-  public:
-    virtual bool
-    runOnModule(Module& M)
-    {
-      if (transform.interface == NULL) return false;
+    
+    virtual ~InterSpecializerPass() {}
+          
+    virtual bool runOnModule(Module& M) {    
+      if (!transform.interface) {
+	return false;
+      }
 
-      errs() << "SpecializeComponentPass::runOnModule(): " << M.getModuleIdentifier() << "\n";
+      // -- Create the specialization policy. Bail out if no policy.
+      SpecializationPolicy* policy = nullptr;
+      switch (SpecPolicy) {
+        case NOSPECIALIZE:
+	  return false;
+        case AGGRESSIVE:
+	  policy = new AggressiveSpecPolicy();
+	  break;
+        case NONRECURSIVE_WITH_AGGRESSIVE: {
+	  SpecializationPolicy* subpolicy = new AggressiveSpecPolicy();
+	  CallGraph& cg = getAnalysis<CallGraphWrapperPass>().getCallGraph();      
+	  policy = new RecursiveGuardSpecPolicy(subpolicy, cg);
+	  break;
+	}
+      }
 
-
-      std::list<Function*> to_add;
-      CallGraphWrapperPass& CG = getAnalysis<CallGraphWrapperPass> ();
-      SpecializationPolicy* policy = SpecializationPolicy::recursiveGuard(
-          SpecializationPolicy::aggressivePolicy(), CG);
-
-      bool modified = SpecializeComponent(M, this->transform, *policy, to_add);
-
+      assert(policy);      
+      errs() << "InterSpecializerPass::runOnModule(): " << M.getModuleIdentifier() << "\n";
+      std::vector<Function*> to_add;
+      bool modified = SpecializeComponent(M, transform, policy, to_add);
+      
       /*
 	 adding the "new" specialized definitions (in to_add) to M;
 	 opt will write out M to the -o argument to the "python call"
       */
       Module::FunctionListType &functionList = M.getFunctionList();
       while (!to_add.empty()) {
-	Function *add = to_add.front();
-	to_add.pop_front();
+	Function *add = to_add.back();
+	to_add.pop_back();
 	if (add->getParent() == &M) {
 	  // Already in module
 	  continue;
@@ -271,29 +287,34 @@ namespace {
 	}
       }
 
-      /* writing the output ("rw" rewrite file) to the -Pspecialize-output argument (if there is one) */
-      if (SpecializeComponentOutput != "") {
+      /* writing the output ("rw" rewrite file) to the -Pspecialize-output argument */
+      if (SpecCompOut != "") {
         proto::ComponentInterfaceTransform buf;
         codeInto(this->transform, buf);
-        std::ofstream output(SpecializeComponentOutput.c_str(), std::ios::binary | std::ios::trunc);
+        std::ofstream output(SpecCompOut.c_str(),
+			     std::ios::binary | std::ios::trunc);
 	bool success = buf.SerializeToOstream(&output);
-	if (!success)
+	if (!success) {
 	  assert (false && "failed to write out interface");
+	}
         output.close();
       }
-
-      policy->release();
-
+      
+      if (policy) {
+	delete policy;
+      }
       return modified;
     }
-    virtual void
-    getAnalysisUsage(AnalysisUsage &AU) const
-    {
+    
+    virtual void getAnalysisUsage(AnalysisUsage &AU) const {
       AU.addRequired<CallGraphWrapperPass> ();
     }
+    
   };
-  char SpecializeComponentPass::ID;
+  char InterSpecializerPass::ID;
+} // end namespace previrt
 
-  static RegisterPass<SpecializeComponentPass> X("Pspecialize",
-      "previrtualize the given module (requires parameters)", false, false);
-}
+static RegisterPass<previrt::InterSpecializerPass>
+X("Pspecialize",
+  "Specialize the inter-module interface",
+  false, false);

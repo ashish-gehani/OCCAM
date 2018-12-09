@@ -19,6 +19,8 @@ CXX_FLAGS += $(shell  ${LLVM_CFG} --cxxflags) -I${LLVM_INCLUDE} -I../include -I/
 
 CXX_FLAGS += -Ianalysis/sea-dsa/include
 
+CXX_FLAGS += -Ianalysis/llvm-dsa/include 
+
 C_FLAGS = $(shell  ${LLVM_CFG} --cflags)
 
 CPP_FLAGS += $(shell  ${LLVM_CFG} --cppflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include
@@ -56,7 +58,7 @@ SOURCES += $(wildcard transforms/*.cpp)
 
 SOURCES += $(wildcard utils/*.cpp)
 
-OBJECTS := proto/Previrt.pb.o proto/Watch.pb.o $(patsubst %.cpp,%.o,${SOURCES}) 
+OBJECTS := proto/Previrt.pb.o $(patsubst %.cpp,%.o,${SOURCES}) 
 
 INSTALL = install
 
@@ -100,9 +102,8 @@ proto/%.o: proto/%.cc proto/%.h
 	$(CXX)  ${CXX_FLAGS} $< -c -o $@
 
 
-protoc: Watch.proto Previrt.proto
+protoc: Previrt.proto
 	mkdir -p proto
-	${PROTOC} Watch.proto --cpp_out=proto
 	${PROTOC} Previrt.proto --cpp_out=proto
 
 clean: 

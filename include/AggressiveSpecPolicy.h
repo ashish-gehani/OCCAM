@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2016, SRI International
+// Copyright (c) 2011-2018, SRI International
 //
 //  All rights reserved.
 //
@@ -31,21 +31,33 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-/*
- * Watch.h
- *
- *  Created on: Jul 21, 2011
- *      Author: malecha
- */
+#pragma once
 
-#ifndef WATCH_H_
-#define WATCH_H_
+#include "SpecializationPolicy.h"
 
-namespace previrt {
+namespace previrt
+{
+  /* Specialize always a callsite if some argument is a constant */
+  class AggressiveSpecPolicy : public SpecializationPolicy
+  {
+  public:
 
+    AggressiveSpecPolicy();
+    
+    virtual ~AggressiveSpecPolicy();
 
+    virtual bool specializeOn(llvm::CallSite CS,
+			      std::vector<llvm::Value*>& slice) const override;
 
+    virtual bool specializeOn(llvm::Function* F,
+			      const PrevirtType* begin,
+			      const PrevirtType* end,
+			      llvm::SmallBitVector& slice) const override;
+    
+    virtual bool specializeOn(llvm::Function* F,
+			      std::vector<PrevirtType>::const_iterator begin,
+			      std::vector<PrevirtType>::const_iterator end,
+			      llvm::SmallBitVector& slice) const override;
+  };
 
-};
-
-#endif /* WATCH_H_ */
+} // end namespace

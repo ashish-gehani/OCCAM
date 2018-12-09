@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2016, SRI International
+// Copyright (c) 2011-2018, SRI International
 //
 //  All rights reserved.
 //
@@ -30,38 +30,50 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
+#pragma once
 
-#include "llvm/Pass.h"
+#include "llvm/ADT/SmallSet.h"
+#include "llvm/Analysis/CallGraph.h"
 
-#include "PrevirtualizeInterfaces.h"
-#include "SpecializationTable.h"
-
-namespace llvm {
-  class AnalysisUsage;
-}
+#include "SpecializationPolicy.h"
 
 namespace previrt
 {
-  class SpecializationPolicy;
-
-  class SpecializerPass : public llvm::ModulePass
-  {
-  private:
-    bool optimize;
+  
+  /* This class takes as argument another specialization policy p.
+     Specialize a callsite if the callee function is not recursive AND
+     p also decides to specialize. */
+  class RecursiveGuardSpecPolicy : public SpecializationPolicy {
     
-  public:
-    static char ID;
+    typedef llvm::SmallSet<llvm::Function*, 32> FunctionSet;
+
+    llvm::CallGraph& cg;
+    SpecializationPolicy* const delegate;
+    FunctionSet rec_functions;
+    
+    void markRecursiveFunctions();
+    bool isRecursive(llvm::Function* f) const;    
+    bool allowSpecialization(llvm::Function* f) const;
 
   public:
-    SpecializerPass(bool);
-    virtual
-    ~SpecializerPass();
+    
+    RecursiveGuardSpecPolicy(SpecializationPolicy* delegate, llvm::CallGraph& cg);
 
-  public:
-    virtual void
-    getAnalysisUsage(llvm::AnalysisUsage &AU) const;
+    virtual ~RecursiveGuardSpecPolicy();
+    
+    virtual bool specializeOn(llvm::CallSite CS,
+			      std::vector<llvm::Value*>& slice) const override;
 
-    virtual bool
-    runOnModule(llvm::Module &M);
+    virtual bool specializeOn(llvm::Function* F,
+			      const PrevirtType* begin,
+			      const PrevirtType* end,
+			      llvm::SmallBitVector& slice) const override;
+
+    virtual bool specializeOn(llvm::Function* F,
+			      std::vector<PrevirtType>::const_iterator begin,
+			      std::vector<PrevirtType>::const_iterator end,
+			      llvm::SmallBitVector& slice) const override;
+
   };
-}
+} // end namespace previrt
+

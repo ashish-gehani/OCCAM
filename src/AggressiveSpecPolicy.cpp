@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2012, SRI International
+// Copyright (c) 2011-2018, SRI International
 //
 //  All rights reserved.
 //
@@ -31,112 +31,41 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-#include "llvm/IR/Function.h"
-#include "llvm/IR/Constants.h"
-#include "llvm/IR/Instructions.h"
-#include "llvm/IR/PassManager.h"
-#include "llvm/Transforms/IPO/PassManagerBuilder.h"
-#include "llvm/IR/InstIterator.h"
-#include "llvm/Support/CommandLine.h"
-#include "llvm/Support/raw_ostream.h"
-
-#include "SpecializationPolicy.h"
+#include "AggressiveSpecPolicy.h"
 
 using namespace llvm;
 
 namespace previrt
 {
-  class AggressiveSpecPolicy : public SpecializationPolicy
-  {
-  private:
-    AggressiveSpecPolicy();
-    static AggressiveSpecPolicy SINGLETON;
-
-  public:
-    virtual
-    ~AggressiveSpecPolicy();
-    virtual void
-    release();
-
-  public:
-    virtual llvm::Value**
-    specializeOn(llvm::Function* F, llvm::User::op_iterator begin,
-        llvm::User::op_iterator end) const;
-
-    virtual bool
-    specializeOn(llvm::Function* F, const PrevirtType* begin,
-        const PrevirtType* end, llvm::SmallBitVector& slice) const;
-
-    virtual bool
-    specializeOn(llvm::Function* F,
-        std::vector<PrevirtType>::const_iterator begin,
-        std::vector<PrevirtType>::const_iterator end,
-        llvm::SmallBitVector& slice) const;
-
-  private:
-    friend SpecializationPolicy* SpecializationPolicy::aggressivePolicy();
-  };
-
-  AggressiveSpecPolicy::AggressiveSpecPolicy()
-  {
-  }
-  AggressiveSpecPolicy::~AggressiveSpecPolicy()
-  {
+  
+  AggressiveSpecPolicy::AggressiveSpecPolicy() {
   }
 
-  void
-  AggressiveSpecPolicy::release()
-  {
-    // This is a singleton instance
+  AggressiveSpecPolicy::~AggressiveSpecPolicy() {
   }
-
-  Value**
-  AggressiveSpecPolicy::specializeOn(Function* F, User::op_iterator begin,
-      User::op_iterator end) const
-  {
-    Value** slice = NULL;
-    const unsigned int arg_count = F->arg_size();
-
-    for (unsigned int i = 0; i < arg_count && begin != end; ++begin, ++i) {
-      Constant* cst = dyn_cast<Constant> (begin->get());
+  
+  bool AggressiveSpecPolicy::specializeOn(CallSite CS,
+					  std::vector<Value*>& slice) const {
+    bool specialize = false;
+    slice.reserve(CS.arg_size());
+    for (unsigned i=0, e = CS.arg_size(); i<e; ++i) {
+      Constant* cst = dyn_cast<Constant> (CS.getArgument(i));
+      // XXX: cst can be nullptr
       if (SpecializationPolicy::isConstantSpecializable(cst)) {
-        if (slice == NULL) {
-          slice = new Value*[arg_count];
-          for (unsigned int j = 0; j < i; ++j)
-            slice[j] = NULL;
-        }
-        slice[i] = begin->get();
-      } else if (slice != NULL) {
-        slice[i] = NULL;
-      }
+	slice.push_back(cst);
+	specialize=true;
+      } else {
+	slice.push_back(nullptr);
+      } 
     }
-
-    return slice;
-  }
-
-  bool
-  AggressiveSpecPolicy::specializeOn(Function* F, const PrevirtType* begin,
-      const PrevirtType* end, SmallBitVector& slice) const
-  {
-    bool specialize = false;
-
-    for (int i = 0; begin != end; ++begin, ++i) {
-      if (begin->isConcrete()) {
-        specialize = true;
-        slice.set(i);
-      }
-    }
-
     return specialize;
   }
 
-  bool
-  AggressiveSpecPolicy::specializeOn(Function* F,
-      std::vector<PrevirtType>::const_iterator begin,
-      std::vector<PrevirtType>::const_iterator end, SmallBitVector& slice) const
-  {
+  bool AggressiveSpecPolicy::specializeOn(Function* F,
+					  const PrevirtType* begin, const PrevirtType* end,
+					  SmallBitVector& slice) const {
     bool specialize = false;
-    for (int i = 0; begin != end; ++begin, ++i) {
+    for (unsigned int i = 0; begin != end; ++begin, ++i) {
       if (begin->isConcrete()) {
         specialize = true;
         slice.set(i);
@@ -145,11 +74,18 @@ namespace previrt
     return specialize;
   }
 
-  SpecializationPolicy*
-  SpecializationPolicy::aggressivePolicy()
-  {
-    return &AggressiveSpecPolicy::SINGLETON;
+  bool AggressiveSpecPolicy::specializeOn(Function* F,
+					  std::vector<PrevirtType>::const_iterator begin,
+					  std::vector<PrevirtType>::const_iterator end,
+					  SmallBitVector& slice) const {
+    bool specialize = false;
+    for (unsigned int i = 0; begin != end; ++begin, ++i) {
+      if (begin->isConcrete()) {
+        specialize = true;
+        slice.set(i);
+      }
+    }
+    return specialize;
   }
-
-  AggressiveSpecPolicy AggressiveSpecPolicy::SINGLETON;
-}
+  
+} // end namespace
