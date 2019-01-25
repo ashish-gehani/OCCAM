@@ -1,7 +1,9 @@
 #include "llvm/Pass.h"
 #include "llvm/Analysis/Passes.h"
-#include "llvm/Analysis/MemoryBuiltins.h"
 #include "llvm/Analysis/CallGraph.h"
+#include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Analysis/MemoryBuiltins.h"
+#include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/ADT/Statistic.h"
@@ -114,6 +116,8 @@ namespace previrt {
     Counter TotalDirectCalls;
     Counter TotalIndirectCalls;
     Counter TotalExternalCalls;
+    Counter TotalLoops;
+    Counter TotalBoundedLoops;
     ///
     Counter SafeIntDiv;
     Counter SafeFPDiv;
@@ -135,7 +139,19 @@ namespace previrt {
     Counter UnsafeLeftShift;
     Counter UnknownLeftShift;
 
-    void visitFunction  (Function &F) { ++TotalFuncs; }
+    void visitFunction(Function &F) {
+      if (F.isDeclaration()) return;
+      ++TotalFuncs;
+      llvm::errs() << "Function " << F.getName() << "\n";
+      LoopInfo& LI = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
+      ScalarEvolution& SE = getAnalysis<ScalarEvolutionWrapperPass>(F).getSE();      
+      for (auto L: LI ) {
+	++TotalLoops;
+	if (SE.getSmallConstantTripCount(L)) {
+	  ++TotalBoundedLoops;
+	}
+      }
+    }
     void visitBasicBlock(BasicBlock &BB) { 
       ++TotalBlocks; 
       if (!BB.getSinglePredecessor ())
@@ -151,14 +167,17 @@ namespace previrt {
           ExtFuncs.insert (callee->getName ());
         }
       }
-      else
+      else {
         ++TotalIndirectCalls;
+	llvm::errs() << "Indirect call found: " << *CS.getInstruction() << "\n";
+      }
 
       // new, malloc, calloc, realloc, and strdup.
       if (isAllocationFn (CS.getInstruction(), TLI, true)) 
         ++TotalAllocations;
     }
 
+    /* Trivial checker for memory safety */
     bool isSafeMemAccess(Value *V) {
       ObjectSizeOpts opt;      
       ObjectSizeOffsetVisitor OSOV(*DL, TLI, *Ctx, opt);
@@ -302,7 +321,9 @@ namespace previrt {
         TotalInsts ("TotalInsts","Number of instructions"),
         TotalDirectCalls ("TotalDirectCalls","Number of direct calls"),
         TotalIndirectCalls ("TotalIndirectCalls","Number of indirect calls"),	
-        TotalExternalCalls ("TotalExternalCalls","Number of external calls"), 
+        TotalExternalCalls ("TotalExternalCalls","Number of external calls"),
+	TotalLoops("TotalLoops", "Number of loops"),
+	TotalBoundedLoops("TotalBoundedLoops", "Number of bounded loops"),
         ////////
         SafeIntDiv ("SafeIntDiv","Number of safe integer div/rem"), 
         SafeFPDiv ("SafeFPDiv","Number of safe FP div/rem"), 
@@ -424,6 +445,8 @@ namespace previrt {
       AU.addRequired<llvm::CallGraphWrapperPass>();
       AU.addRequired<llvm::TargetLibraryInfoWrapperPass>();
       AU.addPreserved<CallGraphWrapperPass> ();
+      AU.addRequired<LoopInfoWrapperPass>();
+      AU.addRequired<ScalarEvolutionWrapperPass>();
     }
     
     void printCounters(raw_ostream &O) {
@@ -432,8 +455,8 @@ namespace previrt {
       { 
         O << "[CFG analysis]\n";
         std::vector<Counter> cfg_counters 
-	{TotalFuncs, TotalBlocks, TotalInsts,
-	 /*TotalJoins,*/ 
+	{TotalFuncs, TotalLoops, TotalBoundedLoops,
+	 TotalBlocks, TotalInsts,
 	 TotalDirectCalls, TotalExternalCalls, TotalIndirectCalls};
         formatCounters (cfg_counters, MaxNameLen, MaxValLen, false);
         for (auto c: cfg_counters) {
