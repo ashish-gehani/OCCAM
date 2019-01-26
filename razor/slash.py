@@ -72,6 +72,7 @@ instructions = """slash has three modes of use:
         --debug-manager=<type>     : Debug opt's pass manager (<type> should be either Structure or Details)
         --debug-pass=<tag>         : Debug opt's pass (<tag> should be the debug pragma string of the pass)
         --debug                    : Pass the debug flag into all calls to opt (too much information usually)
+        --print-after-all          : Pass the print-after-all flag into all calls to opt
         --devirt                   : Devirtualize indirect function calls
         --intra-spec-policy=<type> : Specialization policy for intramodule calls (<type> should be either none, aggressive or nonrec-aggressive)
         --inter-spec-policy=<type> : Specialization policy for intermodule calls (<type> should be either none, aggressive or nonrec-aggressive)
@@ -96,7 +97,7 @@ def entrypoint():
 
 
 def  usage(exe):
-    template = '{0} [--work-dir=<dir>]  [--force] [--help] [--stats] [--no-strip] [--verbose] [--debug-manager=] [--debug-pass=] [--debug] [--devirt] [--intra-spec-policy=<type>] [--inter-spec-policy=<type>] [--keep-external=<file>] [--llpe] [--ipdse] [--precise-dce] [--ai-invariants] <manifest>\n'
+    template = '{0} [--work-dir=<dir>]  [--force] [--help] [--stats] [--no-strip] [--verbose] [--debug-manager=] [--debug-pass=] [--debug] [--print-after-all] [--devirt] [--intra-spec-policy=<type>] [--inter-spec-policy=<type>] [--keep-external=<file>] [--llpe] [--ipdse] [--precise-dce] [--ai-invariants] <manifest>\n'
     sys.stderr.write(template.format(exe))
 
 class Slash(object):
@@ -112,6 +113,7 @@ class Slash(object):
                         'debug',
                         'debug-manager=',
                         'debug-pass=',
+                        'print-after-all',
                         'llpe',
                         'help',
                         'ipdse',
@@ -369,6 +371,7 @@ class Slash(object):
                 post = m.new('p')
                 post_base = os.path.basename(post)
                 fn = 'previrt_%s-%s' % (pre_base, post_base)
+                print "\tModule: " + str(pre) 
                 passes.peval(pre, post, \
                              intra_spec_policy, devirt, use_llpe, use_ipdse, use_ai, \
                              log=open(fn, 'w'))
@@ -409,6 +412,8 @@ class Slash(object):
 
                 rws = pool.InParallel(inter_rewrite, files.items(), self.pool)
                 progress = any(rws)
+            else:
+                print "Skipped inter-module specialization"
             
             # Aggressive internalization
             pool.InParallel(_references, vals, self.pool)
@@ -518,8 +523,7 @@ class Slash(object):
     def driver_config(self):
         debug = utils.get_flag(self.flags, 'debug', None)
         if debug is not None:
-            driver.opt_debug_cmds.append('--debug')
-
+            driver.opt_debug_cmds.append('--debug')            
 
         debug_manager = utils.get_flag(self.flags, 'debug-manager', None)
         if debug_manager is not None:
@@ -533,7 +537,10 @@ class Slash(object):
         if debug_pass is not None:
             driver.opt_debug_cmds.append('--debug-only={0}'.format(debug_pass))
 
-
+        print_after_all = utils.get_flag(self.flags, 'print-after-all', None)
+        if print_after_all is not None:
+            driver.opt_debug_cmds.append('--print-after-all')
+            
         verbose = utils.get_flag(self.flags, 'verbose', None)
         if verbose is not None:
             driver.verbose = True

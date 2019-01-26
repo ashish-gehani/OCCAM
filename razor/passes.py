@@ -252,6 +252,8 @@ def peval(input_file, output_file, policy, use_devirt, use_llpe, use_ipdse, use_
             else:
                 shutil.copy(opt.name, done.name)
                 break
+    else:
+        print "\tskipped intra-module specialization"
 
     shutil.copy(done.name, output_file)
     try:
