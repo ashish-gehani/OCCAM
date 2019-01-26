@@ -48,9 +48,10 @@ Set where system libraries, including Google Protocol Buffers, are located:
   export LD_FLAGS='-L/usr/local/lib'
 ```
 
-Build and install OCCAM with:
+Clone, build and install OCCAM with:
 
 ```
+  git clone --recurse-submodules https://github.com/SRI-CSL/OCCAM.git
   make
   make install
   make test
