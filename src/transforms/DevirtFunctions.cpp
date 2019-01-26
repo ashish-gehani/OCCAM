@@ -54,7 +54,11 @@ namespace transforms {
     }
     
     // -- no direct calls in this alias set, nothing to construct
-    if (!m_typeAliasSets.count(id)) return nullptr;
+    if (!m_typeAliasSets.count(id)) {
+      llvm::errs() << "Devirt: no function defined in the current module matches type signature of "
+		   << *CS.getInstruction() << "\n";
+      return nullptr;
+    }
     
     // -- the final targets to build the bounce function
     AliasSet Targets;
@@ -79,6 +83,8 @@ namespace transforms {
       // -- it's possible to be here if we had aliasing information
       // -- but it was not type consistent. If here, we won't able to
       // -- resolve the indirect call.
+      llvm::errs() << "Devirt: no callees after filtering out aliasing candidates with type information "
+		   << *CS.getInstruction() << "\n";
       return nullptr;
     }
 
@@ -309,7 +315,36 @@ namespace transforms {
 
   DevirtualizeFunctions::AliasSetId DevirtualizeFunctions::typeAliasId (CallSite &CS) {
     assert (isIndirectCall (CS) && "Not an indirect call");
-    PointerType *pTy = dyn_cast<PointerType> (CS.getCalledValue ()->getType ());
+    PointerType *pTy = nullptr;
+    
+    /*
+      %390 = load void (i8*, i32*, i32*, i64, i32)*, 
+                        void (i8*, i32*, i32*, i64, i32)** 
+			bitcast (i64 (i8*, i32*, i32*, i64, i32)** @listdir to 
+                                 void (i8*, i32*, i32*, i64, i32)**)
+      call void %390(i8* %385, i32* %1, i32* %2, i64 %139, i32 %26) 
+    */
+    if (LoadInst* LI = dyn_cast<LoadInst>(CS.getCalledValue())) {
+      if (Constant* C = dyn_cast<Constant>(LI->getPointerOperand())) {
+	if (ConstantExpr* CE = dyn_cast<ConstantExpr>(C)) {
+	  if (CE->getOpcode() == Instruction::BitCast) {
+	    if (PointerType *ppTy = dyn_cast<PointerType>(CE->getOperand(0)->getType())) {
+	      pTy = dyn_cast<PointerType>(ppTy->getElementType());
+	      if (pTy) {
+		assert (isa<FunctionType>(pTy->getElementType())
+			&& "The type of called value is not a pointer to a function");
+	      }
+	    }
+	  }
+	}
+      }
+    }
+
+    if (pTy) {
+      return pTy;
+    }
+    
+    pTy = dyn_cast<PointerType> (CS.getCalledValue()->getType ());
     assert (pTy && "Unexpected call not through a pointer");
     assert (isa<FunctionType> (pTy->getElementType ())
 	    && "The type of called value is not a pointer to a function");
