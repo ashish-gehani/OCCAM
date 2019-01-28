@@ -48,6 +48,11 @@ DisplayDeclarations("profile-list-declarations",
 	llvm::cl::init (false),
 	llvm::cl::Hidden);
 
+static llvm::cl::opt<bool>
+ProfileLoops("profile-loops",
+        llvm::cl::desc ("Show some stats about loops"),
+        llvm::cl::init (false));
+
 #include "llvm/IR/Instruction.def"
 
 namespace previrt {
@@ -143,12 +148,15 @@ namespace previrt {
       if (F.isDeclaration()) return;
       ++TotalFuncs;
       llvm::errs() << "Function " << F.getName() << "\n";
-      LoopInfo& LI = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
-      ScalarEvolution& SE = getAnalysis<ScalarEvolutionWrapperPass>(F).getSE();      
-      for (auto L: LI ) {
-	++TotalLoops;
-	if (SE.getSmallConstantTripCount(L)) {
-	  ++TotalBoundedLoops;
+
+      if (ProfileLoops) {
+	LoopInfo& LI = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
+	ScalarEvolution& SE = getAnalysis<ScalarEvolutionWrapperPass>(F).getSE();      
+	for (auto L: LI ) {
+	  ++TotalLoops;
+	  if (SE.getSmallConstantTripCount(L)) {
+	    ++TotalBoundedLoops;
+	  }
 	}
       }
     }
@@ -445,8 +453,10 @@ namespace previrt {
       AU.addRequired<llvm::CallGraphWrapperPass>();
       AU.addRequired<llvm::TargetLibraryInfoWrapperPass>();
       AU.addPreserved<CallGraphWrapperPass> ();
-      AU.addRequired<LoopInfoWrapperPass>();
-      AU.addRequired<ScalarEvolutionWrapperPass>();
+      if (ProfileLoops) {
+	AU.addRequired<LoopInfoWrapperPass>();
+	AU.addRequired<ScalarEvolutionWrapperPass>();
+      }
     }
     
     void printCounters(raw_ostream &O) {
@@ -454,10 +464,17 @@ namespace previrt {
 
       { 
         O << "[CFG analysis]\n";
+	
         std::vector<Counter> cfg_counters 
-	{TotalFuncs, TotalLoops, TotalBoundedLoops,
+	{TotalFuncs, 
 	 TotalBlocks, TotalInsts,
 	 TotalDirectCalls, TotalExternalCalls, TotalIndirectCalls};
+
+	if (ProfileLoops) {
+	  cfg_counters.push_back(TotalLoops);
+	  cfg_counters.push_back(TotalBoundedLoops);
+	}
+	
         formatCounters (cfg_counters, MaxNameLen, MaxValLen, false);
         for (auto c: cfg_counters) {
           O << format("%*u %-*s\n",
