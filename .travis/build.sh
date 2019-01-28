@@ -8,7 +8,7 @@ mkdir -p travis_build/Repositories
 #now set up the environment
 . ${BUILD_HOME}/.travis/bash_profile
 
-echo which gclang
+echo `which gclang`
 
 cd ${BUILD_HOME}
 make
