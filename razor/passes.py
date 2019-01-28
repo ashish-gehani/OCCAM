@@ -94,8 +94,9 @@ def strip(input_file, output_file):
 def devirt(input_file, output_file):
     """ resolve indirect function calls
     """
-    args = ['-devirt-functions-aliasing',
-            '-inline']
+    args = ['-Pdevirt-functions',
+            #'-inline'
+    ]
     retcode = driver.previrt_progress(input_file, output_file, args)
     if retcode != 0:
         return retcode
