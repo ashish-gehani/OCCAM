@@ -23,7 +23,7 @@ before_install:
  - echo "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main" | sudo tee -a /etc/apt/sources.list
  - echo "deb-src http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main" | sudo tee -a /etc/apt/sources.list
  - sudo apt-get update -qq
- - sudo apt-get install clang-5.0 
+ - sudo apt-get install clang-5.0
 
 #dependencies
 #
@@ -38,14 +38,17 @@ install:
   - sudo apt-get install -y libboost1.55-all-dev
   - sudo apt-get install -y wget libprotobuf-dev python-protobuf protobuf-compiler
 # gotta work harder for these at the moment. see the before_script above.
-  - sudo apt-get install -y git 
-  - sudo apt-get install -y llvm-5.0   
+  - sudo apt-get install -y git
+  - sudo apt-get install -y llvm-5.0
   - sudo apt-get install -y python-pip
   - pip --version
   - pip install setuptools --upgrade
   - pip install wheel
   - pip install protobuf
   - pip install lit
+  # go for gllvm
+  - sudo apt-get install golang-go
+  - go get github.com/SRI-CSL/gllvm/cmd/...
   #ian's great mystery: this fails if the language is python, but works fine if the language is C Go figure....
   # - pip install -r requirements.txt
   # but this seems to work. Bizarre
