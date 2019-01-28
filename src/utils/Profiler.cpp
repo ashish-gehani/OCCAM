@@ -53,6 +53,11 @@ ProfileLoops("profile-loops",
         llvm::cl::desc ("Show some stats about loops"),
         llvm::cl::init (false));
 
+static llvm::cl::opt<bool>
+ProfileSafePointers("profile-safe-pointers",
+        llvm::cl::desc ("Show whether a pointer access is statically safe or not"),
+        llvm::cl::init (false));
+
 #include "llvm/IR/Instruction.def"
 
 namespace previrt {
@@ -199,7 +204,7 @@ namespace previrt {
     }
     
     void processPtrOperand (Value* V) {
-      if (isSafeMemAccess(V)) {
+      if (ProfileSafePointers && isSafeMemAccess(V)) {
 	++SafeMemAccess;
       } else {
 	++MemUnknown;
@@ -207,14 +212,16 @@ namespace previrt {
     }
 
     void processMemoryIntrinsicsPtrOperand (Value* V, Value*N) {
-      if (ConstantInt *CI = dyn_cast<ConstantInt> (N)) {
-	int64_t n = CI->getSExtValue();
-	uint64_t size;
-	ObjectSizeOpts opt;      
-	if (getObjectSize (V, size, *DL, TLI, opt)) {
-	  if (n >= 0 && ((uint64_t) n < size)) {
-	    ++SafeMemAccess;
+      if (ProfileSafePointers) {
+	if (ConstantInt *CI = dyn_cast<ConstantInt> (N)) {
+	  int64_t n = CI->getSExtValue();
+	  uint64_t size;
+	  ObjectSizeOpts opt;      
+	  if (getObjectSize (V, size, *DL, TLI, opt)) {
+	    if (n >= 0 && ((uint64_t) n < size)) {
+	      ++SafeMemAccess;
 	    return;
+	    }
 	  }
 	}
       }
