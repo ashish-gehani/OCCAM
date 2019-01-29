@@ -106,7 +106,7 @@ public:
   using AliasSetId = CallSiteResolverByTypes::AliasSetId;  
   using AliasSet = CallSiteResolverByTypes::AliasSet;
   
-  CallSiteResolverByDsa(llvm::Module& M, Dsa& dsa);
+  CallSiteResolverByDsa(llvm::Module& M, Dsa& dsa, bool incomplete, unsigned max_num_targets);
     
   ~CallSiteResolverByDsa();
   
@@ -124,6 +124,11 @@ private:
   llvm::Module& m_M;
   // -- the pointer analysis to resolve function pointers
   Dsa& m_dsa;
+  // -- Resolve incomplete nodes (unsound, in general)
+  bool m_allow_incomplete;
+  // -- Maximum number of targets (used to avoid having too large
+  // -- bounce functions). if equal to 0 then unlimited.
+  unsigned m_max_num_targets;
   // -- map from callsite to the corresponding alias set
   TargetsMap m_targets_map;  
   // -- map from alias set id + dsa targets to an existing bounce function

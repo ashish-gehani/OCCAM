@@ -94,14 +94,15 @@ def strip(input_file, output_file):
 def devirt(input_file, output_file):
     """ resolve indirect function calls
     """
-    args = ['-Pdevirt-functions',
-            #'-inline'
+    args = ['-Pdevirt'
+            , '-Presolve-incomplete-calls=true'
+            #, '-Pmax-num-targets=15'
     ]
     retcode = driver.previrt_progress(input_file, output_file, args)
     if retcode != 0:
         return retcode
 
-    #FIXME: previrt_progress returns 0 in cases where --devirt-functions-aliasing may crash.
+    #FIXME: previrt_progress returns 0 in cases where --Pdevirt may crash.
     #Here we check that the output_file exists
     if not os.path.isfile(output_file):
         #Some return code different from zero
@@ -113,6 +114,8 @@ def profile(input_file, output_file):
     """ count number of instructions, functions, memory accesses, etc.
     """
     args = ['-Pprofiler']
+    args += ['-profile-loops',
+             '-profile-safe-pointers']
     args += ['-profile-outfile={0}'.format(output_file)]
     return driver.previrt(input_file, '/dev/null', args)
 
@@ -161,7 +164,7 @@ def peval(input_file, output_file, policy, use_devirt, use_llpe, use_ipdse, use_
     # optional pass. Otherwise, these passes will not be very effective.
     retcode = _optimize(input_file, done.name)
     if retcode != 0: return retcode
-    
+
     if use_devirt is not None:
         retcode = devirt(done.name, tmp.name)
         if retcode != 0:
@@ -172,6 +175,26 @@ def peval(input_file, output_file, policy, use_devirt, use_llpe, use_ipdse, use_
         sys.stderr.write("\tresolved indirect calls finished succesfully\n")
         shutil.copy(tmp.name, done.name)
 
+    # # We schedule devirt before opt. 
+    # if use_devirt is not None:
+    #     retcode = devirt(input_file, tmp.name)
+    #     if retcode != 0:
+    #         sys.stderr.write("ERROR: resolution of indirect calls failed!\n")
+    #         shutil.copy(input_file, output_file)
+    #         return retcode
+
+    #     sys.stderr.write("\tresolved indirect calls finished succesfully\n")
+        
+    #     retcode = _optimize(tmp.name, done.name)
+    #     if retcode != 0:
+    #         sys.stderr.write("ERROR: opt failed!\n")
+    #         shutil.copy(tmp.name, output_file)
+    #         return retcode
+    # else:
+    #     retcode = _optimize(input_file, done.name)
+    #     if retcode != 0:
+    #         return retcode
+        
     if use_llpe is not None:
         llpe_libs = []
         for lib in config.get_llpelibs():

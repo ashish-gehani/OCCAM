@@ -357,10 +357,13 @@ class Slash(object):
 
         write_timestamp("Started global fixpoint ...")
         iteration = 0
+        max_fixpoint_iterations = 10 ## make this user parameter
         while progress:
-            ## FIXME run this loop while progress and iteration < THRESHOLD.
-            ## The threshold should be selected by the user.
             iteration += 1
+            if iteration > max_fixpoint_iterations:
+                sys.stderr.write('Fixpoint took more than ' + str(max_fixpoint_iterations) + ". " + \
+                                 'Stopping fixpoint.')
+                break
             progress = False
 
             # Intra-module partial evaluation and debloating
@@ -371,7 +374,7 @@ class Slash(object):
                 post = m.new('p')
                 post_base = os.path.basename(post)
                 fn = 'previrt_%s-%s' % (pre_base, post_base)
-                print "\tModule: " + str(pre) 
+                print "\tModule: " + str(pre)
                 passes.peval(pre, post, \
                              intra_spec_policy, devirt, use_llpe, use_ipdse, use_ai, \
                              log=open(fn, 'w'))

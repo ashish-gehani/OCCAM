@@ -8,8 +8,8 @@
 
 using namespace llvm;
 
-//#define DEVIRT_LOG(...) __VA_ARGS__
-#define DEVIRT_LOG(...)
+#define DEVIRT_LOG(...) __VA_ARGS__
+//#define DEVIRT_LOG(...)
 
 namespace previrt {
 namespace transforms {
@@ -181,10 +181,12 @@ namespace transforms {
   }
   
   template<typename Dsa>
-  CallSiteResolverByDsa<Dsa>::CallSiteResolverByDsa(Module& M, Dsa& dsa)
+  CallSiteResolverByDsa<Dsa>::CallSiteResolverByDsa(Module& M, Dsa& dsa, bool incomplete, unsigned max_num_targets)
     : CallSiteResolverByTypes(M)
     , m_M(M)
-    , m_dsa(dsa) {
+    , m_dsa(dsa)
+    , m_allow_incomplete(incomplete)
+    , m_max_num_targets(max_num_targets) {
     
     CallSiteResolver::m_kind = RESOLVER_DSA;
     
@@ -214,7 +216,7 @@ namespace transforms {
 	    CallSite CS(CI);
 	    if (isIndirectCall(CS)) {
 	      num_indirect_calls++;
-	      if (m_dsa.isComplete(CS)) {
+	      if (m_allow_incomplete || m_dsa.isComplete(CS)) {
 		num_complete_calls++;
 		AliasSet dsa_targets;
 		dsa_targets.append(m_dsa.begin(CS), m_dsa.end(CS));
@@ -248,17 +250,31 @@ namespace transforms {
 					std::back_inserter(refined_dsa_targets));
 		  if (refined_dsa_targets.empty()) {
 		    errs() << "WARNING Devirt (dsa): cannot resolve " << *(CS.getInstruction())
-			   << " after refining dsa targets with type signatures\n";
+			   << " after refining dsa targets with calsite type\n";
 		  } else {
-		    num_resolved_calls++;
-		    m_targets_map.insert({CS.getInstruction(), refined_dsa_targets});
+		    if (refined_dsa_targets.size() <= m_max_num_targets) {
+		      num_resolved_calls++;
+		      m_targets_map.insert({CS.getInstruction(), refined_dsa_targets});
+		    } else {
+		      errs() << "WARNING Devirt (dsa): unresolve " << *(CS.getInstruction())
+			     << " because the number of targets is greater than "
+			     << m_max_num_targets << "\n";
+		    } 
 		  }
 		} else {
-		  llvm_unreachable(nullptr);
+		  errs() << "WARNING Devirt (dsa): cannot resolve " << *(CS.getInstruction())
+			 << " because there is no internal function with same callsite type\n";
 		}
 	      } else {
 		errs() << "WARNING Devirt (dsa): cannot resolve " << *(CS.getInstruction())
 		       << " because the corresponding dsa node is not complete\n";
+		
+		DEVIRT_LOG(AliasSet targets;
+			   targets.append(m_dsa.begin(CS), m_dsa.end(CS));
+			   errs() << "Dsa-based targets: \n";
+			   for(auto F: targets) {
+			     errs() << "\t" << F->getName() << "::" << *(F->getType()) << "\n";
+			   };)
 	      }
 	    }
 	  }
