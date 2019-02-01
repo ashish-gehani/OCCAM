@@ -102,7 +102,7 @@ def previrt_progress(fin, fout, args, output=None):
 
     progress = str(sb)
 
-    logging.getLogger().info('%(cmd)s => %(code)d\n%(progress)s',
+    logging.getLogger().info('%(cmd)s => %(code)d\n',
                              {'cmd'  : ' '.join(args),
                               'code' : retcode,
                               'progress' : progress})
