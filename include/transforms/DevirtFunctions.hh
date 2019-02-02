@@ -18,6 +18,11 @@ class CallGraph;
 } // namespace llvm
 
 namespace previrt {
+
+namespace analysis {
+  class ClassHierarchyAnalysis;
+}
+    
 namespace transforms {
 
 namespace devirt_impl {
@@ -34,6 +39,7 @@ AliasSetId typeAliasId(llvm::CallSite &CS);
 enum CallSiteResolverKind {
    RESOLVER_TYPES
  , RESOLVER_DSA
+ , RESOLVER_CHA   
 };
 
 /*
@@ -53,7 +59,7 @@ public:
   CallSiteResolverKind get_kind() const { return m_kind; }
 
   /* return all possible targets for CS */
-  virtual const AliasSet* getTargets(llvm::CallSite &CSt) = 0;
+  virtual const AliasSet* getTargets(llvm::CallSite &CS) = 0;
 
   /* for reusing bounce functions */
   virtual llvm::Function* getBounceFunction(llvm::CallSite &CS) = 0;
@@ -135,6 +141,38 @@ private:
   BounceMap m_bounce_map;  
 };
 
+
+/*
+ * Resolve indirect call by using Class Hierarchy Analysis for C++
+ */
+class CallSiteResolverByCHA final: public CallSiteResolverByTypes {
+public:
+  using AliasSetId = CallSiteResolverByTypes::AliasSetId;  
+  using AliasSet = CallSiteResolverByTypes::AliasSet;
+  
+  CallSiteResolverByCHA(llvm::Module& M);
+    
+  ~CallSiteResolverByCHA();
+  
+  const AliasSet* getTargets(llvm::CallSite &CS);
+
+  llvm::Function* getBounceFunction(llvm::CallSite& CS);
+  
+  void cacheBounceFunction(llvm::CallSite&CS, llvm::Function* bounceFunction);  
+			   
+private:
+  /* invariant: the value in TargetsMap's entries is sorted */  
+  using TargetsMap = llvm::DenseMap<llvm::Instruction*, AliasSet>;
+  using BounceMap = std::multimap<AliasSetId, std::pair<const AliasSet*, llvm::Function *>>;
+  
+  // -- the CHA 
+  std::unique_ptr<analysis::ClassHierarchyAnalysis> m_cha;
+  // -- map from callsite to the corresponding alias set
+  TargetsMap m_targets_map;  
+  // -- map from alias set id + cha targets to an existing bounce function
+  BounceMap m_bounce_map;  
+};
+  
 //
 // Class: DevirtualizeFunctions
 //

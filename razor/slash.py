@@ -73,7 +73,7 @@ instructions = """slash has three modes of use:
         --debug-pass=<tag>         : Debug opt's pass (<tag> should be the debug pragma string of the pass)
         --debug                    : Pass the debug flag into all calls to opt (too much information usually)
         --print-after-all          : Pass the print-after-all flag into all calls to opt
-        --devirt                   : Devirtualize indirect function calls
+        --devirt=<type>            : Devirtualize indirect function calls (<type> should be either none, dsa or cha_dsa)
         --intra-spec-policy=<type> : Specialization policy for intramodule calls (<type> should be either none, aggressive or nonrec-aggressive)
         --inter-spec-policy=<type> : Specialization policy for intermodule calls (<type> should be either none, aggressive or nonrec-aggressive)
         --keep-external=<file>     : Pass a list of function names that should remain external.
@@ -97,7 +97,7 @@ def entrypoint():
 
 
 def  usage(exe):
-    template = '{0} [--work-dir=<dir>]  [--force] [--help] [--stats] [--no-strip] [--verbose] [--debug-manager=] [--debug-pass=] [--debug] [--print-after-all] [--devirt] [--intra-spec-policy=<type>] [--inter-spec-policy=<type>] [--keep-external=<file>] [--llpe] [--ipdse] [--precise-dce] [--ai-invariants] <manifest>\n'
+    template = '{0} [--work-dir=<dir>]  [--force] [--help] [--stats] [--no-strip] [--verbose] [--debug-manager=] [--debug-pass=] [--debug] [--print-after-all] [--devirt=<type>] [--intra-spec-policy=<type>] [--inter-spec-policy=<type>] [--keep-external=<file>] [--llpe] [--ipdse] [--precise-dce] [--ai-invariants] <manifest>\n'
     sys.stderr.write(template.format(exe))
 
 class Slash(object):
@@ -109,7 +109,7 @@ class Slash(object):
             cmdflags = ['work-dir=',
                         'force',
                         'no-strip',
-                        'devirt',
+                        'devirt=',
                         'debug',
                         'debug-manager=',
                         'debug-pass=',
@@ -185,7 +185,20 @@ class Slash(object):
                 return False
             else:
                 return True
+
+        def check_devirt_method(method):
+            """ Supported methods: none, dsa, cha_dsa """
+            
+            if method <> 'none' and \
+               method <> 'dsa' and \
+               method <> 'cha_dsa':
+                sys.stderr.write('Error: unsupported devirtualization method. ' + \
+                                 'Valid methods: none, dsa, cha_dsa')
+                return False
+            else:
+                return True
                 
+            
         parsed = utils.check_manifest(self.manifest)
 
         valid = parsed[0]
@@ -200,8 +213,6 @@ class Slash(object):
             return 1
 
         no_strip = utils.get_flag(self.flags, 'no-strip', None)
-
-        devirt = utils.get_flag(self.flags, 'devirt', None)
 
         use_llpe = utils.get_flag(self.flags, 'llpe', None)
 
@@ -223,6 +234,10 @@ class Slash(object):
         
         inter_spec_policy = utils.get_flag(self.flags, 'inter-spec-policy', 'nonrec-aggressive')
         if not check_spec_policy(inter_spec_policy):
+            return 1
+
+        devirt = utils.get_flag(self.flags, 'devirt', 'none')
+        if not check_devirt_method(devirt):
             return 1
         
         sys.stderr.write('\nslash working on {0} wrt {1} ...\n'.format(module, ' '.join(libs)))

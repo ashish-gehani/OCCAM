@@ -1,10 +1,11 @@
 #include "transforms/DevirtFunctions.hh"
+#include "analysis/ClassHierarchyAnalysis.hh"
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Analysis/CallGraph.h"
 
-#include<set>
-#include<algorithm>
+#include <set>
+#include <algorithm>
 
 using namespace llvm;
 
@@ -160,8 +161,8 @@ namespace transforms {
     if (it != m_targets_map.end()) {
       return &(it->second);
     }
-    errs() << "WARNING Devirt (types): cannot resolved " << CS.getInstruction()
-	   << " because no functions found in the module with same signature\n";
+    // errs() << "WARNING Devirt (types): cannot resolved " << CS.getInstruction()
+    // 	   << " because no functions found in the module with same signature\n";
     return nullptr;
   }
 
@@ -229,7 +230,7 @@ namespace transforms {
 		FunctionCompare cmp;
 		std::sort(dsa_targets.begin(), dsa_targets.end(), cmp);
 		
-		DEVIRT_LOG(errs() << "Dsa-based targets: \n";
+		DEVIRT_LOG(errs() << "\nDsa-based targets: \n";
 			   for(auto F: dsa_targets) {
 			     errs() << "\t" << F->getName() << "::" << *(F->getType()) << "\n";
 			   });
@@ -255,6 +256,11 @@ namespace transforms {
 		    if (refined_dsa_targets.size() <= m_max_num_targets) {
 		      num_resolved_calls++;
 		      m_targets_map.insert({CS.getInstruction(), refined_dsa_targets});
+		      DEVIRT_LOG(errs() << "Devirt (dsa) resolved " << *(CS.getInstruction())
+				        << " with targets=";
+				 for(auto F: refined_dsa_targets) {
+				   errs() << "\t" << F->getName() << "::" << *(F->getType()) << "\n";				   
+				 });
 		    } else {
 		      errs() << "WARNING Devirt (dsa): unresolve " << *(CS.getInstruction())
 			     << " because the number of targets is greater than "
@@ -328,7 +334,78 @@ namespace transforms {
     }
       
   }
+
+
+  CallSiteResolverByCHA::CallSiteResolverByCHA(Module& M)
+    : CallSiteResolverByTypes(M)
+    , m_cha(make_unique<analysis::ClassHierarchyAnalysis>(M)) {
+    CallSiteResolver::m_kind = RESOLVER_CHA;
+    m_cha->calculate();
+    DEVIRT_LOG(errs() << "Results of the Class Hierarchy Analysis\n";
+	       m_cha->printStats(errs()););
+  }
+
+  CallSiteResolverByCHA::~CallSiteResolverByCHA(){
+    m_targets_map.clear();    
+    m_bounce_map.clear();
+  }
+  
+  const typename CallSiteResolverByCHA::AliasSet*
+  CallSiteResolverByCHA::getTargets(CallSite& CS) {
+    auto it = m_targets_map.find(CS.getInstruction());
+    if (it != m_targets_map.end()) {
+      return &(it->second);
+    } else {
+      AliasSet out;
+      if (m_cha->resolveVirtualCall(CS, out)) {
+	if (out.empty()) {
+	  // This can print too much noise if the program has very few
+	  // virtual calls.	  
+	  errs() << "WARNING Devirt (cha): cannot resolve "
+		 << *(CS.getInstruction()) << "\n";
+	} else {
+	  DEVIRT_LOG(errs() << "Devirt (cha): resolved " << *(CS.getInstruction())
+		            << " with targets=\n";
+		     for (auto F: out) {
+		       errs() << "\t" << F->getName() << "::" << *(F->getType()) << "\n";
+		     });
+	  m_targets_map.insert({CS.getInstruction(), out});
+	}
+      } else {
+	// This can print too much noise if the program has very few
+	// virtual calls.
+	errs() << "WARNING Devirt (cha): cannot resolve "
+	       << *(CS.getInstruction()) << "\n";
+      }
+    }
+    return nullptr;
+  }
+  
+  Function* CallSiteResolverByCHA::getBounceFunction(CallSite&CS) {
+    AliasSetId id = devirt_impl::typeAliasId(CS, false);
+    auto it = m_bounce_map.find(id);
+    if (it != m_bounce_map.end()) {
+      const AliasSet* cachedTargets = it->second.first;
+      const AliasSet* Targets = getTargets(CS);
+      if (cachedTargets && Targets) {
+	if (std::equal(cachedTargets->begin(), cachedTargets->end(),
+		       Targets->begin())) {
+	  return it->second.second;
+	}
+      }
+    }
+    return nullptr;
+  }
+  
+  void CallSiteResolverByCHA::cacheBounceFunction(CallSite& CS, Function* bounce) {
+    if (const AliasSet* targets = getTargets(CS)) {
+      AliasSetId id = devirt_impl::typeAliasId(CS, false);      
+      m_bounce_map.insert({id, {targets, bounce}});
+    }
       
+  }
+      
+  
   /***
    * End specific callsites resolver
    ***/
@@ -342,13 +419,13 @@ namespace transforms {
 
   Function* DevirtualizeFunctions::mkBounceFn(CallSite &CS, CallSiteResolver* CSR) {
     assert (isIndirectCall (CS) && "Not an indirect call");
-      
+
     if (Function* bounce = CSR->getBounceFunction(CS)) {
       DEVIRT_LOG(errs() << "Reusing bounce function for " << *(CS.getInstruction()) 
 		 << "\n\t" << bounce->getName() << "::" << *(bounce->getType()) << "\n";);
       return bounce;
     }
-
+    
     const AliasSet* Targets = CSR->getTargets(CS);
     if (!Targets || Targets->empty()) {
       return nullptr;
@@ -574,7 +651,9 @@ namespace transforms {
     // -- Now go through and transform all of the indirect calls that
     // -- we found that need transforming.
     bool Changed = !m_worklist.empty ();
-    for (auto I : m_worklist) {
+    while (!m_worklist.empty()) {
+      auto I = m_worklist.back();
+      m_worklist.pop_back();
       CallSite CS(I);
       mkDirectCall(CS, CSR);
     }
