@@ -90,7 +90,7 @@ EOF
     echo "Running httpd with dynamic libraries apr-1, aprutil-1 and pcre"
     echo "slash options ${SLASH_OPTS}"
     echo "============================================================"
-    slash ${SLASH_OPTS} --stats --devirt --work-dir=slash httpd.manifest
+    slash ${SLASH_OPTS} --stats --devirt=dsa --work-dir=slash httpd.manifest
 
     status=$?
     if [ $status -ne 0 ]
@@ -126,7 +126,7 @@ EOF
     echo "Running httpd with apr-1, aprutil-1 and pcre statically linked"
     echo "slash options ${SLASH_OPTS}"
     echo "============================================================"
-    slash ${SLASH_OPTS} --work-dir=linked_slash --stats --devirt linked_httpd.manifest
+    slash ${SLASH_OPTS} --work-dir=linked_slash --stats --devirt=dsa linked_httpd.manifest
     status=$?
     if [ $status -ne 0 ]
     then

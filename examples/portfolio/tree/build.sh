@@ -67,7 +67,7 @@ echo "============================================================"
 echo "Running with options ${SLASH_OPTS}"
 echo "============================================================"
 slash ${SLASH_OPTS}  \
-      --no-strip --stats --devirt --work-dir=slash tree.manifest.constraints
+      --no-strip --stats --devirt=dsa --work-dir=slash tree.manifest.constraints
 
 status=$?
 if [ $status -eq 0 ]

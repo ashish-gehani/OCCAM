@@ -65,7 +65,7 @@ echo "============================================================"
 echo "Running readelf without libraries"
 echo "slash options ${SLASH_OPTS}"
 echo "============================================================"
-slash ${SLASH_OPTS} --no-strip --stats --devirt --work-dir=slash ${MANIFEST}
+slash ${SLASH_OPTS} --no-strip --stats --devirt=dsa --work-dir=slash ${MANIFEST}
 status=$?
 if [ $status -eq 0 ]
 then

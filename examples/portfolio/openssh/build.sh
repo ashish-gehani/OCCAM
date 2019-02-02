@@ -98,7 +98,7 @@ EOF
     echo "Running httpd with dynamic libraries crypto, z"
     echo "slash options ${SLASH_OPTS}"
     echo "============================================================"
-    slash ${SLASH_OPTS} --stats --devirt --work-dir=slash ssh.manifest
+    slash ${SLASH_OPTS} --stats --devirt=dsa --work-dir=slash ssh.manifest
     status=$?
     if [ $status -ne 0 ]
     then
@@ -129,7 +129,7 @@ EOF
     echo "Running httpd with libraries crypto, z statically linked"
     echo "slash options ${SLASH_OPTS}"
     echo "============================================================"
-    slash ${SLASH_OPTS} --stats --devirt --work-dir=slash linked_ssh.manifest
+    slash ${SLASH_OPTS} --stats --devirt=dsa --work-dir=slash linked_ssh.manifest
     status=$?
     if [ $status -ne 0 ]
     then

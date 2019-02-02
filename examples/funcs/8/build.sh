@@ -21,7 +21,7 @@ cat > multiple.manifest <<EOF
 }
 EOF
 
-slash --no-strip --devirt --work-dir=slash multiple.manifest
+slash --no-strip --devirt=dsa --work-dir=slash multiple.manifest
 
 
 ### NO LIBRARY
@@ -39,7 +39,7 @@ cat > multiple.manifest <<EOF
 }
 EOF
 
-slash --no-strip --devirt --work-dir=slash multiple.manifest
+slash --no-strip --devirt=dsa --work-dir=slash multiple.manifest
 
 
 #debugging stuff below:

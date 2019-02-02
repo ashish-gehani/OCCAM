@@ -32,7 +32,7 @@ export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
 export PATH=${LLVM_HOME}/bin:${PATH}
 
-slash --devirt --work-dir=slash multiple.manifest
+slash --devirt=dsa --work-dir=slash multiple.manifest
 
 cp slash/main main_slash
 

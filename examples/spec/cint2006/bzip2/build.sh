@@ -76,6 +76,6 @@ echo "============================================================"
 echo "Running with options ${SLASH_OPTS}"
 echo "============================================================"
 slash ${SLASH_OPTS}  \
-      --no-strip --stats --devirt --work-dir=slash  bzip2.manifest
+      --no-strip --stats --devirt=dsa --work-dir=slash  bzip2.manifest
 
 cp ./slash/bzip2_slashed .
