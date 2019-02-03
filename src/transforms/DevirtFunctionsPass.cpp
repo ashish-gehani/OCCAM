@@ -3,107 +3,79 @@
  **/
 
 #include "transforms/DevirtFunctions.hh"
-#include "dsa/CallTargets.h"
 #include "llvm/Pass.h"
+//#include "llvm/Analysis/CallGraph.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
+// llvm-dsa 
+#include "dsa/CallTargets.h"
 
-using namespace llvm;
+
+static llvm::cl::opt<bool>
+PAllowIndirectCalls("Pallow-indirect-calls",
+		    llvm::cl::desc("Allow creation of indirect calls "
+				   "during devirtualization "
+				   "(required for soundness)"),
+		    llvm::cl::init(false));
+
+static llvm::cl::opt<bool>
+PResolveIncompleteCalls("Presolve-incomplete-calls",
+		       llvm::cl::desc("Resolve indirect calls that might still require "
+				      "reasoning about other modules"
+				      "(required for soundness)"),
+		       llvm::cl::init(false));
+
+static llvm::cl::opt<unsigned>
+PMaxNumTargets("Pmax-num-targets",
+	       llvm::cl::desc("Do not resolve if number of targets is greater than this number."),
+	       llvm::cl::init(9999));
+
+static llvm::cl::opt<bool>
+PResolveCallsByCHA("Pdevirt-with-cha",
+		   llvm::cl::desc("Resolve virtual calls by using CHA "
+				  "(useful for C++ programs)"),
+		   llvm::cl::init(false));
 
 namespace previrt {
 namespace transforms {  
 
-  /* Resolver indirect calls using aliasing and types */
-  class DevirtualizeFunctionsDsaPass:  public ModulePass {
-    bool m_allowIndirectCalls;
-
-    class DsaResolver: public CallSiteResolver {
-      dsa::CallTargetFinder<EQTDDataStructures>* m_CTF;
-      TargetMap m_TM;
-
-      bool isIndirectCall(CallSite &CS) {
-	Value *v = CS.getCalledValue ();
-	if (!v) return false;
-	v = v->stripPointerCasts ();
-	return !isa<Function> (v);
-      }
-      
-    public:
-      
-      DsaResolver(dsa::CallTargetFinder<EQTDDataStructures>* CTF, Module& M)
-	: CallSiteResolver()
-	, m_CTF(CTF) {
-
-	// build the target map
-	for (auto &F: M) {
-	  for (auto &BB: F) {
-	    for (auto &I: BB) {
-	      Instruction *CI= nullptr;
-	      if (isa<CallInst>(&I)) {
-		CI = &I;
-	      }
-	      if (!CI && isa<InvokeInst>(&I)) {
-		CI = &I;
-	      }
-	      if (CI) {
-		CallSite CS(CI);
-		if (isIndirectCall(CS)) {
-		  if (m_CTF->isComplete(CS)) {
-		    m_TM[CI].append(CTF->begin(CS), CTF->end(CS));
-		  } 
-		}
-	      }
-	    }
-	  }
-	}
-      }
+  using namespace llvm;
   
-      bool useAliasing() const {
-	return true;
-      }
-      
-      bool hasTargets(const llvm::Instruction* CS) const {
-	return (m_TM.find(CS) != m_TM.end());
-      }
-      
-      AliasSet& getTargets(const llvm::Instruction* CS) {
-	assert(hasTargets(CS));
-	auto it = m_TM.find(CS);
-	return it->second;
-      }
-      
-      const AliasSet& getTargets(const llvm::Instruction* CS) const {
-	assert(hasTargets(CS));
-	auto it = m_TM.find(CS);
-	return it->second;
-      }
-    };
-    
+  class DevirtualizeFunctionsDsaPass:  public ModulePass {
   public:
     
     static char ID;
     
-    DevirtualizeFunctionsDsaPass(bool allowIndirectCalls = false)
-      : ModulePass(ID)
-      , m_allowIndirectCalls(allowIndirectCalls) {}
+    DevirtualizeFunctionsDsaPass()
+      : ModulePass(ID) {}
     
-    virtual bool runOnModule(Module & M) override {
+    virtual bool runOnModule(Module& M) override {
       // -- Get the call graph
-      CallGraph* CG = &(getAnalysis<CallGraphWrapperPass> ().getCallGraph ());
-      
+      //CallGraph* CG = &(getAnalysis<CallGraphWrapperPass> ().getCallGraph ());
+       
       // -- Access to analysis pass which finds targets of indirect function calls
-      dsa::CallTargetFinder<EQTDDataStructures> *CTF =
-	&getAnalysis<dsa::CallTargetFinder<EQTDDataStructures>>();
+      LlvmDsaResolver* CTF = &getAnalysis<LlvmDsaResolver>();
+      DevirtualizeFunctions DF(/*CG*/ nullptr, PAllowIndirectCalls);
+
+      CallSiteResolver* CSR = nullptr;
+      bool res = false;
       
-      DevirtualizeFunctions DF(CG, m_allowIndirectCalls);
-      CallSiteResolver* CSR = new DsaResolver(CTF, M);  
-      bool res = DF.resolveCallSites(M, CSR);
-      delete CSR;
+      if (PResolveCallsByCHA) {
+	CallSiteResolverByCHA csr_cha(M);
+	CSR = &csr_cha;
+	res |= DF.resolveCallSites(M, CSR);
+      }
+
+      CallSiteResolverByDsa<LlvmDsaResolver> csr_dsa(M, *CTF,
+      						     PResolveIncompleteCalls, PMaxNumTargets);
+      CSR = &csr_dsa;
+      res |= DF.resolveCallSites(M, CSR);
       return res;
     }
     
     virtual void getAnalysisUsage(AnalysisUsage &AU) const override {
-      AU.addRequired<CallGraphWrapperPass>();
-      AU.addRequired<dsa::CallTargetFinder<EQTDDataStructures>>();
+      //AU.addRequired<CallGraphWrapperPass>();
+      AU.addRequired<LlvmDsaResolver>();
       // FIXME: DevirtualizeFunctions does not fully update the call
       // graph so we don't claim it's preserved.
       // AU.setPreservesAll();
@@ -111,8 +83,11 @@ namespace transforms {
     }
     
     virtual StringRef getPassName() const override {
-      return "Devirtualize indirect calls using aliasing and types";
+      return "Devirtualize indirect calls";
     }
+    
+  private:
+    using LlvmDsaResolver = dsa::CallTargetFinder<EQTDDataStructures>;
   };
   
   char DevirtualizeFunctionsDsaPass::ID = 0;
@@ -120,6 +95,6 @@ namespace transforms {
 } // end namespace
 
 static RegisterPass<previrt::transforms::DevirtualizeFunctionsDsaPass>
-X("devirt-functions-aliasing",
-  "Devirtualize indirect function calls using aliasing and types");
+X("Pdevirt",
+  "Devirtualize indirect function calls");
 

@@ -1,14 +1,81 @@
 #!/usr/bin/env bash
 
+# Make sure we exit if there is a failure
+set -e
+
 #FIXME avoid rebuilding.
 #make
+function usage() {
+    echo "Usage: build.sh [--inter-spec VAL] [--intra-spec VAL] [--link dynamic|static] [--help]"
+    echo "       VAL=none|aggressive|nonrec-aggressive"
+}
 
-export OCCAM_LOGLEVEL=INFO
-export OCCAM_LOGFILE=${PWD}/slash/occam.log
+#default values
+LINK="dynamic"
+INTER_SPEC="none"
+INTRA_SPEC="none"
+
+POSITIONAL=()
+while [[ $# -gt 0 ]]
+do
+key="$1"
+case $key in
+    -link|--link)
+	LINK="$2"
+	shift # past argument
+	shift # past value
+	;;    
+    -inter-spec|--inter-spec)
+	INTER_SPEC="$2"
+	shift # past argument
+	shift # past value
+	;;
+    -intra-spec|--intra-spec)
+	INTRA_SPEC="$2"
+	shift # past argument
+	shift # past value
+	;;
+    -help|--help)
+	usage
+	exit 0
+	;;
+    *)    # unknown option
+	POSITIONAL+=("$1") # save it in an array for later
+	shift # past argument
+	;;
+esac
+done
+set -- "${POSITIONAL[@]}" # restore positional parameters
+
+# Check user inputs
+if [[ "${LINK}" != "dynamic"  &&  "${LINK}" != "static" ]]; then
+    echo "error: link can only be dynamic or static"
+    exit 1
+fi    
+
+#check that the required dependencies are built
+declare -a bitcode=("httpd.bc" "libapr-1.shared.bc" "libaprutil-1.shared.bc" "libpcre.shared.bc")
+
+for bc in "${bitcode[@]}"
+do
+    if [ -a  "$bc" ]
+    then
+        echo "Found $bc"
+    else
+        echo "Error: $bc not found. Try \"make\"."
+        exit 1
+    fi
+done
 
 
-# Build the manifest file
-cat > httpd.manifest <<EOF
+# OCCAM with program and libraries dynamically linked
+function dynamic_link() {
+    
+    export OCCAM_LOGLEVEL=INFO
+    export OCCAM_LOGFILE=${PWD}/slash/occam.log
+    
+    # Build the manifest file
+    cat > httpd.manifest <<EOF
 { "main" : "httpd.bc"
 , "binary"  : "httpd_slashed"
 , "modules"    : ["libapr-1.shared.bc", "libaprutil-1.shared.bc", "libpcre.shared.bc"]
@@ -17,21 +84,33 @@ cat > httpd.manifest <<EOF
 , "name"    : "httpd"
 }
 EOF
-#, "libexpat.shared.bc"
 
-# Previrtualize
-slash --stats --devirt --work-dir=slash httpd.manifest
+    SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC}"
+    echo "============================================================"
+    echo "Running httpd with dynamic libraries apr-1, aprutil-1 and pcre"
+    echo "slash options ${SLASH_OPTS}"
+    echo "============================================================"
+    slash ${SLASH_OPTS} --stats --devirt=dsa --work-dir=slash httpd.manifest
 
-cp slash/httpd_slashed .
+    status=$?
+    if [ $status -ne 0 ]
+    then
+	echo "Something failed while running slash"
+	exit 1
+    fi     
+    cp slash/httpd_slashed .
+ }
 
-llvm-link httpd.bc libapr-1.shared.bc libaprutil-1.shared.bc libpcre.shared.bc -o linked_httpd.bc
-#FIXME: generate an executable to run ROPgadge on it
-#libexpat.shared.bc
+# OCCAM with program and libraries statically linked
+function static_link() {
+    llvm-link httpd.bc libapr-1.shared.bc libaprutil-1.shared.bc libpcre.shared.bc -o linked_httpd.bc
+    #FIXME: generate an executable to run ROPgadge on it
+    #libexpat.shared.bc
 
-# Build the manifest file
-cat > linked_httpd.manifest <<EOF
+    # Build the manifest file
+    cat > linked_httpd.manifest <<EOF
 { "main" : "linked_httpd.bc"
-, "binary"  : "httpd_linked_slashed"
+, "binary"  : "httpd_static_linked_slashed"
 , "modules"    : []
 , "native_libs" : ["-lcrypt", "-ldl", "-lpthread", "-lexpat"]
 , "args"    : ["-d", "/vagrant/www"]
@@ -39,9 +118,26 @@ cat > linked_httpd.manifest <<EOF
 }
 EOF
 
-export OCCAM_LOGFILE=${PWD}/linked_slash/occam.log
+    export OCCAM_LOGFILE=${PWD}/linked_slash/occam.log
 
-# Previrtualize
-slash --work-dir=linked_slash --stats --devirt linked_httpd.manifest
+    # OCCAM
+    SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC}"
+    echo "============================================================"
+    echo "Running httpd with apr-1, aprutil-1 and pcre statically linked"
+    echo "slash options ${SLASH_OPTS}"
+    echo "============================================================"
+    slash ${SLASH_OPTS} --work-dir=linked_slash --stats --devirt=dsa linked_httpd.manifest
+    status=$?
+    if [ $status -ne 0 ]
+    then
+	echo "Something failed while running slash"
+	exit 1
+    fi
+    cp linked_slash/httpd_static_linked_slashed .
+}
 
-cp linked_slash/httpd_linked_slashed .
+if [ "${LINK}" == "dynamic" ]; then
+    dynamic_link 
+else
+    static_link
+fi    

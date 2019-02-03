@@ -91,16 +91,29 @@ def strip(input_file, output_file):
     args += ['-strip', '-globaldce', '-globalopt', '-strip-dead-prototypes']
     return driver.run('opt', args)
 
-def devirt(input_file, output_file):
+def devirt(devirt_method, input_file, output_file):
     """ resolve indirect function calls
     """
-    args = ['-devirt-functions-aliasing',
-            '-inline']
+    assert(devirt_method <> 'none')
+
+    args = []
+
+    # if devirt_method == 'cha_dsa': 
+    #     args += ['-lower-invoke']
+    
+    args += [ '-Pdevirt'
+            , '-Presolve-incomplete-calls=true'
+            #, '-Pmax-num-targets=15'
+    ]
+    
+    if devirt_method == 'cha_dsa': 
+        args += ['-Pdevirt-with-cha']
+    
     retcode = driver.previrt_progress(input_file, output_file, args)
     if retcode != 0:
         return retcode
 
-    #FIXME: previrt_progress returns 0 in cases where --devirt-functions-aliasing may crash.
+    #FIXME: previrt_progress returns 0 in cases where --Pdevirt may crash.
     #Here we check that the output_file exists
     if not os.path.isfile(output_file):
         #Some return code different from zero
@@ -112,6 +125,12 @@ def profile(input_file, output_file):
     """ count number of instructions, functions, memory accesses, etc.
     """
     args = ['-Pprofiler']
+    args += [
+        ## XXX: these can be expensive        
+        '-profile-verbose=false'
+        ,'-profile-loops=false'
+        ,'-profile-safe-pointers=false'
+    ]
     args += ['-profile-outfile={0}'.format(output_file)]
     return driver.previrt(input_file, '/dev/null', args)
 
@@ -137,7 +156,7 @@ def crabllvm(cmd, input_file, output_file):
     sb = stringbuffer.StringBuffer()
     return  driver.run(cmd, args, sb, False)
 
-def peval(input_file, output_file, policy, use_devirt, use_llpe, use_ipdse, use_ai, log=None):
+def peval(input_file, output_file, policy, devirt_method, use_llpe, use_ipdse, use_ai, log=None):
     """ intra module specialization/optimization
     """
     opt = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
@@ -156,13 +175,19 @@ def peval(input_file, output_file, policy, use_devirt, use_llpe, use_ipdse, use_
             sys.stderr.write("\tintra module optimization finished succesfully\n")
         return retcode
 
-    # Optimize using standard llvm transformations before any other
-    # optional pass. Otherwise, these passes will not be very effective.
-    retcode = _optimize(input_file, done.name)
-    if retcode != 0: return retcode
+    ## Only for debugging or tests
+    disable_opt = False
     
-    if use_devirt is not None:
-        retcode = devirt(done.name, tmp.name)
+    if disable_opt:
+        shutil.copy(input_file, done.name)
+    else:
+        # Optimize using standard llvm transformations before any other
+        # optional pass. Otherwise, these passes will not be very effective.
+        retcode = _optimize(input_file, done.name)
+        if retcode != 0: return retcode
+
+    if devirt_method <> 'none':
+        retcode = devirt(devirt_method, done.name, tmp.name)
         if retcode != 0:
             sys.stderr.write("ERROR: resolution of indirect calls failed!\n")
             shutil.copy(done.name, output_file)
@@ -171,6 +196,26 @@ def peval(input_file, output_file, policy, use_devirt, use_llpe, use_ipdse, use_
         sys.stderr.write("\tresolved indirect calls finished succesfully\n")
         shutil.copy(tmp.name, done.name)
 
+    # # We schedule devirt before opt. 
+    # if devirt_method <> 'none':
+    #     retcode = devirt(devirt_method, input_file, tmp.name)
+    #     if retcode != 0:
+    #         sys.stderr.write("ERROR: resolution of indirect calls failed!\n")
+    #         shutil.copy(input_file, output_file)
+    #         return retcode
+
+    #     sys.stderr.write("\tresolved indirect calls finished succesfully\n")
+        
+    #     retcode = _optimize(tmp.name, done.name)
+    #     if retcode != 0:
+    #         sys.stderr.write("ERROR: opt failed!\n")
+    #         shutil.copy(tmp.name, output_file)
+    #         return retcode
+    # else:
+    #     retcode = _optimize(input_file, done.name)
+    #     if retcode != 0:
+    #         return retcode
+        
     if use_llpe is not None:
         llpe_libs = []
         for lib in config.get_llpelibs():
@@ -252,6 +297,8 @@ def peval(input_file, output_file, policy, use_devirt, use_llpe, use_ipdse, use_
             else:
                 shutil.copy(opt.name, done.name)
                 break
+    else:
+        print "\tskipped intra-module specialization"
 
     shutil.copy(done.name, output_file)
     try:

@@ -72,7 +72,8 @@ instructions = """slash has three modes of use:
         --debug-manager=<type>     : Debug opt's pass manager (<type> should be either Structure or Details)
         --debug-pass=<tag>         : Debug opt's pass (<tag> should be the debug pragma string of the pass)
         --debug                    : Pass the debug flag into all calls to opt (too much information usually)
-        --devirt                   : Devirtualize indirect function calls
+        --print-after-all          : Pass the print-after-all flag into all calls to opt
+        --devirt=<type>            : Devirtualize indirect function calls (<type> should be either none, dsa or cha_dsa)
         --intra-spec-policy=<type> : Specialization policy for intramodule calls (<type> should be either none, aggressive or nonrec-aggressive)
         --inter-spec-policy=<type> : Specialization policy for intermodule calls (<type> should be either none, aggressive or nonrec-aggressive)
         --keep-external=<file>     : Pass a list of function names that should remain external.
@@ -96,7 +97,7 @@ def entrypoint():
 
 
 def  usage(exe):
-    template = '{0} [--work-dir=<dir>]  [--force] [--help] [--stats] [--no-strip] [--verbose] [--debug-manager=] [--debug-pass=] [--debug] [--devirt] [--intra-spec-policy=<type>] [--inter-spec-policy=<type>] [--keep-external=<file>] [--llpe] [--ipdse] [--precise-dce] [--ai-invariants] <manifest>\n'
+    template = '{0} [--work-dir=<dir>]  [--force] [--help] [--stats] [--no-strip] [--verbose] [--debug-manager=] [--debug-pass=] [--debug] [--print-after-all] [--devirt=<type>] [--intra-spec-policy=<type>] [--inter-spec-policy=<type>] [--keep-external=<file>] [--llpe] [--ipdse] [--precise-dce] [--ai-invariants] <manifest>\n'
     sys.stderr.write(template.format(exe))
 
 class Slash(object):
@@ -108,10 +109,11 @@ class Slash(object):
             cmdflags = ['work-dir=',
                         'force',
                         'no-strip',
-                        'devirt',
+                        'devirt=',
                         'debug',
                         'debug-manager=',
                         'debug-pass=',
+                        'print-after-all',
                         'llpe',
                         'help',
                         'ipdse',
@@ -183,7 +185,20 @@ class Slash(object):
                 return False
             else:
                 return True
+
+        def check_devirt_method(method):
+            """ Supported methods: none, dsa, cha_dsa """
+            
+            if method <> 'none' and \
+               method <> 'dsa' and \
+               method <> 'cha_dsa':
+                sys.stderr.write('Error: unsupported devirtualization method. ' + \
+                                 'Valid methods: none, dsa, cha_dsa')
+                return False
+            else:
+                return True
                 
+            
         parsed = utils.check_manifest(self.manifest)
 
         valid = parsed[0]
@@ -198,8 +213,6 @@ class Slash(object):
             return 1
 
         no_strip = utils.get_flag(self.flags, 'no-strip', None)
-
-        devirt = utils.get_flag(self.flags, 'devirt', None)
 
         use_llpe = utils.get_flag(self.flags, 'llpe', None)
 
@@ -221,6 +234,10 @@ class Slash(object):
         
         inter_spec_policy = utils.get_flag(self.flags, 'inter-spec-policy', 'nonrec-aggressive')
         if not check_spec_policy(inter_spec_policy):
+            return 1
+
+        devirt = utils.get_flag(self.flags, 'devirt', 'none')
+        if not check_devirt_method(devirt):
             return 1
         
         sys.stderr.write('\nslash working on {0} wrt {1} ...\n'.format(module, ' '.join(libs)))
@@ -355,10 +372,13 @@ class Slash(object):
 
         write_timestamp("Started global fixpoint ...")
         iteration = 0
+        max_fixpoint_iterations = 10 ## make this user parameter
         while progress:
-            ## FIXME run this loop while progress and iteration < THRESHOLD.
-            ## The threshold should be selected by the user.
             iteration += 1
+            if iteration > max_fixpoint_iterations:
+                sys.stderr.write('Fixpoint took more than ' + str(max_fixpoint_iterations) + ". " + \
+                                 'Stopping fixpoint.')
+                break
             progress = False
 
             # Intra-module partial evaluation and debloating
@@ -369,6 +389,7 @@ class Slash(object):
                 post = m.new('p')
                 post_base = os.path.basename(post)
                 fn = 'previrt_%s-%s' % (pre_base, post_base)
+                print "\tModule: " + str(pre)
                 passes.peval(pre, post, \
                              intra_spec_policy, devirt, use_llpe, use_ipdse, use_ai, \
                              log=open(fn, 'w'))
@@ -409,6 +430,8 @@ class Slash(object):
 
                 rws = pool.InParallel(inter_rewrite, files.items(), self.pool)
                 progress = any(rws)
+            else:
+                print "Skipped inter-module specialization"
             
             # Aggressive internalization
             pool.InParallel(_references, vals, self.pool)
@@ -518,8 +541,7 @@ class Slash(object):
     def driver_config(self):
         debug = utils.get_flag(self.flags, 'debug', None)
         if debug is not None:
-            driver.opt_debug_cmds.append('--debug')
-
+            driver.opt_debug_cmds.append('--debug')            
 
         debug_manager = utils.get_flag(self.flags, 'debug-manager', None)
         if debug_manager is not None:
@@ -533,7 +555,10 @@ class Slash(object):
         if debug_pass is not None:
             driver.opt_debug_cmds.append('--debug-only={0}'.format(debug_pass))
 
-
+        print_after_all = utils.get_flag(self.flags, 'print-after-all', None)
+        if print_after_all is not None:
+            driver.opt_debug_cmds.append('--print-after-all')
+            
         verbose = utils.get_flag(self.flags, 'verbose', None)
         if verbose is not None:
             driver.verbose = True

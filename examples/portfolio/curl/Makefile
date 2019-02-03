@@ -38,7 +38,7 @@ bitcode_specialized: curl.bc
 
 .PHONY: slash_specialized
 slash_specialized: 
-	slash --no-strip --devirt --stats --work-dir=slash_specialized $(MANIFEST_SPECIALIZED)
+	slash --no-strip --devirt=dsa --stats --work-dir=slash_specialized $(MANIFEST_SPECIALIZED)
 	cp slash_specialized/curl curl_slash_specialized
 
 previrt: bitcode_previrt slash_previrt
@@ -47,7 +47,7 @@ bitcode_previrt: curl.bc libcurl.4.dylib.bc
 
 .PHONY: slash_previrt
 slash_previrt: 
-	slash --no-strip --devirt --stats --work-dir=slash_previrt $(MANIFEST_PREVIRT)
+	slash --no-strip --devirt=dsa --stats --work-dir=slash_previrt $(MANIFEST_PREVIRT)
 	cp slash_previrt/curl curl_slash_previrt
 
 
