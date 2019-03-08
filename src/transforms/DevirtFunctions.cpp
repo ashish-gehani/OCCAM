@@ -88,23 +88,6 @@ namespace transforms {
     }
   } // namespace devirt_impl
 
-  struct FunctionCompare {
-    // Try compare two functions in a deterministic way across
-    // multiple executions.
-    // 
-    // If both functions have the same name then we rely on pointer
-    // comparison which will not be deterministic across different
-    // executions.
-    bool operator()(const Function *F1, const Function *F2) {
-      if (F1->hasName() && F2->hasName()) {
-	if (F1->getName () != F2->getName()) {
-	  return F1->getName() < F2->getName();
-	}
-      } 
-      return F1 < F2;
-    }
-  };
-    
   /***
    * Begin specific callsites resolvers
    ***/
@@ -149,8 +132,7 @@ namespace transforms {
       
       // -- add F to its corresponding alias set (keep sorted the Targets)
       AliasSet& Targets = m_targets_map[devirt_impl::typeAliasId(F)];
-      FunctionCompare cmp;
-      auto it = std::upper_bound(Targets.begin(), Targets.end(), &F, cmp);
+      auto it = std::upper_bound(Targets.begin(), Targets.end(), &F);
       Targets.insert(it, &F);
     }      
   }
@@ -227,8 +209,7 @@ namespace transforms {
 		  continue;
 		}
 		// sort dsa_targets
-		FunctionCompare cmp;
-		std::sort(dsa_targets.begin(), dsa_targets.end(), cmp);
+		std::sort(dsa_targets.begin(), dsa_targets.end());
 		
 		DEVIRT_LOG(errs() << "\nDsa-based targets: \n";
 			   for(auto F: dsa_targets) {
@@ -255,11 +236,20 @@ namespace transforms {
 		  } else {
 		    if (refined_dsa_targets.size() <= m_max_num_targets) {
 		      num_resolved_calls++;
+		      // Sort by name so that we can fix a
+		      // deterministic ordering (useful for e.g., tests)
+		      if (std::all_of(refined_dsa_targets.begin(), refined_dsa_targets.end(),
+				      [](const Function* f) { return f->hasName(); })) {
+			std::sort(refined_dsa_targets.begin(), refined_dsa_targets.end(),
+				  [](const Function *f1, const Function *f2) {
+				    return f1->hasName() < f2->hasName();});
+		      }
 		      m_targets_map.insert({CS.getInstruction(), refined_dsa_targets});
 		      DEVIRT_LOG(errs() << "Devirt (dsa) resolved " << *(CS.getInstruction())
 				        << " with targets=";
 				 for(auto F: refined_dsa_targets) {
-				   errs() << "\t" << F->getName() << "::" << *(F->getType()) << "\n";				   
+				   errs() << "\t" << F->getName() << "::" << *(F->getType())
+					  << "\n";				   
 				 });
 		    } else {
 		      errs() << "WARNING Devirt (dsa): unresolve " << *(CS.getInstruction())
