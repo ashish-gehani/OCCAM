@@ -108,8 +108,8 @@ protoc: Previrt.proto
 
 clean: 
 	rm -rf ${OBJECTS} proto ${LIBRARY} 
-	$(MAKE) -C analysis/llvm-dsa clean
-	$(MAKE) -C analysis/sea-dsa clean
+	$(MAKE) -C analysis -f Makefile.llvm-dsa clean
+	$(MAKE) -C analysis -f Makefile.sea-dsa clean
 
 install: check-occam-lib ${LIBRARY}
 	$(INSTALL) -m 664 ${LIBRARY} $(OCCAM_LIB)
