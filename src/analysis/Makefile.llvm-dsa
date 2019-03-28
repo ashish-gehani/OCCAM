@@ -87,7 +87,7 @@ ${LIBRARY}: ${SOURCES} ${OBJECTS}
 	$(CXX) -I. ${CXX_FLAGS} $< -c -o $@
 
 clean: 
-	rm -rf ${OBJECTS} ${LIBRARY} 
+	rm -f ${OBJECTS} ${LIBRARY} 
 
 install: ${LIBRARY}
 	mkdir -p $(INSTALL_DIR)
