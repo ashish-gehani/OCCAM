@@ -31,25 +31,19 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-#include <stdio.h>
-
+#include "llvm/Pass.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Attributes.h"
-#include "llvm/Pass.h"
-#include "llvm/IR/LegacyPassManager.h"
-//#include "llvm/IR/PassManager.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/Support/CommandLine.h"
-#include "llvm/Transforms/IPO.h"
-#include "llvm/LinkAllPasses.h"
 
 #include <vector>
 #include <string>
 
+#include "utils/Inliner.h"
 #include "Specializer.h"
 #include "CommandLineArguments.h"
 
@@ -191,20 +185,10 @@ namespace previrt
     //        M.getContext(), 32), cargs.size()), argv);
     irb.CreateRet(res);
 
-    f->setLinkage(GlobalValue::PrivateLinkage);
-    // XXX: f is the old main which is now called inside new_main and
-    // we would like to inline old main into new_main. In llvm 5.0
-    // main has the NonInline attribute which is inherited by old main
-    // when it is created. Thus, we need to remove the NoInline
-    // attribute. If we remove NoInline then we also need to remove
-    // OptimizeNone.
-    f->removeFnAttr(Attribute::NoInline);
-    f->removeFnAttr(Attribute::OptimizeNone);
-    f->addFnAttr(Attribute::AlwaysInline);
 
-    legacy::PassManager mgr;
-    mgr.add(createAlwaysInlinerLegacyPass());
-    mgr.run(M);
+    // f is the old main which is now called inside new_main and
+    // we would like to inline old main into new_main.
+    utils::inlineOnly(M, {f});
 
     return true;
   }

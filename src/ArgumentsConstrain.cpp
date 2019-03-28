@@ -31,17 +31,16 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
+#include "llvm/Pass.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Constants.h"
-#include "llvm/Pass.h"
-
-#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/LinkAllPasses.h" //SROA and Mem2Reg
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/Transforms/IPO.h"
-#include "llvm/LinkAllPasses.h" //createAlwaysInlinerLegacyPass
 
+#include "utils/Inliner.h"
 #include "Specializer.h" // materializeStringLiteral
 
 #include <string>      // stoi, strtok, ...
@@ -309,21 +308,16 @@ bool ArgumentsConstraint::runOnModule(Module &M) {
   Value* res = builder.CreateCall(main, {new_argc, new_argv});
   builder.CreateRet(res);
 
-  // Modify main attributes so that it can be inlined
-  main->setLinkage(GlobalValue::PrivateLinkage);
-  main->removeFnAttr(Attribute::NoInline);
-  main->removeFnAttr(Attribute::OptimizeNone);
-  main->addFnAttr(Attribute::AlwaysInline);
-
   legacy::PassManager mgr;
   // remove alloca's
   mgr.add(createPromoteMemoryToRegisterPass());
   // break alloca's of aggregates into multiple allocas if possible
   // it also performs mem2reg to remove alloca's at the same time
   mgr.add(createSROAPass());
-  // inline original main function
-  mgr.add(createAlwaysInlinerLegacyPass());
   mgr.run(M);
+
+  // inline original main into the new main
+  utils::inlineOnly(M, {main});
 
   /* Old code that overrides argv with the arguments from the
      manifest */
