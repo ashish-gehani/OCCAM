@@ -76,6 +76,7 @@ instructions = """slash has three modes of use:
         --devirt=<type>            : Devirtualize indirect function calls (<type> should be either none, dsa or cha_dsa)
         --intra-spec-policy=<type> : Specialization policy for intramodule calls (<type> should be either none, aggressive or nonrec-aggressive)
         --inter-spec-policy=<type> : Specialization policy for intermodule calls (<type> should be either none, aggressive or nonrec-aggressive)
+        --disable-inlining         : Disable inlining
         --keep-external=<file>     : Pass a list of function names that should remain external.
         --llpe                     : Use Smowton's LLPE for intra-module prunning (experimental)
         --ipdse                    : Apply inter-procedural dead store elimination (experimental)
@@ -97,7 +98,7 @@ def entrypoint():
 
 
 def  usage(exe):
-    template = '{0} [--work-dir=<dir>]  [--force] [--help] [--stats] [--no-strip] [--verbose] [--debug-manager=] [--debug-pass=] [--debug] [--print-after-all] [--devirt=<type>] [--intra-spec-policy=<type>] [--inter-spec-policy=<type>] [--keep-external=<file>] [--llpe] [--ipdse] [--precise-dce] [--ai-invariants] <manifest>\n'
+    template = '{0} [--work-dir=<dir>]  [--force] [--help] [--stats] [--no-strip] [--verbose] [--debug-manager=] [--debug-pass=] [--debug] [--print-after-all] [--devirt=<type>] [--intra-spec-policy=<type>] [--inter-spec-policy=<type>] [--disable-inlining] [--keep-external=<file>] [--llpe] [--ipdse] [--precise-dce] [--ai-invariants] <manifest>\n'
     sys.stderr.write(template.format(exe))
 
 class Slash(object):
@@ -123,6 +124,7 @@ class Slash(object):
                         'stats',
                         'intra-spec-policy=',
                         'inter-spec-policy=',
+                        'disable-inlining',
                         'tool=',
                         'verbose',
                         'keep-external=']
@@ -239,7 +241,9 @@ class Slash(object):
         devirt = utils.get_flag(self.flags, 'devirt', 'none')
         if not check_devirt_method(devirt):
             return 1
-        
+
+        no_inlining = utils.get_flag(self.flags, 'disable-inlining', None)
+
         sys.stderr.write('\nslash working on {0} wrt {1} ...\n'.format(module, ' '.join(libs)))
 
         native_lib_flags = []
@@ -370,6 +374,17 @@ class Slash(object):
             base = utils.prevent_collisions(m[:m.rfind('.bc')])
             rewrite_files[m] = provenance.VersionedFile(base, 'rw')
 
+        # Options passed to the optimizer (opt)
+        opt_options = []        
+        if no_inlining is not None:
+            opt_options += ['-disable-inlining']
+
+        # The abstract interpreter and dsa do not support switch or invoke
+        # instructions.  This may cause more bloating but hopefully the
+        # benefits from using them pay off.
+        if devirt == 'dsa' or use_ai is not None:
+            opt_options += ['-lowerswitch', '-lowerinvoke']
+            
         write_timestamp("Started global fixpoint ...")
         iteration = 0
         max_fixpoint_iterations = 10 ## make this user parameter
@@ -391,7 +406,10 @@ class Slash(object):
                 fn = 'previrt_%s-%s' % (pre_base, post_base)
                 print "\tModule: " + str(pre)
                 passes.peval(pre, post, \
-                             intra_spec_policy, devirt, use_llpe, use_ipdse, use_ai, \
+                             opt_options, \
+                             intra_spec_policy, \
+                             devirt, \
+                             use_llpe, use_ipdse, use_ai, \
                              log=open(fn, 'w'))
 
             pool.InParallel(intra, files.values(), self.pool)
@@ -408,7 +426,8 @@ class Slash(object):
                     pre = m.get()
                     post = m.new('s')
                     rw = rewrite_files[nm].new()
-                    passes.specialize(pre, post, rw, [iface_before_file.get()], inter_spec_policy)
+                    passes.specialize(pre, post, rw, [iface_before_file.get()],
+                                      inter_spec_policy)
 
                 pool.InParallel(inter_spec, files.items(), self.pool)
 
@@ -492,7 +511,7 @@ class Slash(object):
                     memlimit = 4096
                     return passes.precise_dce(pre, entries, ropfile, post,
                                               benefit_threshold, cost_threshold,
-                                              timeout, memlimit)
+                                              timeout, memlimit, opt_options)
                 except Exception:
                     sys.stderr.write("Precise dce failed on " + str(pre))
                     return False

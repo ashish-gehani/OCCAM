@@ -156,7 +156,11 @@ def crabllvm(cmd, input_file, output_file):
     sb = stringbuffer.StringBuffer()
     return  driver.run(cmd, args, sb, False)
 
-def peval(input_file, output_file, policy, devirt_method, use_llpe, use_ipdse, use_ai, log=None):
+def peval(input_file, output_file, \
+          opt_options, \
+          policy, \
+          devirt_method, \
+          use_llpe, use_ipdse, use_ai, log=None):
     """ intra module specialization/optimization
     """
     opt = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
@@ -167,7 +171,7 @@ def peval(input_file, output_file, policy, devirt_method, use_llpe, use_ipdse, u
     tmp.close()
 
     def _optimize(input_file, output_file):
-        retcode = optimize(input_file, output_file)
+        retcode = optimize(input_file, output_file, opt_options)
         if retcode != 0:
             sys.stderr.write("ERROR: intra module optimization failed!\n")
             shutil.copy(input_file, output_file)
@@ -309,10 +313,12 @@ def peval(input_file, output_file, policy, devirt_method, use_llpe, use_ipdse, u
         pass
     return retcode
 
-def optimize(input_file, output_file):
+def optimize(input_file, output_file, extra_opts):
     """ run opt -O3
     """
-    args = ['-disable-simplify-libcalls', input_file, '-o', output_file, '-O3']
+    args = ['-disable-simplify-libcalls']
+    args += extra_opts
+    args += [input_file, '-o', output_file, '-O3']
     return driver.run('opt', args)
 
 def constrain_program_args(input_file, output_file, cnstrs, filename=None):
@@ -385,7 +391,10 @@ def deep(libs, ifaces):
     os.unlink(tf.name)
     return iface
 
-def seahorn(sea_cmd, input_file, fname, is_loop_free, cpu, mem):
+# Try to prove that fname is unreachable with a timeout and a memory limit.
+# The flag is_loop_free indicates whether bounded model
+# checking can be used.
+def seahorn(sea_cmd, input_file, fname, is_loop_free, cpu, mem, opt_options):
     """ running SeaHorn (https://github.com/seahorn/seahorn)
     """
     
@@ -448,7 +457,7 @@ def seahorn(sea_cmd, input_file, fname, is_loop_free, cpu, mem):
         # 4. And, we run the optimized to remove that function
         sea_opt_outfile = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
         sea_opt_outfile.close()
-        optimize(sea_outfile.name, sea_opt_outfile.name)
+        optimize(sea_outfile.name, sea_opt_outfile.name, opt_options)
         return sea_opt_outfile.name
     else:
         sys.stderr.write('\tSeaHorn could not prove unreachability of {0}:\n'.format(fname))
@@ -471,7 +480,9 @@ def precise_dce(input_file,
                 ## SeaHorn timeout in seconds
                 timeout,
                 ## SeaHorn memory limit in MB
-                memlimit):
+                memlimit,
+                ## Options for opt
+                opt_options):
     """ use SeaHorn model-checker to remove dead functions
     """
     sea_cmd = utils.get_seahorn()
@@ -513,7 +524,11 @@ def precise_dce(input_file,
            fname.startswith('devirt') or \
            fname.startswith('seahorn'):
             continue
-        nextfile = seahorn(sea_cmd, curfile, fname, is_loop_free, timeout, memlimit)
+        nextfile = seahorn(sea_cmd, curfile, \
+                           fname, \
+                           is_loop_free, \
+                           timeout, memlimit, \
+                           opt_options)
         change = change | (curfile <> nextfile)
         curfile = nextfile
     shutil.copy(curfile, output_file)
