@@ -6,14 +6,18 @@ set -e
 #FIXME avoid rebuilding.
 #make
 function usage() {
-    echo "Usage: build.sh [--inter-spec VAL] [--intra-spec VAL] [--link dynamic|static] [--help]"
-    echo "       VAL=none|aggressive|nonrec-aggressive"
+    echo "Usage: $0 [--disable-inlining] [--devirt VAL1] [--inter-spec VAL2] [--intra-spec VAL2] [--link dynamic|static] [--help]"
+    echo "       VAL1=none|dsa|cha_dsa"    
+    echo "       VAL2=none|aggressive|nonrec-aggressive"
 }
+
 
 #default values
 LINK="dynamic"
 INTER_SPEC="none"
 INTRA_SPEC="none"
+DEVIRT="dsa"
+OPT_OPTIONS=""
 
 POSITIONAL=()
 while [[ $# -gt 0 ]]
@@ -35,6 +39,15 @@ case $key in
 	shift # past argument
 	shift # past value
 	;;
+    -disable-inlining|--disable-inlining)
+	OPT_OPTIONS="${OPT_OPTIONS} --disable-inlining"
+	shift # past argument
+	;;
+    -devirt|--devirt)
+	DEVIRT="$2"
+	shift # past argument
+	shift # past value
+	;;        
     -help|--help)
 	usage
 	exit 0
@@ -67,6 +80,7 @@ do
     fi
 done
 
+SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC} --devirt=${DEVIRT} --stats $OPT_OPTIONS"
 
 # OCCAM with program and libraries dynamically linked
 function dynamic_link() {
@@ -85,12 +99,11 @@ function dynamic_link() {
 }
 EOF
 
-    SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC}"
     echo "============================================================"
     echo "Running httpd with dynamic libraries apr-1, aprutil-1 and pcre"
     echo "slash options ${SLASH_OPTS}"
     echo "============================================================"
-    slash ${SLASH_OPTS} --stats --devirt=dsa --work-dir=slash httpd.manifest
+    slash ${SLASH_OPTS} --work-dir=slash httpd.manifest
 
     status=$?
     if [ $status -ne 0 ]
@@ -121,12 +134,11 @@ EOF
     export OCCAM_LOGFILE=${PWD}/linked_slash/occam.log
 
     # OCCAM
-    SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC}"
     echo "============================================================"
     echo "Running httpd with apr-1, aprutil-1 and pcre statically linked"
     echo "slash options ${SLASH_OPTS}"
     echo "============================================================"
-    slash ${SLASH_OPTS} --work-dir=linked_slash --stats --devirt=dsa linked_httpd.manifest
+    slash ${SLASH_OPTS} --work-dir=linked_slash linked_httpd.manifest
     status=$?
     if [ $status -ne 0 ]
     then

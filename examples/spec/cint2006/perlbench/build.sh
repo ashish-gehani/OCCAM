@@ -4,13 +4,16 @@
 set -e
 
 function usage() {
-    echo "Usage: build.sh [--inter-spec VAL] [--intra-spec VAL] [--help]"
-    echo "       VAL=none|aggressive|nonrec-aggressive"
+    echo "Usage: $0 [--disable-inlining] [--devirt VAL1] [--inter-spec VAL2] [--intra-spec VAL2] [--help]"
+    echo "       VAL1=none|dsa|cha_dsa"    
+    echo "       VAL2=none|aggressive|nonrec-aggressive"
 }
 
 #default values
 INTER_SPEC="none"
 INTRA_SPEC="none"
+DEVIRT="dsa"
+OPT_OPTIONS=""
 
 POSITIONAL=()
 while [[ $# -gt 0 ]]
@@ -27,6 +30,15 @@ case $key in
 	shift # past argument
 	shift # past value
 	;;
+    -disable-inlining|--disable-inlining)
+	OPT_OPTIONS="${OPT_OPTIONS} --disable-inlining"
+	shift # past argument
+	;;
+    -devirt|--devirt)
+	DEVIRT="$2"
+	shift # past argument
+	shift # past value
+	;;            
     -help|--help)
 	usage
 	exit 0
@@ -72,11 +84,10 @@ EOF
 # Run OCCAM
 cp ./perlbench ./perlbench_orig
 
-SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC}"
+SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC} --devirt=${DEVIRT} --no-strip --stats $OPT_OPTIONS"
 echo "============================================================"
 echo "Running with options ${SLASH_OPTS}"
 echo "============================================================"
-slash ${SLASH_OPTS}  \
-      --no-strip --stats --devirt=dsa --work-dir=slash perlbench.manifest
+slash ${SLASH_OPTS} --work-dir=slash perlbench.manifest
 
 cp ./slash/perlbench_slashed .
