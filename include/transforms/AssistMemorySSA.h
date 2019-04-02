@@ -194,6 +194,9 @@ namespace transforms {
   public:
     
     MemorySSACallSite(llvm::CallInst *ci, bool only_singleton);
+
+    // Return number of memory-related actual parameters
+    unsigned numParams() const { return m_actual_params.size();}
     
     // return true if the mem.ssa.XXX instruction associated with the
     // idx-th actual paramter is mem.ssa.arg_ref.            
@@ -238,6 +241,10 @@ namespace transforms {
     
     // Return value can be null if not found
     const llvm::Value* getInFormal(unsigned idx) const;
+
+    unsigned getNumInFormals() const {
+      return m_in_formal_params.size();
+    }
   };
   
   /* 
