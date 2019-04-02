@@ -128,7 +128,11 @@ static bool trySpecializeFunction(Function* f, SpecializationTable& table,
     //                   constant c
     std::vector<Value*> specScheme;
     bool specialize = policy->specializeOn(cs, specScheme);
-    
+          
+    if (!specialize) {
+      continue;
+    }
+
     #if 1
     errs() << "Intra-specializing call to '" << callee->getName()
 	   << "' in function '" << ci->getParent()->getParent()->getName()
@@ -147,12 +151,7 @@ static bool trySpecializeFunction(Function* f, SpecializationTable& table,
     }
     errs() << "]\n";
     #endif
-      
-    if (!specialize) {
-      continue;
-    }
-    
-    
+        
     // --- build a specialized function if specScheme is more
     //     refined than all existing specialized versions.
     Function* specializedVersion = nullptr;

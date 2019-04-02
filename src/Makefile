@@ -66,11 +66,11 @@ all: ${LIBRARY}
 
 # Pointer Analysis
 libSeaDsa:
-	$(MAKE) -C analysis/sea-dsa install INSTALL_DIR=${OCCAM_LIB}
+	$(MAKE) -C analysis -f Makefile.sea-dsa install INSTALL_DIR=${OCCAM_LIB}
 
 # Another Pointer Analysis
 libLlvmDsa:
-	$(MAKE) -C analysis/llvm-dsa install INSTALL_DIR=${OCCAM_LIB}
+	$(MAKE) -C analysis -f Makefile.llvm-dsa install INSTALL_DIR=${OCCAM_LIB}
 
 # Smowton's LLPE tool
 libLLPE:
@@ -108,8 +108,8 @@ protoc: Previrt.proto
 
 clean: 
 	rm -rf ${OBJECTS} proto ${LIBRARY} 
-	$(MAKE) -C analysis/llvm-dsa clean
-	$(MAKE) -C analysis/sea-dsa clean
+	$(MAKE) -C analysis -f Makefile.llvm-dsa clean
+	$(MAKE) -C analysis -f Makefile.sea-dsa clean
 
 install: check-occam-lib ${LIBRARY}
 	$(INSTALL) -m 664 ${LIBRARY} $(OCCAM_LIB)

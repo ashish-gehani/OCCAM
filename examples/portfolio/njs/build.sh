@@ -67,7 +67,7 @@ if [[ "${LINK}" != "dynamic"  &&  "${LINK}" != "static" ]]; then
 fi    
 
 #check that the required dependencies are built
-declare -a bitcode=("httpd.bc" "libapr-1.shared.bc" "libaprutil-1.shared.bc" "libpcre.shared.bc")
+declare -a bitcode=("njs.bc" "libnjs.a.bc")
 
 for bc in "${bitcode[@]}"
 do
@@ -80,7 +80,7 @@ do
     fi
 done
 
-SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC} --devirt=${DEVIRT} --stats $OPT_OPTIONS"
+SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC} --devirt=${DEVIRT} --stats  $OPT_OPTIONS"
 
 # OCCAM with program and libraries dynamically linked
 function dynamic_link() {
@@ -89,21 +89,21 @@ function dynamic_link() {
     export OCCAM_LOGFILE=${PWD}/slash/occam.log
     
     # Build the manifest file
-    cat > httpd.manifest <<EOF
-{ "main" : "httpd.bc"
-, "binary"  : "httpd_slashed"
-, "modules"    : ["libapr-1.shared.bc", "libaprutil-1.shared.bc", "libpcre.shared.bc"]
-, "native_libs" : ["-lcrypt", "-ldl", "-lpthread", "-lexpat"]
-, "args"    : ["-d", "/vagrant/www"]
-, "name"    : "httpd"
+    cat > njs.manifest <<EOF
+{ "main" : "njs.bc"
+, "binary"  : "njs_slashed"
+, "modules"    : ["libnjs.a.bc"]
+, "native_libs" : ["-lpcre", "-lreadline"]
+, "args"    : ["-d", "hello_world.njs"]
+, "name"    : "njs"
 }
 EOF
 
     echo "============================================================"
-    echo "Running httpd with dynamic libraries apr-1, aprutil-1 and pcre"
+    echo "Running njs with libraries"
     echo "slash options ${SLASH_OPTS}"
     echo "============================================================"
-    slash ${SLASH_OPTS} --work-dir=slash httpd.manifest
+    slash ${SLASH_OPTS} --work-dir=slash njs.manifest
 
     status=$?
     if [ $status -ne 0 ]
@@ -111,23 +111,21 @@ EOF
 	echo "Something failed while running slash"
 	exit 1
     fi     
-    cp slash/httpd_slashed .
+    cp slash/njs_slashed .
  }
 
 # OCCAM with program and libraries statically linked
 function static_link() {
-    llvm-link httpd.bc libapr-1.shared.bc libaprutil-1.shared.bc libpcre.shared.bc -o linked_httpd.bc
-    #FIXME: generate an executable to run ROPgadge on it
-    #libexpat.shared.bc
+    llvm-link njs.bc libnjs.a.bc -o linked_njs.bc
 
     # Build the manifest file
-    cat > linked_httpd.manifest <<EOF
-{ "main" : "linked_httpd.bc"
-, "binary"  : "httpd_static_linked_slashed"
+    cat > linked_njs.manifest <<EOF
+{ "main" : "linked_njs.bc"
+, "binary"  : "njs_static_linked_slashed"
 , "modules"    : []
-, "native_libs" : ["-lcrypt", "-ldl", "-lpthread", "-lexpat"]
-, "args"    : ["-d", "/vagrant/www"]
-, "name"    : "httpd_linked"
+, "native_libs" : ["-lpcre", "-lreadline"]
+, "args"    : ["-d", "hello_world.njs"]
+, "name"    : "njs_linked"
 }
 EOF
 
@@ -135,17 +133,17 @@ EOF
 
     # OCCAM
     echo "============================================================"
-    echo "Running httpd with apr-1, aprutil-1 and pcre statically linked"
+    echo "Running njs with libraries statically linked"
     echo "slash options ${SLASH_OPTS}"
     echo "============================================================"
-    slash ${SLASH_OPTS} --work-dir=linked_slash linked_httpd.manifest
+    slash ${SLASH_OPTS} --work-dir=linked_slash linked_njs.manifest
     status=$?
     if [ $status -ne 0 ]
     then
 	echo "Something failed while running slash"
 	exit 1
     fi
-    cp linked_slash/httpd_static_linked_slashed .
+    cp linked_slash/njs_static_linked_slashed .
 }
 
 if [ "${LINK}" == "dynamic" ]; then

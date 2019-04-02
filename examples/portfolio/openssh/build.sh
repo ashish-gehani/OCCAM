@@ -4,14 +4,17 @@
 set -e
 
 function usage() {
-    echo "Usage: build.sh [--inter-spec VAL] [--intra-spec VAL] [--link dynamic|static] [--help]"
-    echo "       VAL=none|aggressive|nonrec-aggressive"
+    echo "Usage: $0 [--disable-inlining] [--devirt VAL1] [--inter-spec VAL2] [--intra-spec VAL2] [--link dynamic|static] [--help]"
+    echo "       VAL1=none|dsa|cha_dsa"    
+    echo "       VAL2=none|aggressive|nonrec-aggressive"
 }
 
 #default values
 LINK="dynamic"
 INTER_SPEC="none"
 INTRA_SPEC="none"
+DEVIRT="dsa"
+OPT_OPTIONS=""
 
 POSITIONAL=()
 while [[ $# -gt 0 ]]
@@ -33,6 +36,15 @@ case $key in
 	shift # past argument
 	shift # past value
 	;;
+    -disable-inlining|--disable-inlining)
+	OPT_OPTIONS="${OPT_OPTIONS} --disable-inlining"
+	shift # past argument
+	;;
+    -devirt|--devirt)
+	DEVIRT="$2"
+	shift # past argument
+	shift # past value
+	;;        
     -help|--help)
 	usage
 	exit 0
@@ -72,6 +84,10 @@ done
 #echo "Linking sshd_from_bc"
 #clang++ sshd.bc libcrypto.a.bc libz.a.bc -ldl -lresolv -o sshd_from_bc
 
+# additional debug flags:
+#  --debug-pass=sroa --verbose --debug-manager=Structure
+SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC} --devirt=${DEVIRT} --stats $OPT_OPTIONS"
+
 # OCCAM with program and libraries dynamically linked
 function dynamic_link() {
 
@@ -91,14 +107,11 @@ function dynamic_link() {
 }
 EOF
 
-    # additional debug flags:
-    #  --debug-pass=sroa --verbose --debug-manager=Structure
-    SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC}"
     echo "============================================================"
     echo "Running httpd with dynamic libraries crypto, z"
     echo "slash options ${SLASH_OPTS}"
     echo "============================================================"
-    slash ${SLASH_OPTS} --stats --devirt=dsa --work-dir=slash ssh.manifest
+    slash ${SLASH_OPTS} --work-dir=slash ssh.manifest
     status=$?
     if [ $status -ne 0 ]
     then
@@ -122,14 +135,11 @@ function static_link() {
 }
 EOF
 
-    # additional debug flags:
-    #  --debug-pass=sroa --verbose --debug-manager=Structure
-    SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC}"
     echo "============================================================"
     echo "Running httpd with libraries crypto, z statically linked"
     echo "slash options ${SLASH_OPTS}"
     echo "============================================================"
-    slash ${SLASH_OPTS} --stats --devirt=dsa --work-dir=slash linked_ssh.manifest
+    slash ${SLASH_OPTS} --work-dir=slash linked_ssh.manifest
     status=$?
     if [ $status -ne 0 ]
     then

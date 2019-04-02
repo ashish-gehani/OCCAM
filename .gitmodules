@@ -1,7 +1,7 @@
 [submodule "src/analysis/sea-dsa"]
 	path = src/analysis/sea-dsa
 	url = https://github.com/seahorn/sea-dsa.git
-	branch = llvm-5.0_makefile
+	branch = llvm-5.0
 [submodule "src/analysis/llvm-dsa"]
 	path = src/analysis/llvm-dsa
 	url = https://github.com/seahorn/llvm-dsa.git
