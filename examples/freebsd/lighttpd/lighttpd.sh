@@ -11,13 +11,13 @@ tar -zxf lighttpd-1.4.13.tar.gz
 cd lighttpd-1.4.13
 
 # configure without shared libs...will save headaches
-CC=wllvm ./configure --without-openssl --without-pcre --without-zlib --without-bzip2 
+CC=gclang ./configure --without-openssl --without-pcre --without-zlib --without-bzip2 
 
-CC=wllvm make
+CC=gclang make
 
 # extract bitcode
 cd src
-extract-bc lighttpd
+get-bc lighttpd
 
 # set up manifests
  cat > lhttpd.manifest <<EOF

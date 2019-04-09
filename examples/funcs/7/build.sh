@@ -13,8 +13,8 @@ EOF
 
 #make the bitcode
 CC=gclang make
-extract-bc main.o
-extract-bc library.o
+get-bc main.o
+get-bc library.o
 
 export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log

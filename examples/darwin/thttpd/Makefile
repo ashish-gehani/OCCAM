@@ -14,7 +14,7 @@ thttpd-2.27: thttpd-2.27.tar
 	cd thttpd-2.27; patch -R < ../config.sub.diff; patch -R < ../config.guess.diff
 
 thttpd.bc: thttpd-2.27
-	cd thttpd-2.27; CC=wllvm ./configure; make; extract-bc thttpd; mv thttpd.bc ..
+	cd thttpd-2.27; CC=gclang ./configure; make; get-bc thttpd; mv thttpd.bc ..
 	cp thttpd-2.27/thttpd thttpd
 
 

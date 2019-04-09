@@ -25,10 +25,10 @@ cat > simple.manifest <<EOF
 EOF
 
 #make the bitcode
-CC=wllvm make 
-extract-bc main.o
-extract-bc module.o
-extract-bc ${LIBRARY}
+CC=gclang make 
+get-bc main.o
+get-bc module.o
+get-bc ${LIBRARY}
 
 
 # slash

@@ -11,8 +11,8 @@ cat > manifest <<EOF
 EOF
 
 #make the bitcode
-CC=wllvm make
-extract-bc main
+CC=gclang make
+get-bc main
 
 
 export OCCAM_LOGLEVEL=INFO

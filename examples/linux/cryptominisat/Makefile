@@ -16,8 +16,8 @@ cryptominisat: cryptominisat-5.0.0.tar.gz
 
 cryptominisat4.bc: cryptominisat
 	mkdir -p cryptominisat/build
-	cd cryptominisat/build; CC=wllvm CXX=wllvm++ cmake ..; make
-	extract-bc cryptominisat/build/cryptominisat5
+	cd cryptominisat/build; CC=glang CXX=gclang++ cmake ..; make
+	get-bc cryptominisat/build/cryptominisat5
 	mv cryptominisat/build/cryptominisat5.bc .
 
 

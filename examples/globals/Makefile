@@ -21,8 +21,8 @@ all: main_slash
 
 
 main.bc:
-	wllvm main.c lib.c -o  main
-	extract-bc main
+	gclang main.c lib.c -o  main
+	get-bc main
 
 slash: main.bc
 	slash --work-dir=slash main.manifest

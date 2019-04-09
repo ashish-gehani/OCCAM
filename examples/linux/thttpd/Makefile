@@ -13,7 +13,7 @@ thttpd-2.27: thttpd-2.27.tar
 	tar xvf thttpd-2.27.tar
 
 thttpd.bc: thttpd-2.27
-	cd thttpd-2.27; CC=wllvm ./configure; make; extract-bc thttpd; mv thttpd.bc ..
+	cd thttpd-2.27; CC=gclang ./configure; make; get-bc thttpd; mv thttpd.bc ..
 
 thttpd: thttpd.bc
 	make -C ../musllvm

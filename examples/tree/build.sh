@@ -21,10 +21,10 @@ cat > simple.manifest <<EOF
 EOF
 
 #make the bitcode
-CC=wllvm make 
-extract-bc main.o
-cd subdir; extract-bc module.o; cd ..
-extract-bc ${LIBRARY}
+CC=gclang make 
+get-bc main.o
+cd subdir; get-bc module.o; cd ..
+get-bc ${LIBRARY}
 
 
 export OCCAM_LOGLEVEL=INFO
