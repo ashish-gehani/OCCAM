@@ -167,7 +167,6 @@ class Slash(object):
         self.pool = pool.getDefaultPool()
         self.valid = True
         self.amalgamation = utils.get_amalgamation(self.flags)
-        print('amalgamation = {}\n'.format(self.amalgamation))
 
 
     def run(self):
@@ -479,37 +478,31 @@ class Slash(object):
         def link(binary, files, libs, native_libs, native_lib_flags, ldflags):
             final_libs = [files[x].get() for x in libs]
             final_module = files[module].get()
+            linker_args = None
+            link_cmd = None
+
             if self.amalgamation is None:
                 linker_args = final_libs + native_libs + native_lib_flags + ldflags
                 link_cmd = '\nclang++ {0} -o {1} {2}\n'.format(final_module, binary, ' '.join(linker_args))
-                sys.stderr.write('\nLinking ...\n')
-                sys.stderr.write(link_cmd)
-                try:
-                    driver.linker(final_module, binary, linker_args)
-                    sys.stderr.write('\ndone.\n')
-                    return True
-                except Exception:
-                    sys.stderr.write('\nFAILED. Modify the manifest to add libraries and/or linker flags.\n\n')
-                    import traceback
-                    traceback.print_exc()
-                    return False
             else:
                 linker_args = [ self.amalgamation ] + native_libs + native_lib_flags + ldflags
                 link_cmd = '\nclang++ {0} -o {1} {2}\n'.format(self.amalgamation, binary, ' '.join(linker_args))
                 # need to amalgamate the bitcode PRIOR to linking
                 amalargs = ['-only-needed', final_module] + final_libs + ['-o', self.amalgamation]
                 driver.run('llvm-link', amalargs)
-                sys.stderr.write('\nLinking ...\n')
-                sys.stderr.write(link_cmd)
-                try:
-                    driver.linker(final_module, binary, linker_args)
-                    sys.stderr.write('\ndone.\n')
-                    return True
-                except Exception:
-                    sys.stderr.write('\nFAILED. Modify the manifest to add libraries and/or linker flags.\n\n')
-                    import traceback
-                    traceback.print_exc()
-                    return False
+                final_module = self.amalgamation
+
+            sys.stderr.write('\nLinking ...\n')
+            sys.stderr.write(link_cmd)
+            try:
+                driver.linker(final_module, binary, linker_args)
+                sys.stderr.write('\ndone.\n')
+                return True
+            except Exception:
+                sys.stderr.write('\nFAILED. Modify the manifest to add libraries and/or linker flags.\n\n')
+                import traceback
+                traceback.print_exc()
+                return False
 
         link_ok = link(binary, files, libs, native_libs, native_lib_flags, ldflags)
 
