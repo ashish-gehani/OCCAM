@@ -21,34 +21,40 @@ curlgit:
 install/bin/curl: curlgit
 	cd curlgit; ./buildconf; CC=${LLVMCC} ./configure --enable-static --prefix=${CURLDIR}/install/; make; make install
 
-bitcode: curl.bc libcurl.4.dylib.bc
+bitcode: curl.bc libcurl.so.bc
 
 
 curl.bc: install/bin/curl
 	${LLVMGET} install/bin/curl
 	mv install/bin/curl.bc .
 
-libcurl.4.dylib.bc: install/bin/curl
-	${LLVMGET} install/lib/libcurl.4.dylib
-	mv install/lib/libcurl.4.dylib.bc .
+libcurl.so.bc: install/bin/curl
+	${LLVMGET} install/lib/libcurl.so
+	mv install/lib/libcurl.so.4.5.0.bc   ./libcurl.so.bc
 
 specialized: bitcode_specialized slash_specialized
 
 bitcode_specialized: curl.bc
 
 .PHONY: slash_specialized
-slash_specialized: 
+slash_specialized:
 	slash --no-strip --devirt=dsa --stats --work-dir=slash_specialized $(MANIFEST_SPECIALIZED)
 	cp slash_specialized/curl curl_slash_specialized
 
 previrt: bitcode_previrt slash_previrt
 
-bitcode_previrt: curl.bc libcurl.4.dylib.bc
+bitcode_previrt: curl.bc libcurl.so.bc
 
 .PHONY: slash_previrt
-slash_previrt: 
+slash_previrt:
 	slash --no-strip --devirt=dsa --stats --work-dir=slash_previrt $(MANIFEST_PREVIRT)
 	cp slash_previrt/curl curl_slash_previrt
+
+
+.PHONY: slash_simple
+slash_simple:
+	slash --work-dir=slash_simple --amalgamate=slash_simple/amalgamation.bc $(MANIFEST_PREVIRT)
+	cp slash_simple/curl curl_slash_simple
 
 
 curl_orig:
