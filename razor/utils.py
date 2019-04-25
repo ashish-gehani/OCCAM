@@ -67,6 +67,12 @@ def get_whitelist(flags):
         return os.path.abspath(wl)
     return None
 
+def get_amalgamation(flags):
+    amalg = get_flag(flags, 'amalgamate')
+    if amalg is not None:
+        return os.path.abspath(amalg)
+    return None
+
 
 def get_manifest(args):
     manifest = None
@@ -267,7 +273,7 @@ def setLogger():
 def is_exec (fpath):
     if fpath == None: return False
     return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
-    
+
 def which(program):
     fpath, _ = os.path.split(program)
     if fpath:
@@ -283,7 +289,7 @@ def get_ropgadget():
     ropgadget = None
     if 'ROPGADGET' in os.environ: ropgadget = os.environ ['ROPGADGET']
     if not is_exec(ropgadget): ropgadget = which('ropgadget')
-    if not is_exec(ropgadget): ropgadget = which('ROPgadget.py')    
+    if not is_exec(ropgadget): ropgadget = which('ROPgadget.py')
     return ropgadget
 
 # Try to find seahorn binary
@@ -299,4 +305,3 @@ def get_crabllvm():
     if 'CRABLLVM' in os.environ: crabllvm = os.environ ['CRABLLVM']
     if not is_exec(crabllvm): crabllvm = which('crabllvm')
     return crabllvm
-

@@ -1,4 +1,6 @@
-CURLDIR= $(shell pwd)
+CURLDIR = $(shell pwd)
+
+OS =  $(shell uname)
 
 MANIFEST_PREVIRT=curl.manifest.previrt
 MANIFEST_SPECIALIZED=curl.manifest.specialized
@@ -9,10 +11,19 @@ MANIFEST_SPECIALIZED=curl.manifest.specialized
 LLVMCC=gclang
 LLVMGET=get-bc
 
+ifeq (Darwin, $(findstring Darwin, ${OS}))
+LIBEXT=dylib
+else
+LIBEXT=so
+endif
+
 all: previrt
 
 CURL=curl-7.64.1
 CURLURL=https://curl.haxx.se/download/${CURL}.tar.gz
+
+CURLLIB=libcurl.${LIBEXT}
+CURLLIBBC=${CURLLIB}.bc
 
 curlgit:
 #	git clone https://github.com/curl/curl.git curlgit
@@ -24,16 +35,16 @@ install/bin/curl: curlgit
 	cd curlgit; ./buildconf; CC=${LLVMCC} ./configure --prefix=${CURLDIR}/install/
 	cp libtool curlgit; cd curlgit; make; make install
 
-bitcode: curl.bc libcurl.4.dylib.bc
+bitcode: curl.bc libcurl.so.bc
 
 
 curl.bc: install/bin/curl
 	${LLVMGET} install/bin/curl
 	mv install/bin/curl.bc .
 
-libcurl.4.dylib.bc: install/bin/curl
-	${LLVMGET} install/lib/libcurl.4.dylib
-	mv install/lib/libcurl.4.dylib.bc .
+libcurl.so.bc: install/bin/curl
+	${LLVMGET} install/lib/libcurl.so
+	mv install/lib/libcurl.so.4.5.0.bc   ./libcurl.so.bc
 
 specialized: bitcode_specialized slash_specialized
 
@@ -46,12 +57,18 @@ slash_specialized:
 
 previrt: bitcode_previrt slash_previrt
 
-bitcode_previrt: curl.bc libcurl.4.dylib.bc
+bitcode_previrt: curl.bc libcurl.so.bc
 
 .PHONY: slash_previrt
 slash_previrt:
 	slash --no-strip --devirt=dsa --stats --work-dir=slash_previrt $(MANIFEST_PREVIRT)
 	cp slash_previrt/curl curl_slash_previrt
+
+
+.PHONY: slash_simple
+slash_simple:
+	slash --work-dir=slash_simple --amalgamate=slash_simple/amalgamation.bc $(MANIFEST_PREVIRT)
+	cp slash_simple/curl curl_slash_simple
 
 
 curl_orig:

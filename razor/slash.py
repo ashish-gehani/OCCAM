@@ -82,6 +82,7 @@ instructions = """slash has three modes of use:
         --ipdse                    : Apply inter-procedural dead store elimination (experimental)
         --precise-dce              : Use model-checking to perform intra-module dead code elimination (experimental)
         --ai-invariants            : Add invariants inferred by abstract interpretation as llvm.assume instructions (experimental)
+        --amalgamate=<file>        : Amalgamate the bitcode into a single <file> before linking (used to deal with duplicate symbols)
     """
 
 def entrypoint():
@@ -127,7 +128,8 @@ class Slash(object):
                         'disable-inlining',
                         'tool=',
                         'verbose',
-                        'keep-external=']
+                        'keep-external=',
+                        'amalgamate=']
             parsedargs = getopt.getopt(argv[1:], None, cmdflags)
             (self.flags, self.args) = parsedargs
 
@@ -141,7 +143,6 @@ class Slash(object):
             if helpme is not None:
                 print(instructions)
                 sys.exit(0)
-
 
         except Exception:
             usage(argv[0])
@@ -165,7 +166,7 @@ class Slash(object):
         self.work_dir = utils.get_work_dir(self.flags)
         self.pool = pool.getDefaultPool()
         self.valid = True
-
+        self.amalgamation = utils.get_amalgamation(self.flags)
 
 
     def run(self):
@@ -178,7 +179,7 @@ class Slash(object):
 
         def check_spec_policy(policy):
             """ Supported policies: none, aggressive, nonrec-aggressive """
-            
+
             if policy <> 'none' and \
                policy <> 'aggressive' and \
                policy <> 'nonrec-aggressive':
@@ -190,7 +191,7 @@ class Slash(object):
 
         def check_devirt_method(method):
             """ Supported methods: none, dsa, cha_dsa """
-            
+
             if method <> 'none' and \
                method <> 'dsa' and \
                method <> 'cha_dsa':
@@ -199,8 +200,8 @@ class Slash(object):
                 return False
             else:
                 return True
-                
-            
+
+
         parsed = utils.check_manifest(self.manifest)
 
         valid = parsed[0]
@@ -222,7 +223,7 @@ class Slash(object):
 
         use_precise_dce = utils.get_flag(self.flags, 'precise-dce', None)
 
-        use_ai = utils.get_flag(self.flags, 'ai-invariants', None)        
+        use_ai = utils.get_flag(self.flags, 'ai-invariants', None)
 
         show_stats = utils.get_flag(self.flags, 'stats', None)
 
@@ -233,7 +234,7 @@ class Slash(object):
         intra_spec_policy = utils.get_flag(self.flags, 'intra-spec-policy', 'nonrec-aggressive')
         if not check_spec_policy(intra_spec_policy):
             return 1
-        
+
         inter_spec_policy = utils.get_flag(self.flags, 'inter-spec-policy', 'nonrec-aggressive')
         if not check_spec_policy(inter_spec_policy):
             return 1
@@ -266,20 +267,20 @@ class Slash(object):
         #watches were inserted here ...
 
         profile_maps, profile_map_titles = [], []
-        
+
         def add_profile_map(title):
             profile_map = collections.OrderedDict()
             for m in files.values():
                 _, name = tempfile.mkstemp()
                 profile_map[m.get()] = name
             def _profile(m):
-                "Profiling "                
+                "Profiling "
                 passes.profile(m.get(), profile_map[m.get()])
             _profile.__doc__ += title
             pool.InParallel(_profile, files.values(), self.pool)
             profile_maps.extend([profile_map])
             profile_map_titles.extend([title])
-            
+
         def print_profile_maps(f = lambda x: x):
             def print_file(f, v, when):
                 sys.stderr.write('\nStatistics for {0} {1}\n'.format(f, when))
@@ -304,7 +305,7 @@ class Slash(object):
             import datetime
             dt = datetime.datetime.now ().strftime ('%d/%m/%Y %H:%M:%S')
             sys.stderr.write("[%s] %s...\n" % (dt, msg))
-            
+
         #Collect some stats before we start optimizing/debloating
         if show_stats is not None:
             add_profile_map('before specialization')
@@ -375,7 +376,7 @@ class Slash(object):
             rewrite_files[m] = provenance.VersionedFile(base, 'rw')
 
         # Options passed to the optimizer (opt)
-        opt_options = []        
+        opt_options = []
         if no_inlining is not None:
             opt_options += ['-disable-inlining']
 
@@ -384,7 +385,7 @@ class Slash(object):
         # benefits from using them pay off.
         if devirt == 'dsa' or use_ai is not None:
             opt_options += ['-lowerswitch', '-lowerinvoke']
-            
+
         write_timestamp("Started global fixpoint ...")
         iteration = 0
         max_fixpoint_iterations = 10 ## make this user parameter
@@ -451,7 +452,7 @@ class Slash(object):
                 progress = any(rws)
             else:
                 print "Skipped inter-module specialization"
-            
+
             # Aggressive internalization
             pool.InParallel(_references, vals, self.pool)
             pool.InParallel(_internalize, vals, self.pool)
@@ -468,17 +469,29 @@ class Slash(object):
             #     passes.internalize(pre, post, [iface_after_file.get()], self.whitelist)
             # pool.InParallel(prune, files.values(), self.pool)
 
-        write_timestamp("Finished global fixpoint.")        
-            
+        write_timestamp("Finished global fixpoint.")
+
         #Collect stats after the whole optimization/debloating process finished
         if show_stats is not None:
             add_profile_map('after specialization')
-                                
+
         def link(binary, files, libs, native_libs, native_lib_flags, ldflags):
             final_libs = [files[x].get() for x in libs]
             final_module = files[module].get()
-            linker_args = final_libs + native_libs + native_lib_flags + ldflags
-            link_cmd = '\nclang++ {0} -o {1} {2}\n'.format(final_module, binary, ' '.join(linker_args))
+            linker_args = None
+            link_cmd = None
+
+            if self.amalgamation is None:
+                linker_args = final_libs + native_libs + native_lib_flags + ldflags
+                link_cmd = '\nclang++ {0} -o {1} {2}\n'.format(final_module, binary, ' '.join(linker_args))
+            else:
+                linker_args = [ self.amalgamation ] + native_libs + native_lib_flags + ldflags
+                link_cmd = '\nclang++ {0} -o {1} {2}\n'.format(self.amalgamation, binary, ' '.join(linker_args))
+                # need to amalgamate the bitcode PRIOR to linking
+                amalargs = ['-only-needed', final_module] + final_libs + ['-o', self.amalgamation]
+                driver.run('llvm-link', amalargs)
+                final_module = self.amalgamation
+
             sys.stderr.write('\nLinking ...\n')
             sys.stderr.write(link_cmd)
             try:
@@ -492,7 +505,7 @@ class Slash(object):
                 return False
 
         link_ok = link(binary, files, libs, native_libs, native_lib_flags, ldflags)
-        
+
         if use_precise_dce is not None and link_ok:
             def precise_dce((m, ropfile)):
                 ''' Pruning using precise dce guided by maximizing the number of removed ROP gadgets '''
@@ -503,7 +516,7 @@ class Slash(object):
                     ## now, we will only perform precise dse for the
                     ## program but not for libraries.
                     entries = ['main']
-                    
+
                     ## TODO: make user options
                     benefit_threshold = 20
                     cost_threshold = 3
@@ -515,7 +528,7 @@ class Slash(object):
                 except Exception:
                     sys.stderr.write("Precise dce failed on " + str(pre))
                     return False
-                
+
             ropgadget_cmd = utils.get_ropgadget()
             if ropgadget_cmd is not None:
                 binary = os.path.join(os.path.dirname(os.path.abspath(files[module].get())), \
@@ -523,7 +536,7 @@ class Slash(object):
                 ropfile = binary + '.ropgadget.txt'
                 ropgadget_args = ['--binary', binary, '--silent', '--fns2lines', ropfile]
                 driver.run(ropgadget_cmd, ropgadget_args)
-                
+
                 precise_dce_args = map(lambda m: (m,ropfile), files.values())
                 rws = pool.InParallel(precise_dce, precise_dce_args , self.pool)
                 progress = any(rws)
@@ -540,9 +553,9 @@ class Slash(object):
             if os.path.exists(trg):
                 os.unlink(trg)
             os.symlink(x.get(), trg)
-                
+
         pool.shutdownDefaultPool()
-        
+
         if show_stats is not None:
             def _splitext(abspath):
                 """
@@ -553,14 +566,14 @@ class Slash(object):
                 assert(len(res) > 1)
                 return res[0]
             print_profile_maps(_splitext)
-            
+
         return 0
 
 
     def driver_config(self):
         debug = utils.get_flag(self.flags, 'debug', None)
         if debug is not None:
-            driver.opt_debug_cmds.append('--debug')            
+            driver.opt_debug_cmds.append('--debug')
 
         debug_manager = utils.get_flag(self.flags, 'debug-manager', None)
         if debug_manager is not None:
@@ -577,7 +590,7 @@ class Slash(object):
         print_after_all = utils.get_flag(self.flags, 'print-after-all', None)
         if print_after_all is not None:
             driver.opt_debug_cmds.append('--print-after-all')
-            
+
         verbose = utils.get_flag(self.flags, 'verbose', None)
         if verbose is not None:
             driver.verbose = True

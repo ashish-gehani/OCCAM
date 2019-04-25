@@ -58,3 +58,6 @@ install/bin/curl:
 not a static build:
 
   -rw-r--r--   1 iam  staff  469056 Jan 22 17:20 curl.bc
+
+
+llvm-link  -only-needed curl.bc libcurl.so.4.5.0.bc -o amalgamation.bc
