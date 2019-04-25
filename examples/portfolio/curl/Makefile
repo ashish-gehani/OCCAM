@@ -11,15 +11,18 @@ LLVMGET=get-bc
 
 all: previrt
 
-CURL=curl-7.60.0
+CURL=curl-7.64.1
 CURLURL=https://curl.haxx.se/download/${CURL}.tar.gz
 
 curlgit:
-	git clone https://github.com/curl/curl.git curlgit
+#	git clone https://github.com/curl/curl.git curlgit
+	wget ${CURLURL}; tar xvfz ${CURL}.tar.gz; mv ${CURL} curlgit
 
+# --enable-static
 
 install/bin/curl: curlgit
-	cd curlgit; ./buildconf; CC=${LLVMCC} ./configure --enable-static --prefix=${CURLDIR}/install/; make; make install
+	cd curlgit; ./buildconf; CC=${LLVMCC} ./configure --prefix=${CURLDIR}/install/
+	cp libtool curlgit; cd curlgit; make; make install
 
 bitcode: curl.bc libcurl.4.dylib.bc
 
@@ -37,7 +40,7 @@ specialized: bitcode_specialized slash_specialized
 bitcode_specialized: curl.bc
 
 .PHONY: slash_specialized
-slash_specialized: 
+slash_specialized:
 	slash --no-strip --devirt=dsa --stats --work-dir=slash_specialized $(MANIFEST_SPECIALIZED)
 	cp slash_specialized/curl curl_slash_specialized
 
@@ -46,7 +49,7 @@ previrt: bitcode_previrt slash_previrt
 bitcode_previrt: curl.bc libcurl.4.dylib.bc
 
 .PHONY: slash_previrt
-slash_previrt: 
+slash_previrt:
 	slash --no-strip --devirt=dsa --stats --work-dir=slash_previrt $(MANIFEST_PREVIRT)
 	cp slash_previrt/curl curl_slash_previrt
 

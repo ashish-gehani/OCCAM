@@ -11,6 +11,7 @@ cat > multiple.manifest <<EOF
 }
 EOF
 
+make clean
 #make the bitcode
 CC=gclang make
 get-bc main.o
