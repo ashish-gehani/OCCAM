@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# XXX: clean before creating manifest
+make clean
+
 # Build the manifest file
 cat > multiple.manifest <<EOF
 { "main" : "main.o.bc"
@@ -11,11 +14,12 @@ cat > multiple.manifest <<EOF
 }
 EOF
 
-make clean
 #make the bitcode
+# XXX: gclang already generates bitcode without calling explictly get-bc
 CC=gclang make
-get-bc main.o
-get-bc library.o
+
+mv .library.o.bc library.o.bc
+mv .main.o.bc main.o.bc
 
 export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
