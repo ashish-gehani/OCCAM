@@ -1,4 +1,6 @@
-CURLDIR= $(shell pwd)
+CURLDIR = $(shell pwd)
+
+OS =  $(shell uname)
 
 MANIFEST_PREVIRT=curl.manifest.previrt
 MANIFEST_SPECIALIZED=curl.manifest.specialized
@@ -9,10 +11,19 @@ MANIFEST_SPECIALIZED=curl.manifest.specialized
 LLVMCC=gclang
 LLVMGET=get-bc
 
+ifeq (Darwin, $(findstring Darwin, ${OS}))
+LIBEXT=dylib
+else
+LIBEXT=so
+endif
+
 all: previrt
 
 CURL=curl-7.60.0
 CURLURL=https://curl.haxx.se/download/${CURL}.tar.gz
+
+CURLLIB=libcurl.${LIBEXT}
+CURLLIBBC=${CURLLIB}.bc
 
 curlgit:
 	git clone https://github.com/curl/curl.git curlgit
