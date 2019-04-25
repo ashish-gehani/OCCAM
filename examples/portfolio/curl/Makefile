@@ -35,16 +35,16 @@ install/bin/curl: curlgit
 	cd curlgit; ./buildconf; CC=${LLVMCC} ./configure --prefix=${CURLDIR}/install/
 	cp libtool curlgit; cd curlgit; make; make install
 
-bitcode: curl.bc libcurl.so.bc
+bitcode: curl.bc ${CURLLIBBC}
 
 
 curl.bc: install/bin/curl
 	${LLVMGET} install/bin/curl
 	mv install/bin/curl.bc .
 
-libcurl.so.bc: install/bin/curl
-	${LLVMGET} install/lib/libcurl.so
-	mv install/lib/libcurl.so.4.5.0.bc   ./libcurl.so.bc
+${CURLLIBBC}: install/bin/curl
+	${LLVMGET} install/lib/${CURLLIB}
+	mv install/lib/${CURLLIB}*.bc   ./${CURLLIBBC}
 
 specialized: bitcode_specialized slash_specialized
 
@@ -57,7 +57,7 @@ slash_specialized:
 
 previrt: bitcode_previrt slash_previrt
 
-bitcode_previrt: curl.bc libcurl.so.bc
+bitcode_previrt: curl.bc ${CURLLIBBC}
 
 .PHONY: slash_previrt
 slash_previrt:
