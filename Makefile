@@ -75,7 +75,7 @@ uninstall_occam_lib:
 
 
 install_razor:  dist
-ifeq ($(PROTOC),)
+ifeq ($(PIP),)
 	$(error installing razor requires pip)
 endif
 	$(PIP) install .
