@@ -485,10 +485,10 @@ class Slash(object):
                 linker_args = final_libs + native_libs + native_lib_flags + ldflags
                 link_cmd = '\nclang++ {0} -o {1} {2}\n'.format(final_module, binary, ' '.join(linker_args))
             else:
-                linker_args = [ self.amalgamation ] + native_libs + native_lib_flags + ldflags
+                linker_args = native_libs + native_lib_flags + ldflags
                 link_cmd = '\nclang++ {0} -o {1} {2}\n'.format(self.amalgamation, binary, ' '.join(linker_args))
-                # need to amalgamate the bitcode PRIOR to linking
-                amalargs = ['-only-needed', final_module] + final_libs + ['-o', self.amalgamation]
+                # need to amalgamate the bitcode PRIOR to linking (only needed when there are duplicate symbols)
+                amalargs = ['-override', final_module] + final_libs + ['-o', self.amalgamation]
                 driver.run('llvm-link', amalargs)
                 final_module = self.amalgamation
 
