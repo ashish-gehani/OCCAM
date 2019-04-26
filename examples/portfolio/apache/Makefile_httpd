@@ -16,7 +16,7 @@ endif
 
 
 PCRE_VERSION=8.42
-APR_VERSION=1.6.3
+APR_VERSION=1.7.0
 APR_UTIL_VERSION=1.6.1
 
 
@@ -25,7 +25,7 @@ APR_INSTALL=${THISDIR}/install/apr-${APR_VERSION}
 APR_UTIL_INSTALL=${THISDIR}/install/apr-util-${APR_UTIL_VERSION}
 
 
-HTTPD_VERSION=2.4.33
+HTTPD_VERSION=2.4.39
 HTTPD=httpd-${HTTPD_VERSION}
 HTTPD_TARBALL=${HTTPD}.tar.gz
 HTTPD_URL=http://apache.cs.utah.edu/httpd/${HTTPD_TARBALL}
@@ -90,8 +90,8 @@ very_clean: clean
 	make -C . -f Makefile_apr very_clean
 	make -C . -f Makefile_apr_util very_clean
 
-spotless: very_clean 
-	rm -rf ${HTTPD_TARBALL} ${HTTPD} 
+spotless: very_clean
+	rm -rf ${HTTPD_TARBALL} ${HTTPD}
 	make -C . -f Makefile_pcre spotless
 	make -C . -f Makefile_apr spotless
 	make -C . -f Makefile_apr_util spotless

@@ -15,7 +15,7 @@ LIBEXT=so
 endif
 
 # apr_util depends on apr
-APR_VERSION ?= 1.6.3
+APR_VERSION ?= 1.7.0
 APR=apr-${APR_VERSION}
 APR_INSTALL=${THISDIR}/install/${APR}
 
@@ -61,7 +61,7 @@ clean:
 
 very_clean: clean
 	make -C ${APR_UTIL} clean
-	rm -rf ${APR_UTIL_INSTALL} 
+	rm -rf ${APR_UTIL_INSTALL}
 
 spotless: very_clean
-	rm -rf ${APR_UTIL_TARBALL} ${APR_UTIL} 
+	rm -rf ${APR_UTIL_TARBALL} ${APR_UTIL}

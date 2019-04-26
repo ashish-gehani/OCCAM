@@ -7,7 +7,7 @@ set -e
 #make
 function usage() {
     echo "Usage: $0 [--disable-inlining] [--devirt VAL1] [--inter-spec VAL2] [--intra-spec VAL2] [--link dynamic|static] [--help]"
-    echo "       VAL1=none|dsa|cha_dsa"    
+    echo "       VAL1=none|dsa|cha_dsa"
     echo "       VAL2=none|aggressive|nonrec-aggressive"
 }
 
@@ -28,7 +28,7 @@ case $key in
 	LINK="$2"
 	shift # past argument
 	shift # past value
-	;;    
+	;;
     -inter-spec|--inter-spec)
 	INTER_SPEC="$2"
 	shift # past argument
@@ -47,7 +47,7 @@ case $key in
 	DEVIRT="$2"
 	shift # past argument
 	shift # past value
-	;;        
+	;;
     -help|--help)
 	usage
 	exit 0
@@ -64,7 +64,7 @@ set -- "${POSITIONAL[@]}" # restore positional parameters
 if [[ "${LINK}" != "dynamic"  &&  "${LINK}" != "static" ]]; then
     echo "error: link can only be dynamic or static"
     exit 1
-fi    
+fi
 
 #check that the required dependencies are built
 declare -a bitcode=("httpd.bc" "libapr-1.shared.bc" "libaprutil-1.shared.bc" "libpcre.shared.bc")
@@ -84,10 +84,10 @@ SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC} 
 
 # OCCAM with program and libraries dynamically linked
 function dynamic_link() {
-    
+
     export OCCAM_LOGLEVEL=INFO
     export OCCAM_LOGFILE=${PWD}/slash/occam.log
-    
+
     # Build the manifest file
     cat > httpd.manifest <<EOF
 { "main" : "httpd.bc"
@@ -110,7 +110,7 @@ EOF
     then
 	echo "Something failed while running slash"
 	exit 1
-    fi     
+    fi
     cp slash/httpd_slashed .
  }
 
@@ -149,7 +149,7 @@ EOF
 }
 
 if [ "${LINK}" == "dynamic" ]; then
-    dynamic_link 
+    dynamic_link
 else
     static_link
-fi    
+fi
