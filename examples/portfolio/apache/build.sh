@@ -101,7 +101,10 @@ EOF
 
     echo "============================================================"
     echo "Running httpd with dynamic libraries apr-1, aprutil-1 and pcre"
-    echo "slash options ${SLASH_OPTS}"
+    echo "slash options ${SLASH_OPTS}                                 "
+    echo "i.e.:                                                       "
+    echo " slash ${SLASH_OPTS} --work-dir=slash httpd.manifest        "
+    echo "                                                            "
     echo "============================================================"
     slash ${SLASH_OPTS} --work-dir=slash httpd.manifest
 
