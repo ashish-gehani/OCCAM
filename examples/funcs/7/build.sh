@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 
-# XXX: clean before creating manifest
-make clean
+if [ -z ${1+x} ]; then
+    # default directory name if $1 is unset
+    WORKDIR=slash
+else    
+    ## directory name 
+    WORKDIR=$1
+fi      
 
 # Build the manifest file
 cat > multiple.manifest <<EOF
@@ -22,13 +27,13 @@ mv .library.o.bc library.o.bc
 mv .main.o.bc main.o.bc
 
 export OCCAM_LOGLEVEL=INFO
-export OCCAM_LOGFILE=${PWD}/slash/occam.log
+export OCCAM_LOGFILE=${PWD}/${WORKDIR}/occam.log
 export PATH=${LLVM_HOME}/bin:${PATH}
 
-slash --devirt=dsa --work-dir=slash multiple.manifest
+slash --devirt=dsa --work-dir=${WORKDIR} multiple.manifest
 
 #debugging stuff below:
-for bitcode in slash/*.bc; do
+for bitcode in ${WORKDIR}/*.bc; do
     ${LLVM_HOME}/bin/llvm-dis  "$bitcode" &> /dev/null
 done
 

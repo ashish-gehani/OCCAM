@@ -1,5 +1,5 @@
-; RUN: cd %lto_00 &&  ./build.sh 
-; RUN: %llvm_as < ./slash/library.o-final.ll | %llvm_dis | FileCheck %s
+; RUN: cd %lto_00 &&  ./build.sh slash-lib
+; RUN: %llvm_as < ./slash-lib/library.o-final.ll | %llvm_dis | FileCheck %s
 
 ; ModuleID = 'slash/library.o-final.bc'
 source_filename = "llvm-link"
