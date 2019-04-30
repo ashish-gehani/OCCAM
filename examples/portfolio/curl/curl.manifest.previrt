@@ -1,7 +1,7 @@
 { "main" : "curl.bc"
 , "binary"  : "curl"
 , "modules"    : [ "libcurl.so.bc" ]
-, "native_libs" : [ "/System/Library/Frameworks/LDAP.framework/Versions/A/LDAP", "/usr/local/lib/libz.1.dylib", "/usr/local/opt/libidn2/lib/libidn2.0.dylib" ]
-, "ldflags" : [ "-O2", "-lpthread", "-lz"]
+, "native_libs" : [ ]
+, "ldflags" : [ "-O2", "-lpthread", "-lz", "-lcrypto", "-lssl"]
 , "name"    : "curl"
 }

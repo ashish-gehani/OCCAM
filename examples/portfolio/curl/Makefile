@@ -30,7 +30,9 @@ curlgit:
 
 install/bin/curl: curlgit
 	cd curlgit; ./buildconf; CC=${LLVMCC} ./configure --prefix=${CURLDIR}/install/
-	cp libtool curlgit; cd curlgit; make; make install
+#   on a mac you have to fix the libtool script
+#	cp libtool curlgit;
+	cd curlgit; make; make install
 
 bitcode: curl.bc ${CURLLIBBC}
 
