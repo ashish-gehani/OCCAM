@@ -121,7 +121,10 @@ static bool trySpecializeFunction(Function* f, SpecializationTable& table,
     CallSite cs(ci);
     Function* callee = cs.getCalledFunction();
     assert(callee);
-    
+    if (!GlobalValue::isLocalLinkage(callee->getLinkage())) {
+      // We only try to specialize a function if it's internal. 
+      continue;
+    }
     // specScheme[i] = nullptr if the i-th parameter of the callsite
     //                         cannot be specialized.
     //                 c if the i-th parameter of the callsite is a
@@ -139,14 +142,15 @@ static bool trySpecializeFunction(Function* f, SpecializationTable& table,
 	   << "' on arguments [";
     for (unsigned int i = 0, cnt = 0; i < callee->arg_size(); ++i) {
       if (specScheme[i] != NULL) {
-	if (cnt++ != 0)
+	if (cnt++ != 0) {
 	  errs() << ",";
-          Value* v = cs.getInstruction()->getOperand(i);
-          if (GlobalValue* gv = dyn_cast<GlobalValue>(v)) {
-            errs() << i << "=(@" << gv->getName() << ")";
-          } else {
-            errs() << i << "=(" << *cs.getInstruction()->getOperand(i) << ")";
-          }
+	}
+	if (GlobalValue* gv =
+	    dyn_cast<GlobalValue>(cs.getInstruction()->getOperand(i))) {
+	  errs() << i << "=(@" << gv->getName() << ")";
+	} else {
+	  errs() << i << "=(" << *cs.getInstruction()->getOperand(i) << ")";
+	}
       }
     }
     errs() << "]\n";
@@ -154,39 +158,38 @@ static bool trySpecializeFunction(Function* f, SpecializationTable& table,
         
     // --- build a specialized function if specScheme is more
     //     refined than all existing specialized versions.
-    Function* specializedVersion = nullptr;
+    Function* specialized_callee = nullptr;
     std::vector<const SpecializationTable::Specialization*> versions;
     table.getSpecializations(callee, specScheme, versions);
     for (std::vector<const SpecializationTable::Specialization*>::iterator i =
 	   versions.begin(), e = versions.end(); i != e; ++i) {
       if (SpecializationTable::Specialization::refines(specScheme, (*i)->args)) {
-	specializedVersion = (*i)->handle;
+	specialized_callee = (*i)->handle;
 	break;
       }
     }
     
-    if (!specializedVersion) {
-      specializedVersion = specializeFunction(callee, specScheme);
-      if(!specializedVersion) {
+    if (!specialized_callee) {
+      specialized_callee = specializeFunction(callee, specScheme);
+      if(!specialized_callee) {
 	continue;
       }
-      table.addSpecialization(callee, specScheme, specializedVersion);
-      to_add.push_back(specializedVersion);
+      table.addSpecialization(callee, specScheme, specialized_callee);
+      to_add.push_back(specialized_callee);
     }
     
     // -- build the specialized callsite
-    const unsigned int specialized_arg_count = specializedVersion->arg_size();
+    const unsigned int specialized_arg_count = specialized_callee->arg_size();
     std::vector<unsigned> argPerm;
     argPerm.reserve(specialized_arg_count);
     for (unsigned from = 0; from < callee->arg_size(); from++) {
-      if (!specScheme[from])
+      if (!specScheme[from]) {
 	argPerm.push_back(from);
       }
+    }
     assert(specialized_arg_count == argPerm.size());
-    
-    Instruction* newInst = specializeCallSite(ci, specializedVersion, argPerm);
+    Instruction* newInst = specializeCallSite(ci, specialized_callee, argPerm);
     llvm::ReplaceInstWithInst(ci, newInst);
-    
     modified = true;
   }
   
