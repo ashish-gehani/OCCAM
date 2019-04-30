@@ -165,27 +165,30 @@ namespace previrt
 	      assert(concreteArg->getType() == paramType
 		     && "Specializing function with concrete argument of wrong type!");
           } else {
-            args.push_back(NULL);
+            args.push_back(nullptr);
             argPerm.push_back(i);
           }
         }
 	
 	/*
 	  args is a list of pointers to values
-	   -- if the pointer is NULL then that argument is not
+	   -- if the pointer is nullptr then that argument is not
                specialized.
-	   -- if the pointer is not NULL then the argument will be/has
+	   -- if the pointer is not nullptr then the argument will be/has
               been specialized to that value.
 
 	  argsPerm is a list on integers; the indices of the non-special arguments
-	  args[i] = NULL iff i is in argsPerm for i < arg_count.
+	  args[i] = nullptr iff i is in argsPerm for i < arg_count.
 	*/
 
-        Function* nfunc = specializeFunction(func, args);
-        nfunc->setLinkage(GlobalValue::ExternalLinkage);
-        FunctionHandle rewriteTo = nfunc->getName();
+        Function* specialized_func = specializeFunction(func, args);
+	if (!specialized_func) {
+	  continue;
+	}
+        specialized_func->setLinkage(GlobalValue::ExternalLinkage);
+        FunctionHandle rewriteTo = specialized_func->getName();
         T.rewrite(name, call, rewriteTo, argPerm);
-        to_add.push_back(nfunc);
+        to_add.push_back(specialized_func);
 	errs() << "Specialized  " << name << " to " << rewriteTo << "\n";
 
         #if 0
@@ -235,7 +238,7 @@ namespace previrt {
       }
       
       errs() << "Done reading.\n";
-      if (transform.interface != NULL) {
+      if (transform.interface != nullptr) {
         errs() << transform.interface->calls.size() << " calls\n";
       } else {
         errs() << "No interfaces read.\n";
