@@ -88,7 +88,9 @@ def strip(input_file, output_file):
     """ strips unused symbols
     """
     args = [input_file, '-o', output_file]
-    args += ['-strip', '-globaldce', '-globalopt', '-strip-dead-prototypes']
+    args += ['-strip',
+             #'-globaldce', '-globalopt',
+             '-strip-dead-prototypes']
     return driver.run('opt', args)
 
 def devirt(devirt_method, input_file, output_file):

@@ -355,17 +355,6 @@ class Slash(object):
 
         pool.InParallel(_internalize, vals, self.pool)
 
-        # Strip everything
-        # This is safe because external names are not stripped
-        if no_strip is None:
-            def _strip(m):
-                "Stripping symbols"
-                pre = m.get()
-                post = m.new('x')
-                passes.strip(pre, post)
-
-            pool.InParallel(_strip, files.values(), self.pool)
-
         # Begin main loop
         iface_before_file = provenance.VersionedFile('interface_before', 'iface')
         iface_after_file = provenance.VersionedFile('interface_after', 'iface')
@@ -471,6 +460,18 @@ class Slash(object):
 
         write_timestamp("Finished global fixpoint.")
 
+        # Strip everything
+        # XXX: we strip symbols after the whole specialization process
+        # has finished.  Otherwise, things can go wrong if intra-module
+        # specialization occurs with all symbols stripped.
+        if no_strip is None:
+            def _strip(m):
+                "Stripping symbols"
+                pre = m.get()
+                post = m.new('x')
+                passes.strip(pre, post)
+            pool.InParallel(_strip, files.values(), self.pool)
+        
         #Collect stats after the whole optimization/debloating process finished
         if show_stats is not None:
             add_profile_map('after specialization')
