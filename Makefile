@@ -106,7 +106,7 @@ endif
 # python pip packaging
 
 dist: proto
-	python3 setup.py sdist bdist_wheel
+	python setup.py sdist bdist_wheel
 
 proto:  protoc
 	mkdir -p razor/proto
@@ -126,7 +126,7 @@ endif
 # otherwise the server will give you an error.
 
 publish:
-	python3 -m twine upload dist/*
+	python -m twine upload dist/*
 
 lint:
 ifeq ($(PYLINT),)
