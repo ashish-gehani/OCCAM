@@ -19,7 +19,8 @@ export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
 export PATH=${LLVM_HOME}/bin:${PATH}
 
-slash --no-strip --work-dir=slash funcs.manifest
+slash --intra-spec-policy=nonrec-aggressive --inter-spec-policy=nonrec-aggressive \
+      --no-strip --work-dir=slash funcs.manifest
 
 cp slash/main main_slash
 

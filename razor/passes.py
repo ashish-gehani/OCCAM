@@ -131,7 +131,7 @@ def profile(input_file, output_file):
         ## XXX: these can be expensive        
         '-profile-verbose=false'
         ,'-profile-loops=false'
-        ,'-profile-safe-pointers=false'
+        #,'-profile-safe-pointers=false'
     ]
     args += ['-profile-outfile={0}'.format(output_file)]
     return driver.previrt(input_file, '/dev/null', args)
