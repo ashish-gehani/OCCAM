@@ -83,7 +83,7 @@ slash ${SLASH_OPTS} --work-dir=slash tree.manifest.constraints
 status=$?
 if [ $status -eq 0 ]
 then
-    cp slash/tree tree_nospec_slashed
+    cp slash/tree tree_slashed
 else
     echo "Something failed while running slash"
 fi    
