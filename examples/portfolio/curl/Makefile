@@ -2,9 +2,6 @@ CURLDIR = $(shell pwd)
 
 OS =  $(shell uname)
 
-MANIFEST_PREVIRT=curl.manifest.previrt
-MANIFEST_SPECIALIZED=curl.manifest.specialized
-
 #LLVMCC=wllvm
 #LLVMGET=extract-bc
 
@@ -17,7 +14,7 @@ else
 LIBEXT=so
 endif
 
-all: previrt
+all: bitcode
 
 CURL=curl-7.64.1
 CURLURL=https://curl.haxx.se/download/${CURL}.tar.gz
@@ -46,47 +43,10 @@ ${CURLLIBBC}: install/bin/curl
 	${LLVMGET} install/lib/${CURLLIB}
 	mv install/lib/${CURLLIB}*.bc   ./${CURLLIBBC}
 
-specialized: bitcode_specialized slash_specialized
-
-bitcode_specialized: curl.bc
-
-.PHONY: slash_specialized
-slash_specialized:
-	slash --no-strip --devirt=dsa --stats --work-dir=slash_specialized $(MANIFEST_SPECIALIZED)
-	cp slash_specialized/curl curl_slash_specialized
-
-previrt: bitcode_previrt slash_previrt
-
-bitcode_previrt: curl.bc ${CURLLIBBC}
-
-.PHONY: slash_previrt
-slash_previrt:
-	slash --no-strip --devirt=dsa --stats --work-dir=slash_previrt $(MANIFEST_PREVIRT)
-	cp slash_previrt/curl curl_slash_previrt
-
-
-.PHONY: slash_simple
-slash_simple:
-	slash --work-dir=slash_simple --amalgamate=slash_simple/amalgamation.bc $(MANIFEST_PREVIRT)
-	cp slash_simple/curl curl_slash_simple
-
-
-curl_orig:
-	cp install/bin/curl curl_orig
-
-
-test:
-	./curl_slash_specialized http://apache.cs.utah.edu/httpd/httpd-2.4.33.tar.gz > httpd-2.4.33.tar.gz
-
-
 clean:
-	rm -rf slash_specialized slash_previrt httpd-2.4.33.tar.gz
-
-
-very_clean:
-	rm -rf curl_orig curl_slash curl_slash_specialized install
+	rm -rf install
 	make -C curlgit clean
 
 
-spotless: very_clean
+very_clean: clean
 	rm -rf  *.bc curlgit ${CURLDIR}/install
