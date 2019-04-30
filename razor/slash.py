@@ -231,11 +231,11 @@ class Slash(object):
         if info is not None:
             show_stats = True
 
-        intra_spec_policy = utils.get_flag(self.flags, 'intra-spec-policy', 'nonrec-aggressive')
+        intra_spec_policy = utils.get_flag(self.flags, 'intra-spec-policy', 'none')
         if not check_spec_policy(intra_spec_policy):
             return 1
 
-        inter_spec_policy = utils.get_flag(self.flags, 'inter-spec-policy', 'nonrec-aggressive')
+        inter_spec_policy = utils.get_flag(self.flags, 'inter-spec-policy', 'none')
         if not check_spec_policy(inter_spec_policy):
             return 1
 
