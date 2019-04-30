@@ -13,14 +13,14 @@ declare i32 @printf(i8* nocapture readonly, ...) local_unnamed_addr #0
 
 ; Function Attrs: nounwind ssp
 define i32 @main(i32, i8** nocapture readnone) local_unnamed_addr #1 {
-  ; CHECK: "fibo(0xF)"
-  %3 = tail call fastcc i32 @"fibo(0xF)"()
+  ; CHECK: "__occam_spec.fibo(0xF)"
+  %3 = tail call fastcc i32 @"__occam_spec.fibo(0xF)"()
   %4 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([23 x i8], [23 x i8]* @.str, i64 0, i64 0), i32 15, i32 %3) #3
   ret i32 0
 }
 
 ; Function Attrs: norecurse nounwind readnone ssp uwtable
-define internal fastcc i32 @"fibo(0xF)"() unnamed_addr #2 {
+define internal fastcc i32 @"__occam_spec.fibo(0xF)"() unnamed_addr #2 {
   ; CHECK: 610
   ret i32 610
 }

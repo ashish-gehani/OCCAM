@@ -16,13 +16,13 @@ define i32 @main(i32, i8** nocapture readnone) #1 {
   ; CHECK-NOT: add_one
   ; CHECK: ret i32
   %3 = tail call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([21 x i8]* @0, i64 0, i64 0)) #2
-  ; CHECK: "add_three(0x4,0x4)"  
-  %4 = tail call i32 @"add_three(0x4,0x4)"() #2
+  ; CHECK: "__occam_spec.add_three(0x4,0x4)"  
+  %4 = tail call i32 @"__occam_spec.add_three(0x4,0x4)"() #2
   %5 = tail call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([17 x i8]* @1, i64 0, i64 0), i32 %4) #2
   ret i32 %4
 }
 
-declare i32 @"add_three(0x4,0x4)"()
+declare i32 @"__occam_spec.add_three(0x4,0x4)"()
 
 attributes #0 = { "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "stack-protector-buffer-size"="8" "unsafe-fp-math"="false" "use-soft-float"="false" }
 attributes #1 = { nounwind ssp }

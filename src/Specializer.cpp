@@ -56,6 +56,8 @@ using namespace llvm;
 namespace previrt
 {
   std::string specializeName(Function* f, std::vector<std::string>& args) {
+    assert(f->hasName());
+    
     args.clear();
     std::string fn = f->getName().str();
 
@@ -94,23 +96,30 @@ namespace previrt
       for (unsigned int i = 0; i < alen; ++i) {
         args.push_back("?");
       }
-      return f->getName().str();
+      return "__occam_spec." + f->getName().str();
     }
   }
 
   Function* specializeFunction(Function *f, const std::vector<Value*>& args) {
     assert(!f->isDeclaration());
-    ValueToValueMapTy vmap;
 
+    if (!f->hasName()) {
+      // XXX: this is a unnecessary restriction but it should never
+      // happen becase we enforce that all functions are named before
+      // specialization.
+      return nullptr;
+    }
+    
+    ValueToValueMapTy vmap;
     unsigned int i = 0;
     unsigned int j = 0;
     std::vector<std::string> argNames;
-
+    
     std::string baseName = specializeName(f, argNames);
 
     for (Function::arg_iterator itr = f->arg_begin(); itr != f->arg_end(); itr++, i++) {
       while (argNames[j] != "?") j++;
-      if (args[i] != NULL) {
+      if (args[i] != nullptr) {
         Value* arg = (Value*) &(*itr);
 
         assert(arg->getType() == args[i]->getType()
@@ -135,8 +144,7 @@ namespace previrt
     Function *result = f->getParent()->getFunction(baseName);
     // If specialized function already exists, no reason
     // to create another one. In fact, can cause the process
-    // to diverge. XXX This needs to be a more sophisticated
-    // check
+    // to diverge. 
     if (!result) {
       ClonedCodeInfo info;
       result = llvm::CloneFunction(f, vmap, &info);
@@ -157,7 +165,7 @@ namespace previrt
     
     const size_t specialized_arg_count = perm.size(); //nfunc->arg_size();
 
-    Instruction* newInst = NULL;
+    Instruction* newInst = nullptr;
     if (CallInst* ci = dyn_cast<CallInst>(I)) {
       std::vector<Value*> newOperands;
       newOperands.reserve (specialized_arg_count);
@@ -179,12 +187,16 @@ namespace previrt
       for (size_t j = 0; j < specialized_arg_count; ++j) {
         newOperands.push_back(ci->getArgOperand(perm[j]));
       }
-      newInst = InvokeInst::Create(nfunc, ci->getNormalDest(),
-				   ci->getUnwindDest(), newOperands, ci->getName());
-      
+      if (ci->hasName()) {
+	newInst = InvokeInst::Create(nfunc, ci->getNormalDest(),
+				     ci->getUnwindDest(), newOperands, ci->getName());
+      } else {
+	newInst = InvokeInst::Create(nfunc, ci->getNormalDest(),
+				     ci->getUnwindDest(), newOperands);
+      }
     } else {
       assert(false && "specializeCallSite got non-callsite");
-      return NULL; // Unreachable
+      return nullptr; // Unreachable
     }
     CallSite NewCS = CallSite(newInst);
     NewCS.setCallingConv(nfunc->getCallingConv());
@@ -194,7 +206,8 @@ namespace previrt
   GlobalVariable* materializeStringLiteral(llvm::Module& m, const char* data) {
     Constant* ary = llvm::ConstantDataArray::getString(m.getContext(), data, true);
     GlobalVariable* gv = new GlobalVariable(m, ary->getType(), true,
-					    GlobalValue::LinkageTypes::PrivateLinkage, ary, "");
+					    GlobalValue::LinkageTypes::PrivateLinkage,
+					    ary, "");
     gv->setConstant(true);
 
     return gv;
@@ -202,7 +215,8 @@ namespace previrt
 
   Constant* charStarFromStringConstant(llvm::Module& m, llvm::Constant* v) {
     errs()<<"CHAR STAR \n\n\n\n\n" ;
-    Constant* zero = ConstantInt::getSigned(IntegerType::getInt32Ty(m.getContext()), 0);
+    Constant* zero = ConstantInt::
+      getSigned(IntegerType::getInt32Ty(m.getContext()), 0);
     Constant* args[2] = {zero, zero};
     ArrayRef<Constant*> ar_args(args, 2);
     Type * constantType = cast<PointerType>(v->getType()->getScalarType())

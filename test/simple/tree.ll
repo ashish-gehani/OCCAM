@@ -27,22 +27,22 @@ define private i32 @2(i32, i8** nocapture readonly) #0 {
   %8 = load i8** %7, align 8
   %9 = tail call i64 @atol(i8* %8) #3
   %10 = trunc i64 %9 to i32
-  ; CHECK: "libcall(?,0x1)"
-  %11 = tail call i32 @"libcall(?,0x1)"(i32 %10) #3
+  ; CHECK: "__occam_spec.libcall(?,0x1)"
+  %11 = tail call i32 @"__occam_spec.libcall(?,0x1)"(i32 %10) #3
   %12 = load i8** %7, align 8
   %13 = tail call i64 @atol(i8* %12) #3
   %14 = trunc i64 %13 to i32
-  ; CHECK: "libcall(?,0x2)"    
-  %15 = tail call i32 @"libcall(?,0x2)"(i32 %14) #3
+  ; CHECK: "__occam_spec.libcall(?,0x2)"    
+  %15 = tail call i32 @"__occam_spec.libcall(?,0x2)"(i32 %14) #3
   %16 = mul nsw i32 %15, %11
-  ; CHECK: "internal_api(0x3,?,S:B9A)"
-  %17 = tail call i32 @"internal_api(0x3,?,S:B9A)"(i8* bitcast (i32 (i32, i8**)* @2 to i8*)) #3
+  ; CHECK: "__occam_spec.internal_api(0x3,?,S:B9A)"
+  %17 = tail call i32 @"__occam_spec.internal_api(0x3,?,S:B9A)"(i8* bitcast (i32 (i32, i8**)* @2 to i8*)) #3
   %18 = mul nsw i32 %16, %17
-  ; CHECK: "internal_api(0x4,null,?)"
-  %19 = tail call i32 @"internal_api(0x4,null,?)"(i8* bitcast (i32 (i32, i8**)* @2 to i8*)) #3
+  ; CHECK: "__occam_spec.internal_api(0x4,null,?)"
+  %19 = tail call i32 @"__occam_spec.internal_api(0x4,null,?)"(i8* bitcast (i32 (i32, i8**)* @2 to i8*)) #3
   %20 = mul nsw i32 %18, %19
-  ; CHECK: "internal_api(0x5,?,?)"
-  %21 = tail call i32 @"internal_api(0x5,?,?)"(i8* bitcast (i32 (i32, i8**)* @2 to i8*), i8* bitcast (i32 (i32, i8**)* @2 to i8*)) #3
+  ; CHECK: "__occam_spec.internal_api(0x5,?,?)"
+  %21 = tail call i32 @"__occam_spec.internal_api(0x5,?,?)"(i8* bitcast (i32 (i32, i8**)* @2 to i8*), i8* bitcast (i32 (i32, i8**)* @2 to i8*)) #3
   %22 = mul nsw i32 %20, %21
   br label %23
 
@@ -79,15 +79,15 @@ define i32 @main(i32, i8** nocapture readnone) #2 {
   ret i32 %15
 }
 
-declare i32 @"internal_api(0x5,?,?)"(i8*, i8*)
+declare i32 @"__occam_spec.internal_api(0x5,?,?)"(i8*, i8*)
 
-declare i32 @"internal_api(0x4,null,?)"(i8*)
+declare i32 @"__occam_spec.internal_api(0x4,null,?)"(i8*)
 
-declare i32 @"internal_api(0x3,?,S:B9A)"(i8*)
+declare i32 @"__occam_spec.internal_api(0x3,?,S:B9A)"(i8*)
 
-declare i32 @"libcall(?,0x2)"(i32)
+declare i32 @"__occam_spec.libcall(?,0x2)"(i32)
 
-declare i32 @"libcall(?,0x1)"(i32)
+declare i32 @"__occam_spec.libcall(?,0x1)"(i32)
 
 attributes #0 = { alwaysinline nounwind ssp uwtable "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "stack-protector-buffer-size"="8" "unsafe-fp-math"="false" "use-soft-float"="false" }
 attributes #1 = { "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "stack-protector-buffer-size"="8" "unsafe-fp-math"="false" "use-soft-float"="false" }

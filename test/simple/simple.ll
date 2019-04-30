@@ -21,21 +21,21 @@ declare i32 @fprintf(%0*, i8*, ...) #0
 define i32 @main(i32, i8** nocapture readnone) #1 {
   %3 = tail call i64 @atol(i8* getelementptr inbounds ([5 x i8]* @1, i64 0, i64 0)) #2
   %4 = trunc i64 %3 to i32
-  ; CHECK: "libcall(?,0x1)"
-  %5 = tail call i32 @"libcall(?,0x1)"(i32 %4) #2
+  ; CHECK: "__occam_spec.libcall(?,0x1)"
+  %5 = tail call i32 @"__occam_spec.libcall(?,0x1)"(i32 %4) #2
   %6 = tail call i64 @atol(i8* getelementptr inbounds ([5 x i8]* @1, i64 0, i64 0)) #2
   %7 = trunc i64 %6 to i32
-  ; CHECK: "libcall(?,0x2)"
-  %8 = tail call i32 @"libcall(?,0x2)"(i32 %7) #2
+  ; CHECK: "__occam_spec.libcall(?,0x2)"
+  %8 = tail call i32 @"__occam_spec.libcall(?,0x2)"(i32 %7) #2
   %9 = mul nsw i32 %8, %5
   %10 = load %0** @__stderrp, align 8
   %11 = tail call i32 (%0*, i8*, ...)* @fprintf(%0* %10, i8* getelementptr inbounds ([19 x i8]* @0, i64 0, i64 0), i32 %9) #2
   ret i32 %9
 }
 
-declare i32 @"libcall(?,0x2)"(i32)
+declare i32 @"__occam_spec.libcall(?,0x2)"(i32)
 
-declare i32 @"libcall(?,0x1)"(i32)
+declare i32 @"__occam_spec.libcall(?,0x1)"(i32)
 
 attributes #0 = { "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "stack-protector-buffer-size"="8" "unsafe-fp-math"="false" "use-soft-float"="false" }
 attributes #1 = { nounwind ssp }
