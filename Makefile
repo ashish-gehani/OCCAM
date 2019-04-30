@@ -94,8 +94,19 @@ install: install_occam_lib install_razor
 instalar: install_occam_lib #install_razor
 
 
+
+
+#iam: local editable install of razor for developing
+develop: install_occam_lib
+ifeq ($(PIP),)
+	$(error developing requires pip)
+endif
+	$(PIP) install -e .
+
+# python pip packaging
+
 dist: proto
-	python setup.py bdist_wheel
+	python3 setup.py sdist bdist_wheel
 
 proto:  protoc
 	mkdir -p razor/proto
@@ -107,14 +118,6 @@ ifeq ($(PROTOC),)
 	$(error google protobuffer compiler "protoc" required)
 endif
 
-
-#iam: local editable install of razor for developing
-develop: install_occam_lib
-ifeq ($(PIP),)
-	$(error developing requires pip)
-endif
-	$(PIP) install -e .
-
 #
 # Note Bene:
 #
@@ -122,14 +125,8 @@ endif
 # change the version number in razor/version.py,
 # otherwise the server will give you an error.
 
-testpublish: md2rst dist
-	python setup.py register -r https://testpypi.python.org/pypi
-	python setup.py sdist upload -r https://testpypi.python.org/pypi
-
-publish: md2rst dist
-	python setup.py register -r https://pypi.python.org/pypi
-	python setup.py sdist upload -r https://pypi.python.org/pypi
-
+publish:
+	python3 -m twine upload dist/*
 
 lint:
 ifeq ($(PYLINT),)
