@@ -390,7 +390,7 @@ namespace transforms {
 					    getUniqueScalar (ctx, B, c)}), v);
 	    } else {
 	      // TODO: handle multiple nodes
-	      errs() << "WARNING: missing calloc instrumentation because cell offset is not zero\n";
+	      //errs() << "MemorySSA Warning: missing calloc instrumentation because cell offset is not zero\n";
 	    }
           }
           else if (MemSetInst *MSI = dyn_cast<MemSetInst>(&inst)) {
@@ -408,7 +408,7 @@ namespace transforms {
 					    getUniqueScalar (ctx, B, c)}), v);
 	    } else {
 	      // TODO: handle multiple nodes
-	      errs() << "WARNING: missing memset instrumentation because cell offset is not zero\n";
+	      //errs() << "MemorySSA Warning: missing memset instrumentation because cell offset is not zero\n";
 	    }
           }
 	  
