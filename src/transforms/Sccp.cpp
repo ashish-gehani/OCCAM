@@ -68,8 +68,8 @@ STATISTIC(IPNumInstRemoved, "Number of instructions removed by IPSCCP");
 STATISTIC(IPNumArgsElimed , "Number of arguments constant propagated by IPSCCP");
 STATISTIC(IPNumGlobalConst, "Number of globals found to be constant by IPSCCP");
 
-//#define SCCP_LOG(...) DEBUG(__VA_ARGS__)
-#define SCCP_LOG(...) __VA_ARGS__
+#define SCCP_LOG(...) DEBUG(__VA_ARGS__)
+//#define SCCP_LOG(...) __VA_ARGS__
 
 
 namespace previrt {
