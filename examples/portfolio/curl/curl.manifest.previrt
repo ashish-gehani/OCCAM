@@ -1,7 +1,0 @@
-{ "main" : "curl.bc"
-, "binary"  : "curl"
-, "modules"    : [ "libcurl.so.bc" ]
-, "native_libs" : [ ]
-, "ldflags" : [ "-O2", "-lpthread", "-lz", "-lcrypto", "-lssl"]
-, "name"    : "curl"
-}
