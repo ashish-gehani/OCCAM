@@ -112,6 +112,10 @@ void MemorySSACallSite::write(raw_ostream &o) const {
   }
 }
 
+void MemorySSACallSite::dump() const {
+  write(llvm::errs());
+}
+
 MemorySSAFunction::MemorySSAFunction(Function &F, Pass &P, bool only_singleton)
   : m_F(F), m_only_singleton(only_singleton) {
   // XXX: We don't need main since it is the root of the call

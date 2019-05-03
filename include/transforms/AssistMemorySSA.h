@@ -197,21 +197,26 @@ namespace transforms {
 
     // Return number of memory-related actual parameters
     unsigned numParams() const { return m_actual_params.size();}
-    
+
     // return true if the mem.ssa.XXX instruction associated with the
-    // idx-th actual paramter is mem.ssa.arg_ref.            
+    // idx-th actual parameter is mem.ssa.arg_ref and it corresponds
+    // to a singleton memory region if m_only_singleton is true.
     bool isRef(unsigned idx) const;
 
     // return true if the mem.ssa.XXX instruction associated with the
-    // idx-th actual paramter is mem.ssa.arg_mod.        
+    // idx-th actual parameter is mem.ssa.arg_mod and it corresponds
+    // to a singleton memory region if m_only_singleton is true.
     bool isMod(unsigned idx) const;
 
     // return true if the mem.ssa.XXX instruction associated with the
-    // idx-th actual paramter is mem.ssa.arg_ref_mod.    
+    // idx-th actual parameter is mem.ssa.arg_ref_mod and it
+    // corresponds to a singleton memory region if m_only_singleton is
+    // true.
     bool isRefMod(unsigned idx) const;
 
     // return true if the mem.ssa.XXX instruction associated with the
-    // idx-th actual paramter is mem.ssa.arg_new.
+    // idx-th actual parameter is mem.ssa.arg_new and it corresponds
+    // to a singleton memory region if m_only_singleton is true.
     bool isNew(unsigned idx) const;
 
     // return the non-primed top-level variable of the mem.ssa.XXX
@@ -223,6 +228,8 @@ namespace transforms {
     const llvm::Value *getPrimed(unsigned idx) const;
 
     void write(llvm::raw_ostream &o) const;
+
+    void dump() const;
   };
 
   /*

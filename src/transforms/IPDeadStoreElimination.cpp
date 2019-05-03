@@ -169,6 +169,8 @@ public:
     }
     
     if (queue.empty()) {
+      errs() << "\tNumber of deleted stores 0\n";
+      errs() << "Finished ip-dse\n";    
       return false;
     }
 
@@ -275,7 +277,8 @@ public:
 	    if (idx < 0) {
 	      report_fatal_error("[IP-DSE] cannot find index in mem.ssa function");
 	    }
-	    
+
+	    // Find callers
 	    Function *F = I->getParent()->getParent();	    
 	    for (auto &U: F->uses()) {
 	      if (CallInst *CI = dyn_cast<CallInst>(U.getUser())) {
@@ -301,7 +304,31 @@ public:
 		  markStoreToKeep(w.store_inst);
 		  break;
 		}
-			
+
+
+		if (OnlySingleton) {
+		  if ((!MemSsaCS->isRefMod(idx)) &&
+		      (!MemSsaCS->isMod(idx)) &&
+		      (!MemSsaCS->isNew(idx))) {
+		    // XXX: if OnlySingleton then isRefMod, isMod, and
+		    // isNew can only return true if the corresponding
+		    // memory region is a singleton. We saw cases
+		    // (e.g., curl) where we start from store to a
+		    // singleton region but after following its
+		    // def-use chain we end up having other memory ssa
+		    // instructions that do not correspond to a
+		    // singleton region. This is a sea-dsa issue. For
+		    // now, we play conservative and give up by
+		    // keeping the store.
+		    markStoreToKeep(w.store_inst);
+		    break;
+		  }
+		}
+
+		assert(OnlySingleton ||
+		       MemSsaCS->isRefMod(idx) ||
+		       MemSsaCS->isMod(idx) ||
+		       MemSsaCS->isNew(idx));		
 		if (const Instruction* caller_primed =
 		    dyn_cast<const Instruction>(MemSsaCS->getPrimed(idx))) {
 		  enqueue(queue, QueueElem(caller_primed, w.store_inst, w.length+1));
