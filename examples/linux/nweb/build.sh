@@ -19,8 +19,8 @@ cat > nweb.manifest <<EOF
 EOF
 
 #make the bitcode
-wllvm nweb.c -o nweb
-extract-bc nweb
+gclang nweb.c -o nweb
+get-bc nweb
 
 # Previrutalize
 slash --work-dir=slash nweb.manifest

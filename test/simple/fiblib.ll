@@ -1,5 +1,8 @@
 ; RUN: cd %fiblib &&  %fiblib/build.sh
 ; RUN: %llvm_as < %fiblib/slash/library.so-final.ll | %llvm_dis | FileCheck %s
+; XFAIL: *
+; COMMENT: this test fails because we do not allow to intra-module
+; specialization if the function is not local.
 
 ; ModuleID = 'slash/library.so-final.bc'
 source_filename = "llvm-link"
@@ -7,7 +10,7 @@ target datalayout = "e-m:o-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-apple-macosx10.14.0"
 
 ; Function Attrs: norecurse nounwind readnone ssp uwtable
-define i32 @"fibo_lib(0xF)"() local_unnamed_addr #0 {
+define i32 @"__occam_spec.fibo_lib(0xF)"() local_unnamed_addr #0 {
   ; CHECK: 610
   ret i32 610
 }

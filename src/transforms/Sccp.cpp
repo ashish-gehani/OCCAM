@@ -1,4 +1,4 @@
-//===- SCCP.cpp - Sparse Conditional Constant Propagation -----------------===//
+//===---- Inter-procedural Sparse Conditional Constant Propagation --------===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -18,10 +18,14 @@
 // Modifications for OCCAM:
 //===----------------------------------------------------------------------===//
 // - Global initializers of global variables whose addresses have not
-//   been taken are ignored. This is sound because we assume that the
-//   pass -lower-gv-init has been run before. This pass inserts store
-//   instructions at the beginning of main to make explicit the global
-//   variable initialization.
+//   been taken are ignored. This is sound because we ensure that the
+//   LowerGvInitializersPass has been run before. This pass inserts
+//   store instructions at the beginning of main to make explicit the
+//   global variable initialization. This is relevant because before we run
+//   IPSCCP, we run the IPDSE (inter-procedural dead store elimination)
+//   pass. This pass removes dead stores. So the hope is that it will
+//   remove a lowered initializer if it is actually dead. As a result,
+//   IPSCCP can be more precise.
 //===----------------------------------------------------------------------===//
 
 
@@ -52,15 +56,14 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/SCCP.h"
 #include "llvm/Transforms/Utils/Local.h"
+
 #include <algorithm>
 
 using namespace llvm;
 
-#define DEBUG_TYPE "sccp-previrt"
+#define DEBUG_TYPE "ipsccp-previrt"
 
-STATISTIC(NumInstRemoved, "Number of instructions removed");
-STATISTIC(NumDeadBlocks , "Number of basic blocks unreachable");
-
+STATISTIC(IPNumDeadBlocks , "Number of basic blocks unreachable by IPSCCP");
 STATISTIC(IPNumInstRemoved, "Number of instructions removed by IPSCCP");
 STATISTIC(IPNumArgsElimed , "Number of arguments constant propagated by IPSCCP");
 STATISTIC(IPNumGlobalConst, "Number of globals found to be constant by IPSCCP");
@@ -266,30 +269,26 @@ public:
     return true;
   }
 
-  /// TrackValueOfGlobalVariable - Clients can use this method to
-  /// inform the SCCPSolver that it should track loads and stores to the
-  /// specified global variable if it can.  This is only legal to call if
-  /// performing Interprocedural SCCP.
+  /// TrackValueOfGlobalVariable - inform the SCCPSolver that it
+  /// should track loads and stores to the specified global variable
+  /// if it can.  This is only legal to call if performing
+  /// Interprocedural SCCP.
   void TrackValueOfGlobalVariable(GlobalVariable *GV) {
     // We only track the contents of scalar globals.
     if (GV->getValueType()->isSingleValueType()) {
-      LatticeVal &IV = TrackedGlobals[GV];
       if (!isa<UndefValue>(GV->getInitializer())) {
-	if (true) {
-	  // XXX: skip the initializer. This will improve precision!
-	  // We can do this only if the pass --lower-gv-init has been
-	  // run before.
-	  if (IV.isUnknown()) {
-	    SCCP_LOG(errs () << "[Sccp]: ignored initializer for  " << GV->getName() << "\n"); 
-	  }
-	} else  {
-	  IV.markConstant(GV->getInitializer());
-	  SCCP_LOG(errs () << "[Sccp]: " << "Set initializer for "
-		   << GV->getName () << " ---> " << IV << "\n");	  
-	  
-	}
+	// We ignore the initializer but check it's not undef.  We can
+	// ignore it because the LowerGlobalInitializer pass is
+	// supposed to be run before.
+	TrackedGlobals.insert({GV, LatticeVal()});
       }
     }
+    /// --- Key modification wrt to original LLVM SCCP:
+    // if (GV->getValueType()->isSingleValueType()) {
+    // 	LatticeVal &IV = TrackedGlobals[GV];
+    // 	if (!isa<UndefValue>(GV->getInitializer()))
+    // 	  IV.markConstant(GV->getInitializer());
+    // }
   }
 
   /// AddTrackedFunction - If the SCCP solver is supposed to track calls into
@@ -388,24 +387,38 @@ public:
   void printValueState(raw_ostream& o) {
     o << "ValueState\n";
     for(auto& kv: ValueState) {
+      if (!kv.first->hasName() || !kv.second.isConstant()) {
+	continue;
+      }
       o << "\t" << kv.first->getName() << " --> " << kv.second << "\n";
     }
     o << "StructValueState\n";
     for(auto& kv: StructValueState) {
-      o << "\t" << kv.first.first->getName() << "." << kv.first.second << " --> " << kv.second << "\n";
+      if (!kv.first.first->hasName() || !kv.second.isConstant()) {
+	continue;
+      }
+      o << "\t" << kv.first.first->getName() << "." << kv.first.second << " --> "
+	<< kv.second << "\n";
     }
     o << "TrackedGlobals\n";
     for(auto& kv: TrackedGlobals) {
+      if (!kv.first->hasName() || !kv.second.isConstant()) {
+	continue;
+      }      
       o << "\t" << kv.first->getName() << " --> " << kv.second << "\n";
     }
     o << "TrackedRetVals\n";
     for(auto& kv: TrackedRetVals) {
+      if (!kv.first->hasName() || !kv.second.isConstant()) {
+	continue;
+      }      
       o << "\tret_val(" << kv.first->getName() << ")  --> " << kv.second << "\n";
     }
-    // TODO TrackedMultipleRetVals
+    // TODO: print TrackedMultipleRetVals
   }
       
 private:
+      
   // pushToWorkList - Helper for markConstant/markForcedConstant/markOverdefined
   void pushToWorkList(LatticeVal &IV, Value *V) {
     if (IV.isOverdefined())
@@ -419,6 +432,7 @@ private:
   //
   void markConstant(LatticeVal &IV, Value *V, Constant *C) {
     if (!IV.markConstant(C)) return;
+    
     SCCP_LOG(errs() << "markConstant: " << *C << ": " << *V << '\n');
     pushToWorkList(IV, V);
   }
@@ -430,6 +444,7 @@ private:
 
   void markForcedConstant(Value *V, Constant *C) {
     assert(!V->getType()->isStructTy() && "structs should use mergeInValue");
+    
     LatticeVal &IV = ValueState[V];
     IV.markForcedConstant(C);
     SCCP_LOG(errs() << "markForcedConstant: " << *C << ": " << *V << '\n');
@@ -459,8 +474,9 @@ private:
       return markOverdefined(IV, V);
     if (IV.isUnknown())
       return markConstant(IV, V, MergeWithV.getConstant());
-    if (IV.getConstant() != MergeWithV.getConstant())
+    if (IV.getConstant() != MergeWithV.getConstant()) {
       return markOverdefined(IV, V);
+    }
   }
 
   void mergeInValue(Value *V, LatticeVal MergeWithV) {
@@ -468,7 +484,6 @@ private:
            "non-structs should use markConstant");
     mergeInValue(ValueState[V], V, MergeWithV);
   }
-
 
   /// getValueState - Return the LatticeVal object that corresponds to the
   /// value.  This function handles the case when the value hasn't been seen yet
@@ -480,13 +495,14 @@ private:
       ValueState.insert(std::make_pair(V, LatticeVal()));
     LatticeVal &LV = I.first->second;
 
-    if (!I.second)
+    if (!I.second) {
       return LV;  // Common case, already in the map.
+    }
 
     if (auto *C = dyn_cast<Constant>(V)) {
       // Undef values remain unknown.
       if (!isa<UndefValue>(V))
-        LV.markConstant(C);          // Constants are constant
+        LV.markConstant(C);  // Constants are constant
     }
 
     // All others are underdefined by default.
@@ -1105,7 +1121,6 @@ void SCCPSolver::visitStoreInst(StoreInst &SI) {
     if (I->second.isOverdefined()) {
       return;
     }
-    
     // Get the value we are storing into the global, then merge it.
     mergeInValue(I->second, GV, getValueState(SI.getValueOperand()));
     if (I->second.isOverdefined())
@@ -1118,19 +1133,24 @@ void SCCPSolver::visitStoreInst(StoreInst &SI) {
 // global, we can replace the load with the loaded constant value!
 void SCCPSolver::visitLoadInst(LoadInst &I) {
   SCCP_LOG(errs() << "[SccpSolver]: Analyzing " << I << "\n");
-  
+
   // If this load is of a struct, just mark the result overdefined.
   if (I.getType()->isStructTy())
     return markOverdefined(&I);
 
   LatticeVal PtrVal = getValueState(I.getPointerOperand());
-  if (PtrVal.isUnknown()) return;   // The pointer is not resolved yet!
+  if (PtrVal.isUnknown()) {
+    return;   // The pointer is not resolved yet!
+  }
 
   LatticeVal &IV = ValueState[&I];
-  if (IV.isOverdefined()) return;
+  if (IV.isOverdefined()) {
+    return;
+  }
 
-  if (!PtrVal.isConstant() || I.isVolatile())
+  if (!PtrVal.isConstant() || I.isVolatile()) {
     return markOverdefined(IV, &I);
+  }
 
   Constant *Ptr = PtrVal.getConstant();
 
@@ -1139,15 +1159,15 @@ void SCCPSolver::visitLoadInst(LoadInst &I) {
     return;
 
   // Transform load (constant global) into the value loaded.
-  if (auto *GV = dyn_cast<GlobalVariable>(Ptr)) {
-    if (!TrackedGlobals.empty()) {
+  if (auto *GV = dyn_cast<GlobalVariable>(Ptr)) {    
+    if (!TrackedGlobals.empty()) {      
       // If we are tracking this global, merge in the known value for it.
       DenseMap<GlobalVariable*, LatticeVal>::iterator It =
         TrackedGlobals.find(GV);
       if (It != TrackedGlobals.end()) {
         mergeInValue(IV, &I, It->second);
         return;
-      }
+      }      
     }
   }
 
@@ -1620,6 +1640,7 @@ bool SCCPSolver::ResolvedUndefsIn(Function &F) {
       }
 
       markForcedConstant(SI->getCondition(), SI->case_begin()->getCaseValue());
+			 
       return true;
     }
   }
@@ -1644,13 +1665,17 @@ static bool tryToReplaceWithConstant(SCCPSolver &Solver, Value *V) {
     Const = ConstantStruct::get(ST, ConstVals);
   } else {
     LatticeVal IV = Solver.getLatticeValueFor(V);
-    if (IV.isOverdefined())
+    if (IV.isOverdefined())  {
       return false;
+    }
     Const = IV.isConstant() ? IV.getConstant() : UndefValue::get(V->getType());
   }
   assert(Const && "Constant is nullptr here!");
-  SCCP_LOG(errs() << "Replace all uses of " << *V << " with Constant: " << *Const << '\n');
-
+  
+  SCCP_LOG(if (!V->getName().startswith("mem.ssa")) {
+      errs() << "Replace all uses of " << *V << " with Constant: " << *Const << "\n";
+    });
+    
   // Replaces all of the uses of a variable with uses of the constant.
   V->replaceAllUsesWith(Const);
   return true;
@@ -1695,71 +1720,10 @@ static void findReturnsToZap(Function &F,
       if (!isa<UndefValue>(RI->getOperand(0)))
         ReturnsToZap.push_back(RI);
 }
-
-    
-// runSCCP() - Run the Sparse Conditional Constant Propagation algorithm,
-// and return true if the function was modified.
-//
-static bool runSCCP(Function &F, SCCPSolver& Solver) {
-    
-  SCCP_LOG(errs() << "SCCP on function '" << F.getName() << "'\n");
-  
-  // Mark the first block of the function as being executable.
-  Solver.MarkBlockExecutable(&F.front());
-
-  // Mark all arguments to the function as being overdefined.
-  for (Argument &AI : F.args())
-    Solver.markOverdefined(&AI);
-
-  // Solve for constants.
-  bool ResolvedUndefs = true;
-  while (ResolvedUndefs) {
-    Solver.Solve();
-    SCCP_LOG(errs() << "RESOLVING UNDEFs\n");
-    ResolvedUndefs = Solver.ResolvedUndefsIn(F);
-  }
-
-  bool MadeChanges = false;
-
-  // If we decided that there are basic blocks that are dead in this function,
-  // delete their contents now.  Note that we cannot actually delete the blocks,
-  // as we cannot modify the CFG of the function.
-
-  for (BasicBlock &BB : F) {
-    if (!Solver.isBlockExecutable(&BB)) {
-      SCCP_LOG(errs() << "  BasicBlock Dead:" << BB);
-
-      ++NumDeadBlocks;
-      NumInstRemoved += removeAllNonTerminatorAndEHPadInstructions(&BB);
-
-      MadeChanges = true;
-      continue;
-    }
-
-    // Iterate over all of the instructions in a function, replacing them with
-    // constants if we have found them to be of constant values.
-    //
-    for (BasicBlock::iterator BI = BB.begin(), E = BB.end(); BI != E;) {
-      Instruction *Inst = &*BI++;
-      if (Inst->getType()->isVoidTy() || isa<TerminatorInst>(Inst))
-        continue;
-
-      if (tryToReplaceWithConstant(Solver, Inst)) {
-        if (isInstructionTriviallyDead(Inst))
-          Inst->eraseFromParent();
-        // Hey, we just changed something!
-        MadeChanges = true;
-        ++NumInstRemoved;
-      }
-    }
-  }
-
-  return MadeChanges;
-}
-
+   
 // runIPSCCP() - Run the interprocedural Sparse Conditional Constant
 // Propagation algorithm, and return true if the function was
-// modified.
+// modified. 
 //
 static bool runIPSCCP(Module &M, SCCPSolver& Solver) {
   // AddressTakenFunctions - This set keeps track of the address-taken functions
@@ -1769,6 +1733,8 @@ static bool runIPSCCP(Module &M, SCCPSolver& Solver) {
   // the first pass so we can use them for the later simplification pass.
   SmallPtrSet<Function*, 32> AddressTakenFunctions;
 
+  errs() << "IPSCCP analysis started ... \n";
+  
   // Loop over all functions, marking arguments to those with their addresses
   // taken or that are external as overdefined.
   //
@@ -1805,9 +1771,10 @@ static bool runIPSCCP(Module &M, SCCPSolver& Solver) {
       Solver.markOverdefined(&AI);
   }
 
-  // Loop over global variables.  We inform the solver about any internal global
-  // variables that do not have their 'addresses taken'.  If they don't have
-  // their addresses taken, we can propagate constants through them.
+  // Loop over global variables.  We inform the solver about any
+  // internal global variables that do not have their 'addresses
+  // taken'.  If they don't have their addresses taken, we can
+  // propagate constants through them. 
   for (GlobalVariable &G : M.globals()) {
     if (!G.isConstant() &&
 	G.hasLocalLinkage() &&      
@@ -1816,18 +1783,24 @@ static bool runIPSCCP(Module &M, SCCPSolver& Solver) {
       Solver.TrackValueOfGlobalVariable(&G);
       SCCP_LOG(errs() << "[Sccp]: " << G.getName() << " is tracked\n");
     } else {
-      SCCP_LOG(errs() << "[Sccp]: " << G.getName() << " NOT TRACKABLE because: \n");
-      if (G.isConstant())
-      	SCCP_LOG(errs() << "\t it is constant\n");
-      if (!G.hasLocalLinkage())
-      	SCCP_LOG(errs() << "\t it does not have local linkage: linkage id " << G.getLinkage() << "\n");
-      if (!G.hasDefinitiveInitializer())
-      	SCCP_LOG(errs() << "\t it does not have definite initializer\n");
-      if (AddressIsTaken(&G))
-      	SCCP_LOG(errs() << "\t its address may be taken\n");
+      SCCP_LOG(errs() << "[Sccp]: " << G.getName() << " NOT TRACKABLE because: \n";
+	       if (G.isConstant()) {
+		 errs() << "\t it is constant\n";
+	       }
+	       if (!G.hasLocalLinkage()) {
+		 errs() << "\t it does not have local linkage: linkage id "
+			<< G.getLinkage() << "\n";
+	       }
+	       if (!G.hasDefinitiveInitializer()) {
+		 errs() << "\t it does not have definite initializer\n";
+	       }
+	       if (AddressIsTaken(&G)) {
+		 errs() << "\t its address may be taken\n";
+	       });
     }
   }
 
+  errs() << "IPSCCP resolution of undefs started.\n";    
   // Solve for constants.
   bool ResolvedUndefs = true;
   while (ResolvedUndefs) {
@@ -1835,16 +1808,22 @@ static bool runIPSCCP(Module &M, SCCPSolver& Solver) {
 
     SCCP_LOG(errs() << "RESOLVING UNDEFS\n");
     ResolvedUndefs = false;
-    for (Function &F : M)
+    for (Function &F : M) {
       ResolvedUndefs |= Solver.ResolvedUndefsIn(F);
+    }
   }
+  errs() << "IPSCCP resolution of undefs finished.\n";    
 
+  errs() << "IPSCCP analysis finished.\n";  
+  
   SCCP_LOG(errs() << "============ Begin IPSCCP ============== \n";
 	   Solver.printValueState(errs());
 	   errs() << "============ End IPSCCP ================ \n";);
   
   bool MadeChanges = false;
 
+  errs() << "IPSCCP constant folding transformation started ...\n";
+  
   // Iterate over all of the instructions in the module, replacing them with
   // constants if we have found them to be of constant values.
   //
@@ -1854,19 +1833,20 @@ static bool runIPSCCP(Module &M, SCCPSolver& Solver) {
     if (F.isDeclaration())
       continue;
 
-    if (Solver.isBlockExecutable(&F.front()))
+    if (Solver.isBlockExecutable(&F.front())) {
       for (Function::arg_iterator AI = F.arg_begin(), E = F.arg_end(); AI != E;
            ++AI)
         if (!AI->use_empty() && tryToReplaceWithConstant(Solver, &*AI)) {
           ++IPNumArgsElimed;
 	}
-
+    }
+    
     for (Function::iterator BB = F.begin(), E = F.end(); BB != E; ++BB) {
       if (!Solver.isBlockExecutable(&*BB)) {
         DEBUG(dbgs() << "  BasicBlock Dead:" << *BB);
 
-        ++NumDeadBlocks;
-        NumInstRemoved +=
+        ++IPNumDeadBlocks;
+        IPNumInstRemoved +=
             changeToUnreachable(BB->getFirstNonPHI(), /*UseLLVMTrap=*/false);
 
         MadeChanges = true;
@@ -1958,25 +1938,74 @@ static bool runIPSCCP(Module &M, SCCPSolver& Solver) {
   const DenseMap<GlobalVariable*, LatticeVal> &TG = Solver.getTrackedGlobals();
   for (DenseMap<GlobalVariable*, LatticeVal>::const_iterator I = TG.begin(),
          E = TG.end(); I != E; ++I) {
+    
     GlobalVariable *GV = I->first;
+    
     assert(!I->second.isOverdefined() &&
            "Overdefined values should have been taken out of the map!");
     DEBUG(dbgs() << "Found that GV '" << GV->getName() << "' is constant!\n");
+    
+    #if 0
+    // Original code: assume that at this point all users of a
+    // constant global must be StoreInst.
     while (!GV->use_empty()) {
       StoreInst *SI = cast<StoreInst>(GV->user_back());
       SI->eraseFromParent();
     }
     M.getGlobalList().erase(GV);
     ++IPNumGlobalConst;
-  }
+    #else
+    // FIXME: we saw cases (e.g., openssh) where we have "%x = load
+    // %gv" for which we know that %gv is a constant of a non-zero
+    // value. However, that instruction is not analyzed until
+    // ResolvedUndefsIn is called because is defined in some basic
+    // block whose reachability depends on some undef value. For some
+    // reason, ResolvedUndefsIn marks as as forceconstant %x and
+    // assigns to it the default value zero. That value assigned to %x
+    // is merged with the content of %gv (a non-zero value) and
+    // therefore the final constant value for %x% is overdefined
+    // (i.e., top). This makes the instruction "%x = load %gv" to
+    // stay. So we reach this point having a constant global variable
+    // but some of its users is not StoreInst.
+    //
+    // ResolvedUndefsIn marks %x as forceconstant because it's marked
+    // as unknown and it's used as branch conditional.
+    // 
+    // JN: I don't know how to solve properly this problem for
+    // now. The problem, as I described it, might happen also with the
+    // original SCCP but I seriously doubt that it would happen so I'm
+    // missing something. Instead, I try to be conservative and remove
+    // the global only if all its users are StoreInst.
+    
+    bool CanGvBeDeleted = true;    
+    std::vector<StoreInst*> UsersToRemove;
+    for (auto u: GV->users()) {
+      if (StoreInst *SI = dyn_cast<StoreInst>(u)) {
+	UsersToRemove.push_back(SI);
+      } else { 
+	CanGvBeDeleted	= false;
+      }
+    }
+    
+    for (StoreInst* SI: UsersToRemove) {
+      SI->eraseFromParent();
+    }
 
+    if (CanGvBeDeleted) {
+      M.getGlobalList().erase(GV);
+      ++IPNumGlobalConst;
+    }
+    #endif 
+  }
+  errs() << "IPSCCP constant folding transformation finished.\n";
+  
   return MadeChanges;
 }
 
   
 // Similar to SCCPLegacyPass in llvm 5.0: This class uses the SCCPSolver to
 // implement a per-function Sparse Conditional Constant Propagator.
-class SCCPPass : public ModulePass {
+class IPSCCPPass : public ModulePass {
 private:
 
   bool skipFunction(const Function &F) const {
@@ -1999,53 +2028,39 @@ private:
 public:
   static char ID; // Pass identification, replacement for typeid
   
-  SCCPPass() : ModulePass(ID), DL(nullptr), TLI(nullptr) {}
+  IPSCCPPass() : ModulePass(ID), DL(nullptr), TLI(nullptr) {}
 
   bool runOnModule (Module &M) override {
-    if (skipModule(M)) return false;
+    if (skipModule(M)) {
+      return false;
+    }
     
-    SCCP_LOG(errs () << "Running SCCP pass ... \n");
+    SCCP_LOG(errs () << "Running IPSCCP pass ... \n");
 
     DL = &M.getDataLayout();
     TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
 
-    // XXX: We run inter-procedural by default
-    if (true) {
-      // -- inter-procedural SCCP
-      SCCPSolver Solver(*DL, TLI);
-      return runIPSCCP(M, Solver);
-    } else {
-      // -- intra-procedural SCCP           
-      bool change = false;
-      for (auto &F: M)
-      { change |= runOnFunction(F); }
-      return change;
-    }
-  }
-
-  bool runOnFunction(Function &F) {
-    if (skipFunction(F)) return false;
     SCCPSolver Solver(*DL, TLI);
-    return runSCCP(F, Solver);
+    return runIPSCCP(M, Solver);
   }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addPreserved<GlobalsAAWrapperPass>();
     AU.addRequired<TargetLibraryInfoWrapperPass>();
     AU.addRequired<CallGraphWrapperPass>();
-    AU.addRequired<DominatorTreeWrapperPass>();    
+    AU.addRequired<DominatorTreeWrapperPass>();
   }
   
   StringRef getPassName() const override
-  { return "SCCP for previrt"; }
+  { return "IPSCCP customized for OCCAM"; }
 };
 
 } // end namespace transforms
 } // end namespace previrt
 
-char previrt::transforms::SCCPPass::ID = 0;
-static RegisterPass<previrt::transforms::SCCPPass>
-X("Psccp",
-  "Sparse Conditional Constant Propagation customized for OCCAM",
+char previrt::transforms::IPSCCPPass::ID = 0;
+static RegisterPass<previrt::transforms::IPSCCPPass>
+X("Pipsccp",
+  "Inter-procedural sparse conditional constant propagation customized for OCCAM",
   false, false);
   

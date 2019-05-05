@@ -72,18 +72,18 @@ define i32 @main(i32, i8** nocapture readnone) #1 {
   br i1 %31, label %34, label %.exit7
 
 .thread11:                                        ; preds = %.exit
-  ; CHECK: "add_one(0x5,0x2)"
-  %32 = tail call i32 @"add_one(0x5,0x2)"() #2
+  ; CHECK: "__occam_spec.add_one(0x5,0x2)"
+  %32 = tail call i32 @"__occam_spec.add_one(0x5,0x2)"() #2
   br label %.exit7
 
 .thread:                                          ; preds = %.exit4
-  ; CHECK: "add_two(0x5,0x2)"
-  %33 = tail call i32 @"add_two(0x5,0x2)"() #2
+  ; CHECK: "__occam_spec.add_two(0x5,0x2)"
+  %33 = tail call i32 @"__occam_spec.add_two(0x5,0x2)"() #2
   br label %.exit7
 
 ; <label>:34                                      ; preds = %.exit6
-  ; CHECK: "add_three(0x5,0x2)"
-  %35 = tail call i32 @"add_three(0x5,0x2)"() #2
+  ; CHECK: "__occam_spec.add_three(0x5,0x2)"
+  %35 = tail call i32 @"__occam_spec.add_three(0x5,0x2)"() #2
   br label %.exit7
 
 .exit7:                                           ; preds = %34, %.thread, %.thread11, %.exit6
@@ -93,11 +93,11 @@ define i32 @main(i32, i8** nocapture readnone) #1 {
 }
 
 
-declare i32 @"add_one(0x5,0x2)"()
+declare i32 @"__occam_spec.add_one(0x5,0x2)"()
 
-declare i32 @"add_three(0x5,0x2)"()
+declare i32 @"__occam_spec.add_three(0x5,0x2)"()
 
-declare i32 @"add_two(0x5,0x2)"()
+declare i32 @"__occam_spec.add_two(0x5,0x2)"()
 
 attributes #0 = { "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "stack-protector-buffer-size"="8" "unsafe-fp-math"="false" "use-soft-float"="false" }
 attributes #1 = { nounwind ssp }

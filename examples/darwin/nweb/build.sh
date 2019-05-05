@@ -17,8 +17,8 @@ EOF
 
 #make the bitcode
 echo "building the bitcode"
-wllvm nweb.c -o nweb
-extract-bc nweb
+gclang nweb.c -o nweb
+get-bc nweb
 
 # Previrutalize
 export OCCAM_LOGFILE=${PWD}/slash/occam.log

@@ -21,8 +21,8 @@ all: hello_slash hello_O3
 
 
 hello.bc:
-	wllvm hello.c -o  hello
-	extract-bc hello
+	gclang hello.c -o  hello
+	get-bc hello
 
 workdir:
 	mkdir workdir

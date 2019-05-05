@@ -13,8 +13,8 @@ cat > simple.manifest <<EOF
 EOF
 
 #make the bitcode
-CC=wllvm make
-extract-bc harness.o
+CC=gclang make
+get-bc harness.o
 
 llvm-as memcmpO3fixed.ll
 

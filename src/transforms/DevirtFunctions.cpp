@@ -242,7 +242,7 @@ namespace transforms {
 				      [](const Function* f) { return f->hasName(); })) {
 			std::sort(refined_dsa_targets.begin(), refined_dsa_targets.end(),
 				  [](const Function *f1, const Function *f2) {
-				    return f1->hasName() < f2->hasName();});
+				    return f1->getName() < f2->getName();});
 		      }
 		      m_targets_map.insert({CS.getInstruction(), refined_dsa_targets});
 		      DEVIRT_LOG(errs() << "Devirt (dsa) resolved " << *(CS.getInstruction())

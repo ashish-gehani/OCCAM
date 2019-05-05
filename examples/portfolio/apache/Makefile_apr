@@ -16,11 +16,11 @@ endif
 
 
 
-APR_VERSION ?= 1.6.3
+APR_VERSION ?= 1.7.0
 
 APR=apr-${APR_VERSION}
 APR_TARBALL=${APR}.tar.gz
-APR_URL=http://apache.mirrors.ionfish.org/apr/${APR_TARBALL}
+APR_URL=http://apache.cs.utah.edu/apr/${APR_TARBALL}
 APR_BASENAME=libapr-1
 APR_LIB=${APR_BASENAME}.${LIBEXT}
 APR_BITCODE=${APR_BASENAME}.shared.bc
@@ -54,4 +54,4 @@ very_clean: clean
 	rm -rf ${APR_INSTALL}
 
 spotless: very_clean
-	rm -rf ${APR_TARBALL} ${APR} 
+	rm -rf ${APR_TARBALL} ${APR}

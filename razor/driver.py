@@ -124,13 +124,13 @@ def run(prog, args, sb=None, fail_on_error=True):
 
     report(prog, args)
 
-
+    log.log(logging.INFO, 'EXECUTING: %s\n', ' '.join([prog] + args))
+    
     proc = subprocess.Popen([prog] + args,
                             stderr=subprocess.PIPE,
                             stdout=subprocess.PIPE,
                             stdin=subprocess.PIPE)
 
-    log.log(logging.INFO, 'EXECUTING: %s\n', ' '.join([prog] + args))
     echo.Echo(proc.stderr, log, sb)
     if sb is not None:
         echo.Echo(proc.stdout, None, sb)

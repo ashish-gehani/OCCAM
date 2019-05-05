@@ -46,8 +46,10 @@ Version History:
 
 1.0.4    - 11/29/2016 razor requires protobuf.
 
+1.1.0    - 4/30/2019  Large leap in development. Lots of new command line arguments.
+
 
 """
 
 
-razor_version = '1.0.4'
+razor_version = '1.1.0'

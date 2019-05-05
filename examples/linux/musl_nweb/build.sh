@@ -22,11 +22,11 @@ EOF
 
 # make the bitcode
 
-echo "wllvm nweb.c -c"
-wllvm nweb.c -c
+echo "gclang nweb.c -c"
+gclang nweb.c -c
 
-echo "extract-bc nweb.o"
-extract-bc nweb.o
+echo "get-bc nweb.o"
+get-bc nweb.o
 
 # make libc.a.o
 echo "llc -filetype=obj  libc.a.bc"

@@ -23,16 +23,17 @@ cat > multiple.manifest <<EOF
 EOF
 
 #make the bitcode
-CC=wllvm make
-extract-bc main
-extract-bc ${LIBRARY}
+CC=gclang make
+get-bc main
+get-bc ${LIBRARY}
 
 
 export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
 export PATH=${LLVM_HOME}/bin:${PATH}
 
-slash --work-dir=slash multiple.manifest
+slash --intra-spec-policy=nonrec-aggressive --inter-spec-policy=nonrec-aggressive \
+      --work-dir=slash multiple.manifest
 
 cp slash/main main_slash
 

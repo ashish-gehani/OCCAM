@@ -88,7 +88,9 @@ def strip(input_file, output_file):
     """ strips unused symbols
     """
     args = [input_file, '-o', output_file]
-    args += ['-strip', '-globaldce', '-globalopt', '-strip-dead-prototypes']
+    args += ['-strip',
+             #'-globaldce', '-globalopt',
+             '-strip-dead-prototypes']
     return driver.run('opt', args)
 
 def devirt(devirt_method, input_file, output_file):
@@ -129,7 +131,7 @@ def profile(input_file, output_file):
         ## XXX: these can be expensive        
         '-profile-verbose=false'
         ,'-profile-loops=false'
-        ,'-profile-safe-pointers=false'
+        #,'-profile-safe-pointers=false'
     ]
     args += ['-profile-outfile={0}'.format(output_file)]
     return driver.previrt(input_file, '/dev/null', args)
@@ -238,9 +240,9 @@ def peval(input_file, output_file, \
         shutil.copy(tmp.name, done.name)
 
     if use_ipdse is not None:
-        ##lower global initializers to store's in main (improve precision of sccp)
+        ## 1. lower global initializers to store's in main 
         passes = ['-lower-gv-init']
-        ##dead store elimination (improve precision of sccp)
+        ## 2. dead store elimination (improve precision of sccp)
         passes += [##Memory SSA
                    ###Context-insensitive dsa  
                    '-sea-dsa=ci', 
@@ -249,9 +251,9 @@ def peval(input_file, output_file, \
                    '-ip-dse', '-ip-dse-max-def-use=25',
                    ##Remove some instrumentation added by Memory SSA
                    '-strip-memory-ssa-inst']
-        ##perform sccp
-        passes += ['-Psccp']
-        ##cleanup after sccp
+        ## 3. perform IPSCCP
+        passes += ['-Pipsccp']
+        ## 4. cleanup after IPSCCP
         passes += ['-dce', '-globaldce']
         retcode = driver.previrt(done.name, tmp.name, passes)
         if retcode != 0:

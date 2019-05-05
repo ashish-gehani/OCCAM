@@ -12,15 +12,15 @@ declare i32 @printf(i8*, ...) #0
 
 ; Function Attrs: nounwind ssp
 define i32 @main(i32, i8** nocapture readnone) #1 {
-  ; CHECK: "call(test,0x2,S:7EB6C85)"
-  %3 = tail call i32 @"call(test,0x2,S:7EB6C85)"() #3
+  ; CHECK: "__occam_spec.call(test,0x2,S:7EB6C85)"
+  %3 = tail call i32 @"__occam_spec.call(test,0x2,S:7EB6C85)"() #3
   ret i32 %3
 }
 
-declare i32 @"call(test,0x2,S:7EB6C85)"()
+declare i32 @"__occam_spec.call(test,0x2,S:7EB6C85)"()
 
 ; Function Attrs: nounwind ssp uwtable
-define i32 @"test(0x2,S:7EB6C85)"() #2 {
+define i32 @"__occam_spec.test(0x2,S:7EB6C85)"() #2 {
   %1 = tail call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([7 x i8]* @.str1, i64 0, i64 0)) #3
   ret i32 -1
 }

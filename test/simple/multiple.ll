@@ -31,17 +31,17 @@ declare i32 @fprintf(%0*, i8*, ...) #0
 define i32 @main(i32, i8** nocapture readnone) #1 {
   %3 = tail call i64 @atol(i8* getelementptr inbounds ([5 x i8]* @1, i64 0, i64 0)) #2
   %4 = trunc i64 %3 to i32
-  ; CHECK: "libcall_int(0x1,?)"
-  %5 = tail call i32 @"libcall_int(0x1,?)"(i32 %4) #2
+  ; CHECK: "__occam_spec.libcall_int(0x1,?)"
+  %5 = tail call i32 @"__occam_spec.libcall_int(0x1,?)"(i32 %4) #2
   %6 = tail call i64 @atol(i8* getelementptr inbounds ([5 x i8]* @1, i64 0, i64 0)) #2
   %7 = trunc i64 %6 to i32
-  ; CHECK: "libcall_int(0x2,?)"
-  %8 = tail call i32 @"libcall_int(0x2,?)"(i32 %7) #2
+  ; CHECK: "__occam_spec.libcall_int(0x2,?)"
+  %8 = tail call i32 @"__occam_spec.libcall_int(0x2,?)"(i32 %7) #2
   %9 = mul nsw i32 %8, %5
   %10 = tail call i64 @atol(i8* getelementptr inbounds ([5 x i8]* @1, i64 0, i64 0)) #2
   %11 = trunc i64 %10 to i32
-  ; CHECK: "libcall_int(0x29A,?)"
-  %12 = tail call i32 @"libcall_int(0x29A,?)"(i32 %11) #2
+  ; CHECK: "__occam_spec.libcall_int(0x29A,?)"
+  %12 = tail call i32 @"__occam_spec.libcall_int(0x29A,?)"(i32 %11) #2
   %13 = mul nsw i32 %9, %12
   %14 = load i32* @global2, align 4
   %15 = tail call i64 @atol(i8* getelementptr inbounds ([5 x i8]* @1, i64 0, i64 0)) #2
@@ -50,19 +50,19 @@ define i32 @main(i32, i8** nocapture readnone) #1 {
   %18 = mul nsw i32 %13, %17
   %19 = tail call i64 @strlen(i8* getelementptr inbounds ([5 x i8]* @1, i64 0, i64 0)) #2
   %20 = trunc i64 %19 to i32
-  ; CHECK: "libcall_float(?,0x1p-1)"
-  %21 = tail call i32 @"libcall_float(?,0x1p-1)"(i32 %20) #2
+  ; CHECK: "__occam_spec.libcall_float(?,0x1p-1)"
+  %21 = tail call i32 @"__occam_spec.libcall_float(?,0x1p-1)"(i32 %20) #2
   %22 = mul nsw i32 %18, %21
   %23 = tail call i64 @strlen(i8* getelementptr inbounds ([5 x i8]* @1, i64 0, i64 0)) #2
   %24 = trunc i64 %23 to i32
-  ; CHECK: "libcall_double(?,0x1.8p-1)"
-  %25 = tail call i32 @"libcall_double(?,0x1.8p-1)"(i32 %24) #2
+  ; CHECK: "__occam_spec.libcall_double(?,0x1.8p-1)"
+  %25 = tail call i32 @"__occam_spec.libcall_double(?,0x1.8p-1)"(i32 %24) #2
   %26 = mul nsw i32 %22, %25
-  ; CHECK: "libcall_null_pointer(0x4,null)"
-  %27 = tail call i32 @"libcall_null_pointer(0x4,null)"() #2
+  ; CHECK: "__occam_spec.libcall_null_pointer(0x4,null)"
+  %27 = tail call i32 @"__occam_spec.libcall_null_pointer(0x4,null)"() #2
   %28 = mul nsw i32 %26, %27
-  ; CHECK: "libcall_string(0x5,S:B9A)"
-  %29 = tail call i32 @"libcall_string(0x5,S:B9A)"() #2
+  ; CHECK: "__occam_spec.libcall_string(0x5,S:B9A)"
+  %29 = tail call i32 @"__occam_spec.libcall_string(0x5,S:B9A)"() #2
   %30 = mul nsw i32 %28, %29
   %31 = tail call i64 @strlen(i8* getelementptr inbounds ([5 x i8]* @1, i64 0, i64 0)) #2
   %32 = trunc i64 %31 to i32
@@ -76,19 +76,19 @@ define i32 @main(i32, i8** nocapture readnone) #1 {
   ret i32 %34
 }
 
-declare i32 @"libcall_double(?,0x1.8p-1)"(i32)
+declare i32 @"__occam_spec.libcall_double(?,0x1.8p-1)"(i32)
 
-declare i32 @"libcall_float(?,0x1p-1)"(i32)
+declare i32 @"__occam_spec.libcall_float(?,0x1p-1)"(i32)
 
-declare i32 @"libcall_int(0x29A,?)"(i32)
+declare i32 @"__occam_spec.libcall_int(0x29A,?)"(i32)
 
-declare i32 @"libcall_int(0x2,?)"(i32)
+declare i32 @"__occam_spec.libcall_int(0x2,?)"(i32)
 
-declare i32 @"libcall_int(0x1,?)"(i32)
+declare i32 @"__occam_spec.libcall_int(0x1,?)"(i32)
 
-declare i32 @"libcall_null_pointer(0x4,null)"()
+declare i32 @"__occam_spec.libcall_null_pointer(0x4,null)"()
 
-declare i32 @"libcall_string(0x5,S:B9A)"()
+declare i32 @"__occam_spec.libcall_string(0x5,S:B9A)"()
 
 attributes #0 = { "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "stack-protector-buffer-size"="8" "unsafe-fp-math"="false" "use-soft-float"="false" }
 attributes #1 = { nounwind ssp }

@@ -14,11 +14,11 @@ llvm/projects/libcxxabi: llvm/projects/libcxx
 	cd llvm/projects/; svn co ${LIBCXXABI}  libcxxabi
 
 build: llvm/projects/libcxxabi
-	mkdir build; cd build; CC=wllvm CXX=wllvm++ cmake -DLIBCXX_ENABLE_SHARED=OFF  -DLIBCXX_ENABLE_ABI_LINKER_SCRIPT=OFF ../llvm; make cxx; 
+	mkdir build; cd build; CC=gclang CXX=gclang++ cmake -DLIBCXX_ENABLE_SHARED=OFF  -DLIBCXX_ENABLE_ABI_LINKER_SCRIPT=OFF ../llvm; make cxx; 
 
 
 libc++.a.bc: build
-	cd build/lib; extract-bc -b libc++.a; cp libc++.a.bc ../../
+	cd build/lib; get-bc -b libc++.a; cp libc++.a.bc ../../
 
 
 check:   build

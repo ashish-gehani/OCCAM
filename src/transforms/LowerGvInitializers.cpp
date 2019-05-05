@@ -1,37 +1,26 @@
+#include "transforms/LowerGvInitializers.h"
+
 #include "llvm/IR/Function.h"
-#include "llvm/IR/Module.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Utils/GlobalStatus.h"
+
 //#include "boost/format.hpp"
-
-/** 
-    Pass to lower scalar initializers to global variables into
-    explicit initialization code 
-**/
-
-using namespace llvm;
 
 namespace previrt {
 namespace transforms {
-  
-  class LowerGvInitializers : public ModulePass {
-    //DenseMap<const Type*, Constant*> m_ndfn;
-    //Constant* getNondetFn (Type *type, Module& M);
-      
-  public:
-    
-    static char ID;
-    
-    LowerGvInitializers () : ModulePass (ID) {}
-    
-    virtual bool runOnModule (Module &M);
 
-    void getAnalysisUsage (AnalysisUsage &AU) const  {
-      //AU.setPreservesAll ();
-    }
-  };
+  using namespace llvm;
+  
+  LowerGvInitializersPass::LowerGvInitializersPass()
+    : ModulePass (ID) {}
+
+  LowerGvInitializersPass::~LowerGvInitializersPass() {}
+  
+  void LowerGvInitializersPass::getAnalysisUsage(AnalysisUsage &AU) const  {
+    //AU.setPreservesAll ();
+  }
   
   // /// XXX: from CtorUtils.cpp
   // ///
@@ -155,7 +144,7 @@ namespace transforms {
   //   return *res;
   // }
   
-  // Constant *LowerGvInitializers::getNondetFn(Type *type, Module &M) {
+  // Constant *LowerGvInitializersPass::getNondetFn(Type *type, Module &M) {
   //   Constant *res = m_ndfn[type];
   //   if (!res) {
   //     res = &makeNewNondetFn(M, *type, m_ndfn.size(), "verifier.nondet.");
@@ -165,7 +154,7 @@ namespace transforms {
   // }
   
   // Add instructions in main that initialize global variables.
-  bool LowerGvInitializers::runOnModule(Module &M) {
+  bool LowerGvInitializersPass::runOnModule(Module &M) {
     const DataLayout *DL = &M.getDataLayout();
     Function *f = M.getFunction("main");
     if (!f) {
@@ -241,10 +230,12 @@ namespace transforms {
     return change;
   }
 
-  char LowerGvInitializers::ID = 0;
+  char LowerGvInitializersPass::ID = 0;
   
 } // end transforms
 } // end previrt
 
-static llvm::RegisterPass<previrt::transforms::LowerGvInitializers>
-X("lower-gv-init", "Lower initialization of global variables");
+static llvm::RegisterPass<previrt::transforms::LowerGvInitializersPass>
+X("lower-gv-init",
+  "Lower initialization of global variables",
+  false, false);
