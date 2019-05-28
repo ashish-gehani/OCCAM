@@ -80,8 +80,8 @@ instructions = """slash has three modes of use:
         --keep-external=<file>     : Pass a list of function names that should remain external.
         --llpe                     : Use Smowton's LLPE for intra-module prunning (experimental)
         --ipdse                    : Apply inter-procedural dead store elimination (experimental)
-        --precise-dce              : Use model-checking to perform intra-module dead code elimination (experimental)
-        --ai-invariants            : Add invariants inferred by abstract interpretation as llvm.assume instructions (experimental)
+        --mc-dce                   : Use model-checking to perform intra-module dead code elimination (experimental)
+        --ai-dce                   : Use invariants inferred by abstract interpretation for intra-module dce (experimental)
         --amalgamate=<file>        : Amalgamate the bitcode into a single <file> before linking (used to deal with duplicate symbols)
     """
 
@@ -99,7 +99,7 @@ def entrypoint():
 
 
 def  usage(exe):
-    template = '{0} [--work-dir=<dir>]  [--force] [--help] [--stats] [--no-strip] [--verbose] [--debug-manager=] [--debug-pass=] [--debug] [--print-after-all] [--devirt=<type>] [--intra-spec-policy=<type>] [--inter-spec-policy=<type>] [--disable-inlining] [--keep-external=<file>] [--llpe] [--ipdse] [--precise-dce] [--ai-invariants] <manifest>\n'
+    template = '{0} [--work-dir=<dir>]  [--force] [--help] [--stats] [--no-strip] [--verbose] [--debug-manager=] [--debug-pass=] [--debug] [--print-after-all] [--devirt=<type>] [--intra-spec-policy=<type>] [--inter-spec-policy=<type>] [--disable-inlining] [--keep-external=<file>] [--llpe] [--ipdse] [--mc-dce] [--ai-dce] <manifest>\n'
     sys.stderr.write(template.format(exe))
 
 class Slash(object):
@@ -119,8 +119,8 @@ class Slash(object):
                         'llpe',
                         'help',
                         'ipdse',
-                        'precise-dce',
-                        'ai-invariants',
+                        'mc-dce',
+                        'ai-dce',
                         'info',
                         'stats',
                         'intra-spec-policy=',
@@ -218,15 +218,30 @@ class Slash(object):
         no_strip = utils.get_flag(self.flags, 'no-strip', None)
 
         use_llpe = utils.get_flag(self.flags, 'llpe', None)
-
+        if use_llpe is not None:
+            use_llpe = True
+        else:
+            use_llpe = False
+            
         use_ipdse = utils.get_flag(self.flags, 'ipdse', None)
+        if use_ipdse is not None:
+            use_ipdse = True
+        else:
+            use_ipdse = False
 
-        use_precise_dce = utils.get_flag(self.flags, 'precise-dce', None)
+        use_mc_dce = utils.get_flag(self.flags, 'mc-dce', None)
+        if use_mc_dce is not None:
+            use_mc_dce = True
+        else:
+            use_mc_dce = False
 
-        use_ai = utils.get_flag(self.flags, 'ai-invariants', None)
-
+        use_ai_dce = utils.get_flag(self.flags, 'ai-dce', None)
+        if use_ai_dce is not None:
+            use_ai_dce = True
+        else:
+            use_ai_dce = False
+        
         show_stats = utils.get_flag(self.flags, 'stats', None)
-
         info = utils.get_flag(self.flags, 'info', None)
         if info is not None:
             show_stats = True
@@ -301,11 +316,6 @@ class Slash(object):
                     print_file(k, vi, profile_map_titles[j])
                     j += 1
 
-        def write_timestamp(msg):
-            import datetime
-            dt = datetime.datetime.now ().strftime ('%d/%m/%Y %H:%M:%S')
-            sys.stderr.write("[%s] %s...\n" % (dt, msg))
-
         #Collect some stats before we start optimizing/debloating
         if show_stats is not None:
             add_profile_map('before specialization')
@@ -369,19 +379,14 @@ class Slash(object):
         if no_inlining is not None:
             opt_options += ['-disable-inlining']
 
-        # The abstract interpreter and dsa do not support switch or invoke
-        # instructions.  This may cause more bloating but hopefully the
-        # benefits from using them pay off.
-        if devirt == 'dsa' or use_ai is not None:
-            opt_options += ['-lowerswitch', '-lowerinvoke']
-
-        write_timestamp("Started global fixpoint ...")
+        utils.write_timestamp("Started global fixpoint ...")
         iteration = 0
         max_fixpoint_iterations = 10 ## make this user parameter
         while progress:
             iteration += 1
             if iteration > max_fixpoint_iterations:
-                sys.stderr.write('Fixpoint took more than ' + str(max_fixpoint_iterations) + ". " + \
+                sys.stderr.write('Fixpoint took more than ' + \
+                                 str(max_fixpoint_iterations) + ". " + \
                                  'Stopping fixpoint.')
                 break
             progress = False
@@ -399,7 +404,7 @@ class Slash(object):
                              opt_options, \
                              intra_spec_policy, \
                              devirt, \
-                             use_llpe, use_ipdse, use_ai, \
+                             use_llpe, use_ipdse, use_ai_dce, \
                              log=open(fn, 'w'))
 
             pool.InParallel(intra, files.values(), self.pool)
@@ -458,7 +463,7 @@ class Slash(object):
             #     passes.internalize(pre, post, [iface_after_file.get()], self.whitelist)
             # pool.InParallel(prune, files.values(), self.pool)
 
-        write_timestamp("Finished global fixpoint.")
+        utils.write_timestamp("Finished global fixpoint.")
 
         # Strip everything
         # XXX: we strip symbols after the whole specialization process
@@ -507,14 +512,17 @@ class Slash(object):
 
         link_ok = link(binary, files, libs, native_libs, native_lib_flags, ldflags)
 
-        if use_precise_dce is not None and link_ok:
-            def precise_dce((m, ropfile)):
-                ''' Pruning using precise dce guided by maximizing the number of removed ROP gadgets '''
+        if use_mc_dce and link_ok:
+            def mc_dce((m, ropfile)):
+                ''' 
+                Pruning using model-checking-based dce guided by maximizing 
+                the number of removed ROP gadgets 
+                '''
                 pre = m.get()
-                post = m.new('precise_dse')
+                post = m.new('mc_dce')
                 try:
                     ## TODO: extract entries from the interfaces. Right
-                    ## now, we will only perform precise dse for the
+                    ## now, we will only perform DCE for the
                     ## program but not for libraries.
                     entries = ['main']
 
@@ -523,7 +531,7 @@ class Slash(object):
                     cost_threshold = 3
                     timeout = 120
                     memlimit = 4096
-                    return passes.precise_dce(pre, entries, ropfile, post,
+                    return passes.mc_dce(pre, entries, ropfile, post,
                                               benefit_threshold, cost_threshold,
                                               timeout, memlimit, opt_options)
                 except Exception:
@@ -538,15 +546,15 @@ class Slash(object):
                 ropgadget_args = ['--binary', binary, '--silent', '--fns2lines', ropfile]
                 driver.run(ropgadget_cmd, ropgadget_args)
 
-                precise_dce_args = map(lambda m: (m,ropfile), files.values())
-                rws = pool.InParallel(precise_dce, precise_dce_args , self.pool)
+                mc_dce_args = map(lambda m: (m,ropfile), files.values())
+                rws = pool.InParallel(mc_dce, mc_dce_args , self.pool)
                 progress = any(rws)
                 if progress:
                     if show_stats is not None:
-                        add_profile_map('after precise dce')
+                        add_profile_map('after model-checking-based dce')
                 link(binary, files, libs, native_libs, native_lib_flags, ldflags)
             else:
-                sys.stderr.write("ropgadget not found. Aborting precise dce ...")
+                sys.stderr.write("ropgadget not found. Aborting model-checking-based dce ...")
 
         # Make symlinks for the "final" versions
         for x in files.values():
