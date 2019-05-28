@@ -32,7 +32,7 @@ convention.
 For instance, the output of `runbench.py` might look like this:
 
 ```
-Attack Surface Reduction: (B:before and A:after OCCAM)
+Program Reduction: (B:before and A:after OCCAM)
 
 Program    B Fun   A Fun   % Fun Red   B Ins    A Ins   % Ins Red   B Mem Ins   A Mem Ins   % Mem Ins Red
 tree         106      93          12    7409     8921         -20        1615        1186              26
