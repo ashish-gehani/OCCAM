@@ -88,9 +88,7 @@ def strip(input_file, output_file):
     """ strips unused symbols
     """
     args = [input_file, '-o', output_file]
-    args += ['-strip',
-             #'-globaldce', '-globalopt',
-             '-strip-dead-prototypes']
+    args += ['-strip', '-strip-dead-prototypes']             
     return driver.run('opt', args)
 
 def devirt(devirt_method, input_file, output_file):
@@ -139,30 +137,44 @@ def profile(input_file, output_file):
 def crabllvm(cmd, input_file, output_file):
     """ running crab-llvm (https://github.com/seahorn/crab-llvm) 
     """
-    dom = 'zones'
-    sum_dom = 'zones'
-    args = [# analysis options
-              '--crab-dom={0}'.format(dom)
-            #, '--crab-lower-select'
+    # analysis options    
+    args = [
+            #### Abstract domain 
+              '--crab-dom=zones'
+            #### To avoid code bloating 
+            , '--crab-lower-select=false'
+            , '--crab-lower-unsigned-icmp=false'
+            , '--crab-lower-constant-expr=false'
+            , '--crab-lower-switch=false'
+            , '--crab-lower-invoke=false'
+            #### Reason about register and memory contents
             , '--crab-track=arr'
+            , '--crab-disable-ptr'
             , '--crab-singleton-aliases'
-            , '--crab-inter'
-            , '--crab-inter-sum-dom={0}'.format(sum_dom)
-            # options to insert invariants as llvm.assume instructions
-            , '--crab-add-invariants=block-entry'
-            , '--crab-promote-assume'
-            # for verbose messages
-            #, '--crab-verbose=1'
-            , '--crab-stats']
+            #### We use for now context-insensitive
+            , '--crab-heap-analysis=ci-sea-dsa'
+            #### Options to insert invariants as llvm.assume instructions
+            #, '--crab-add-invariants=block-entry', '--crab-promote-assume'        
+            #, '--crab-add-invariants=loop-header', '--crab-promote-assume'
+            #, '--crab-add-invariants=all', '--crab-promote-assume'
+            , '--crab-add-invariants=dead-code'
+            #### for debugging
+            #, '--crab-print-invariants'
+            #, '--crab-verbose=0'
+            #, '--crab-stats'
+    ]
     args += [input_file, '--o={0}'.format(output_file)]
     sb = stringbuffer.StringBuffer()
-    return  driver.run(cmd, args, sb, False)
+    res = driver.run(cmd, args, sb, False)
+    ### uncomment for debugging:
+    #print str(sb)
+    return res
 
 def peval(input_file, output_file, \
           opt_options, \
           policy, \
           devirt_method, \
-          use_llpe, use_ipdse, use_ai, log=None):
+          use_llpe, use_ipdse, use_ai_dce, log=None):
     """ intra module specialization/optimization
     """
     opt = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
@@ -172,8 +184,8 @@ def peval(input_file, output_file, \
     done.close()
     tmp.close()
 
-    def _optimize(input_file, output_file):
-        retcode = optimize(input_file, output_file, opt_options)
+    def _optimize(input_file, output_file, use_seaopt):
+        retcode = optimize(input_file, output_file, use_seaopt, opt_options)
         if retcode != 0:
             sys.stderr.write("ERROR: intra module optimization failed!\n")
             shutil.copy(input_file, output_file)
@@ -189,7 +201,7 @@ def peval(input_file, output_file, \
     else:
         # Optimize using standard llvm transformations before any other
         # optional pass. Otherwise, these passes will not be very effective.
-        retcode = _optimize(input_file, done.name)
+        retcode = _optimize(input_file, done.name, use_ai_dce)
         if retcode != 0: return retcode
 
     if devirt_method <> 'none':
@@ -212,34 +224,35 @@ def peval(input_file, output_file, \
 
     #     sys.stderr.write("\tresolved indirect calls finished succesfully\n")
         
-    #     retcode = _optimize(tmp.name, done.name)
+    #     retcode = _optimize(tmp.name, done.name, use_ai_dce)
     #     if retcode != 0:
     #         sys.stderr.write("ERROR: opt failed!\n")
     #         shutil.copy(tmp.name, output_file)
     #         return retcode
     # else:
-    #     retcode = _optimize(input_file, done.name)
+    #     retcode = _optimize(input_file, done.name, use_ai_dce)
     #     if retcode != 0:
     #         return retcode
         
-    if use_llpe is not None:
-        llpe_libs = []
-        for lib in config.get_llpelibs():
-            llpe_libs.append('-load={0}'.format(lib))
-            args = llpe_libs + ['-loop-simplify', '-lcssa', \
-                                '-llpe', '-llpe-omit-checks', '-llpe-single-threaded', \
-                                done.name, '-o=%s' % tmp.name]
-        retcode = driver.run('opt', args)
-        if retcode != 0:
-            sys.stderr.write("ERROR: llpe failed!\n")
-            shutil.copy(done.name, output_file)
-            #FIXME: unlink files
-            return retcode
-        else:
-            sys.stderr.write("\tllpe finished succesfully\n")
-        shutil.copy(tmp.name, done.name)
+    if use_llpe:
+        sys.stderr.write('Skipped llpe because it is too deprecated')
+        # llpe_libs = []
+        # for lib in config.get_llpelibs():
+        #     llpe_libs.append('-load={0}'.format(lib))
+        #     args = llpe_libs + ['-loop-simplify', '-lcssa', \
+        #                         '-llpe', '-llpe-omit-checks', '-llpe-single-threaded', \
+        #                         done.name, '-o=%s' % tmp.name]
+        # retcode = driver.run('opt', args)
+        # if retcode != 0:
+        #     sys.stderr.write("ERROR: llpe failed!\n")
+        #     shutil.copy(done.name, output_file)
+        #     #FIXME: unlink files
+        #     return retcode
+        # else:
+        #     sys.stderr.write("\tllpe finished succesfully\n")
+        # shutil.copy(tmp.name, done.name)
 
-    if use_ipdse is not None:
+    if use_ipdse:
         ## 1. lower global initializers to store's in main 
         passes = ['-lower-gv-init']
         ## 2. dead store elimination (improve precision of sccp)
@@ -265,35 +278,37 @@ def peval(input_file, output_file, \
             sys.stderr.write("\tipdse finished succesfully\n")
         shutil.copy(tmp.name, done.name)
 
-    if use_ai is not None:
-        
+    if use_ai_dce:
         crabllvm_cmd = utils.get_crabllvm()
         if crabllvm_cmd is None:
-            sys.stderr.write('CrabLlvm not found. Aborting ai invariants ...')
+            sys.stderr.write('crab not found: skipping ai-based dce')
         else:
+            utils.write_timestamp("Starting crab")
             retcode = crabllvm(crabllvm_cmd, done.name, tmp.name)
             if retcode != 0:
-                sys.stderr.write("ERROR: crabllvm failed!\n")
+                sys.stderr.write("ERROR: crab failed!\n")
                 shutil.copy(done.name, output_file)
                 return retcode
             else:
-                sys.stderr.write("\tcrab-llvm finished succesfully\n")
-                shutil.copy(tmp.name, done.name)
-                # After crab-llvm insert llvm.assume instructions we must run
-                # the optimizer again.
-                retcode = _optimize(tmp.name, done.name)
-                if retcode != 0:
-                    return retcode
-
+                utils.write_timestamp("Finished crab")
+                ## XXX: commented the code because we don't add llvm.assume right now.
+                ## After crab-llvm insert llvm.assume instructions we must run
+                ## the optimizer again.
+                # shutil.copy(tmp.name, done.name)
+                # retcode = _optimize(tmp.name, done.name, use_ai_dce)
+                # if retcode != 0:
+                #     return retcode
+            shutil.copy(tmp.name, done.name)
+            
     if policy <> 'none':
         out = ['']
         iteration = 0
         while True:
             iteration += 1
             if iteration > 1 or \
-               (use_llpe is not None or use_ipdse is not None):
+               (use_llpe or use_ipdse):
                 # optimize using standard llvm transformations
-                retcode = _optimize(done.name, opt.name)
+                retcode = _optimize(done.name, opt.name, use_ai_dce)
                 if retcode != 0:
                     break;
             else:
@@ -321,13 +336,25 @@ def peval(input_file, output_file, \
         pass
     return retcode
 
-def optimize(input_file, output_file, extra_opts):
+def optimize(input_file, output_file, use_seaopt, extra_opts):
     """ run opt -O3
     """
     args = ['-disable-simplify-libcalls']
+    if use_seaopt and utils.found_seaopt():
+        args += ['--enable-nondet-init=false']
+        # disable loop vectorization for now        
+        args += ['--disable-loop-vectorization',
+                 '--disable-slp-vectorization']
+        # disable sinking instructions to end of basic block
+        # this might create unwanted aliasing scenarios
+        # for now, there is no option to undo this switch        
+        args += ['--simplifycfg-sink-common=false']
+        # disable loop rotation
+        args += ['--disable-loop-rotate']
+        
     args += extra_opts
     args += [input_file, '-o', output_file, '-O3']
-    return driver.run('opt', args)
+    return driver.run(utils.get_opt(use_seaopt), args)
 
 def constrain_program_args(input_file, output_file, cnstrs, filename=None):
     """ constrain the program arguments.
@@ -447,7 +474,8 @@ def seahorn(sea_cmd, input_file, fname, is_loop_free, cpu, mem, opt_options):
                    [   '--horn-global-constraints=true'
                      , '--horn-singleton-aliases=true'
                      , '--horn-ignore-calloc=false'
-                     , '--crab', '--crab-dom=int']
+                     #, '--crab', '--crab-dom=int'
+                   ]
         sys.stderr.write('Running SeaHorn with Spacer+AI engine on {0} ...\n'.format(fname))
     sea_args = sea_args + [sea_infile.name]
         
@@ -465,7 +493,7 @@ def seahorn(sea_cmd, input_file, fname, is_loop_free, cpu, mem, opt_options):
         # 4. And, we run the optimized to remove that function
         sea_opt_outfile = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
         sea_opt_outfile.close()
-        optimize(sea_outfile.name, sea_opt_outfile.name, opt_options)
+        optimize(sea_outfile.name, sea_opt_outfile.name, use_ai_dce, opt_options)
         return sea_opt_outfile.name
     else:
         sys.stderr.write('\tSeaHorn could not prove unreachability of {0}:\n'.format(fname))
@@ -475,27 +503,27 @@ def seahorn(sea_cmd, input_file, fname, is_loop_free, cpu, mem, opt_options):
             sys.stderr.write('\t\tSeaHorn got a counterexample\n')
         return input_file
 
-def precise_dce(input_file,
-                # entry functions 
-                entries,
-                # file with ROP gadgets
-                ropfile,
-                output_file,
-                ## number of ROP gadgets
-                benefit_threshold,
-                ## number of loops
-                cost_threshold,
-                ## SeaHorn timeout in seconds
-                timeout,
-                ## SeaHorn memory limit in MB
-                memlimit,
-                ## Options for opt
-                opt_options):
+def mc_dce(input_file,
+           # entry functions 
+           entries,
+           # file with ROP gadgets
+           ropfile,
+           output_file,
+           ## number of ROP gadgets
+           benefit_threshold,
+           ## number of loops
+           cost_threshold,
+           ## SeaHorn timeout in seconds
+           timeout,
+           ## SeaHorn memory limit in MB
+           memlimit,
+           ## Options for opt
+           opt_options):
     """ use SeaHorn model-checker to remove dead functions
     """
     sea_cmd = utils.get_seahorn()
     if sea_cmd is None:
-        sys.stderr.write('SeaHorn not found. Aborting precise dce ...')
+        sys.stderr.write('SeaHorn not found: skipped model-checking-based dce.')
         shutil.copy(input_file, output_file)
         return False
         
