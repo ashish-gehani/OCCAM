@@ -102,4 +102,6 @@ very_clean:
 
 spotless: very_clean
 	rm -rf ${OPENSSH_TARBALL}
-	make -C . -f Makefile_openssl spotless
+	make -C . -f Makefile_openssl OPENSSL_VERSION=${OPENSSL_VERSION} spotless
+
+.PHONY: clean very_clean spotless

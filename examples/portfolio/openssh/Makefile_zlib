@@ -52,3 +52,5 @@ very_clean:
 
 spotless: very_clean
 	rm -rf ${ZLIB_TARBALL}
+
+.PHONY: clean very_clean spotless
