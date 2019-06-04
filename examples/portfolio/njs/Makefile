@@ -8,7 +8,7 @@ njs:
 	git clone https://github.com/nginx/njs.git
 
 njs/njs: njs
-	cd njs; CC=${COMPILER} ./configure ; make
+	cd njs; CC=${COMPILER} CFLAGS="-O1 -fno-vectorize -fno-slp-vectorize" ./configure ; make
 
 njs.bc: njs/njs
 	cd njs/build; \
