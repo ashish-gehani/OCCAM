@@ -39,8 +39,7 @@ LIBEXT=so
 endif
 
 
-#CFLAGS="-I${OPENSSL_INSTALL}/include -Wl,-rpath,${OPENSSL_INSTALL}/lib   -Xclang-disable-O0-optnone"
-CFLAGS="-I${OPENSSL_INSTALL}/include -Wl,-rpath,${OPENSSL_INSTALL}/lib   -O3"
+CFLAGS="-I${OPENSSL_INSTALL}/include -Wl,-rpath,${OPENSSL_INSTALL}/lib -O1 -fno-vectorize -fno-slp-vectorize"
 LDFLAGS="-L${OPENSSL_INSTALL}/lib"
 
 
@@ -90,10 +89,11 @@ ssh.json: ${OPENSSH_INSTALL}/bin/ssh
 
 clean:
 	rm -f ${BITCODE} libz.a.bc libssl.a.bc libcrypto.a.bc
+	rm -f linked_ssh.bc linked_ssh.manifest
+	rm -f ssh.manifest ssh_from bc ssh_static_slashed sshd_from_bc
 	make -C ${OPENSSH} clean
 	make -C . -f Makefile_openssl clean
 	make -C . -f Makefile_zlib clean
-
 
 very_clean:
 	rm -rf install ${OPENSSH}
