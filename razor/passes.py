@@ -140,7 +140,7 @@ def crabllvm(cmd, input_file, output_file):
     # analysis options    
     args = [
             #### Abstract domain 
-              '--crab-dom=zones'
+              '--crab-dom=int'
             #### To avoid code bloating 
             , '--crab-lower-select=false'
             , '--crab-lower-unsigned-icmp=false'
@@ -201,7 +201,7 @@ def peval(input_file, output_file, \
     else:
         # Optimize using standard llvm transformations before any other
         # optional pass. Otherwise, these passes will not be very effective.
-        retcode = _optimize(input_file, done.name, use_ai_dce)
+        retcode = _optimize(input_file, done.name, use_ai_dce or use_ipdse)
         if retcode != 0: return retcode
 
     if devirt_method <> 'none':
@@ -308,7 +308,7 @@ def peval(input_file, output_file, \
             if iteration > 1 or \
                (use_llpe or use_ipdse):
                 # optimize using standard llvm transformations
-                retcode = _optimize(done.name, opt.name, use_ai_dce)
+                retcode = _optimize(done.name, opt.name, use_ai_dce or use_ipdse)
                 if retcode != 0:
                     break;
             else:
@@ -337,19 +337,23 @@ def peval(input_file, output_file, \
     return retcode
 
 def optimize(input_file, output_file, use_seaopt, extra_opts):
-    """ run opt -O3
+    """ Run opt -O3.
+        The optimizer is tuned for code debloating and not necessarily
+        for runtime performance.
     """
     args = ['-disable-simplify-libcalls']
-    if use_seaopt and utils.found_seaopt():
+    ## We disable loop vectorization because some of our analysis
+    ## cannot support them.
+    args += ['--disable-loop-vectorization',
+             '--disable-slp-vectorization']
+    use_seaopt = use_seaopt and utils.found_seaopt()
+    if use_seaopt:
         args += ['--enable-nondet-init=false']
-        # disable loop vectorization for now        
-        args += ['--disable-loop-vectorization',
-                 '--disable-slp-vectorization']
         # disable sinking instructions to end of basic block
-        # this might create unwanted aliasing scenarios
+        # this might create unwanted aliasing scenarios (in sea-dsa)
         # for now, there is no option to undo this switch        
         args += ['--simplifycfg-sink-common=false']
-        # disable loop rotation
+        # disable loop rotation because it's pretty bad for crab
         args += ['--disable-loop-rotate']
         
     args += extra_opts
@@ -493,7 +497,7 @@ def seahorn(sea_cmd, input_file, fname, is_loop_free, cpu, mem, opt_options):
         # 4. And, we run the optimized to remove that function
         sea_opt_outfile = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
         sea_opt_outfile.close()
-        optimize(sea_outfile.name, sea_opt_outfile.name, use_ai_dce, opt_options)
+        optimize(sea_outfile.name, sea_opt_outfile.name, True, opt_options)
         return sea_opt_outfile.name
     else:
         sys.stderr.write('\tSeaHorn could not prove unreachability of {0}:\n'.format(fname))
