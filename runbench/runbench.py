@@ -181,7 +181,7 @@ def pretty_printing_ropgadget(results):
     pptable.pprint_table(out,table)
     
     
-def run_occam(dirname, execname, workdir, cpu, mem):
+def run_occam(dirname, execname, workdir, cpu, mem, slash_opts= []):
     #benchmark_name = os.path.basename(os.path.normpath(dirname))
     benchmark_name = execname
     outfile = benchmark_name + ".occam.out"
@@ -189,16 +189,20 @@ def run_occam(dirname, execname, workdir, cpu, mem):
     outfd = open(os.path.join(workdir, outfile), "w")
     errfd = open(os.path.join(workdir, errfile), "w")
     res_before, res_after = None, None
-    #Generate bitcode
+    #1. Generate bitcode: run `make`
     returncode,_,_,_ = cmd.run_limited_cmd(['make'], outfd, errfd, benchmark_name, dirname)
     if returncode <> 0:
         cmd.warning("something failed while running \"make\"" + benchmark_name + "\n" + \
                     "Read logs " + outfile + " and " + errfile)
     else:
-        #Run slash (OCCAM) on it     
-        returncode,_,_,_ = cmd.run_limited_cmd(['make','slash'], outfd, errfd, benchmark_name, dirname, cpu, mem)
+        #2. Run slash (OCCAM) on it: `build.sh opts`
+        slash_args = ['./build.sh']
+        slash_args.extend(slash_opts)
+        returncode,_,_,_ = \
+         cmd.run_limited_cmd(slash_args, outfd, errfd, benchmark_name, dirname, cpu, mem)
         if returncode <> 0:
-            cmd.warning("something failed while running \"make slash\"" + benchmark_name + "\n" + \
+            cmd.warning("something failed while running \"" + ' '.join(slash_args) + \
+                        "\"" + benchmark_name + "\n" + \
                         "Read logs " + outfile + " and " + errfile)
         
     outfd.close()
@@ -299,6 +303,16 @@ def parse_opt (argv):
                     help='MEM limit (MB)', default=-1)
     p.add_argument ('--rop', help="Generate statistics about ROP/SYS/JOP gadgets",
                     dest='rop', default=False, action="store_true")
+    p.add_argument ('--disable-inlining',
+                    help="Run occam without inlining function",
+                    dest='disable_inlining', default=False, action="store_true")
+    p.add_argument ('--ai-dce',
+                    help="Use crab to perform dead code elimination",
+                    dest='use_ai_dce', default=False, action="store_true")
+    p.add_argument ('--ipdse',
+                    help="Enable inter-procedural dead store elimination",
+                    dest='use_ipdse', default=False, action="store_true")
+    
     args = p.parse_args (argv)
     return args
 
@@ -309,6 +323,14 @@ def main (argv):
     occam_tab = list()
     ropgadget_tab = list()
 
+    occam_opts = []
+    if args.disable_inlining:
+        occam_opts += ['--disable-inlining']
+    if args.use_ai_dce:
+        occam_opts += ['--ai-dce']
+    if args.use_ipdse:
+        occam_opts += ['--ipdse']
+    
     dt = datetime.datetime.now ().strftime ('%d/%m/%Y %H:%M:%S')    
     print "[" + dt + "] " +  "STARTED runbench"    
     for s in sets:
@@ -323,7 +345,7 @@ def main (argv):
                     cmd.raise_error(t['dirname'] + " is not a directory")
                     
             execname = t['execname']
-            res = run_occam(dirname, execname, workdir, args.cpu, args.mem)
+            res = run_occam(dirname, execname, workdir, args.cpu, args.mem, occam_opts)
             occam_tab.append(res)
             if args.rop:
                 res = run_ropgadget(dirname, execname, workdir, args.cpu, args.mem)
@@ -332,11 +354,13 @@ def main (argv):
     dt = datetime.datetime.now ().strftime ('%d/%m/%Y %H:%M:%S')                
     print "[" + dt + "] " +  "FINISHED runbench\n"
 
-    print "\nAttack Surface Reduction: (B:before and A:after OCCAM)\n"    
+    print "\nProgram Reduction: (B:before and A:after OCCAM with " + \
+        ' '.join(occam_opts) + ")\n"
     pretty_printing_occam(occam_tab)
     
     if args.rop:
-        print "\nGadget Reduction: (B:before and A:after OCCAM)\n"
+        print "\nGadget Reduction: (B:before and A:after OCCAM with " + \
+            ' '.join(occam_opts) + ")\n"
         pretty_printing_ropgadget(ropgadget_tab)
         
     return 0

@@ -41,12 +41,12 @@ case $key in
     -ai-dce|--ai-dce)
 	OPT_OPTIONS="${OPT_OPTIONS} --ai-dce"
 	shift # past argument
-	;;            
+	;;                    
     -devirt|--devirt)
 	DEVIRT="$2"
 	shift # past argument
 	shift # past value
-	;;            
+	;;        
     -help|--help)
 	usage
 	exit 0
@@ -60,7 +60,7 @@ done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
 #check that the require dependencies are built
-declare -a bitcode=("perlbench.bc")
+declare -a bitcode=("memcached.bc" "libevent.a.bc")
 
 for bc in "${bitcode[@]}"
 do
@@ -73,29 +73,36 @@ do
     fi
 done
 
-export OCCAM_LOGLEVEL=INFO
-export OCCAM_LOGFILE=${PWD}/slash/occam.log
+MANIFEST=memcached.manifest
 
-rm -rf slash ssh_slashed
-
-# Build the manifest file
-cat > perlbench.manifest <<EOF
-{ "main" : "perlbench.bc"
-, "binary"  : "perlbench_slashed"
-, "modules"    : []
-, "native_libs" : []
-, "name"    : "perlbench"
+cat > ${MANIFEST} <<EOF
+{ "main" : "memcached.bc"
+, "binary"  : "memcached"
+, "modules"    : ["libevent.a.bc"]
+, "native_libs" : ["-lpthread"  ]
+, "ldflags" : [ "-O2" ]
+, "name"    : "memcached"
+, "args" : ["-m", "1024", "-I", "1k", "-l", "127.0.0.1:11211"]
 }
 EOF
 
+export OCCAM_LOGLEVEL=INFO
+export OCCAM_LOGFILE=${PWD}/slash/occam.log
 
-# Run OCCAM
-cp ./perlbench ./perlbench_orig
+rm -rf slash
 
 SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC} --devirt=${DEVIRT} --no-strip --stats $OPT_OPTIONS"
 echo "============================================================"
-echo "Running with options ${SLASH_OPTS}"
+echo "Running memcacched with libevent library"
+echo "slash options ${SLASH_OPTS}"
 echo "============================================================"
-slash ${SLASH_OPTS} --work-dir=slash perlbench.manifest
-
-cp ./slash/perlbench_slashed .
+slash ${SLASH_OPTS} --work-dir=slash ${MANIFEST}
+status=$?
+if [ $status -eq 0 ]
+then
+    ## runbench needs _orig and _slashed versions
+    cp slash/memcached memcached_slashed
+    cp install/memcached/bin/memcached memcached_orig
+else
+    echo "Something failed while running slash"
+fi    

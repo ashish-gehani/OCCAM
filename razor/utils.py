@@ -270,6 +270,11 @@ def setLogger():
     logger.setLevel(level)
     logger.info(">> %s\n", ' '.join(sys.argv))
 
+def write_timestamp(msg):
+    import datetime
+    dt = datetime.datetime.now ().strftime ('%d/%m/%Y %H:%M:%S')
+    sys.stderr.write("[%s] %s...\n" % (dt, msg))
+    
 def is_exec (fpath):
     if fpath == None: return False
     return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
@@ -284,6 +289,25 @@ def which(program):
             if is_exec (exe_file): return exe_file
     return None
 
+# seaopt is a customized version of LLVM opt that is more 
+# friendly to tools like crab and seahorn.
+def found_seaopt():
+    opt = which('seaopt')
+    if opt is not None:
+        return True
+    else:
+        return False
+    
+def get_opt(use_seaopt = False):
+    opt = None
+    if use_seaopt:
+        opt = which('seaopt')
+    if opt is None:
+        opt = which('opt')
+    if opt is None:
+        raise IOError('opt was not found')
+    return opt
+    
 # Try to find ROPgadget binary
 def get_ropgadget():
     ropgadget = None

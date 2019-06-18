@@ -27,11 +27,9 @@ curlgit:
 	wget ${CURLURL}; tar xvfz ${CURL}.tar.gz; mv ${CURL} curlgit
 
 # --enable-static
-
+# --disable-debug --disable-dependency-tracking --disable-silent-rules --prefix=${CURLDIR}/install/  --with-darwinssl --without-ca-bundle --without-ca-path
 install/bin/curl: curlgit
 	cd curlgit; ./buildconf; CC=${LLVMCC} ./configure --prefix=${CURLDIR}/install/
-#   on a mac you have to fix the libtool script
-#	cp libtool curlgit;
 	cd curlgit; make; make install
 
 bitcode: curl.bc ${CURLLIBBC}

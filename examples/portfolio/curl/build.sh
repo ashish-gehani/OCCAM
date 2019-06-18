@@ -4,7 +4,7 @@
 set -e
 
 function usage() {
-    echo "Usage: $0 [--disable-inlining] [--ipdse] [--devirt VAL1] [--inter-spec VAL2] [--intra-spec VAL2] [--link dynamic|static] [--help]"
+    echo "Usage: $0 [--disable-inlining] [--ipdse] [--ai-dce] [--devirt VAL1] [--inter-spec VAL2] [--intra-spec VAL2] [--link dynamic|static] [--help]"
     echo "       VAL1=none|dsa|cha_dsa"    
     echo "       VAL2=none|aggressive|nonrec-aggressive"
 }
@@ -37,7 +37,11 @@ case $key in
     -ipdse|--ipdse)
 	OPT_OPTIONS="${OPT_OPTIONS} --ipdse"
 	shift # past argument
-	;;    
+	;;
+    -ai-dce|--ai-dce)
+	OPT_OPTIONS="${OPT_OPTIONS} --ai-dce"
+	shift # past argument
+	;;        
     -devirt|--devirt)
 	DEVIRT="$2"
 	shift # past argument

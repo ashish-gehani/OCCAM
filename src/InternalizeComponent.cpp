@@ -59,34 +59,65 @@ KeepExternalFile("Pkeep-external",
 
 static cl::opt<unsigned>
 FixpointTreshold("Pinternalize-fixpoint-threshold",
-		 cl::desc("Limit of fixpoint iterations during global dead code elimination refinement"),
-		 cl::init(5));
+      cl::desc("Limit of fixpoint iterations during global dead code elimination refinement"),
+      cl::init(5));
 
-namespace previrt
-{
-  static inline GlobalValue::LinkageTypes
-  localizeLinkage(GlobalValue::LinkageTypes l) {
-    switch (l) {
-    case GlobalValue::ExternalLinkage:
-      return GlobalValue::InternalLinkage;
-    case GlobalValue::ExternalWeakLinkage:
-      return GlobalValue::WeakODRLinkage;
-    case GlobalValue::AppendingLinkage:
-      return GlobalValue::AppendingLinkage;
-    case GlobalValue::CommonLinkage:
-      // CommonLinkage is most similar to weak linkage
-      // However, we mark it as internal linkage so that other
-      // optimizations are applicable.
-      //return GlobalValue::WeakODRLinkage;
-      return GlobalValue::InternalLinkage;
-      // XXX: not sure if all external definitions have an
-    // appropriate internal counterpart
-    default:
-      errs() << "Got other linkage! " << l << "\n";
-      return l;
-    }
+namespace previrt {
+  
+  // static GlobalValue::LinkageTypes
+  // localizeLinkage(GlobalValue::LinkageTypes l) {
+  //   switch (l) {
+  //   case GlobalValue::ExternalLinkage:
+  //     return GlobalValue::InternalLinkage;
+  //   case GlobalValue::ExternalWeakLinkage:
+  //     return GlobalValue::WeakODRLinkage;
+  //   case GlobalValue::AppendingLinkage:
+  //     return GlobalValue::AppendingLinkage;
+  //   case GlobalValue::CommonLinkage:
+  //     // CommonLinkage is most similar to weak linkage
+  //     // However, we mark it as internal linkage so that other
+  //     // optimizations are applicable.
+  //     //return GlobalValue::WeakODRLinkage;
+  //     return GlobalValue::InternalLinkage;
+  //     // XXX: not sure if all external definitions have an
+  //   // appropriate internal counterpart
+  //   default:
+  //     errs() << "Got other linkage! " << l << "\n";
+  //     return l;
+  //   }
+  // }
+
+  // Whether the definition of a symbol can be discarded if it is not
+  // used in *other* compilation units.
+  static bool isDiscardableIfUnusedExternally(GlobalValue::LinkageTypes Linkage) {
+    ////
+    // LinkageTypes are defined in IR/GlobalValue.h
+    ////
+    // If Linkage is one of this {LinkOnceAnyLinkage,
+    // LinkOnceODRLinkage, InternalLinkage, PrivateLinkage,
+    // AvailableExternallyLinkage} then GlobalDCE will remove the
+    // global value if unused in its compilation unit. Thus, we don't
+    // need to consider those linkage types here.
+    //
+    // WeakAnyLinkage, WeakODRLinkage, and CommonLinkage are variants
+    // of a weak semantics.
+    //
+    // AppendingLinkage applies only to global variables of pointer to
+    // array type: when two global variables are linked together, the
+    // two global arrays are appended together (e.g., @llvm.used)
+    //
+    return (Linkage == GlobalValue::ExternalLinkage ||
+	    // All of these linkage types are variants of the weak
+	    // semantics.
+	    // 
+	    // JORGE: We assume that if the symbol is dead then we can
+	    // discard it regardless of its complex weak semantics.
+	    Linkage == GlobalValue::ExternalWeakLinkage ||
+	    Linkage == GlobalValue::WeakAnyLinkage ||
+	    Linkage == GlobalValue::WeakODRLinkage ||
+	    Linkage == GlobalValue::CommonLinkage);
   }
-
+  
   /*
    * Remove all code from the given module that is not necessary to
    * implement the given interface.
@@ -96,8 +127,9 @@ namespace previrt
     errs() << "InternalizePass::runOnModule: " << M.getModuleIdentifier() << "\n";
     
     bool modified = false;
-    int hidden = 0;
-    int internalized = 0;
+    // for stats
+    int internalized_functions = 0;
+    int internalized_globals = 0;
 
     std::set<std::string> keep_external;
     if (KeepExternalFile != "") {
@@ -115,16 +147,23 @@ namespace previrt
     
     // Set all functions that are not in the interface to internal linkage only    
     for (auto &f: M) {
-      if (keep_external.count(f.getName())) {
-	errs() << "Did not internalize " << f.getName() << " because it is whitelisted.\n";
+      if (f.hasName() && keep_external.count(f.getName())) {
+	errs() << "Did not internalize " << f.getName()
+	       << " because it is whitelisted.\n";
 	continue;
       }
-      if (!f.isDeclaration() && f.hasExternalLinkage() &&
+      
+      if (// f has a body
+	  !f.isDeclaration() &&
+	  // f is discardable if unused in other compilation units
+	  isDiscardableIfUnusedExternally(f.getLinkage()) && 
+	  // unused in other compilation units
           I.calls.find(f.getName()) == I.calls.end() &&
           I.references.find(f.getName()) == I.references.end()) {
-	errs() << "Hiding '" << f.getName() << "'\n";
+	
+	errs() << "Internalizing '" << f.getName() << "'\n";
 	f.setLinkage(GlobalValue::InternalLinkage);
-	hidden++;
+	internalized_functions++;
 	modified = true;
       }
     }
@@ -133,17 +172,35 @@ namespace previrt
     // the interface to "localized linkage" only
     for (auto &gv: M.globals()) {
       if (gv.hasName() && keep_external.count(gv.getName())) {
-	errs() << "Did not internalize " << gv.getName() << " because it is whitelisted.\n";
+	errs() << "Did not internalize " << gv.getName()
+	       << " because it is whitelisted.\n";
 	continue;
       }
-      if ((gv.hasExternalLinkage() || gv.hasCommonLinkage()) && 
-	  gv.hasInitializer() &&
-          I.references.find(gv.getName()) == I.references.end()) {
-	errs() << "internalizing '" << gv.getName() << "'\n";	
-        gv.setLinkage(localizeLinkage(gv.getLinkage()));
-	internalized++;
+
+      // JORGE: This was the original code. Not clear why it needs to
+      // call localizeLinkage instead of just making the global
+      // internal. Also, only external and common linkage were
+      // covered. Not clear why only those two types.
+      // 
+      // if ((gv.hasExternalLinkage() || gv.hasCommonLinkage()) && 
+      // 	  gv.hasInitializer() &&
+      //     I.references.find(gv.getName()) == I.references.end()) {
+      // 	errs() << "Internalizing '" << gv.getName() << "'\n";	
+      //   gv.setLinkage(localizeLinkage(gv.getLinkage()));
+      // 	internalized_globals++;
+      //   modified = true;
+      // }
+
+      if (gv.hasInitializer() &&
+	  I.references.find(gv.getName()) == I.references.end() && 
+	  isDiscardableIfUnusedExternally(gv.getLinkage())) {
+	
+	errs() << "Internalizing '" << gv.getName() << "'\n";	
+        gv.setLinkage(GlobalValue::InternalLinkage);
+	internalized_globals++;
         modified = true;
       }
+      
     }
 
     if (!modified) {
@@ -178,7 +235,9 @@ namespace previrt
       errs() << "MergeConstants still had more to do\n";
     }
     
-    errs() << "Progress: hidden = " << hidden << " internalized " << internalized << "\n";
+    errs() << "Progress:"
+	   << " internalized functions = " << internalized_functions
+	   << " internalized globals = " << internalized_globals << "\n";
     return true;
   }
 
