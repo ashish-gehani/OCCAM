@@ -35,4 +35,8 @@ Bad:
  /Library/Frameworks (framework directory)
 
 
- 
+
+
+
+
+/Users/iam/Repositories/GitHub/OCCAM/examples/portfolio/apache/install/apr-1.7.0/build-1/libtool --silent --mode=link gclang  -g -O2         -o httpd  modules.lo buildmark.o -export-dynamic server/libmain.la modules/core/libmod_so.la modules/http/libmod_http.la server/mpm/event/libevent.la os/unix/libos.la -L/Users/iam/Repositories/GitHub/OCCAM/examples/portfolio/apache/install/pcre-8.42/lib -lpcre     /Users/iam/Repositories/GitHub/OCCAM/examples/portfolio/apache/install/apr-util-1.6.1/lib/libaprutil-1.la -lexpat -liconv /Users/iam/Repositories/GitHub/OCCAM/examples/portfolio/apache/install/apr-1.7.0/lib/libapr-1.la -lpthread
