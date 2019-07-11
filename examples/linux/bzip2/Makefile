@@ -9,7 +9,7 @@ all: bzip2.bc
 ./bzip2/bzip2: bzip2
 	CC=gclang make -C bzip2
 
-./bzip2.bc: bzip2/bzip2 libbz2.bca libbz2.a.bc
+./bzip2.bc: bzip2/bzip2 libbz2.bca libbz2.a.bc modules
 	cd bzip2; get-bc bzip2; mv bzip2.bc ../
 
 # to build an bitcode archive we do not use any additional flags; the '-m' flag writes the manifest (i.e. the ingredients)
