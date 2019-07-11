@@ -51,7 +51,8 @@ test: bzip2_from_bitcode
 	cmp sample3.tst ./bzip2/sample3.ref
 
 clean:
-	rm -f *.bc *.bca *.manifest bzip2_from_bitcode *.rb2 *.tst
+	rm -f *.bc *.bca *.manifest bzip2_from_bitcode *.rb2 *.tst bzip2_slashed
+	rm -rf slash_specialized
 	make -C bzip2 clean
 
 spotless: clean
