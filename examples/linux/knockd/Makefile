@@ -16,10 +16,10 @@ ${SRC}/knockd: ${SRC}
 	cd ${SRC}; CC=gclang ./configure; make; 
 
 knockd.bc: ${SRC}/knockd modules
-	cd ${SRC}; get-bc -m knockd; mv knockd.bc  knockd.bc.llvm.manifest ../
+	get-bc -m -o knockd.bc ${SRC}/knockd
 
-knock.bc: ${SRC}/knockd
-	cd ${SRC}; get-bc -m knock; mv knock.bc  knock.bc.llvm.manifest ../
+knock.bc: ${SRC}/knock modules
+	get-bc -m -o knock.bc ${SRC}/knock
 
 modules: ${SRC}/knockd
 	cp ./knock-0.7/src/.knockd.o.bc knockd.o.bc
