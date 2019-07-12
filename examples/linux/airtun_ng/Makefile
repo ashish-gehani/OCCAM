@@ -16,7 +16,7 @@ ${SRC}: ${TAR}
 ${SRC}/src/.libs/airtun-ng: ${SRC}
 	cd ${SRC}; autoreconf -i; CC=gclang ./configure; make
 
-airtun-ng.bc: ${SRC}/src/.libs/airtun-ng
+airtun-ng.bc: ${SRC}/src/.libs/airtun-ng modules
 	cd ${SRC}/src/.libs/; get-bc -m airtun-ng; mv airtun-ng.bc airtun-ng.bc.llvm.manifest ../../../
 
 libaircrack-osdep-1.3.0.so.bc:
