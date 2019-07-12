@@ -22,10 +22,10 @@ ${SRC}/binutils/objdump: ${SRC}
 	cd ${SRC}; CC=gclang ./configure; CC=gclang make;
 
 readelf.bc: ${SRC}/binutils/readelf
-	cd ${SRC}/binutils/; get-bc -m readelf; cp readelf.bc readelf.bc.llvm.manifest ../../
+	get-bc -m -o readelf.bc ${SRC}/binutils/readelf
 
 objdump.bc: ${SRC}/binutils/objdump
-	cd ${SRC}/binutils/; get-bc -m objdump; cp objdump.bc objdump.bc.llvm.manifest ../../
+	get-bc -m -o objdump.bc ${SRC}/binutils/objdump
 
 
 readelf_modules:

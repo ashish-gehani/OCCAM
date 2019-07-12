@@ -15,7 +15,7 @@ ${SRC}/src/netperf: ${SRC}
 	cd ${SRC}; CC=gclang ./configure; make
 
 netperf.bc: ${SRC}/src/netperf modules
-	cd ${SRC}/src; get-bc -m netperf; mv netperf.bc netperf.bc.llvm.manifest ../../
+	get-bc -m -o netperf.bc ${SRC}/src/netperf
 
 
 modules: ${SRC}/src/netperf
