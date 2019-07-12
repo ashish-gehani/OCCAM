@@ -1,0 +1,17 @@
+{ "main" : "airtun_ng-airtun-ng.o.bc"
+, "binary"  : "aircrack_ng_slashed"
+, "modules"    : [ "libaclib_la-crypto.o.bc",
+		   "libaircrack_util_la-common.o.bc",
+		   "libaircrack_osdep_la-osdep.o.bc",
+		   "libaircrack_osdep_la-network.o.bc",
+		   "libaircrack_osdep_la-file.o.bc",
+		   "libaircrack_osdep_la-linux.o.bc",
+		   "libaircrack_osdep_la-linux_tap.o.bc",
+		   "libaircrack_osdep_la-common.o.bc",
+		   "radiotap.o.bc"]
+, "ldflags" : [ "-lm", "-lcrypto", "-ldl",  "-lnl-3", "-lnl-genl-3"]
+, "native_libs" : []
+, "args"    : []
+, "name"    : "knockd"
+}
+
