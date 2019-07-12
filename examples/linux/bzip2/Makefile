@@ -14,11 +14,11 @@ all: bzip2.bc
 
 # to build an bitcode archive we do not use any additional flags; the '-m' flag writes the manifest (i.e. the ingredients)
 libbz2.bca:
-	cd bzip2; get-bc -m libbz2.a; mv libbz2.bca libbz2.bca.llvm.manifest ../
+	cd bzip2; get-bc -m libbz2.a; cp libbz2.bca libbz2.bca.llvm.manifest ../
 
 # to build a module we just use the '-b' flag; the '-m' flag writes the manifest (i.e. the ingredients)
 libbz2.a.bc:
-	cd bzip2; get-bc -m -b libbz2.a; mv libbz2.a.bc libbz2.a.bc.llvm.manifest ../
+	cd bzip2; get-bc -m -b libbz2.a; cp libbz2.a.bc libbz2.a.bc.llvm.manifest ../
 
 # groked this list from the manifests
 modules: bzip2/bzip2
