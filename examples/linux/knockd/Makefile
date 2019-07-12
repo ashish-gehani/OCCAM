@@ -31,7 +31,7 @@ test: knockd.bc
 
 
 clean:
-	rm -rf *.bc *.llvm.manifest knockd_from_bitcode	knockd_slashed slash_specialized
+	rm -rf .*.o *.bc *.llvm.manifest knockd_from_bitcode	knockd_slashed slash_specialized
 
 spotless: clean
 	rm -rf ${TAR} ${SRC}
