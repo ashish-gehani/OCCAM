@@ -73,11 +73,15 @@ class Manifest:
         for index, path in enumerate(self.paths):
             print('\t"{1}/{0}",'.format(self.unique_names[index], target_dir))
 
+    def print_bash(self, target_dir):
+        for index, path in enumerate(self.paths):
+            print('\t"{1}/{0}"'.format(self.unique_names[index], target_dir))
+
 
 
 def main():
     if len(sys.argv) != 4:
-        print("Usage:\n\t{0} <llvm.manifest file>  <0: moves,1: json,2>  <target dir>".format(sys.argv[0]))
+        print("Usage:\n\t{0} <llvm.manifest file>  <0: moves, 1: json, 2: bash >  <target dir>".format(sys.argv[0]))
         exit(1)
     manifest = Manifest(sys.argv[1])
     target_dir = sys.argv[3]
@@ -87,6 +91,8 @@ def main():
         manifest.print_moves(target_dir)
     elif sys.argv[2] == '1':
         manifest.print_json(target_dir)
+    elif sys.argv[2] == '2':
+        manifest.print_bash(target_dir)
 
 
 if __name__ == "__main__":

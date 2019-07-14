@@ -104,7 +104,7 @@
 	  "objdump_modules/xexit.o.bc",
 	  "objdump_modules/xmalloc.o.bc",
 	  "objdump_modules/xstrdup.o.bc",
-	  "objdump_modules/xstrerror.o.bc",
+	  "objdump_modules/xstrerror.o.bc"
   ]
   , "native_libs" : []
   , "args"    : []
