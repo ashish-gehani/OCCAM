@@ -1,0 +1,9 @@
+{ "main" : "knockd.o.bc"
+, "binary"  : "knockd_slashed"
+, "modules"    : ["list.o.bc"]
+, "ldflags" : [ "-lpcap"]
+, "native_libs" : []
+, "args"    : []
+, "name"    : "knockd"
+}
+

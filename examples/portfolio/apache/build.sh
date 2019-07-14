@@ -50,7 +50,7 @@ case $key in
     -ai-dce|--ai-dce)
 	OPT_OPTIONS="${OPT_OPTIONS} --ai-dce"
 	shift # past argument
-	;;    
+	;;
     -devirt|--devirt)
 	DEVIRT="$2"
 	shift # past argument
@@ -101,7 +101,7 @@ function dynamic_link() {
 { "main" : "httpd.bc"
 , "binary"  : "httpd_slashed"
 , "modules"    : ["libapr-1.shared.bc", "libaprutil-1.shared.bc", "libpcre.shared.bc"]
-, "native_libs" : ["-lcrypt", "-ldl", "-lpthread", "-lexpat"]
+, "native_libs" : ["-liconv", "-ldl", "-lpthread", "-lexpat"]
 , "args"    : ["-d", "/vagrant/www"]
 , "name"    : "httpd"
 }
@@ -136,7 +136,7 @@ function static_link() {
 { "main" : "linked_httpd.bc"
 , "binary"  : "httpd_static_linked_slashed"
 , "modules"    : []
-, "native_libs" : ["-lcrypt", "-ldl", "-lpthread", "-lexpat"]
+, "native_libs" : ["-liconv", "-ldl", "-lpthread", "-lexpat"]
 , "args"    : ["-d", "/vagrant/www"]
 , "name"    : "httpd_linked"
 }

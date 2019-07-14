@@ -1,0 +1,26 @@
+{ "main" : "readelf_modules/readelf.o.bc"
+  , "binary"  : "readelf_slashed"
+  , "modules"    : [
+	"readelf_modules/version.o.bc",
+	"readelf_modules/unwind-ia64.o.bc",
+	"readelf_modules/dwarf.o.bc",
+	"readelf_modules/elfcomm.o.bc",
+	"readelf_modules/argv.o.bc",
+	"readelf_modules/concat.o.bc",
+	"readelf_modules/dwarfnames.o.bc",
+	"readelf_modules/lbasename.o.bc",
+	"readelf_modules/lrealpath.o.bc",
+	"readelf_modules/safe-ctype.o.bc",
+	"readelf_modules/xexit.o.bc",
+	"readelf_modules/xmalloc.o.bc",
+	"readelf_modules/xstrdup.o.bc",
+	"readelf_modules/libz_a-inflate.o.bc",
+	"readelf_modules/libz_a-inftrees.o.bc",
+	"readelf_modules/libz_a-zutil.o.bc",
+	"readelf_modules/libz_a-adler32.o.bc",
+	"readelf_modules/libz_a-crc32.o.bc",
+	"readelf_modules/libz_a-inffast.o.bc"]
+  , "native_libs" : []
+  , "args"    : []
+  , "name"    : "readelf"
+}

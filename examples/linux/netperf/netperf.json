@@ -1,0 +1,9 @@
+{ "main" : "netperf.o.bc"
+, "binary"  : "netperf_slashed"
+, "modules"    : ["netlib.o.bc", "netsh.o.bc", "nettest_bsd.o.bc", "nettest_dlpi.o.bc", "nettest_unix.o.bc", "nettest_xti.o.bc", "nettest_sctp.o.bc", "nettest_sdp.o.bc", "nettest_omni.o.bc", "net_uuid.o.bc", "dscp.o.bc", "netcpu_procstat.o.bc"]
+, "ldflags" : [ "-lm"]
+, "native_libs" : []
+, "args"    : []
+, "name"    : "netperf"
+}
+
