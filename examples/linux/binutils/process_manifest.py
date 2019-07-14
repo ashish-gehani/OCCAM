@@ -65,23 +65,29 @@ class Manifest:
         print(self.range_of_duplicates)
 
 
-    def print_moves(self):
+    def print_moves(self, target_dir):
         for index, path in enumerate(self.paths):
-            print('\tcp {0} {1}'.format(path, self.unique_names[index]))
+            print('\tcp {0} {2}/{1}'.format(path, self.unique_names[index], target_dir))
+
+    def print_json(self, target_dir):
+        for index, path in enumerate(self.paths):
+            print('\t"{1}/{0}",'.format(self.unique_names[index], target_dir))
 
 
 
 def main():
-    if len(sys.argv) != 3:
-        print("Usage:\n\t{0} <llvm.manifest file>  <0: moves,1,2>".format(sys.argv[0]))
+    if len(sys.argv) != 4:
+        print("Usage:\n\t{0} <llvm.manifest file>  <0: moves,1: json,2>  <target dir>".format(sys.argv[0]))
         exit(1)
     manifest = Manifest(sys.argv[1])
-
+    target_dir = sys.argv[3]
     if sys.argv[2] == '?':
         manifest.dump()
     elif sys.argv[2] == '0':
-        #manifest.get_unique_name('.stabs.o.bc')
-        manifest.print_moves()
+        manifest.print_moves(target_dir)
+    elif sys.argv[2] == '1':
+        manifest.print_json(target_dir)
+
 
 if __name__ == "__main__":
     main()
