@@ -13,12 +13,12 @@ ${SRC}: ${TAR}
 	tar xvfz ${TAR}
 
 ${SRC}/knockd: ${SRC}
-	cd ${SRC}; CC=gclang ./configure; make; 
+	cd ${SRC}; CC=gclang ./configure; make;
 
 knockd.bc: ${SRC}/knockd modules
 	get-bc -m -o knockd.bc ${SRC}/knockd
 
-knock.bc: ${SRC}/knock modules
+knock.bc: ${SRC}/knockd modules
 	get-bc -m -o knock.bc ${SRC}/knock
 
 modules: ${SRC}/knockd
@@ -35,4 +35,3 @@ clean:
 
 spotless: clean
 	rm -rf ${TAR} ${SRC}
-
