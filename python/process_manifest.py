@@ -7,7 +7,13 @@ import sys
 
 
 class Manifest:
+    """
+    For processing the wllvm or gllvm manifest file, and outputting various scripts fragments.
 
+    Feel free to add further useful outputs. Note that most of the work here is to prevent
+    clashes, AND make the basenames look as informative as possible.
+    Target bitcode files should ALWAYS be unique. Note that efficiency was not a prioity.
+    """
     def __init__(self, manifest):
         self.paths = []
         self.files = []
@@ -42,6 +48,7 @@ class Manifest:
         for i, path in enumerate(self.paths):
             (directory, basename) = os.path.split(path)
             self.unique_names[i] = basename[1:]
+        # now fix the duplicates
         for duplicate in self.duplicates:
             clashes = self.duplicates[duplicate]
             paths = [os.path.split(self.paths[index])[0].split(os.path.sep) for index in clashes]
@@ -52,7 +59,8 @@ class Manifest:
             index = 0
             while len(set(names)) < count:
                 for i in range(count):
-                    names[i] = "{0}_{1}".format(paths[i][index], names[i])  #paths[i] might not be long enough
+                    # paths[i] might not be long enough
+                    names[i] = "{0}_{1}".format(paths[i][index], names[i]) if  index < len(paths[i]) else  names[i]
             for i in range(count):
                 self.unique_names[clashes[i]] = names[i]
 
