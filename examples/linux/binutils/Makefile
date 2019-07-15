@@ -5,7 +5,7 @@ TAR=${SRC}.tar.gz
 URL=http://ftp.gnu.org/gnu/binutils/${TAR}
 
 
-all: readelf.bc objdump.bc readelf_modules objdump_modules
+all: readelf.bc objdump.bc readelf_from_bitcode objdump_from_bitcode
 
 
 ${TAR}:
@@ -165,7 +165,7 @@ readelf_from_bitcode: readelf_modules
 	clang readelf_modules/*.bc -o readelf_from_bitcode
 
 objdump_from_bitcode: objdump_modules
-	clang objdump_modules/*.bc -o objdump_from_bitcode
+	clang objdump_modules/*.bc -ldl -o objdump_from_bitcode
 
 
 clean:
