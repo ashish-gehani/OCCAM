@@ -1,0 +1,21 @@
+{ "main" : "httping_modules/main.o.bc"
+, "binary"  : "httping_slashed"
+, "modules"    : [
+	"httping_modules/gen.o.bc",
+	"httping_modules/http.o.bc",
+	"httping_modules/io.o.bc",
+	"httping_modules/error.o.bc",
+	"httping_modules/utils.o.bc",
+	"httping_modules/tcp.o.bc",
+	"httping_modules/res.o.bc",
+	"httping_modules/socks5.o.bc",
+	"httping_modules/kalman.o.bc",
+	"httping_modules/cookies.o.bc",
+	"httping_modules/help.o.bc",
+	"httping_modules/colors.o.bc",
+	"httping_modules/mssl.o.bc"]
+, "ldflags" : ["-lm", "-lssl", "-lcrypto"]
+, "native_libs" : []
+ , "constraints"    : ["1", "-G", "-s", "-X", "-b", "-B"]
+, "name"    : "httping"
+}
