@@ -1,0 +1,11 @@
+--- net-tools-1.60/lib/inet_sr.c	2000-02-20 21:46:45.000000000 +0000
++++ inet_sr.c	2019-07-17 13:40:10.000000000 +0000
+@@ -104,7 +104,7 @@
+        isnet = 1; break;
+     case 2:
+        isnet = 0; break;
+-    default:
++    default: break;
+     }
+ 
+     /* Fill in the other fields. */

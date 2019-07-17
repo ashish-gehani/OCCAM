@@ -1,0 +1,22 @@
+{ "main" : "netstat_modules/netstat.o.bc"
+, "binary"  : "netstat_slashed"
+  , "modules"    : [
+	"netstat_modules/statistics.o.bc",
+	"netstat_modules/af.o.bc",
+	"netstat_modules/getroute.o.bc",
+	"netstat_modules/inet.o.bc",
+	"netstat_modules/inet_gr.o.bc",
+	"netstat_modules/interface.o.bc",
+	"netstat_modules/nstrcmp.o.bc",
+	"netstat_modules/proc.o.bc",
+	"netstat_modules/sockets.o.bc",
+	"netstat_modules/unix.o.bc",
+	"netstat_modules/util.o.bc",
+	"netstat_modules/hw.o.bc",
+	"netstat_modules/loopback.o.bc",
+	"netstat_modules/ether.o.bc"
+  ]
+, "native_libs" : []
+, "args"    : ["-a", "-e", "-p", "-s"]
+, "name"    : "netstat"
+}
