@@ -34,15 +34,11 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/Pass.h"
-
 #include "llvm/Support/raw_ostream.h"
 
 
-
-namespace previrt
-{
-  class SpecializeArguments : public llvm::ModulePass
-  {
+namespace previrt {
+  class SpecializeArguments : public llvm::ModulePass {
   public:
     static char ID;
 
@@ -54,8 +50,7 @@ namespace previrt
   public:
     SpecializeArguments(const char*, const char* name=NULL);
     SpecializeArguments(int argc, char* argv[], const char* name=NULL);
-    virtual
-    ~SpecializeArguments();
+    virtual ~SpecializeArguments();
 
   public:
     virtual bool
