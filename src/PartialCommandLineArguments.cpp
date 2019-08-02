@@ -49,13 +49,13 @@
 
 namespace previrt
 {
-  class ArgumentsConstraint : public llvm::ModulePass
+  class PartialCommandLineArguments : public llvm::ModulePass
   {
   public:
     static char ID;
 
-    ArgumentsConstraint();
-    virtual ~ArgumentsConstraint();
+    PartialCommandLineArguments();
+    virtual ~PartialCommandLineArguments();
     virtual void getAnalysisUsage (llvm::AnalysisUsage &AU) const {}
     virtual llvm::StringRef getPassName() const
     { return "Partial specialization of program arguments"; }
@@ -73,10 +73,10 @@ static cl::opt<std::string> InputFilename
  cl::desc("Specify the filename with input arguments"));
 
 
-ArgumentsConstraint::ArgumentsConstraint()
+PartialCommandLineArguments::PartialCommandLineArguments()
   : ModulePass (ID) {}
 
-ArgumentsConstraint::~ArgumentsConstraint() {}
+PartialCommandLineArguments::~PartialCommandLineArguments() {}
 
 // line is "N S" where N is any non-negative number and S is a string
 // between double quotes
@@ -130,7 +130,7 @@ void populate_program_arguments(std::string filename,
   }
 }
 
-bool ArgumentsConstraint::runOnModule(Module &M) {
+bool PartialCommandLineArguments::runOnModule(Module &M) {
   /*
     Given argv[0], argv[1], ... argv[argc-1] and k extra arguments
     from the manifest x1, ..., xk it builds a new argv array,
@@ -346,9 +346,9 @@ bool ArgumentsConstraint::runOnModule(Module &M) {
 }
 
 
-char ArgumentsConstraint::ID = 0;
+char PartialCommandLineArguments::ID = 0;
 
-static RegisterPass<previrt::ArgumentsConstraint>
+static RegisterPass<previrt::PartialCommandLineArguments>
 X("Pconstraints",
   "Partial specialization of main arguments",
   false, false);

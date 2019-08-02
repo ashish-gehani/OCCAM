@@ -1,7 +1,7 @@
-all: bzip2.bc
+all: bzip2.bc bzip2_from_bitcode
 
 
-./bzip2: 
+./bzip2:
 	git clone git://sourceware.org/git/bzip2.git
 # the patch is to remove the hard coded "CC=gcc". Bad Julian. No biscuit.
 	patch bzip2/Makefile < patch.txt
@@ -14,14 +14,16 @@ all: bzip2.bc
 
 # to build an bitcode archive we do not use any additional flags; the '-m' flag writes the manifest (i.e. the ingredients)
 libbz2.bca:
-	cd bzip2; get-bc -m libbz2.a; cp libbz2.bca libbz2.bca.llvm.manifest ../
+#	cd bzip2; get-bc -m libbz2.a; cp libbz2.bca libbz2.bca.llvm.manifest ../
+	get-bc -m -o libbz2.bca bzip2/libbz2.a
 
 # to build a module we just use the '-b' flag; the '-m' flag writes the manifest (i.e. the ingredients)
 libbz2.a.bc:
-	cd bzip2; get-bc -m -b libbz2.a; cp libbz2.a.bc libbz2.a.bc.llvm.manifest ../
+	get-bc -m -b -o libbz2.a.bc bzip2/libbz2.a
 
 # groked this list from the manifests
 modules: bzip2/bzip2
+	cp ./bzip2/.bzip2.o.bc      bzip2.o.bc
 	cp ./bzip2/.blocksort.o.bc  blocksort.o.bc
 	cp ./bzip2/.huffman.o.bc    huffman.o.bc
 	cp ./bzip2/.crctable.o.bc   crctable.o.bc
@@ -33,8 +35,7 @@ modules: bzip2/bzip2
 
 # the override flag is necessary and is there to prevent any complaints about multiple definitions.
 bzip2_from_bitcode: bzip2.bc modules
-	llvm-link -override bzip2.bc blocksort.o.bc huffman.o.bc crctable.o.bc randtable.o.bc compress.o.bc decompress.o.bc bzlib.o.bc -o almalgamation.bc
-	clang almalgamation.bc -o bzip2_from_bitcode
+	clang bzip2.o.bc blocksort.o.bc huffman.o.bc crctable.o.bc randtable.o.bc compress.o.bc decompress.o.bc bzlib.o.bc -o bzip2_from_bitcode
 
 test: bzip2_from_bitcode
 	./bzip2_from_bitcode -1  < ./bzip2/sample1.ref > sample1.rb2
@@ -43,7 +44,7 @@ test: bzip2_from_bitcode
 	./bzip2_from_bitcode -d  < ./bzip2/sample1.bz2 > sample1.tst
 	./bzip2_from_bitcode -d  < ./bzip2/sample2.bz2 > sample2.tst
 	./bzip2_from_bitcode -ds < ./bzip2/sample3.bz2 > sample3.tst
-	cmp ./bzip2/sample1.bz2 sample1.rb2 
+	cmp ./bzip2/sample1.bz2 sample1.rb2
 	cmp ./bzip2/sample2.bz2 sample2.rb2
 	cmp ./bzip2/sample3.bz2 sample3.rb2
 	cmp sample1.tst ./bzip2/sample1.ref
