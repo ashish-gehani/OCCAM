@@ -32,15 +32,22 @@
 """
 import subprocess
 import logging
+import os.path
 
 from . import config
 from . import echo
 from . import stringbuffer
 
-
 verbose = False
 
+# set by slash.driver_config
 opt_debug_cmds = []
+
+# set by slash.driver_config
+opt_stats = False
+
+# set by slash.driver_config
+work_dir = '/tmp'
 
 class ReturnCode(Exception):
     def __init__(self, value, cmd, proc):
@@ -116,27 +123,52 @@ def linker(fin, fout, args):
     return run('clang++', args)
 
 
+
+
+opt_call_count = 0
+
+def opt_stats_output(prog, args):
+    global opt_call_count
+    optpath = os.path.join(work_dir, 'opt_call_{0}.txt'.format(opt_call_count))
+    optfp = open(optpath, 'a+')
+    optfp.write('\nopt call {0}:\n\t{1}\n'.format(opt_call_count, ' '.join(args)))
+    opt_call_count += 1
+    if '-stats' not in args:
+        nargs = ['-stats']
+        nargs.extend(args)
+        args = nargs
+    return optfp, args
+
+
 def run(prog, args, sb=None, fail_on_error=True):
 
     log = logging.getLogger()
+
+    if prog == 'opt' and opt_stats:
+        outfp, args = opt_stats_output(prog, args)
+    else:
+        outfp = subprocess.PIPE
 
     prog = config.get_llvm_tool(prog)
 
     report(prog, args)
 
     log.log(logging.INFO, 'EXECUTING: %s\n', ' '.join([prog] + args))
-    
+
     proc = subprocess.Popen([prog] + args,
-                            stderr=subprocess.PIPE,
-                            stdout=subprocess.PIPE,
+                            stderr=outfp,
+                            stdout=outfp,
                             stdin=subprocess.PIPE)
 
-    echo.Echo(proc.stderr, log, sb)
-    if sb is not None:
-        echo.Echo(proc.stdout, None, sb)
-
+    if outfp == subprocess.PIPE:
+        echo.Echo(proc.stderr, log, sb)
+        if sb is not None:
+            echo.Echo(proc.stdout, None, sb)
 
     retcode = proc.wait()
+
+    if outfp != subprocess.PIPE:
+        outfp.close()
 
     log.log(logging.INFO, 'EXECUTED: %(cmd)s WHICH RETURNED %(code)d\n',
             {'cmd'  : ' '.join([prog] + args), 'code' : retcode })
