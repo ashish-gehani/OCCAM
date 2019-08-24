@@ -1,67 +1,17 @@
-language: python
+language: cpp
+cache: apt
+env:
+  matrix:
+     - UBUNTU_DIST=xenial
+       BUILD_TYPE=Release
+  matrix:
+     - UBUNTU_DIST=trusty
+       BUILD_TYPE=Release
+services:
+  - docker
 
-python:
-#  - "3.5"
-#  - "3.4"
-#  - "3.3"
-  - "2.7"
+install: true
 
-#language: c
-
-#compiler:
-#  - clang
-
-#https://docs.travis-ci.com/user/trusty-ci-environment/
-
-sudo: required
-dist: trusty
-
-before_install:
- - curl http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
- - echo "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty main" | sudo tee -a /etc/apt/sources.list
- - echo "deb-src http://apt.llvm.org/trusty/ llvm-toolchain-trusty main" | sudo tee -a /etc/apt/sources.list
- - echo "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main" | sudo tee -a /etc/apt/sources.list
- - echo "deb-src http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main" | sudo tee -a /etc/apt/sources.list
- - sudo apt-get update -qq
- - sudo apt-get install clang-5.0
-
-#dependencies
-#
-# what a fucking mess:
-#
-# https://github.com/travis-ci/travis-ci/issues/4989
-# http://stackoverflow.com/questions/34819221/why-is-python-setup-py-saying-invalid-command-bdist-wheel-on-travis-ci
-#
-#
-install:
-  - sudo apt-get update
-  - sudo apt-get install -y libboost1.55-all-dev
-  - sudo apt-get install -y wget libprotobuf-dev python-protobuf protobuf-compiler
-# gotta work harder for these at the moment. see the before_script above.
-  - sudo apt-get install -y git
-  - sudo apt-get install -y llvm-5.0
-  - sudo apt-get install -y python-pip
-  - pip --version
-  - pip install setuptools --upgrade
-  - pip install wheel
-  - pip install protobuf
-  - pip install lit
-  # go for gllvm
-  - sudo apt-get install golang-go
-  - go get github.com/SRI-CSL/gllvm/cmd/...
-  #ian's great mystery: this fails if the language is python, but works fine if the language is C Go figure....
-  # - pip install -r requirements.txt
-  # but this seems to work. Bizarre
-  - sudo -H pip install -r requirements.txt
-  - export PATH=/usr/lib/llvm-5.0/bin:${PATH}
-  - export LLVM_COMPILER=clang
-  - export WLLVM_OUTPUT=WARNING
-  - export CC=clang
-  - export BUILD_HOME=`pwd`
-  - export OCCAM_HOME=${BUILD_HOME}/travis_build/occam
-  - export OCCAM_LOGFILE=${BUILD_HOME}/travis_build/.occam.log
-  - export REPOS=${BUILD_HOME}/travis_build/Repositories
-
-#tests
 script:
-  - ${BUILD_HOME}/.travis/build.sh
+  - docker build --build-arg UBUNTU=${UBUNTU_DIST} --build-arg BUILD_TYPE=${BUILD_TYPE} -t occam/occam_xenial_rel -f docker/occam.Dockerfile .
+
