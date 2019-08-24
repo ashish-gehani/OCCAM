@@ -4,9 +4,8 @@ env:
   matrix:
      - UBUNTU_DIST=xenial
        BUILD_TYPE=Release
-  matrix:
-     - UBUNTU_DIST=trusty
-       BUILD_TYPE=Release
+     # - UBUNTU_DIST=trusty
+     #   BUILD_TYPE=Release
 services:
   - docker
 
