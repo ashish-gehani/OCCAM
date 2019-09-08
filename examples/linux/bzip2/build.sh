@@ -6,7 +6,7 @@ set -e
 
 function usage() {
     echo "Usage: $0 [--disable-inlining] [--ipdse] [--ai-dce] [--devirt VAL1] [--inter-spec VAL2] [--intra-spec VAL2] [--link dynamic|static] [--help]"
-    echo "       VAL1=none|dsa|cha_dsa"    
+    echo "       VAL1=none|dsa|cha_dsa"
     echo "       VAL2=none|aggressive|nonrec-aggressive"
 }
 
@@ -42,12 +42,12 @@ case $key in
     -ai-dce|--ai-dce)
 	OPT_OPTIONS="${OPT_OPTIONS} --ai-dce"
 	shift # past argument
-	;;        
+	;;
     -devirt|--devirt)
 	DEVIRT="$2"
 	shift # past argument
 	shift # past value
-	;;        
+	;;
     -help|--help)
 	usage
 	exit 0
@@ -97,7 +97,7 @@ function dynamic_link() {
     then
 	echo "Something failed while running slash"
 	exit 1
-    fi     
+    fi
     cp ./slash_specialized/bzip2_slashed .
 }
 

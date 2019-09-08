@@ -67,6 +67,7 @@ instructions = """slash has three modes of use:
         --work-dir <dir>           : Output intermediate files to the given location <dir>
         --info                     : Display info stats and exit
         --stats                    : Show some stats before and after specialization
+        --opt-stats                : Insert -stats into the opt calls and direct output to <work-dir>/opt_call_<callno>.txt
         --no-strip                 : Leave symbol information in the binary
         --verbose                  : Print the calls to the llvm tools prior to running them.
         --debug-manager=<type>     : Debug opt's pass manager (<type> should be either Structure or Details)
@@ -99,7 +100,7 @@ def entrypoint():
 
 
 def  usage(exe):
-    template = '{0} [--work-dir=<dir>]  [--force] [--help] [--stats] [--no-strip] [--verbose] [--debug-manager=] [--debug-pass=] [--debug] [--print-after-all] [--devirt=<type>] [--intra-spec-policy=<type>] [--inter-spec-policy=<type>] [--disable-inlining] [--keep-external=<file>] [--llpe] [--ipdse] [--mc-dce] [--ai-dce] <manifest>\n'
+    template = '{0} [--work-dir=<dir>]  [--force] [--help] [--stats] [--opt-stats] [--no-strip] [--verbose] [--debug-manager=] [--debug-pass=] [--debug] [--print-after-all] [--devirt=<type>] [--intra-spec-policy=<type>] [--inter-spec-policy=<type>] [--disable-inlining] [--keep-external=<file>] [--llpe] [--ipdse] [--mc-dce] [--ai-dce] <manifest>\n'
     sys.stderr.write(template.format(exe))
 
 class Slash(object):
@@ -122,6 +123,7 @@ class Slash(object):
                         'mc-dce',
                         'ai-dce',
                         'info',
+                        'opt-stats',
                         'stats',
                         'intra-spec-policy=',
                         'inter-spec-policy=',
@@ -222,7 +224,7 @@ class Slash(object):
             use_llpe = True
         else:
             use_llpe = False
-            
+
         use_ipdse = utils.get_flag(self.flags, 'ipdse', None)
         if use_ipdse is not None:
             use_ipdse = True
@@ -240,7 +242,7 @@ class Slash(object):
             use_ai_dce = True
         else:
             use_ai_dce = False
-        
+
         show_stats = utils.get_flag(self.flags, 'stats', None)
         info = utils.get_flag(self.flags, 'info', None)
         if info is not None:
@@ -476,7 +478,7 @@ class Slash(object):
                 post = m.new('x')
                 passes.strip(pre, post)
             pool.InParallel(_strip, files.values(), self.pool)
-        
+
         #Collect stats after the whole optimization/debloating process finished
         if show_stats is not None:
             add_profile_map('after specialization')
@@ -514,9 +516,9 @@ class Slash(object):
 
         if use_mc_dce and link_ok:
             def mc_dce((m, ropfile)):
-                ''' 
-                Pruning using model-checking-based dce guided by maximizing 
-                the number of removed ROP gadgets 
+                '''
+                Pruning using model-checking-based dce guided by maximizing
+                the number of removed ROP gadgets
                 '''
                 pre = m.get()
                 post = m.new('mc_dce')
@@ -580,6 +582,15 @@ class Slash(object):
 
 
     def driver_config(self):
+
+        work_dir = utils.get_work_dir(self.flags)
+        if work_dir is not None:
+            driver.work_dir = work_dir
+
+        opt_stats = utils.get_flag(self.flags, 'opt-stats', None)
+        if opt_stats is not None:
+            driver.opt_stats = True
+
         debug = utils.get_flag(self.flags, 'debug', None)
         if debug is not None:
             driver.opt_debug_cmds.append('--debug')
