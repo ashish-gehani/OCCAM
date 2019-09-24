@@ -28,6 +28,17 @@ read [this.](https://bugs.llvm.org//show_bug.cgi?id=25675) Hint: the build produ
 
 Detailed configuration instructions for Ubuntu 14.04 can be gleaned from [bootstrap.sh](https://github.com/SRI-CSL/OCCAM/blob/master/vagrants/14.04/basic/bootstrap.sh)  as well as the Travis CI scripts for each branch [.travis.yml](https://github.com/SRI-CSL/OCCAM/blob/master/.travis.yml).
 
+Docker
+======
+
+A pre-built and installed version of OCCAM can be obtained using Docker:
+
+```shell
+docker pull sricsl/occam:xenial
+docker run -v `pwd`:/host -it sricsl/occam:xenial
+```
+Alternatively, it can be built and installed from source as follows.
+
 Building and Installing
 =======================
 
