@@ -15,5 +15,5 @@ Build arguments (required):
 
 ```shell
 docker pull sricsl/occam:xenial
-docker run -v `pwd`:/host -it sricsl/occam:xenial"
+docker run -v `pwd`:/host -it sricsl/occam:xenial
 ```
