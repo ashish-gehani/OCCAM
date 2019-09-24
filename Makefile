@@ -20,13 +20,15 @@ PIP     = $(shell which pip)
 MKDIR_P = mkdir -p
 RM_F    = rm -f
 
+# User option to enable/disable LLPE
+## run make LLPE=ON to enable LLPE
+LLPE?=OFF
+
 export OCCAM_LIB = $(OCCAM_HOME)/lib
 
 # tests needs an LLVM install from cmake with:
 # -DLLVM_INSTALL_UTILS=ON
 # https://bugs.llvm.org//show_bug.cgi?id=25675
-
-
 
 all: sanity_check dist occam_lib
 
@@ -61,7 +63,7 @@ update: submodule_update
 
 
 occam_lib:
-	$(MAKE) -C src all
+	$(MAKE) LLPE=$(LLPE) -C src all
 
 .PHONY: test
 test:

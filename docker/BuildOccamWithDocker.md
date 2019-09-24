@@ -1,14 +1,19 @@
-# Building OCCAM with Docker and running tests #
+# For OCCAM developers: Building a new Docker image #
 
 ```shell
-docker build --build-arg UBUNTU=xenial --build-arg BUILD_TYPE=Release -t occam/occam_xenial_rel -f docker/occam.Dockerfile .
-docker run -v `pwd`:/host -it occam/occam_xenial_rel"
+docker build --build-arg UBUNTU=xenial --build-arg BUILD_TYPE=Release -t sricsl/occam:xenial -f docker/occam.Dockerfile .
+
 ```
 
-This will automatically download all dependencies from a base image
-and build OCCAM under `/occam`.
+The above step will automatically download all dependencies and build OCCAM under `/occam`.
 
 Build arguments (required):
 - UBUNTU: trusty, xenial, bionic
 - BUILD_TYPE: Release, Debug
 
+# For OCCAM users: #
+
+```shell
+docker pull sricsl/occam:xenial
+docker run -v `pwd`:/host -it sricsl/occam:xenial
+```

@@ -1,10 +1,8 @@
-#
 # Dockerfile for OCCAM binary
 # produces package in /occam/build
 # Arguments:
 #  - UBUNTU:     trusty, xenial, bionic
 #  - BUILD_TYPE: debug, release
-#
 
 ARG UBUNTU
 
@@ -54,5 +52,3 @@ ENV OCCAM_HOME "/occam"
 RUN make
 RUN make install
 RUN make test
-
-

@@ -9,6 +9,9 @@ ifeq ($(LLVM_CONFIG),)
 	LLVM_CONFIG=llvm-config
 endif
 
+## User option to enable/disable llpe
+LLPE?=OFF
+
 # BD: made all things dependent on LLVM_HOME
 
 LLVM_CFG = $(LLVM_HOME)/bin/$(LLVM_CONFIG)
@@ -72,11 +75,15 @@ libSeaDsa:
 libLlvmDsa:
 	$(MAKE) -C analysis -f Makefile.llvm-dsa install INSTALL_DIR=${OCCAM_LIB}
 
+ifeq ($(LLPE), ON)
 # Smowton's LLPE tool
 libLLPE:
 	$(MAKE) -C analysis/llpe install INSTALL_DIR=${OCCAM_LIB}
 
 extern_libs: libSeaDsa libLlvmDsa libLLPE
+else
+extern_libs: libSeaDsa libLlvmDsa
+endif
 
 ${LIBRARY}: extern_libs ${SOURCES}
 	echo "The source is being built according to ${LLVM_CFG}"
@@ -84,7 +91,7 @@ ${LIBRARY}: extern_libs ${SOURCES}
 	$(MAKE) lib
 
 lib: ${OBJECTS} 
-	$(CXX) ${OBJECTS} ${LIBFLAGS} -o ${LIBRARY} ${CXX_FLAGS} ${LD_FLAGS} ${OTHERLIBS}
+	$(CXX) ${OBJECTS} ${LIBFLAGS} -o ${LIBRARY} ${CXX_FLAGS} ${LD_FLAGS} ${OTHERLIBS} 
 
 analysis/%.o: analysis/%.cpp 
 	$(CXX) ${CXX_FLAGS} $< -c -o $@
