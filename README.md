@@ -11,23 +11,6 @@ OCCAM architecture
 
 ![OCCAM architecture](https://github.com/SRI-CSL/OCCAM/blob/master/OCCAM-arch.jpg?raw=true "OCCAM architecture")
 
-Prerequisites
-============
-
-OCCAM currently works fine on Linux, OS X, and FreeBSD.  It depends on
-an installation of LLVM. OCCAM currently requires llvm-5.0. You will
-also need the Google protobuffer compiler `protoc` and the
-corresponding python [package](https://pypi.python.org/pypi/protobuf/).
-
-If you need to generate application bitcode,
-you will want to install wllvm, either from the the pip [package](https://pypi.python.org/pypi/wllvm/) or the GitHub [repository](https://github.com/SRI-CSL/whole-program-llvm.git).
-
-The test harness also requires [lit](https://pypi.python.org/pypi/lit/) and `FileCheck`. `FileCheck` can often
-be found in the binary directory of your llvm installation, however if you built your own, you may need to
-read [this.](https://bugs.llvm.org//show_bug.cgi?id=25675) Hint: the build produces it, but does not install it (try `locate FileCheck`, then copy it to the `bin` directory).
-
-Detailed configuration instructions for Ubuntu 14.04 can be gleaned from [bootstrap.sh](https://github.com/SRI-CSL/OCCAM/blob/master/vagrants/14.04/basic/bootstrap.sh)  as well as the Travis CI scripts for each branch [.travis.yml](https://github.com/SRI-CSL/OCCAM/blob/master/.travis.yml).
-
 Docker
 ======
 
@@ -38,6 +21,17 @@ docker pull sricsl/occam:xenial
 docker run -v `pwd`:/host -it sricsl/occam:xenial
 ```
 Alternatively, it can be built and installed from source as follows.
+
+Prerequisites
+============
+
+OCCAM currently works on Linux, macOS, and FreeBSD.  It depends on an installation of LLVM. OCCAM currently requires llvm-5.0. You will also need the Google protocol buffer compiler `protoc` and the corresponding Python [package](https://pypi.python.org/pypi/protobuf/).
+
+If you need to generate application bitcode (that OCCAM operates on), you will want to install WLLVM, either from the the pip [package](https://pypi.python.org/pypi/wllvm/) or the GitHub [repository](https://github.com/SRI-CSL/whole-program-llvm.git).
+
+The test harness also requires [lit](https://pypi.python.org/pypi/lit/) and `FileCheck`. `FileCheck` can often be found in the binary directory of your LLVM installation. However, if you built your own, you may need to read [this.](https://bugs.llvm.org//show_bug.cgi?id=25675) Hint: the build produces it, but does not install it. (Try `locate FileCheck`, then copy it to the `bin` directory.)
+
+Detailed configuration instructions for Ubuntu 14.04 can be gleaned from [bootstrap.sh](https://github.com/SRI-CSL/OCCAM/blob/master/vagrants/14.04/basic/bootstrap.sh) as well as the Travis CI scripts for each branch [.travis.yml](https://github.com/SRI-CSL/OCCAM/blob/master/.travis.yml).
 
 Building and Installing
 =======================
@@ -58,7 +52,7 @@ Set where system libraries, including Google Protocol Buffers, are located:
   export LD_FLAGS='-L/usr/local/lib'
 ```
 
-Clone, build and install OCCAM with:
+Clone, build, and install OCCAM with:
 
 ```
   git clone --recurse-submodules https://github.com/SRI-CSL/OCCAM.git
@@ -67,29 +61,24 @@ Clone, build and install OCCAM with:
   make test
 ```
 
-
 Using OCCAM
 ===========
 
-You can choose to record logs from the OCCAM
-tool by setting the following variables:
+You can choose to record logs from OCCAM by setting the following variables:
 
 ```
   export OCCAM_LOGFILE={absolute path to log location}
   export OCCAM_LOGLEVEL={INFO, WARNING, or ERROR}
 ```
 
-
 Using razor
 ===========
 
-`razor` is a pip package that relies on the same dynamic library as `occam`,
-so you should first build and install `occam` as described above. `razor`  provides
-the commandline tool `slash`.
-You can either install `razor` you can from this repository, or you can just do a
+`razor` is a pip package that relies on the same dynamic library as `occam`. So you should first build and install `occam` as described above. `razor`  provides the commandline tool `slash` for end users. You can either install `razor` from this repository, or you can use:
 ```
 pip install razor
 ```
+
 To install an editable version from this repository:
 
 ```
@@ -108,25 +97,14 @@ where
 type=none|aggressive|nonrec-aggressive
 ```
 
-The value `none` will prevent any inter or intra-module
-specialization. The value `aggressive` specializes a call if any
-parameter is a constant. The value `nonrec-aggressive` specializes a
-call if the function is non-recursive and any parameter is a constant.
+The value `none` will prevent any inter or intra-module specialization. The value `aggressive` specializes a call if any parameter is a constant. The value `nonrec-aggressive` specializes a call if the function is non-recursive and any parameter is a constant.
 
-
-To function correctly `slash` calls LLVM tools such as `opt` and
-`clang++`. These should be available in your `PATH`, and be the
-currently supported version (5.0). Like `wllvm`, `slash`, will pay
-attention to the environment variables `LLVM_OPT_NAME` and
-`LLVM_CXX_NAME` if your version of these tools are adorned with
-suffixes.
-
+To function correctly `slash` calls LLVM tools such as `opt` and `clang++`. These should be available in your `PATH`, and be the currently supported version (5.0). Like `wllvm`, `slash`, will pay attention to the environment variables `LLVM_OPT_NAME` and `LLVM_CXX_NAME` if your version of these tools is adorned with suffixes.
 
 The Manifest(o)
 ===============
 
-The manifest for `slash` should be valid JSON. The following keys
-have meaning:
+The manifest for `slash` should be valid JSON. The following keys have meaning:
 
 + `main` : a path to the bitcode module containing the `main` entry point.
 
@@ -138,7 +116,7 @@ have meaning:
 
 + `ldflags`: a list of linker flags such as `--static`, `--nostdlib`
 
-+ `args` : the list of arguments you wish to specialize in the main of `main`.
++ `args` : the list of arguments you wish to specialize in the _main()_ of `main`.
 
 + `constraints` : a list consisting of a positive integer, followed by some number of strings. The
 number indicates the expected number of arguments the specialized program will receive, and the
@@ -170,8 +148,7 @@ Another example, (see `examples/linux/musl_nweb`), specializes `nweb` with `musl
 }
 ```
 
-A third example, (see `examples/portfolio/tree`),  illustrates the use of the `constraints` field to partially specialize 
-the arguments to the `tree` utility.
+A third example, (see `examples/portfolio/tree`),  illustrates the use of the `constraints` field to partially specialize the arguments to the `tree` utility.
 ```
 { "main" : "tree.bc"
 , "binary"  : "tree"
@@ -182,9 +159,8 @@ the arguments to the `tree` utility.
 , "constraints" : ["1", "tree", "-J", "-h"]
 }
 ```
-the specialized program will output its results in JSON notation, that will include a human readable size field.
-The specialized program expects one extra argument, either a directory, or another flag to output the contents of the
-current working directory.
+
+The specialized program will output its results in JSON notation (-J) that will include a human readable size field (-h). The specialized program expects one extra argument, either a directory or another flag to output the contents of the current working directory.
 
 ---
 
