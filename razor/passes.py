@@ -98,17 +98,19 @@ def devirt(devirt_method, input_file, output_file):
 
     args = []
 
-    # if devirt_method == 'cha_dsa': 
-    #     args += ['-lower-invoke']
-    
     args += [ '-Pdevirt'
-            , '-Presolve-incomplete-calls=true'
+            #, '-Presolve-incomplete-calls=true'
             #, '-Pmax-num-targets=15'
     ]
-    
+
     if devirt_method == 'cha_dsa': 
         args += ['-Pdevirt-with-cha']
-    
+
+    if devirt_method == 'sea_dsa': 
+        args += ['-Pdevirt-with-seadsa'
+                 , '-sea-dsa-type-aware=true'
+        ]
+        
     retcode = driver.previrt_progress(input_file, output_file, args)
     if retcode != 0:
         return retcode
@@ -128,8 +130,8 @@ def profile(input_file, output_file):
     args += [
         ## XXX: these can be expensive        
         '-profile-verbose=false'
-        ,'-profile-loops=false'
-        #,'-profile-safe-pointers=false'
+        ,'-profile-loops=true'
+        ,'-profile-safe-pointers=true'
     ]
     args += ['-profile-outfile={0}'.format(output_file)]
     return driver.previrt(input_file, '/dev/null', args)
