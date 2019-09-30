@@ -2,15 +2,18 @@ language: cpp
 cache: apt
 env:
   matrix:
-     - UBUNTU_DIST=xenial
-       BUILD_TYPE=Release
+     #- UBUNTU_DIST=xenial
+     #  BUILD_TYPE=Release
      # - UBUNTU_DIST=trusty
      #   BUILD_TYPE=Release
+     - UBUNTU_DIST=bionic
+       BUILD_TYPE=Release
+     
 services:
   - docker
 
 install: true
 
 script:
-  - docker build --build-arg UBUNTU=${UBUNTU_DIST} --build-arg BUILD_TYPE=${BUILD_TYPE} -t occam/occam_xenial_rel -f docker/occam.Dockerfile .
+  - docker build --build-arg UBUNTU=${UBUNTU_DIST} --build-arg BUILD_TYPE=${BUILD_TYPE} -t occam/occam_${UBUNTU_DIST}_rel -f docker/occam.Dockerfile .
 

@@ -1,7 +1,7 @@
 # For OCCAM developers: Building a new Docker image #
 
 ```shell
-docker build --build-arg UBUNTU=xenial --build-arg BUILD_TYPE=Release -t sricsl/occam:xenial -f docker/occam.Dockerfile .
+docker build --build-arg UBUNTU=bionic --build-arg BUILD_TYPE=Release -t sricsl/occam:bionic -f docker/occam.Dockerfile .
 
 ```
 
@@ -14,6 +14,6 @@ Build arguments (required):
 # For OCCAM users: #
 
 ```shell
-docker pull sricsl/occam:xenial
-docker run -v `pwd`:/host -it sricsl/occam:xenial
+docker pull sricsl/occam:bionic
+docker run -v `pwd`:/host -it sricsl/occam:bionic
 ```
