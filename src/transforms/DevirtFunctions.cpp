@@ -437,7 +437,7 @@ namespace transforms {
     assert (M);
     Function* F = Function::Create (NewTy,
                                     GlobalValue::InternalLinkage,
-                                    "seahorn.bounce",
+                                    "__occam.bounce",
                                     M);
     
     // Set the names of the arguments.  Also, record the arguments in a vector
