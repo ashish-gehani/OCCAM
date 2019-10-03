@@ -14,6 +14,10 @@ clean:
 	make -C funcs/6 clean
 	make -C funcs/7 clean
 	make -C funcs/8 clean
+	make -C funcs/9 clean
+	make -C funcs/10 clean
+	make -C funcs/11 clean
+	make -C funcs/12 clean
 	make -C argv clean
 	make -C fib clean
 	make -C fiblib clean

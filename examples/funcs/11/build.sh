@@ -16,12 +16,12 @@ cat > multiple.manifest <<EOF
 , "binary"  : "main"
 , "modules"    : ["library.o.bc"]
 , "native_libs" : []
-, "args"    : ["one"]
+, "args"    : []
 , "name"    : "main"
 }
 EOF
 
-slash --no-strip --devirt=dsa --inter-spec-policy=nonrec-aggressive --intra-spec-policy=nonrec-aggressive --work-dir=slash multiple.manifest 
+slash --no-strip --devirt=sea_dsa  --inter-spec-policy=nonrec-aggressive --intra-spec-policy=nonrec-aggressive --work-dir=slash multiple.manifest 
 
 ### NO LIBRARY
 llvm-link main.o.bc library.o.bc -o main_static.bc
@@ -33,7 +33,7 @@ cat > multiple.manifest <<EOF
 , "binary"  : "main_static"
 , "modules"    : []
 , "native_libs" : []
-, "args"    : ["one"]
+, "args"    : []
 , "name"    : "main_static"
 }
 EOF

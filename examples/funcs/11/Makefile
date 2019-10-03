@@ -13,5 +13,3 @@ main.o: main.c
 clean:
 	rm -f *~ .*.bc *.bc *.ll *.o .*.o *.manifest main main_slash
 	rm -rf slash
-	rm -rf slash-lib
-	rm -rf slash-main

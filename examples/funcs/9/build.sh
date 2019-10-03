@@ -1,39 +1,27 @@
 #!/usr/bin/env bash
 
 
-LIBRARY='library'
-
-unamestr=`uname`
-if [[ "$unamestr" == 'Linux' ]]; then
-   LIBRARY='library.so'
-elif [[ "$unamestr" == 'Darwin' ]]; then
-   LIBRARY='library.dylib'
-fi
-
-
 # Build the manifest file
 cat > multiple.manifest <<EOF
 { "main" : "main.bc"
 , "binary"  : "main"
-, "modules"    : ["${LIBRARY}.bc"]
+, "modules"    : []
 , "native_libs" : []
-, "args"    : ["1","5","10"]
+, "args"    : []
 , "name"    : "main"
 }
 EOF
 
 #make the bitcode
-CC=gclang make
+CXX=gclang++ make
 get-bc main
-get-bc ${LIBRARY}
 
 
 export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
 export PATH=${LLVM_HOME}/bin:${PATH}
 
-slash --intra-spec-policy=nonrec-aggressive --inter-spec-policy=nonrec-aggressive \
-      --devirt=sea_dsa --work-dir=slash multiple.manifest
+slash  --work-dir=slash --devirt=cha_dsa --inter-spec-policy=none --intra-spec-policy=none multiple.manifest
 
 cp slash/main main_slash
 

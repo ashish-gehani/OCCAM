@@ -102,12 +102,17 @@ private:
 
 /*
  * Resolve indirect call by using DSA pointer analysis
- * 
- * We use a template parameter for DSA so that in the future we can
- * replace llvm-dsa with sea-dsa.
  */
 template<typename Dsa>  
 class CallSiteResolverByDsa final: public CallSiteResolverByTypes {
+  /*
+    Assume that Dsa provides these methods:
+    - bool isComplete(CallSite&)
+    - iterator begin(CallSite&)
+    - iterator end(CallSite&) 
+    where each element of iterator is of type Function*
+  */
+  
 public:
   using AliasSetId = CallSiteResolverByTypes::AliasSetId;  
   using AliasSet = CallSiteResolverByTypes::AliasSet;
@@ -189,8 +194,10 @@ private:
 
   // Call graph of the program
   //llvm::CallGraph *m_cg;
-  // allow creating of indirect calls during devirtualization
-  // (required for soundness)
+  
+  // Create an indirect call in the "default" case of the switch.
+  // This is required for soundness in cases whether we don't know for
+  // sure that the indirect call can be fully resolved.
   bool m_allowIndirectCalls;
 
   // Worklist of call sites to transform

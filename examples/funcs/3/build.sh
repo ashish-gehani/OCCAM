@@ -33,7 +33,7 @@ export OCCAM_LOGFILE=${PWD}/slash/occam.log
 export PATH=${LLVM_HOME}/bin:${PATH}
 
 slash --intra-spec-policy=nonrec-aggressive --inter-spec-policy=nonrec-aggressive \
-      --devirt=dsa --work-dir=slash multiple.manifest
+      --devirt=sea_dsa --work-dir=slash multiple.manifest
 
 cp slash/main main_slash
 

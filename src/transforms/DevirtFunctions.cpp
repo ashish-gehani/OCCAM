@@ -1,8 +1,8 @@
 #include "transforms/DevirtFunctions.hh"
 #include "analysis/ClassHierarchyAnalysis.hh"
 #include "llvm/Pass.h"
-#include "llvm/Support/raw_ostream.h"
 #include "llvm/Analysis/CallGraph.h"
+#include "llvm/Support/raw_ostream.h"
 
 #include <set>
 #include <algorithm>
@@ -188,95 +188,89 @@ namespace transforms {
     for (auto &F: m_M) {
       for (auto &BB: F) {
 	for (auto &I: BB) {
-	  Instruction *CI= nullptr;
-	  if (isa<CallInst>(&I)) {
-	    CI = &I;
-	  }
-	  if (!CI && isa<InvokeInst>(&I)) {
-	    CI = &I;
-	  }
-	  if (CI) {
-	    CallSite CS(CI);
-	    if (isIndirectCall(CS)) {
-	      num_indirect_calls++;
-	      if (m_allow_incomplete || m_dsa.isComplete(CS)) {
-		num_complete_calls++;
-		AliasSet dsa_targets;
-		dsa_targets.append(m_dsa.begin(CS), m_dsa.end(CS));
-		if (dsa_targets.empty()) {
+	  CallSite CS(&I);
+	  if (CS.getInstruction() && isIndirectCall(CS)) {
+	    num_indirect_calls++;
+	    if (m_allow_incomplete || m_dsa.isComplete(CS)) {
+	      num_complete_calls++;
+	      AliasSet dsa_targets;
+	      dsa_targets.append(m_dsa.begin(CS), m_dsa.end(CS));
+	      if (dsa_targets.empty()) {
 		  errs() << "WARNING Devirt (dsa): does not have any target for "
 			 << *(CS.getInstruction()) << "\n";
 		  continue;
-		}
-		// sort dsa_targets
-		std::sort(dsa_targets.begin(), dsa_targets.end());
+	      }
+	      // sort dsa_targets
+	      std::sort(dsa_targets.begin(), dsa_targets.end());
+	      
+	      DEVIRT_LOG(errs() << "\nDsa-based targets: \n";
+			 for(auto F: dsa_targets) {
+			   errs() << "\t" << F->getName() << "::" << *(F->getType()) << "\n";
+			 });
+	      
+	      if (const AliasSet* types_targets = CallSiteResolverByTypes::getTargets(CS)) {
 		
-		DEVIRT_LOG(errs() << "\nDsa-based targets: \n";
-			   for(auto F: dsa_targets) {
-			     errs() << "\t" << F->getName() << "::" << *(F->getType()) << "\n";
+		DEVIRT_LOG(errs() << "Type-based targets: \n";
+			   for(auto F: *types_targets) {
+			       errs() << "\t" << F->getName() << "::" << *(F->getType()) << "\n";
 			   });
 		
-		if (const AliasSet* types_targets = CallSiteResolverByTypes::getTargets(CS)) {
-
-		  DEVIRT_LOG(errs() << "Type-based targets: \n";
-			     for(auto F: *types_targets) {
-			       errs() << "\t" << F->getName() << "::" << *(F->getType()) << "\n";
-			     });
-		  
-		  // --- We filter out those dsa targets whose signature do not match.
-		  AliasSet refined_dsa_targets;
-		  // assert(is_sorted(types_targets))
-		  // assert(is_sorted(dsa_targets))
-		  std::set_intersection(dsa_targets.begin(), dsa_targets.end(),
-					types_targets->begin(), types_targets->end(),
-					std::back_inserter(refined_dsa_targets));
-		  if (refined_dsa_targets.empty()) {
-		    errs() << "WARNING Devirt (dsa): cannot resolve " << *(CS.getInstruction())
-			   << " after refining dsa targets with calsite type\n";
-		  } else {
-		    if (refined_dsa_targets.size() <= m_max_num_targets) {
-		      num_resolved_calls++;
-		      // Sort by name so that we can fix a
-		      // deterministic ordering (useful for e.g., tests)
-		      if (std::all_of(refined_dsa_targets.begin(), refined_dsa_targets.end(),
-				      [](const Function* f) { return f->hasName(); })) {
-			std::sort(refined_dsa_targets.begin(), refined_dsa_targets.end(),
-				  [](const Function *f1, const Function *f2) {
-				    return f1->getName() < f2->getName();});
-		      }
-		      m_targets_map.insert({CS.getInstruction(), refined_dsa_targets});
-		      DEVIRT_LOG(errs() << "Devirt (dsa) resolved " << *(CS.getInstruction())
-				        << " with targets=";
-				 for(auto F: refined_dsa_targets) {
-				   errs() << "\t" << F->getName() << "::" << *(F->getType())
-					  << "\n";				   
-				 });
-		    } else {
-		      errs() << "WARNING Devirt (dsa): unresolve " << *(CS.getInstruction())
-			     << " because the number of targets is greater than "
-			     << m_max_num_targets << "\n";
-		    } 
-		  }
-		} else {
+		// --- We filter out those dsa targets whose signature do not match.
+		// XXX: this is needed with llvm-dsa but now with
+		// sea-dsa which already uses types while resolving
+		// aliasing.
+		AliasSet refined_dsa_targets;
+		// assert(is_sorted(types_targets))
+		// assert(is_sorted(dsa_targets))
+		std::set_intersection(dsa_targets.begin(), dsa_targets.end(),
+				      types_targets->begin(), types_targets->end(),
+				      std::back_inserter(refined_dsa_targets));
+		if (refined_dsa_targets.empty()) {
 		  errs() << "WARNING Devirt (dsa): cannot resolve " << *(CS.getInstruction())
-			 << " because there is no internal function with same callsite type\n";
+			 << " after refining dsa targets with calsite type\n";
+		} else {
+		  if (refined_dsa_targets.size() <= m_max_num_targets) {
+		    num_resolved_calls++;
+		    // Sort by name so that we can fix a
+		    // deterministic ordering (useful for e.g., tests)
+		    if (std::all_of(refined_dsa_targets.begin(), refined_dsa_targets.end(),
+				    [](const Function* f) { return f->hasName(); })) {
+		      std::sort(refined_dsa_targets.begin(), refined_dsa_targets.end(),
+				  [](const Function *f1, const Function *f2) {
+				  return f1->getName() < f2->getName();});
+		    }
+		    m_targets_map.insert({CS.getInstruction(), refined_dsa_targets});
+		    DEVIRT_LOG(errs() << "Devirt (dsa) resolved " << *(CS.getInstruction())
+			       << " with targets=\n";
+			       for(auto F: refined_dsa_targets) {
+				 errs() << "\t" << F->getName() << "::" << *(F->getType())
+					<< "\n";				   
+			       });
+		  } else {
+		    errs() << "WARNING Devirt (dsa): unresolve " << *(CS.getInstruction())
+			   << " because the number of targets is greater than "
+			   << m_max_num_targets << "\n";
+		  } 
 		}
 	      } else {
 		errs() << "WARNING Devirt (dsa): cannot resolve " << *(CS.getInstruction())
-		       << " because the corresponding dsa node is not complete\n";
-		
-		DEVIRT_LOG(AliasSet targets;
-			   targets.append(m_dsa.begin(CS), m_dsa.end(CS));
-			   errs() << "Dsa-based targets: \n";
-			   for(auto F: targets) {
-			     errs() << "\t" << F->getName() << "::" << *(F->getType()) << "\n";
-			   };)
+		       << " because there is no internal function with same callsite type\n";
 	      }
-	    }
+	    } else {
+	      errs() << "WARNING Devirt (dsa): cannot resolve " << *(CS.getInstruction())
+		     << " because the corresponding dsa node is not complete\n";
+	      
+	      DEVIRT_LOG(AliasSet targets;
+			 targets.append(m_dsa.begin(CS), m_dsa.end(CS));
+			 errs() << "Dsa-based targets: \n";
+			 for(auto F: targets) {
+			   errs() << "\t" << F->getName() << "::" << *(F->getType()) << "\n";
+			 };)
+		}
 	  }
-	}
-      }
-    }
+	} // end instructions
+      } // end blocks
+    } // end functions
     errs() << "=== DEVIRT (Dsa+types) stats===\n";
     errs() << "BRUNCH_STAT INDIRECT CALLS " << num_indirect_calls << "\n";
     errs() << "BRUNCH_STAT COMPLETE CALLS " << num_complete_calls << "\n";
@@ -443,7 +437,7 @@ namespace transforms {
     assert (M);
     Function* F = Function::Create (NewTy,
                                     GlobalValue::InternalLinkage,
-                                    "seahorn.bounce",
+                                    "__occam.bounce",
                                     M);
     
     // Set the names of the arguments.  Also, record the arguments in a vector
@@ -663,4 +657,12 @@ namespace transforms {
 template class CallSiteResolverByDsa<dsa::CallTargetFinder<EQTDDataStructures>>;
 } // end namespace
 } // end namespace
-  
+
+// sea-dsa
+#include "sea_dsa/CompleteCallGraph.hh"
+namespace previrt {
+namespace transforms {  
+template class CallSiteResolverByDsa<sea_dsa::CompleteCallGraph>;
+} // end namespace
+} // end namespace
+
