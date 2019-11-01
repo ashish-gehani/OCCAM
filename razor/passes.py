@@ -104,7 +104,7 @@ def strip(input_file, output_file):
     """
     args = [input_file, '-o', output_file]
     args += ['-strip', '-strip-dead-prototypes']             
-    return driver.run('opt', args)
+    return driver.run(config.get_llvm_tool('opt'), args)
 
 def devirt(devirt_method, input_file, output_file):
     """ resolve indirect function calls

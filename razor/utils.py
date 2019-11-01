@@ -303,7 +303,7 @@ def get_opt(use_seaopt = False):
     if use_seaopt:
         opt = which('seaopt')
     if opt is None:
-        opt = which('opt')
+        opt = config.get_llvm_tool('opt')
     if opt is None:
         raise IOError('opt was not found')
     return opt

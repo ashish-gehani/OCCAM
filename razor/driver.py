@@ -73,7 +73,7 @@ def previrt(fin, fout, args, **opts):
 
     args = opt_debug_cmds + libs + [fin, '-o={0}'.format(fout)] + args
 
-    return run('opt', args, **opts)
+    return run(config.get_llvm_tool('opt'), args, **opts)
 
 def previrt_progress(fin, fout, args, output=None):
     libs = ['-load={0}'.format(config.get_sea_dsalib()),
