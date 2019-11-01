@@ -65,6 +65,25 @@ ProfileVerbose("profile-verbose",
 
 namespace previrt {
 
+  static Function*
+  getCalledFunctionThroughAliasesAndCasts(CallSite &CS) {
+    Value* CalledV = CS.getCalledValue();
+    CalledV = CalledV->stripPointerCasts(); 
+    
+    if (Function* F = dyn_cast<Function>(CalledV)) {
+      return F;
+    }
+    
+    if (GlobalAlias *GA = dyn_cast< GlobalAlias>(CalledV)) {
+      if (Function* F =
+	  dyn_cast<Function>(GA->getAliasee()->stripPointerCasts())) {
+	return F;
+      }
+    }
+    
+    return nullptr;
+  }
+  
   void ProfilerPass::formatCounters(std::vector<Counter>& counters, 
 				    unsigned& MaxNameLen, unsigned& MaxValLen, bool sort) {
     // Figure out how long the biggest Value and Name fields are.
@@ -162,18 +181,29 @@ namespace previrt {
   void ProfilerPass::visitCallSite(CallSite CS) {
     ++TotalInsts;
     // TODO: incrInstCounter(#OPCODE, 1);         
-    Function* callee = CS.getCalledFunction();
+    Function* callee = getCalledFunctionThroughAliasesAndCasts(CS);
     if (callee) {
       ++TotalDirectCalls;
       if (callee->isDeclaration()) {
 	++TotalExternalCalls;
 	ExtFuncs.insert(callee->getName());
       }
-    } else {
+    } else if (CS.isIndirectCall()) {
       ++TotalIndirectCalls;
       if (ProfileVerbose) {
 	llvm::errs() << "Indirect call found: " << *CS.getInstruction() << "\n";
       }
+    } else if (CS.isInlineAsm()) {
+      ++TotalAsmCalls;
+      if (ProfileVerbose) {
+	llvm::errs() << "Asm call found: " << *CS.getInstruction() << "\n";
+      }
+    } else {
+      ++TotalUnkCalls;
+      if (ProfileVerbose) {
+	llvm::errs() << "Unknown call found: " << *CS.getInstruction() << "\n";
+      }
+      
     }
     
     // new, malloc, calloc, realloc, and strdup.
@@ -292,7 +322,9 @@ namespace previrt {
     , TotalInsts("TotalInsts","Number of instructions")
     , TotalDirectCalls("TotalDirectCalls","Number of direct calls")
     , TotalIndirectCalls("TotalIndirectCalls","Number of indirect calls")
+    , TotalAsmCalls("TotalAsmCalls","Number of assembly calls")
     , TotalExternalCalls("TotalExternalCalls","Number of external calls")
+    , TotalUnkCalls("TotalUnkCalls","Number of unknown calls")            
     , TotalLoops("TotalLoops", "Number of loops")
     , TotalBoundedLoops("TotalBoundedLoops", "Number of bounded loops")
     ////////
@@ -431,7 +463,8 @@ namespace previrt {
     std::vector<Counter> cfg_counters 
     {TotalFuncs, TotalSpecFuncs,
      TotalBlocks, TotalInsts,
-     TotalDirectCalls, TotalExternalCalls, TotalIndirectCalls};
+     TotalDirectCalls, TotalExternalCalls, TotalAsmCalls,
+     TotalIndirectCalls, TotalUnkCalls};
     
     if (ProfileLoops) {
       cfg_counters.push_back(TotalLoops);

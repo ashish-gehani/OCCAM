@@ -67,7 +67,9 @@ namespace previrt {
     Counter TotalInsts;
     Counter TotalDirectCalls;
     Counter TotalIndirectCalls;
+    Counter TotalAsmCalls;    
     Counter TotalExternalCalls;
+    Counter TotalUnkCalls;    
     Counter TotalLoops;
     Counter TotalBoundedLoops;
     ///
