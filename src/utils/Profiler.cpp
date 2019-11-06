@@ -154,6 +154,10 @@ namespace previrt {
     if (F.getName().startswith("__occam_spec")) {
       ++TotalSpecFuncs;
     }
+    
+    if (F.getName().startswith("__occam.bounce")) {
+      ++TotalBounceFuncs;
+    }
       
     if (ProfileVerbose) {
       errs() << "Function " << F.getName() << "\n";
@@ -316,7 +320,8 @@ namespace previrt {
     , DL(nullptr)
     , TLI(nullptr)
     , TotalFuncs("TotalFuncs", "Number of functions")
-    , TotalSpecFuncs("TotalSpecFuncs", "Number of specialized functions") 	
+    , TotalSpecFuncs("TotalSpecFuncs", "Number of specialized functions")
+    , TotalBounceFuncs("TotalBounceFuncs", "Number of bounced functions added by devirt")      
     , TotalBlocks("TotalBlocks", "Number of basic blocks")
     , TotalJoins("TotalJoins","Number of basic blocks with more than one predecessor")
     , TotalInsts("TotalInsts","Number of instructions")
@@ -461,7 +466,7 @@ namespace previrt {
     O << "[CFG analysis]\n";
     
     std::vector<Counter> cfg_counters 
-    {TotalFuncs, TotalSpecFuncs,
+    {TotalFuncs, TotalSpecFuncs, TotalBounceFuncs,
      TotalBlocks, TotalInsts,
      TotalDirectCalls, TotalExternalCalls, TotalAsmCalls,
      TotalIndirectCalls, TotalUnkCalls};
@@ -472,11 +477,7 @@ namespace previrt {
     }
     
     formatCounters(cfg_counters, MaxNameLen, MaxValLen, false);
-    std::string tsf_str("TotalSpecFuncs");
     for (auto c: cfg_counters) {
-      if (c == tsf_str && c.getValue() == 0) {
-	continue;
-      }
       O << format("%*u %-*s\n",
 		  MaxValLen, c.getValue(), 
 		  MaxNameLen, c.getDesc().c_str());
