@@ -161,8 +161,11 @@ namespace previrt {
       if (!OSOV.knownSize(OffsetAlign))
 	return llvm::None;
       const int64_t I = OffsetAlign.first.getSExtValue();
-      assert(I >= 0);
-      return size_t(I);
+      if (I >= 0) {
+	return size_t(I);
+      } else {
+	return llvm::None;
+      }
     }
 
     // An allocation site is interesting if there is an access to it
@@ -170,10 +173,15 @@ namespace previrt {
     bool isInterestingAllocSite(Value *Ptr, int64_t LoadEnd, Value *Alloc) {
       assert(Ptr);
       assert(Alloc);
-      assert(LoadEnd > 0);
-      
-      Optional<size_t> AllocSize = getAllocSize(Alloc);
-      return AllocSize && size_t(LoadEnd) > *AllocSize;
+
+      if (LoadEnd <= 0) {
+	// The allocation site has probably zero size.
+	// We mark it as interesting
+	return true;
+      } else {
+	Optional<size_t> AllocSize = getAllocSize(Alloc);
+	return AllocSize && size_t(LoadEnd) > *AllocSize;
+      }
     }
 
     // Get the allocation sites of a pointer using sea-dsa
