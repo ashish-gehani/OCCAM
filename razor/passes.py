@@ -104,7 +104,7 @@ def strip(input_file, output_file):
     """
     args = [input_file, '-o', output_file]
     args += ['-strip', '-strip-dead-prototypes']             
-    return driver.run('opt', args)
+    return driver.run(config.get_llvm_tool('opt'), args)
 
 def devirt(devirt_method, input_file, output_file):
     """ resolve indirect function calls
@@ -151,8 +151,8 @@ def profile(input_file, output_file):
     args += ['-profile-outfile={0}'.format(output_file)]
     return driver.previrt(input_file, '/dev/null', args)
 
-def crabllvm(cmd, input_file, output_file):
-    """ running crab-llvm (https://github.com/seahorn/crab-llvm) 
+def clam(cmd, input_file, output_file):
+    """ running clam (https://github.com/seahorn/crab-llvm) 
     """
     # analysis options    
     args = [
@@ -298,12 +298,12 @@ def peval(input_file, output_file, \
         shutil.copy(tmp.name, done.name)
 
     if use_ai_dce:
-        crabllvm_cmd = utils.get_crabllvm()
-        if crabllvm_cmd is None:
+        clam_cmd = utils.get_clam()
+        if clam_cmd is None:
             sys.stderr.write('crab not found: skipping ai-based dce')
         else:
-            utils.write_timestamp("Starting crab")
-            retcode = crabllvm(crabllvm_cmd, done.name, tmp.name)
+            utils.write_timestamp("Starting crab found here " + utils.get_clam())
+            retcode = clam(clam_cmd, done.name, tmp.name)
             if retcode != 0:
                 sys.stderr.write("ERROR: crab failed!\n")
                 shutil.copy(done.name, output_file)

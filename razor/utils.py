@@ -303,7 +303,7 @@ def get_opt(use_seaopt = False):
     if use_seaopt:
         opt = which('seaopt')
     if opt is None:
-        opt = which('opt')
+        opt = config.get_llvm_tool('opt')
     if opt is None:
         raise IOError('opt was not found')
     return opt
@@ -323,9 +323,9 @@ def get_seahorn():
     if not is_exec(seahorn): seahorn = which('sea')
     return seahorn
 
-# Try to find crabllvm binary
-def get_crabllvm():
-    crabllvm = None
-    if 'CRABLLVM' in os.environ: crabllvm = os.environ ['CRABLLVM']
-    if not is_exec(crabllvm): crabllvm = which('crabllvm')
-    return crabllvm
+# Try to find clam binary
+def get_clam():
+    clam = None
+    if 'CLAM' in os.environ: clam = os.environ ['CLAM']
+    if not is_exec(clam): clam = which('clam')
+    return clam

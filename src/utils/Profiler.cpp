@@ -65,6 +65,25 @@ ProfileVerbose("profile-verbose",
 
 namespace previrt {
 
+  static Function*
+  getCalledFunctionThroughAliasesAndCasts(CallSite &CS) {
+    Value* CalledV = CS.getCalledValue();
+    CalledV = CalledV->stripPointerCasts(); 
+    
+    if (Function* F = dyn_cast<Function>(CalledV)) {
+      return F;
+    }
+    
+    if (GlobalAlias *GA = dyn_cast< GlobalAlias>(CalledV)) {
+      if (Function* F =
+	  dyn_cast<Function>(GA->getAliasee()->stripPointerCasts())) {
+	return F;
+      }
+    }
+    
+    return nullptr;
+  }
+  
   void ProfilerPass::formatCounters(std::vector<Counter>& counters, 
 				    unsigned& MaxNameLen, unsigned& MaxValLen, bool sort) {
     // Figure out how long the biggest Value and Name fields are.
@@ -135,6 +154,10 @@ namespace previrt {
     if (F.getName().startswith("__occam_spec")) {
       ++TotalSpecFuncs;
     }
+    
+    if (F.getName().startswith("__occam.bounce")) {
+      ++TotalBounceFuncs;
+    }
       
     if (ProfileVerbose) {
       errs() << "Function " << F.getName() << "\n";
@@ -162,18 +185,29 @@ namespace previrt {
   void ProfilerPass::visitCallSite(CallSite CS) {
     ++TotalInsts;
     // TODO: incrInstCounter(#OPCODE, 1);         
-    Function* callee = CS.getCalledFunction();
+    Function* callee = getCalledFunctionThroughAliasesAndCasts(CS);
     if (callee) {
       ++TotalDirectCalls;
       if (callee->isDeclaration()) {
 	++TotalExternalCalls;
 	ExtFuncs.insert(callee->getName());
       }
-    } else {
+    } else if (CS.isIndirectCall()) {
       ++TotalIndirectCalls;
       if (ProfileVerbose) {
 	llvm::errs() << "Indirect call found: " << *CS.getInstruction() << "\n";
       }
+    } else if (CS.isInlineAsm()) {
+      ++TotalAsmCalls;
+      if (ProfileVerbose) {
+	llvm::errs() << "Asm call found: " << *CS.getInstruction() << "\n";
+      }
+    } else {
+      ++TotalUnkCalls;
+      if (ProfileVerbose) {
+	llvm::errs() << "Unknown call found: " << *CS.getInstruction() << "\n";
+      }
+      
     }
     
     // new, malloc, calloc, realloc, and strdup.
@@ -286,13 +320,16 @@ namespace previrt {
     , DL(nullptr)
     , TLI(nullptr)
     , TotalFuncs("TotalFuncs", "Number of functions")
-    , TotalSpecFuncs("TotalSpecFuncs", "Number of specialized functions") 	
+    , TotalSpecFuncs("TotalSpecFuncs", "Number of specialized functions")
+    , TotalBounceFuncs("TotalBounceFuncs", "Number of bounced functions added by devirt")      
     , TotalBlocks("TotalBlocks", "Number of basic blocks")
     , TotalJoins("TotalJoins","Number of basic blocks with more than one predecessor")
     , TotalInsts("TotalInsts","Number of instructions")
     , TotalDirectCalls("TotalDirectCalls","Number of direct calls")
     , TotalIndirectCalls("TotalIndirectCalls","Number of indirect calls")
+    , TotalAsmCalls("TotalAsmCalls","Number of assembly calls")
     , TotalExternalCalls("TotalExternalCalls","Number of external calls")
+    , TotalUnkCalls("TotalUnkCalls","Number of unknown calls")            
     , TotalLoops("TotalLoops", "Number of loops")
     , TotalBoundedLoops("TotalBoundedLoops", "Number of bounded loops")
     ////////
@@ -429,9 +466,10 @@ namespace previrt {
     O << "[CFG analysis]\n";
     
     std::vector<Counter> cfg_counters 
-    {TotalFuncs, TotalSpecFuncs,
+    {TotalFuncs, TotalSpecFuncs, TotalBounceFuncs,
      TotalBlocks, TotalInsts,
-     TotalDirectCalls, TotalExternalCalls, TotalIndirectCalls};
+     TotalDirectCalls, TotalExternalCalls, TotalAsmCalls,
+     TotalIndirectCalls, TotalUnkCalls};
     
     if (ProfileLoops) {
       cfg_counters.push_back(TotalLoops);
@@ -439,11 +477,7 @@ namespace previrt {
     }
     
     formatCounters(cfg_counters, MaxNameLen, MaxValLen, false);
-    std::string tsf_str("TotalSpecFuncs");
     for (auto c: cfg_counters) {
-      if (c == tsf_str && c.getValue() == 0) {
-	continue;
-      }
       O << format("%*u %-*s\n",
 		  MaxValLen, c.getValue(), 
 		  MaxNameLen, c.getDesc().c_str());

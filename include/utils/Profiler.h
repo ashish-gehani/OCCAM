@@ -62,12 +62,15 @@ namespace previrt {
     // -- individual counters
     Counter TotalFuncs;
     Counter TotalSpecFuncs;
+    Counter TotalBounceFuncs;    
     Counter TotalBlocks;
     Counter TotalJoins;
     Counter TotalInsts;
     Counter TotalDirectCalls;
     Counter TotalIndirectCalls;
+    Counter TotalAsmCalls;    
     Counter TotalExternalCalls;
+    Counter TotalUnkCalls;    
     Counter TotalLoops;
     Counter TotalBoundedLoops;
     ///
