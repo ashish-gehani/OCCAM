@@ -19,5 +19,5 @@ script:
 
   - 'if [ "$TRAVIS_EVENT_TYPE" = "cron" ] ;
         then echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-          && docker push occam/occam_${UBUNTU_DIST};
+          && docker push occam/occam_${UBUNTU_DIST}_rel;
      fi '
