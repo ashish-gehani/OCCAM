@@ -20,6 +20,7 @@ APR_VERSION=1.7.0
 APR_UTIL_VERSION=1.6.1
 
 
+EXPAT_INSTALL=${THISDIR}/install/expat
 PCRE_INSTALL=${THISDIR}/install/pcre-${PCRE_VERSION}
 APR_INSTALL=${THISDIR}/install/apr-${APR_VERSION}
 APR_UTIL_INSTALL=${THISDIR}/install/apr-util-${APR_UTIL_VERSION}
@@ -50,6 +51,12 @@ Makefile_pcre:
 ${PCRE_INSTALL}: Makefile_pcre
 	make -C . -f Makefile_pcre
 
+Makefile_expat:
+	$(error Makefile_expat is missing but required)
+
+${EXPAT_INSTALL}: Makefile_expat
+	make -C . -f Makefile_expat
+
 Makefile_apr:
 	$(error Makefile_apr is missing but required)
 
@@ -63,7 +70,7 @@ ${APR_UTIL_INSTALL}: Makefile_apr_util
 	make -C . -f Makefile_apr_util
 
 
-${HTTPD_INSTALL}: ${PCRE_INSTALL} ${APR_INSTALL} ${APR_UTIL_INSTALL} ${HTTPD}
+${HTTPD_INSTALL}: ${PCRE_INSTALL} ${APR_INSTALL} ${APR_UTIL_INSTALL} ${EXPAT_INSTALL} ${HTTPD}
 	cd ${HTTPD}                                                                       && \
 	CC=${LLVMCC} ./configure --prefix=${HTTPD_INSTALL}                                   \
                                        --with-pcre=${PCRE_INSTALL}/bin/pcre-config           \
@@ -87,11 +94,13 @@ very_clean: clean
 	rm -rf ${HTTPD_INSTALL}
 	make -C ${HTTPD} clean
 	make -C . -f Makefile_pcre very_clean
+	make -C . -f Makefile_expat very_clean	
 	make -C . -f Makefile_apr very_clean
 	make -C . -f Makefile_apr_util very_clean
 
 spotless: very_clean
 	rm -rf ${HTTPD_TARBALL} ${HTTPD}
 	make -C . -f Makefile_pcre spotless
+	make -C . -f Makefile_expat spotless	
 	make -C . -f Makefile_apr spotless
 	make -C . -f Makefile_apr_util spotless

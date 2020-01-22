@@ -1,0 +1,47 @@
+#iam 7/13/2018
+
+THISDIR =  $(shell pwd)
+OS      =  $(shell uname)
+ARCH    =  $(shell uname -p)
+
+LLVMCC ?= gclang
+LLVMCXX ?= gclang++
+LLVMGET ?= get-bc
+
+ifeq (Darwin, $(findstring Darwin, ${OS}))
+LIBEXT=dylib
+else
+LIBEXT=so
+endif
+
+# This is not ideal. It's downloading the whole apache from github and
+# then just take expat
+EXPAT_URL=https://github.com/omnigroup/Apache.git 
+EXPAT_BASENAME=libexpat
+EXPAT_BITCODE=${EXPAT_BASENAME}.shared.bc
+EXPAT_CFLAGS="-O2 -g -fno-inline -fno-inline-functions -ffunction-sections -fdata-sections"
+EXPAT_INSTALL=${THISDIR}/install/expat
+EXPAT_LIB=${EXPAT_BASENAME}.${LIBEXT}
+
+all: ${EXPAT_BITCODE}
+
+${EXPAT_INSTALL}/lib/${EXPAT_LIB}:
+	git clone ${EXPAT_URL}
+	cd ./Apache/apr-util/xml/expat && ./buildconf.sh && \
+	CC=${LLVMCC} CFLAGS=${EXPAT_CFLAGS} ./configure --prefix=${EXPAT_INSTALL} && \
+	CC=${LLVMCC} make && \
+	make install
+
+${EXPAT_BITCODE}: ${EXPAT_INSTALL}/lib/${EXPAT_LIB}
+	cd ${EXPAT_INSTALL}/lib                                        && \
+	${LLVMGET} ${EXPAT_LIB}                                        && \
+	cp ${EXPAT_BASENAME}*${LIBEXT}*.bc ${THISDIR}/${EXPAT_BITCODE}
+
+clean:
+	rm -rf *~  ${EXPAT_BITCODE}
+
+very_clean: clean
+	rm -rf ${EXPAT_INSTALL}
+
+spotless: very_clean
+	rm -rf Apache
