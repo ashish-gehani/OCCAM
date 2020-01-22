@@ -75,7 +75,7 @@ if [[ "${LINK}" != "dynamic"  &&  "${LINK}" != "static" ]]; then
 fi
 
 #check that the required dependencies are built
-declare -a bitcode=("httpd.bc" "libapr-1.shared.bc" "libaprutil-1.shared.bc" "libpcre.shared.bc" "libexpat.a.bc")
+declare -a bitcode=("httpd.bc" "libapr-1.shared.bc" "libaprutil-1.shared.bc" "libpcre.shared.bc" "libexpat.shared.bc")
 
 echo "Checking all the bitcode files are available ..."
 for bc in "${bitcode[@]}"
@@ -102,7 +102,7 @@ function dynamic_link() {
     cat > httpd.manifest <<EOF
 { "main" : "httpd.bc"
 , "binary"  : "httpd_slashed"
-, "modules"    : ["libapr-1.shared.bc", "libaprutil-1.shared.bc", "libpcre.shared.bc","libexpat.a.bc"]
+, "modules"    : ["libapr-1.shared.bc", "libaprutil-1.shared.bc", "libpcre.shared.bc","libexpat.shared.bc"]
 , "native_libs" : ["-liconv", "-ldl", "-lpthread"]
 , "args"    : ["-d", "/vagrant/www"]
 , "name"    : "httpd"
@@ -130,7 +130,7 @@ EOF
 function static_link() {
     
     llvm-link httpd.bc libapr-1.shared.bc libaprutil-1.shared.bc \
-	      libpcre.shared.bc libexpat.a.bc -o combined_httpd.bc
+	      libpcre.shared.bc libexpat.shared.bc -o combined_httpd.bc
 
     # Build the manifest file
     cat > combined_httpd.manifest <<EOF
