@@ -28,6 +28,9 @@ C_FLAGS = $(shell  ${LLVM_CFG} --cflags)
 
 CPP_FLAGS += $(shell  ${LLVM_CFG} --cppflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include
 
+CONFIG_PRIME_LIBDIR = $(shell ${LLVM_CFG} --libdir)
+CONFIG_PRIME_LIBS += -L${CONFIG_PRIME_LIBDIR} -lLLVMExecutionEngine
+
 #iam: producing the library varies from OS to OS
 OS   =  $(shell uname)
 
@@ -58,6 +61,8 @@ SOURCES = $(wildcard *.cpp)
 SOURCES += $(wildcard analysis/*.cpp)
 
 SOURCES += $(wildcard transforms/*.cpp)
+
+SOURCES += $(wildcard interpreter/*.cpp)
 
 SOURCES += $(wildcard utils/*.cpp)
 
@@ -91,12 +96,16 @@ ${LIBRARY}: extern_libs ${SOURCES}
 	$(MAKE) lib
 
 lib: ${OBJECTS} 
-	$(CXX) ${OBJECTS} ${LIBFLAGS} -o ${LIBRARY} ${CXX_FLAGS} ${LD_FLAGS} ${OTHERLIBS} 
+	$(CXX) ${OBJECTS} ${LIBFLAGS} -o ${LIBRARY} ${CXX_FLAGS} ${LD_FLAGS} \
+	${OTHERLIBS} ${CONFIG_PRIME_LIBS}
 
 analysis/%.o: analysis/%.cpp 
 	$(CXX) ${CXX_FLAGS} $< -c -o $@
 
 transforms/%.o: transforms/%.cpp 
+	$(CXX) ${CXX_FLAGS} $< -c -o $@
+
+interpreter/%.o: interpreter/%.cpp 
 	$(CXX) ${CXX_FLAGS} $< -c -o $@
 
 utils/%.o: utils/%.cpp 
