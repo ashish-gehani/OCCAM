@@ -2,12 +2,13 @@
 #include "llvm/ADT/StringRef.h"
 
 /**
- * We use a modified version of the LLVM interpreter to execute the
- * program using all the available configuration information. From the
- * execution, we collect all the branches taken by the interpreter,
- * and remove all the non-taken branches. In general, some
- * configuration parameters are unknown so the interpreter must stop
- * whenever some value is not defined.
+ * We execute the program with the available manifest. If all input
+ * parameters in the manifest are provided then the execution should
+ * terminate successfully, assuming all external calls can be called
+ * via FFI. Otherwise, the execution terminates at the first branch
+ * whose condition depends of an unknown input parameter. Upon
+ * termination, either full or partial, the program's state is used to
+ * simplify the bitcode.
  **/
 namespace previrt {
 class ConfigPrime : public llvm::ModulePass {

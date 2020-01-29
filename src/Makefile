@@ -29,7 +29,7 @@ C_FLAGS = $(shell  ${LLVM_CFG} --cflags)
 CPP_FLAGS += $(shell  ${LLVM_CFG} --cppflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include
 
 CONFIG_PRIME_LIBDIR = $(shell ${LLVM_CFG} --libdir)
-CONFIG_PRIME_LIBS += -L${CONFIG_PRIME_LIBDIR} -lLLVMExecutionEngine
+CONFIG_PRIME_LIBS += -L${CONFIG_PRIME_LIBDIR} -lLLVMExecutionEngine -lffi
 
 #iam: producing the library varies from OS to OS
 OS   =  $(shell uname)

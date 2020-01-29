@@ -48,15 +48,19 @@
 #include <utility>
 #include <vector>
 
-#ifdef HAVE_FFI_CALL
-#ifdef HAVE_FFI_H
-#include <ffi.h>
-#define USE_LIBFFI
-#elif HAVE_FFI_FFI_H
+// #ifdef HAVE_FFI_CALL
+// #ifdef HAVE_FFI_H
+// #include <ffi.h>
+// #define USE_LIBFFI
+// #elif HAVE_FFI_FFI_H
+// #include <ffi/ffi.h>
+// #define USE_LIBFFI
+// #endif
+// #endif
+
+// HACK: use llvm config to find out where ffi is installed
 #include <ffi/ffi.h>
 #define USE_LIBFFI
-#endif
-#endif
 
 using namespace llvm;
 
@@ -100,7 +104,7 @@ static char getTypeID(Type *Ty) {
 // real call in general case (this is JIT job), that's why it assumes,
 // that all external functions has the same (and pretty "general") signature.
 // The typical example of such functions are "lle_X_" ones.
-static ExFunc lookupFunction(const Function *F) {
+static ExFunc lookupFunction(const Function *F) {  
   // Function not found, look it up... start by figuring out what the
   // composite function name should be.
   std::string ExtName = "lle_";
@@ -111,13 +115,26 @@ static ExFunc lookupFunction(const Function *F) {
 
   sys::ScopedLock Writer(*FunctionsLock);
   ExFunc FnPtr = (*FuncNames)[ExtName];
-  if (!FnPtr)
+  
+  // HACK: for finding functions such as malloc
+  if (!FnPtr) {
+    FnPtr = (*FuncNames)[F->getName()];
+  }
+  if (!FnPtr) {
     FnPtr = (*FuncNames)[("lle_X_" + F->getName()).str()];
-  if (!FnPtr)  // Try calling a generic function... if it exists...
+  }
+  if (!FnPtr) { // Try calling a generic function... if it exists...
     FnPtr = (ExFunc)(intptr_t)sys::DynamicLibrary::SearchForAddressOfSymbol(
         ("lle_X_" + F->getName()).str());
-  if (FnPtr)
+  }
+
+  if (FnPtr) {
+    errs() << "ConfigPrime: recognized external call: " << F->getName() << "\n";    
     ExportedFunctions->insert(std::make_pair(F, FnPtr));  // Cache for later
+  } else {
+    errs() << "ConfigPrime: not recognized external call: " << F->getName() << "\n";
+  }
+  
   return FnPtr;
 }
 
@@ -255,10 +272,20 @@ static bool ffiInvoke(RawFunc Fn, Function *F, ArrayRef<GenericValue> ArgVals,
 }
 #endif // USE_LIBFFI
 
-GenericValue previrt::Interpreter::callExternalFunction(Function *F,
-							ArrayRef<GenericValue> ArgVals) {
+previrt::AbsGenericValue previrt::Interpreter::
+callExternalFunction(Function *F, ArrayRef<AbsGenericValue> AArgVals) {
   TheInterpreter = this;
 
+  std::vector<GenericValue> ArgVals;
+  ArgVals.reserve(AArgVals.size());
+  for(AbsGenericValue Arg: AArgVals) {
+    if (Arg.hasValue()) {
+      ArgVals.push_back(Arg.getValue());
+    } else {
+      return llvm::None;
+    }
+  }
+  
   unique_lock<sys::Mutex> Guard(*FunctionsLock);
 
   // Do a lookup to see if the function is in our cache... this should just be a
@@ -287,20 +314,23 @@ GenericValue previrt::Interpreter::callExternalFunction(Function *F,
   Guard.unlock();
 
   GenericValue Result;
-  if (RawFn != 0 && ffiInvoke(RawFn, F, ArgVals, getDataLayout(), Result))
+  if (RawFn != 0 && ffiInvoke(RawFn, F, ArgVals, getDataLayout(), Result)) {
+    errs() << "Invoking FFI on " << F->getName() << "\n";
     return Result;
+  }
 #endif // USE_LIBFFI
 
-  if (F->getName() == "__main")
-    errs() << "Tried to execute an unknown external function: "
-      << *F->getType() << " __main\n";
-  else
-    report_fatal_error("Tried to execute an unknown external function: " +
-                       F->getName());
+  // if (F->getName() == "__main")
+  //   errs() << "Tried to execute an unknown external function: "
+  //     << *F->getType() << " __main\n";
+  // else
+  //   report_fatal_error("Tried to execute an unknown external function: " +
+  //                      F->getName());
+
 #ifndef USE_LIBFFI
   errs() << "Recompiling LLVM with --enable-libffi might help.\n";
 #endif
-  return GenericValue();
+  return llvm::None;
 }
 
 //===----------------------------------------------------------------------===//

@@ -1,4 +1,5 @@
 #include "llvm/Pass.h"
+#include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/GenericValue.h"
 #include "llvm/IR/Module.h"
@@ -11,64 +12,35 @@
 
 using namespace llvm;
 
-static cl::list<std::string>
-XMainArgV("Pconfig-prime-main-argv",
+static cl::opt<std::string>
+InputFile("Pconfig-prime-file",
 	  cl::Hidden,
-	  cl::desc("Specified the list of parameters for main"));
+	  cl::desc("Specify input bitcode"));
 
-namespace {
-class ArgvArray {
-  std::unique_ptr<char[]> Array;
-  std::vector<std::unique_ptr<char[]>> Values;
-public:
-  /// Turn a vector of strings into a nice argv style array of pointers to null
-  /// terminated strings.
-  void *reset(LLVMContext &C, ExecutionEngine *EE,
-              const std::vector<std::string> &InputArgv);
-};
-}  // anonymous namespace
+static cl::list<std::string>
+InputArgv("Pconfig-prime-input-arg",
+	  cl::Hidden,
+	  cl::desc("Specify one program argument"));
 
-void *ArgvArray::reset(LLVMContext &C, ExecutionEngine *EE,
-                       const std::vector<std::string> &InputArgv) {
-  Values.clear();  // Free the old contents.
-  Values.reserve(InputArgv.size());
-  unsigned PtrSize = EE->getDataLayout().getPointerSize();
-  Array = make_unique<char[]>((InputArgv.size()+1)*PtrSize);
-
-  errs() << "ConfigPrime: ARGV = " << (void*)Array.get() << "\n";
-  Type *SBytePtr = Type::getInt8PtrTy(C);
-
-  for (unsigned i = 0; i != InputArgv.size(); ++i) {
-    unsigned Size = InputArgv[i].size()+1;
-    auto Dest = make_unique<char[]>(Size);
-    errs() << "ConfigPrime: ARGV[" << i << "] = " << (void*)Dest.get() << "\n";
-
-    std::copy(InputArgv[i].begin(), InputArgv[i].end(), Dest.get());
-    Dest[Size-1] = 0;
-
-    // Endian safe: Array[i] = (PointerTy)Dest;
-    EE->StoreValueToMemory(PTOGV(Dest.get()),
-                           (GenericValue*)(&Array[i*PtrSize]), SBytePtr);
-    Values.push_back(std::move(Dest));
-  }
-
-  // Null terminate it
-  EE->StoreValueToMemory(PTOGV(nullptr),
-                         (GenericValue*)(&Array[InputArgv.size()*PtrSize]),
-                         SBytePtr);
-  return Array.get();
-}
+static cl::opt<unsigned>
+UnknownArgs("Pconfig-prime-unknown-args",
+	  cl::Hidden,
+	  cl::init(0),
+	  cl::desc("Specify the number of unknown parameters"));
 
 namespace previrt {
 
 std::vector<GenericValue> prepareArgumentsForMain(Function *mainFn,
+						  // argc >= len(argv)
+						  unsigned argc, 
 						  const std::vector<std::string>& argv,
-						  ExecutionEngine &EE
-						  //, const char * const * envp
-						  ) {
+						  const std::vector<std::string>& envp,
+						  ExecutionEngine &EE,
+						  ArgvArray &CArgv,
+						  ArgvArray &CEnv) {
   std::vector<GenericValue> GVArgs;
   GenericValue GVArgc;
-  GVArgc.IntVal = APInt(32, argv.size());
+  GVArgc.IntVal = APInt(32, argc);
 
   // Check main() type
   unsigned NumArgs = mainFn->getFunctionType()->getNumParams();
@@ -88,23 +60,23 @@ std::vector<GenericValue> prepareArgumentsForMain(Function *mainFn,
       !FTy->getReturnType()->isVoidTy())
     report_fatal_error("Invalid return type of main() supplied");
 
-  ArgvArray CArgv;
-  ArgvArray CEnv;
   if (NumArgs) {
-    GVArgs.push_back(GVArgc); // Arg #0 = argc.
+    // Arg #0 = argc.
+    GVArgs.push_back(GVArgc); 
     if (NumArgs > 1) {
       // Arg #1 = argv.
       GVArgs.push_back(PTOGV(CArgv.reset(mainFn->getContext(), &EE, argv)));
+      
       // assert(!isTargetNullPtr(this, GVTOP(GVArgs[1])) &&
       //        "argv[0] was null after CreateArgv");
       /// XXX: ignore for now envp
-      // if (NumArgs > 2) {
+      //if (NumArgs > 2) {
       //   std::vector<std::string> EnvVars;
       //   for (unsigned i = 0; envp[i]; ++i)
       //     EnvVars.emplace_back(envp[i]);
       //   // Arg #2 = envp.
-      //   GVArgs.push_back(PTOGV(CEnv.reset(mainFn->getContext(), this, EnvVars)));
-      // }
+      // GVArgs.push_back(PTOGV(CEnv.reset(mainFn->getContext(), &EE, EnvVars)));
+      //}
     }
   }
   return GVArgs;
@@ -115,6 +87,7 @@ ConfigPrime::ConfigPrime(): ModulePass(ID) {}
 ConfigPrime::~ConfigPrime() {}
 
 bool ConfigPrime::runOnModule(Module& M) {
+
   std::string ErrorMsg;
   
   std::unique_ptr<Module> M_ptr(&M);
@@ -130,36 +103,57 @@ bool ConfigPrime::runOnModule(Module& M) {
       errs() << "Unknown error creating EE!\n";
     return false;
   }
-  
-  Function* main=EE->FindFunctionNamed("main");
-  
-  if (main) {
+
+  if (Function* main=EE->FindFunctionNamed("main")) {
+
+    // Run static constructors.    
     EE->runStaticConstructorsDestructors(false);
 
+    // Run main
     std::vector<std::string> mainArgV;
-    unsigned i=0;
-    for(auto a: XMainArgV) {
+    // Add the module's name to the start of the vector of arguments to main().    
+    mainArgV.push_back(InputFile);
+    unsigned i=1;
+    for(auto a: InputArgv) {
       errs() << "ConfigPrime: reading argv[" << i++ << "] " << a << "\n";
       mainArgV.push_back(a);
     }
-    
-    std::vector<GenericValue> mainArgVGV = prepareArgumentsForMain(main, mainArgV, *EE);
-    GenericValue Result = EE->runFunction(main,ArrayRef<GenericValue>(mainArgVGV));
-    errs() << "Execution of main returned: " << Result.IntVal << "\n";
-    EE->runStaticConstructorsDestructors(true);
-    
-    // XXX: Not sure if we should call exit
-    //EE->finalizeObject();
-    //EE.reset();
+    unsigned argc = mainArgV.size() + UnknownArgs;
+    std::vector<std::string> envp; /* unused */
+    ArgvArray CArgv, CEnv; // they need to be alive while EE may use them
+    std::vector<GenericValue> mainArgVGV =
+      prepareArgumentsForMain(main, argc, mainArgV, envp, *EE, CArgv, CEnv);
 
-    // TODO: Cast EE to Interpreter and ask for all the branches taken
-    //       and remove those which were not taken.
-  } 
+    GenericValue Result = EE->runFunction(main,ArrayRef<GenericValue>(mainArgVGV));
+    errs() << "ConfigPrime: execution of main returned with status " << Result.IntVal << "\n";
+
+    // Run static destructors.    
+    EE->runStaticConstructorsDestructors(true);
+
+    // If the program didn't call exit explicitly, we should call it now.
+    // This ensures that any atexit handlers get called correctly.
+    auto &Context = M.getContext();
+    Constant *Exit = M.getOrInsertFunction("exit", Type::getVoidTy(Context),
+					   Type::getInt32Ty(Context));
+    if (Function *ExitF = dyn_cast<Function>(Exit)) {
+      std::vector<GenericValue> Args;
+      Args.push_back(Result);
+      EE->runFunction(ExitF, Args);
+      errs() << "ERROR: exit(" << Result.IntVal << ") returned!\n";
+      abort();
+    } else {
+      errs() << "ERROR: exit defined with wrong prototype!\n";
+      abort();
+    }
+
+    // TODOX: Cast EE to Interpreter and use its internal state
+  }
+
   return false;
 }
 
 void ConfigPrime::getAnalysisUsage(AnalysisUsage &AU) const {
-  AU.setPreservesAll();    
+  AU.setPreservesAll();
 }
 
 } // end namespace

@@ -29,33 +29,66 @@ class IntrinsicLowering;
 template<typename T> class generic_gep_type_iterator;
 class ConstantExpr;
 typedef generic_gep_type_iterator<User::const_op_iterator> gep_type_iterator;
+class ExecutionEngine;
 } // end namespace llvm
 
 
 namespace previrt {
-// AllocaHolder - Object to track all of the blocks of memory allocated by
-// alloca.  When the function returns, this object is popped off the execution
-// stack, which causes the dtor to be run, which frees all the alloca'd memory.
-//
-class AllocaHolder {
-  std::vector<void *> Allocations;
 
+class ArgvArray {
+  std::unique_ptr<char[]> Array;
+  std::vector<std::unique_ptr<char[]>> Values;
 public:
-  AllocaHolder() {}
-
-  // Make this type move-only.
-  AllocaHolder(AllocaHolder &&) = default;
-  AllocaHolder &operator=(AllocaHolder &&RHS) = default;
-
-  ~AllocaHolder() {
-    for (void *Allocation : Allocations)
-      free(Allocation);
-  }
-
-  void add(void *Mem) { Allocations.push_back(Mem); }
+  /// Turn a vector of strings into a nice argv style array of pointers to null
+  /// terminated strings.
+  void *reset(llvm::LLVMContext &C, llvm::ExecutionEngine *EE,
+              const std::vector<std::string> &InputArgv);
 };
 
-typedef std::vector<llvm::GenericValue> ValuePlaneTy;
+// // AllocaHolder - Object to track all of the blocks of memory allocated by
+// // alloca.  When the function returns, this object is popped off the execution
+// // stack, which causes the dtor to be run, which frees all the alloca'd memory.
+// //
+// class AllocaHolder {
+//   std::vector<void *> Allocations;
+// public:
+//   AllocaHolder() {}
+//   // Make this type move-only.
+//   AllocaHolder(AllocaHolder &&) = default;
+//   AllocaHolder &operator=(AllocaHolder &&RHS) = default;
+//   ~AllocaHolder() {
+//     for (void *Allocation : Allocations)
+//       free(Allocation);
+//   }
+//   void add(void *Mem) { Allocations.push_back(Mem); }
+// };
+
+// MemoryHolder - Object to track all the blocks of allocated memory.
+class MemoryHolder {
+  std::map<intptr_t, intptr_t, std::greater<intptr_t>> m_mem_map;
+public:
+  MemoryHolder() {}
+
+  // Make this type move-only.
+  MemoryHolder(MemoryHolder &&) = default;
+  MemoryHolder &operator=(MemoryHolder &&RHS) = default;
+  
+  ~MemoryHolder() {
+    for (auto &kv: m_mem_map) {
+      free((void*) kv.first);
+    }
+  }
+
+  bool isAllocatedMemory(void *mem) const;
+  
+  void add(void *mem, unsigned size);
+  
+  // TODOX: remove method that free memory.
+};
+
+// XXX: we create this new type to consider the case where the generic
+// value is "unknown".
+typedef llvm::Optional<llvm::GenericValue> AbsGenericValue;
 
 // ExecutionContext struct - This struct represents one stack frame currently
 // executing.
@@ -64,12 +97,15 @@ struct ExecutionContext {
   llvm::Function             *CurFunction;// The currently executing function
   llvm::BasicBlock           *CurBB;      // The currently executing BB
   llvm::BasicBlock::iterator  CurInst;    // The next instruction to execute
-  llvm::CallSite             Caller;     // Holds the call that called subframes.
-                                   // NULL if main func or debugger invoked fn
-  std::map<llvm::Value *, llvm::GenericValue> Values; // LLVM values used in this invocation
-  std::vector<llvm::GenericValue>  VarArgs; // Values passed through an ellipsis
-  AllocaHolder Allocas;            // Track memory allocated by alloca
-
+  llvm::CallSite              Caller;     // Holds the call that called subframes.
+                                          // NULL if main func or debugger invoked fn
+  // LLVM values used in this invocation
+  std::map<llvm::Value *, AbsGenericValue> Values;
+  // Values passed through an ellipsis
+  std::vector<AbsGenericValue>  VarArgs;
+  // Track memory allocated by alloca
+  MemoryHolder Allocas;
+  
   ExecutionContext() : CurFunction(nullptr), CurBB(nullptr), CurInst(nullptr) {}
 };
 
@@ -87,8 +123,23 @@ class Interpreter : public llvm::ExecutionEngine, public llvm::InstVisitor<Inter
   // registered with the atexit() library function.
   std::vector<llvm::Function*> AtExitHandlers;
 
+  // XXX: track memory allocated by malloc
+  MemoryHolder MemMallocs;
+  // XXX: track memory of main parameters Technically, they are part
+  //      of the top-level stack frame. For convenience, we put them
+  //      separate.
+  MemoryHolder MemMainParams;
+  // XXX: track global variable initializers
+  MemoryHolder MemGlobals;
+  
+  // XXX: the execution cannot continue because some branch depends on
+  // some unknown value.
+  bool StopExecution;
+
 public:
+  
   explicit Interpreter(std::unique_ptr<llvm::Module> M);
+  
   ~Interpreter() override;
 
   /// runAtExitHandlers - Run any functions registered by the program's calls to
@@ -103,7 +154,7 @@ public:
   /// Create an interpreter ExecutionEngine.
   ///
   static llvm::ExecutionEngine *create(std::unique_ptr<llvm::Module> M,
-                                 std::string *ErrorStr = nullptr);
+				       std::string *ErrorStr = nullptr);
 
   /// run - Start execution with the specified function and arguments.
   ///
@@ -118,8 +169,8 @@ public:
 
   // Methods used to execute code:
   // Place a call on the stack
-  void callFunction(llvm::Function *F, llvm::ArrayRef<llvm::GenericValue> ArgVals);
-  void run();                // Execute instructions until nothing left to do
+  void callFunction(llvm::Function *F, llvm::ArrayRef<AbsGenericValue> ArgVals);
+  void run();  // Execute instructions until nothing left to do
 
   // Opcode Implementations
   void visitReturnInst(llvm::ReturnInst &I);
@@ -130,6 +181,8 @@ public:
   void visitBinaryOperator(llvm::BinaryOperator &I);
   void visitICmpInst(llvm::ICmpInst &I);
   void visitFCmpInst(llvm::FCmpInst &I);
+
+  void visitMallocInst(llvm::CallSite &CS);
   void visitAllocaInst(llvm::AllocaInst &I);
   void visitLoadInst(llvm::LoadInst &I);
   void visitStoreInst(llvm::StoreInst &I);
@@ -150,7 +203,6 @@ public:
   void visitIntToPtrInst(llvm::IntToPtrInst &I);
   void visitBitCastInst(llvm::BitCastInst &I);
   void visitSelectInst(llvm::SelectInst &I);
-
 
   void visitCallSite(llvm::CallSite CS);
   void visitCallInst(llvm::CallInst &I) { visitCallSite(llvm::CallSite(&I)); }
@@ -174,8 +226,8 @@ public:
     llvm_unreachable("Instruction not interpretable yet!");
   }
 
-  llvm::GenericValue callExternalFunction(llvm::Function *F,
-					  llvm::ArrayRef<llvm::GenericValue> ArgVals);
+  AbsGenericValue callExternalFunction(llvm::Function *F,
+				       llvm::ArrayRef<AbsGenericValue> ArgVals);
   void exitCalled(llvm::GenericValue GV);
 
   void addAtExitHandler(llvm::Function *F) {
@@ -183,15 +235,25 @@ public:
   }
 
   llvm::GenericValue *getFirstVarArg () {
-    return &(ECStack.back ().VarArgs[0]);
+    AbsGenericValue &AVA = ECStack.back().VarArgs[0];
+    if (AVA.hasValue()) {
+      return &(AVA.getValue());
+    } else {
+      // XXX: not sure if this will break things
+      return nullptr;
+    }
   }
 
-private:  // Helper functions
-  llvm::GenericValue executeGEPOperation(llvm::Value *Ptr,
-					 llvm::gep_type_iterator I,
-					 llvm::gep_type_iterator E,
-					 ExecutionContext &SF);
+  bool isAllocatedMemory(void *Addr) const;
+  
+  void initializeMainParams(void *Addr, unsigned Size);
 
+  void initializeGlobalVariable(llvm::GlobalVariable &GV);
+
+  void initMemory(const llvm::Constant *Init, void *Addr);
+  
+private:  // Helper functions
+  
   // SwitchToNewBasicBlock - Start execution in a new basic block and run any
   // PHI nodes in the top of the block.  This is used for intraprocedural
   // control flow.
@@ -202,36 +264,61 @@ private:  // Helper functions
 
   void initializeExecutionEngine() { }
   void initializeExternalFunctions();
-  llvm::GenericValue getConstantExprValue(llvm::ConstantExpr *CE, ExecutionContext &SF);
-  llvm::GenericValue getOperandValue(llvm::Value *V, ExecutionContext &SF);
-  llvm::GenericValue executeTruncInst(llvm::Value *SrcVal, llvm::Type *DstTy,
+  
+  AbsGenericValue getConstantExprValue(llvm::ConstantExpr *CE, ExecutionContext &SF);
+  AbsGenericValue getOperandValue(llvm::Value *V, ExecutionContext &SF);
+
+  AbsGenericValue executeGEPOperation(llvm::Value *Ptr,
+				      llvm::gep_type_iterator I,
+				      llvm::gep_type_iterator E,
 				      ExecutionContext &SF);
-  llvm::GenericValue executeSExtInst(llvm::Value *SrcVal, llvm::Type *DstTy,
-				     ExecutionContext &SF);
-  llvm::GenericValue executeZExtInst(llvm::Value *SrcVal, llvm::Type *DstTy,
-				     ExecutionContext &SF);
-  llvm::GenericValue executeFPTruncInst(llvm::Value *SrcVal, llvm::Type *DstTy,
-					ExecutionContext &SF);
-  llvm::GenericValue executeFPExtInst(llvm::Value *SrcVal, llvm::Type *DstTy,
-				      ExecutionContext &SF);
-  llvm::GenericValue executeFPToUIInst(llvm::Value *SrcVal, llvm::Type *DstTy,
-				       ExecutionContext &SF);
-  llvm::GenericValue executeFPToSIInst(llvm::Value *SrcVal, llvm::Type *DstTy,
-				       ExecutionContext &SF);
-  llvm::GenericValue executeUIToFPInst(llvm::Value *SrcVal, llvm::Type *DstTy,
-				       ExecutionContext &SF);
-  llvm::GenericValue executeSIToFPInst(llvm::Value *SrcVal, llvm::Type *DstTy,
-				       ExecutionContext &SF);
-  llvm::GenericValue executePtrToIntInst(llvm::Value *SrcVal, llvm::Type *DstTy,
-					 ExecutionContext &SF);
-  llvm::GenericValue executeIntToPtrInst(llvm::Value *SrcVal, llvm::Type *DstTy,
-					 ExecutionContext &SF);
-  llvm::GenericValue executeBitCastInst(llvm::Value *SrcVal, llvm::Type *DstTy,
-					ExecutionContext &SF);
-  llvm::GenericValue executeCastOperation(llvm::Instruction::CastOps opcode,
-					  llvm::Value *SrcVal, 
-					  llvm::Type *Ty, ExecutionContext &SF);
-  void popStackAndReturnValueToCaller(llvm::Type *RetTy, llvm::GenericValue Result);
+  
+  llvm::GenericValue executeSelectInst(llvm::GenericValue Src1, llvm::GenericValue Src2,
+				       llvm::GenericValue Src3, llvm::Type *Ty);
+  llvm::GenericValue executeCmpInst(unsigned predicate, llvm::GenericValue Src1, 
+				    llvm::GenericValue Src2, llvm::Type *Ty);
+  llvm::GenericValue executeTruncInst(llvm::GenericValue Src, llvm::Type *SrcTy,
+				      llvm::Type *DstTy, ExecutionContext &SF);
+  llvm::GenericValue executeSExtInst(llvm::GenericValue Src, llvm::Type *SrcTy,
+				     llvm::Type *DstTy, ExecutionContext &SF);
+  llvm::GenericValue executeZExtInst(llvm::GenericValue Src, llvm::Type *SrcTy,
+				     llvm::Type *DstTy, ExecutionContext &SF);
+  llvm::GenericValue executeFPTruncInst(llvm::GenericValue Src, llvm::Type *SrcTy,
+					llvm::Type *DstTy, ExecutionContext &SF);
+  llvm::GenericValue executeFPExtInst(llvm::GenericValue Src, llvm::Type *SrcTy,
+				      llvm::Type *DstTy, ExecutionContext &SF);
+  llvm::GenericValue executeFPToUIInst(llvm::GenericValue Src, llvm::Type *SrcTy,
+				       llvm::Type *DstTy, ExecutionContext &SF);
+  llvm::GenericValue executeFPToSIInst(llvm::GenericValue Src, llvm::Type *SrcTy,
+				       llvm::Type *DstTy, ExecutionContext &SF);
+  llvm::GenericValue executeUIToFPInst(llvm::GenericValue Src, llvm::Type *SrcTy,
+				       llvm::Type *DstTy, ExecutionContext &SF);
+  llvm::GenericValue executeSIToFPInst(llvm::GenericValue Src, llvm::Type *SrcTy,
+				       llvm::Type *DstTy, ExecutionContext &SF);
+  llvm::GenericValue executePtrToIntInst(llvm::GenericValue Src, llvm::Type *SrcTy,
+					 llvm::Type *DstTy, ExecutionContext &SF);
+  llvm::GenericValue executeIntToPtrInst(llvm::GenericValue Src, llvm::Type *SrcTy,
+					 llvm::Type *DstTy, ExecutionContext &SF);
+  llvm::GenericValue executeBitCastInst(llvm::GenericValue Src, llvm::Type *SrcTy,
+					llvm::Type *DstTy, ExecutionContext &SF);
+  
+  void executeFAddInst(llvm::GenericValue &Dest, llvm::GenericValue Src1,
+		       llvm::GenericValue Src2, llvm::Type *Ty);
+  void executeFSubInst(llvm::GenericValue &Dest, llvm::GenericValue Src1,
+		       llvm::GenericValue Src2, llvm::Type *Ty);
+  void executeFMulInst(llvm::GenericValue &Dest, llvm::GenericValue Src1,
+		       llvm::GenericValue Src2, llvm::Type *Ty);
+  void executeFDivInst(llvm::GenericValue &Dest, llvm::GenericValue Src1, 
+		       llvm::GenericValue Src2, llvm::Type *Ty);
+  void executeFRemInst(llvm::GenericValue &Dest, llvm::GenericValue Src1, 
+		       llvm::GenericValue Src2, llvm::Type *Ty);
+  
+  void popStackAndReturnValueToCaller(llvm::Type *RetTy, AbsGenericValue Result);
+
+  // void readIntFromMemory(llvm::APInt &IntVal, uint8_t *Src, unsigned LoadBytes);
+  // llvm::GenericValue readFromMemory(llvm::GenericValue *Ptr, llvm::Type *Ty);  
+  // void writeIntToMemory(const llvm::APInt &IntVal, uint8_t *Dst, unsigned StoreBytes);
+  // void writeToMemory(const llvm::GenericValue &Val, llvm::GenericValue *Ptr, llvm::Type *Ty);
 
 };
 
