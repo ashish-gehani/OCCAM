@@ -30,6 +30,7 @@ template<typename T> class generic_gep_type_iterator;
 class ConstantExpr;
 typedef generic_gep_type_iterator<User::const_op_iterator> gep_type_iterator;
 class ExecutionEngine;
+class LoopInfo;
 } // end namespace llvm
 
 
@@ -90,6 +91,8 @@ public:
 // value is "unknown".
 typedef llvm::Optional<llvm::GenericValue> AbsGenericValue;
 
+void printAbsGenericValue(llvm::Type *Ty, AbsGenericValue AGV);
+
 // ExecutionContext struct - This struct represents one stack frame currently
 // executing.
 //
@@ -107,6 +110,30 @@ struct ExecutionContext {
   MemoryHolder Allocas;
   
   ExecutionContext() : CurFunction(nullptr), CurBB(nullptr), CurInst(nullptr) {}
+};
+
+// If RawVal is a pointer and the element type is a non-pointer basic
+// type then DerefValue is *(RawVal.PointerVal), otherwise None.
+class RawAndDerefValue {
+  llvm::GenericValue RawVal;
+  AbsGenericValue DerefValue;
+
+public:
+  RawAndDerefValue(llvm::GenericValue _RawVal, AbsGenericValue _DerefValue)
+    : RawVal(_RawVal), DerefValue(_DerefValue) {}
+
+  llvm::GenericValue getRawValue() const {
+    return RawVal;
+  }
+  
+  bool hasDerefValue() const {
+    return DerefValue.hasValue();
+  }
+
+  llvm::GenericValue getDerefValue() const {
+    assert(hasDerefValue());
+    return DerefValue.getValue();
+  }
 };
 
 // Interpreter - This class represents the entirety of the interpreter.
@@ -251,6 +278,13 @@ public:
   void initializeGlobalVariable(llvm::GlobalVariable &GV);
 
   void initMemory(const llvm::Constant *Init, void *Addr);
+
+
+  llvm::Instruction* getLastExecutedInst() const ;
+  
+  llvm::BasicBlock* inspectStackAndGlobalState(
+	       llvm::DenseMap<llvm::Value*, RawAndDerefValue> &GlobalVals,
+	       llvm::DenseMap<llvm::Value*, RawAndDerefValue> &StackVals);
   
 private:  // Helper functions
   
@@ -314,12 +348,6 @@ private:  // Helper functions
 		       llvm::GenericValue Src2, llvm::Type *Ty);
   
   void popStackAndReturnValueToCaller(llvm::Type *RetTy, AbsGenericValue Result);
-
-  // void readIntFromMemory(llvm::APInt &IntVal, uint8_t *Src, unsigned LoadBytes);
-  // llvm::GenericValue readFromMemory(llvm::GenericValue *Ptr, llvm::Type *Ty);  
-  // void writeIntToMemory(const llvm::APInt &IntVal, uint8_t *Dst, unsigned StoreBytes);
-  // void writeToMemory(const llvm::GenericValue &Val, llvm::GenericValue *Ptr, llvm::Type *Ty);
-
 };
 
 } // End llvm previrt

@@ -15,6 +15,7 @@
 
 #include "llvm/ADT/APInt.h"
 #include "llvm/ADT/Statistic.h"
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/CodeGen/IntrinsicLowering.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
@@ -28,6 +29,10 @@
 #include <algorithm>
 #include <cmath>
 
+//#define INTERACTIVE
+#ifdef INTERACTIVE
+#include <stdio.h>
+#endif 
 using namespace llvm;
 
 namespace previrt {
@@ -161,7 +166,7 @@ bool Interpreter::isAllocatedMemory(void *Addr) const {
 //                     Various Helper Functions
 //===----------------------------------------------------------------------===//
 
-static void printAbsGenericValue(Type *Ty, AbsGenericValue AGV) {
+void printAbsGenericValue(Type *Ty, AbsGenericValue AGV) {
   if (!AGV.hasValue()) {
     LOG << "Unknown";
     return;
@@ -1353,9 +1358,17 @@ void Interpreter::visitBranchInst(BranchInst &I) {
   if (!I.isUnconditional()) {
     AbsGenericValue ACondVal = getOperandValue(I.getCondition(), SF);
     if (!ACondVal.hasValue()) {
+#ifdef INTERACTIVE
+      errs() << "#### Branch condition is unknown. Type 0 or 1: ";
+      int c = getchar();
+      GenericValue CondValFromUser;
+      CondValFromUser.IntVal = c;
+      ACondVal = AbsGenericValue(CondValFromUser);
+#else      
       /// End of our execution: we cannot keep going
       StopExecution = true;
       return;
+#endif       
     }
 
     // LOG << "\tCond=";
@@ -1572,94 +1585,6 @@ void Interpreter::visitGetElementPtrInst(GetElementPtrInst &I) {
   
   SetValue(&I, Res, SF);
 }
-
-// /// Loads the integer stored in the LoadBytes bytes starting from Src
-// /// into IntVal, which is assumed to be wide enough and to hold zero.
-// void Interpreter::readIntFromMemory(APInt &IntVal, uint8_t *Src, unsigned LoadBytes) {
-//   assert((IntVal.getBitWidth()+7)/8 >= LoadBytes && "Integer too small!");
-//   uint8_t *Dst = reinterpret_cast<uint8_t *>(
-//                    const_cast<uint64_t *>(IntVal.getRawData()));
-  
-//   if (sys::IsLittleEndianHost)
-//     // Little-endian host - the destination must be ordered from LSB to MSB.
-//     // The source is ordered from LSB to MSB: Do a straight copy.
-//     memcpy(Dst, Src, LoadBytes);
-//   else {
-//     // Big-endian - the destination is an array of 64 bit words ordered from
-//     // LSW to MSW.  Each word must be ordered from MSB to LSB.  The source is
-//     // ordered from MSB to LSB: Reverse the word order, but not the bytes in
-//     // a word.
-//     while (LoadBytes > sizeof(uint64_t)) {
-//       LoadBytes -= sizeof(uint64_t);
-//       // May not be aligned so use memcpy.
-//       memcpy(Dst, Src + LoadBytes, sizeof(uint64_t));
-//       Dst += sizeof(uint64_t);
-//     }
-
-//     memcpy(Dst + sizeof(uint64_t) - LoadBytes, Src, LoadBytes);
-//   }
-// }
-
-// GenericValue Interpreter::readFromMemory(GenericValue *Ptr, Type *Ty) {
-//   GenericValue Result;
-//   const unsigned LoadBytes = getDataLayout().getTypeStoreSize(Ty);
-
-//   switch (Ty->getTypeID()) {
-//   case Type::IntegerTyID:
-//     // An APInt with all words initially zero.
-//     Result.IntVal = APInt(cast<IntegerType>(Ty)->getBitWidth(), 0);
-//     readIntFromMemory(Result.IntVal, (uint8_t*)Ptr, LoadBytes);
-//     break;
-//   case Type::FloatTyID:
-//     Result.FloatVal = *((float*)Ptr);
-//     break;
-//   case Type::DoubleTyID:
-//     Result.DoubleVal = *((double*)Ptr);
-//     break;
-//   case Type::PointerTyID:
-//     Result.PointerVal = *((PointerTy*)Ptr);
-//     break;
-//   case Type::X86_FP80TyID: {
-//     // This is endian dependent, but it will only work on x86 anyway.
-//     // FIXME: Will not trap if loading a signaling NaN.
-//     uint64_t y[2];
-//     memcpy(y, Ptr, 10);
-//     Result.IntVal = APInt(80, y);
-//     break;
-//   }
-//   case Type::VectorTyID: {
-//     auto *VT = cast<VectorType>(Ty);
-//     Type *ElemT = VT->getElementType();
-//     const unsigned numElems = VT->getNumElements();
-//     if (ElemT->isFloatTy()) {
-//       Result.AggregateVal.resize(numElems);
-//       for (unsigned i = 0; i < numElems; ++i)
-//         Result.AggregateVal[i].FloatVal = *((float*)Ptr+i);
-//     }
-//     if (ElemT->isDoubleTy()) {
-//       Result.AggregateVal.resize(numElems);
-//       for (unsigned i = 0; i < numElems; ++i)
-//         Result.AggregateVal[i].DoubleVal = *((double*)Ptr+i);
-//     }
-//     if (ElemT->isIntegerTy()) {
-//       GenericValue intZero;
-//       const unsigned elemBitWidth = cast<IntegerType>(ElemT)->getBitWidth();
-//       intZero.IntVal = APInt(elemBitWidth, 0);
-//       Result.AggregateVal.resize(numElems, intZero);
-//       for (unsigned i = 0; i < numElems; ++i)
-//         readIntFromMemory(Result.AggregateVal[i].IntVal,
-// 			  (uint8_t*)Ptr+((elemBitWidth+7)/8)*i, (elemBitWidth+7)/8);
-//     }
-//   break;
-//   }
-//   default:
-//     SmallString<256> Msg;
-//     raw_svector_ostream OS(Msg);
-//     OS << "Cannot load value of type " << *Ty << "!";
-//     report_fatal_error(OS.str());
-//   }
-//   return Result;
-// }
 
 void Interpreter::visitLoadInst(LoadInst &I) {
   ExecutionContext &SF = ECStack.back();
@@ -2899,7 +2824,6 @@ void Interpreter::callFunction(Function *F, ArrayRef<AbsGenericValue> ArgVals) {
   StackFrame.VarArgs.assign(ArgVals.begin()+i, ArgVals.end());
 }
 
-
 void Interpreter::run() {
   unsigned NumDynamicInsts = 0;
   while (!ECStack.empty()) {
@@ -2913,11 +2837,123 @@ void Interpreter::run() {
     LOG << "About to interpret: " << I << "\n";
     visit(I);   // Dispatch to one of the visit* methods...
     if (StopExecution) {
-      LOG << "Stopped execution after " << NumDynamicInsts << " instructions\n";
+      --SF.CurInst; // we want to point to the last executed instruction
+      LOG << "Stopped execution after " << NumDynamicInsts << " instructions\n";      
       break;
     }
   }
   LOG << "Finished execution after " << NumDynamicInsts << " instructions\n";
+}
+
+llvm::Instruction* Interpreter::getLastExecutedInst() const {
+  if (!ECStack.empty()) {
+    const ExecutionContext &SF = ECStack.back();
+    return &*SF.CurInst;
+  } else {
+    return nullptr;
+  }
+}
+
+// From lib/ExecutionEngine/ExecutionEngine.cpp
+static void LoadIntFromMemory(APInt &IntVal, uint8_t *Src, unsigned LoadBytes) {
+  assert((IntVal.getBitWidth()+7)/8 >= LoadBytes && "Integer too small!");
+  uint8_t *Dst = reinterpret_cast<uint8_t *>(
+                   const_cast<uint64_t *>(IntVal.getRawData()));
+
+  if (sys::IsLittleEndianHost)
+    // Little-endian host - the destination must be ordered from LSB to MSB.
+    // The source is ordered from LSB to MSB: Do a straight copy.
+    memcpy(Dst, Src, LoadBytes);
+  else {
+    // Big-endian - the destination is an array of 64 bit words ordered from
+    // LSW to MSW.  Each word must be ordered from MSB to LSB.  The source is
+    // ordered from MSB to LSB: Reverse the word order, but not the bytes in
+    // a word.
+    while (LoadBytes > sizeof(uint64_t)) {
+      LoadBytes -= sizeof(uint64_t);
+      // May not be aligned so use memcpy.
+      memcpy(Dst, Src + LoadBytes, sizeof(uint64_t));
+      Dst += sizeof(uint64_t);
+    }
+
+    memcpy(Dst + sizeof(uint64_t) - LoadBytes, Src, LoadBytes);
+  }
+}
+
+static AbsGenericValue dereferencePointerIfBasicElementType(AbsGenericValue Val,
+							    Type* Ty,
+							    const DataLayout &dl) {
+  if (!Val.hasValue() || !Ty->isPointerTy()) {
+    return llvm::None;
+  }
+  
+  if (Type* ElementType = Ty->getPointerElementType()) {
+    if (ElementType->getTypeID() == Type::IntegerTyID ||
+	ElementType->getTypeID() == Type::FloatTyID ||
+	ElementType->getTypeID() == Type::DoubleTyID) {
+      if (void * addr = Val.getValue().PointerVal) {
+	GenericValue Res;
+	switch(ElementType->getTypeID()) {
+	case Type::IntegerTyID: {
+	  APInt val(cast<IntegerType>(ElementType)->getBitWidth(), 0);		
+	  LoadIntFromMemory(val, (uint8_t*)addr, dl.getTypeStoreSize(ElementType));
+	  Res.IntVal = val;
+	  break;
+	}
+	case Type::FloatTyID:
+	  Res.FloatVal = *((float*) addr);
+	  break;
+	case Type::DoubleTyID:
+	  Res.DoubleVal = *((double*) addr);
+	  break;
+	default:
+	  ERR << "Unexpected basic type in dereferencePointer\n";
+	  llvm_unreachable(nullptr);	    
+	}
+	return Res;
+      }
+    }
+  }
+  return llvm::None;
+}
+
+
+// Return the last basic block visited by the execution. It can be
+// null if the execution terminated. 
+BasicBlock* Interpreter::inspectStackAndGlobalState(
+			  DenseMap<Value*, RawAndDerefValue> &globalVals,
+			  DenseMap<Value*, RawAndDerefValue> &stackVals) {
+
+  for (unsigned m = 0, e = Modules.size(); m != e; ++m) {
+    Module &M = *Modules[m];
+    for (auto &GV : M.globals()) {
+      GenericValue RawVal = PTOGV(getPointerToGlobal(&GV));
+      auto DerefVal =
+	dereferencePointerIfBasicElementType(RawVal,GV.getType(), getDataLayout());
+      RawAndDerefValue RDV(RawVal, DerefVal);
+      globalVals.insert(std::make_pair(&GV, RDV));
+    }
+  }
+  
+  for (unsigned i=0, sz=ECStack.size();i<sz;++i) {
+    ExecutionContext &SF = ECStack[i];
+    for (auto &kv: SF.Values) {
+      Value *V = kv.first;
+      AbsGenericValue RawVal = kv.second;
+      if (!RawVal.hasValue()) continue;
+      auto DerefVal = dereferencePointerIfBasicElementType
+	(RawVal, V->getType(), getDataLayout());
+      RawAndDerefValue RDV(RawVal.getValue(), DerefVal);
+      stackVals.insert(std::make_pair(V, RDV));
+    }
+  }
+
+  if (!ECStack.empty()) {
+    ExecutionContext &SF = ECStack.back();
+    return SF.CurBB;
+  } else {
+    return nullptr;
+  }       
 }
 
 } // end namespace previrt 

@@ -1,5 +1,5 @@
 #include "llvm/Pass.h"
-#include "llvm/Analysis/TargetLibraryInfo.h"
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/GenericValue.h"
 #include "llvm/IR/Module.h"
@@ -87,7 +87,7 @@ ConfigPrime::ConfigPrime(): ModulePass(ID) {}
 ConfigPrime::~ConfigPrime() {}
 
 bool ConfigPrime::runOnModule(Module& M) {
-
+  
   std::string ErrorMsg;
   
   std::unique_ptr<Module> M_ptr(&M);
@@ -103,7 +103,7 @@ bool ConfigPrime::runOnModule(Module& M) {
       errs() << "Unknown error creating EE!\n";
     return false;
   }
-
+  
   if (Function* main=EE->FindFunctionNamed("main")) {
 
     // Run static constructors.    
@@ -127,6 +127,62 @@ bool ConfigPrime::runOnModule(Module& M) {
     GenericValue Result = EE->runFunction(main,ArrayRef<GenericValue>(mainArgVGV));
     errs() << "ConfigPrime: execution of main returned with status " << Result.IntVal << "\n";
 
+    /// -- Extract values from the execution
+    Interpreter *Interp = static_cast<Interpreter*>(&*EE);
+    DenseMap<Value*, RawAndDerefValue> GlobalValues, StackValues;
+    BasicBlock* LastExecBlock =
+      Interp->inspectStackAndGlobalState(GlobalValues, StackValues);
+
+   // JN: If the last executed block BB is not inside any loop then
+   // the continuation should be BB.  Otherwise, we identify the
+   // outermost loop where BB is defined and return the exit block or
+   // blocks of that loop.
+   // 
+   // My intuition is that the execution will be typically stopped in
+   // the middle of the get-opt loop that reads input parameters. We
+   // pretend that the rest of the loop won't modify either globalVals
+   // or stackVals.
+    if (LastExecBlock) {
+      errs() << "Last executed block: " << LastExecBlock->getName() << "\n";
+      Function &F = *(LastExecBlock->getParent());
+      LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
+      if (Loop *OuterMostL = LI.getLoopFor(LastExecBlock)) {
+	while (OuterMostL->getLoopDepth() > 1) {
+	  OuterMostL = OuterMostL->getParentLoop();
+	}
+	OuterMostL->dump();
+	SmallVector<BasicBlock*, 4> Exits;
+	OuterMostL->getExitingBlocks(Exits);
+	errs() << "Candidates for continuation block:\n";
+	for (BasicBlock* Exit: Exits) {
+	  errs() << "\t" << Exit->getName() << "\n";
+	}
+      } else {
+	errs() << "Candidate for continuation block: "
+	       << LastExecBlock->getName() << "\n";	
+      }
+    }
+
+    auto printValueMap = [](DenseMap<Value*,RawAndDerefValue> &m, raw_ostream &o) {
+      for (auto &kv: m) {
+	if (kv.second.hasDerefValue()) {
+	  o << "*(" << kv.first->getName() << ")=";
+	  printAbsGenericValue(kv.first->getType()->getPointerElementType(),
+			       kv.second.getDerefValue());
+	} else {
+	  o << kv.first->getName() << "=";	  
+	  printAbsGenericValue(kv.first->getType(), kv.second.getRawValue());
+	}
+	o << "\n";
+      }
+    };
+    
+    errs() << "Global values:\n";
+    printValueMap(GlobalValues, errs());
+    errs() << "Local values:\n";
+    printValueMap(StackValues, errs());
+
+    
     // Run static destructors.    
     EE->runStaticConstructorsDestructors(true);
 
@@ -146,7 +202,6 @@ bool ConfigPrime::runOnModule(Module& M) {
       abort();
     }
 
-    // TODOX: Cast EE to Interpreter and use its internal state
   }
 
   return false;
@@ -154,10 +209,10 @@ bool ConfigPrime::runOnModule(Module& M) {
 
 void ConfigPrime::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.setPreservesAll();
+  AU.addRequired<LoopInfoWrapperPass>();
 }
 
-} // end namespace
-
+} // end namespace previrt
 
 char previrt::ConfigPrime::ID = 0;
 
