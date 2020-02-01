@@ -18,8 +18,8 @@ The name of the LLVM analysis pass is `Pconfig-prime`.  This pass
 takes three parameters:
 
 - `--Pconfig-prime-file`: the name of the program.
-- `--Pconfig-prime-input`: a program input. It supports multiple times
-  `--Pconfig-prime-input` per multiple inputs. 
+- `--Pconfig-prime-input-arg`: a program input. It supports multiple times
+  `--Pconfig-prime-input-arg` per multiple inputs. 
 - `--Pconfig-prime-unknown-args`: number of unknown parameters.
 
 For instance, the command:
