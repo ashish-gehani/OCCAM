@@ -5,7 +5,9 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/Dominators.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Transforms/Scalar.h"
 
 #include "interpreter/Interpreter.h"
 #include "ConfigPrime.h"
@@ -20,7 +22,7 @@ InputFile("Pconfig-prime-file",
 static cl::list<std::string>
 InputArgv("Pconfig-prime-input-arg",
 	  cl::Hidden,
-	  cl::desc("Specify one program argument"));
+	  cl::desc("Specify one known program argument"));
 
 static cl::opt<unsigned>
 UnknownArgs("Pconfig-prime-unknown-args",
@@ -30,7 +32,19 @@ UnknownArgs("Pconfig-prime-unknown-args",
 
 namespace previrt {
 
-std::vector<GenericValue> prepareArgumentsForMain(Function *mainFn,
+/** Begin helpers **/
+
+static Loop* getRootLoop(LoopInfo &LI, const BasicBlock *B) {
+  if (Loop *Root = LI.getLoopFor(B)) {
+    while (Root->getLoopDepth() > 1) {
+      Root = Root->getParentLoop();
+    }
+    return Root;
+  }
+  return nullptr;
+}
+
+static std::vector<GenericValue> prepareArgumentsForMain(Function *mainFn,
 						  // argc >= len(argv)
 						  unsigned argc, 
 						  const std::vector<std::string>& argv,
@@ -82,134 +96,289 @@ std::vector<GenericValue> prepareArgumentsForMain(Function *mainFn,
   return GVArgs;
 }
 
-ConfigPrime::ConfigPrime(): ModulePass(ID) {}
+static void extractValuesFromRun(Interpreter &Interp, Pass *CPPass,
+				 DenseMap<Value*, RawAndDerefValue> &GlobalValues,
+				 DenseMap<Value*, RawAndDerefValue> &StackValues,
+				 SmallVector<BasicBlock*, 4> &Continuations) {
+    
+  BasicBlock* LastExecBlock =
+    Interp.inspectStackAndGlobalState(GlobalValues, StackValues);
+
+  #if 0
+  if (LastExecBlock) {
+    // This is typically a bad choice because if LastExecBlock is in
+    // the middle of a loop won't dominate "relevant" uses.
+    Continuations.push_back(LastExecBlock);
+  } else {
+    errs() << "The interpreter finished completely!\n";
+  }
+  #else
+  // If the last executed block BB is not inside any loop then the
+  // continuation should be BB.  Otherwise, we identify the outermost
+  // loop where BB is defined and return the exit block or blocks of
+  // that loop.
+  // 
+  // My intuition is that the execution will be typically stopped in
+  // the middle of the get-opt loop that reads input parameters. We
+  // pretend that the rest of the loop won't modify either globalVals
+  // or stackVals.
+  if (LastExecBlock) {
+    // errs() << "Last executed block: " << LastExecBlock->getName() << "\n";
+    Function &F = *(LastExecBlock->getParent());
+    LoopInfo &LI = CPPass->getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
+    if (Loop *OuterMostL = getRootLoop(LI, LastExecBlock)) {
+      OuterMostL->dump();
+      //// Consider the outermost loop's header as continuation.
+      //Continuations.push_back(OuterMostL->getHeader());
+      //errs() << "Candidate for continuation block: "
+      //       << OuterMostL->getHeader()->getName() << "\n";
+      
+      //// Consider the outermost loop's exits as continuations.
+      OuterMostL->getExitingBlocks(Continuations);
+      
+      errs() << "Candidates for continuation block:\n";
+      for (BasicBlock* Exit: Continuations) {
+      	if (Exit->hasName()) { 
+      	  errs() << "\t" << Exit->getName() << "\n";
+      	} else {
+      	  errs() << "\t" << "Unnamed block\n";
+      	}
+      }
+    } else {
+      // errs() << "Candidate for continuation block: "
+      // 	     << LastExecBlock->getName() << "\n";
+      Continuations.push_back(LastExecBlock);
+    }
+  } else {
+    errs() << "The interpreter finished completely!\n";
+  }
+  #endif 
+}
+
+Constant* convertToLLVMConstant(Type *Ty, GenericValue &Val) {
+  switch(Ty->getTypeID()) {
+  case Type::IntegerTyID:
+    return ConstantInt::get(Ty, Val.IntVal);
+  case Type::FloatTyID:
+    return ConstantFP::get(Ty, Val.FloatVal);
+  case Type::DoubleTyID:
+    return ConstantFP::get(Ty, Val.DoubleVal);    
+  case Type::VectorTyID: {
+    auto *VT = cast<VectorType>(Ty);
+    Type *ElemT = VT->getElementType();
+    const unsigned numElems = VT->getNumElements();
+    std::vector<Constant*> VElems;
+    for (unsigned i = 0; i < numElems; ++i) {
+      if (Constant *C = convertToLLVMConstant(ElemT, Val.AggregateVal[i])) {
+	VElems.push_back(C);
+      } else {
+	return nullptr;
+      }
+    }
+    return ConstantVector::get(VElems);
+  }
+  case Type::PointerTyID: // (void*) Val.PointerVal
+  case Type::X86_FP80TyID:
+  default:
+    return nullptr;
+  } 
+}
+
+// Return true if a block in BBs dominates I.
+// This might be unsound.
+static bool may_dominate(const SmallVector<BasicBlock*, 4>& BBs, Instruction *I, Pass *CPPass) {
+  assert(!BBs.empty());
+  // we know already that all BBs belong to the same parent.
+  
+  Function *F = I->getParent()->getParent();
+  Function *BBs_F = (*(BBs.begin()))->getParent();
+  if (F != BBs_F) return false;
+  
+  auto &DT = CPPass->getAnalysis<DominatorTreeWrapperPass>(*F).getDomTree();
+  auto &LI = CPPass->getAnalysis<LoopInfoWrapperPass>(*F).getLoopInfo();
+  //DT.print(errs());
+  
+  return std::any_of(BBs.begin(), BBs.end(), [&DT, &LI, &I](const BasicBlock *B) {
+      auto RootLoop_B = getRootLoop(LI, B);
+      auto RootLoop_I = getRootLoop(LI, I->getParent());
+      if (RootLoop_B && (RootLoop_B == RootLoop_I)) {
+	// Heuristic to increase soundness if B is a loop header.
+	return false;
+      } else {
+	return DT.dominates(B, I->getParent());
+      }
+    });
+}
+
+/** End helpers **/
+
+ConfigPrime::ConfigPrime(): ModulePass(ID), m_ee(nullptr) {}
 
 ConfigPrime::~ConfigPrime() {}
 
+void ConfigPrime::runInterpreterAsMain(Module &M, APInt &Res) {
+
+  Function* main= m_ee->FindFunctionNamed("main");
+  if (!main) {
+    errs() << "ConfigPrimer error: the interpreter only runs on main\n";
+    return;
+  }
+
+  // Run static constructors.    
+  m_ee->runStaticConstructorsDestructors(false);
+
+  // Run main
+  std::vector<std::string> mainArgV;
+  // Add the module's name to the start of the vector of arguments to main().    
+  mainArgV.push_back(InputFile);
+  unsigned i=1;
+  for(auto a: InputArgv) {
+    errs() << "ConfigPrime: reading argv[" << i++ << "] " << a << "\n";
+    mainArgV.push_back(a);
+  }
+  unsigned argc = mainArgV.size() + UnknownArgs;
+  std::vector<std::string> envp; /* unused */
+  ArgvArray CArgv, CEnv; // they need to be alive while m_ee may use them
+  std::vector<GenericValue> mainArgVGV =
+    prepareArgumentsForMain(main, argc, mainArgV, envp, *m_ee, CArgv, CEnv);
+  
+  GenericValue GVResult = m_ee->runFunction(main,ArrayRef<GenericValue>(mainArgVGV));
+  Res = GVResult.IntVal;
+  errs() << "ConfigPrime: execution of main returned with status " << Res << "\n";
+}
+
+void ConfigPrime::stopInterpreter(Module &M, const APInt &Res) {
+  // Run static destructors.    
+  m_ee->runStaticConstructorsDestructors(true);
+
+  #if 0
+  // If the program didn't call exit explicitly, we should call it now.
+  // This ensures that any atexit handlers get called correctly.
+  auto &Context = M.getContext();
+  Constant *Exit = M.getOrInsertFunction("exit", Type::getVoidTy(Context),
+  					 Type::getInt32Ty(Context));
+  if (Function *ExitF = dyn_cast<Function>(Exit)) {
+    std::vector<GenericValue> Args;
+    GenericValue GVRes;
+    GVRes.IntVal = Res;
+    Args.push_back(GVRes);
+    m_ee->runFunction(ExitF, Args);
+    errs() << "ConfigPrime: exit(" << GVRes.IntVal << ") returned!\n";
+  } else {
+    errs() << "ConfigPrime: exit defined with wrong prototype!\n";
+  }
+  #endif 
+}
+
 bool ConfigPrime::runOnModule(Module& M) {
+  // TODOX: Similar to lli, we can provide other modules, extra
+  // objects or archives. 
   
+  APInt Res; // The exit status of running main
   std::string ErrorMsg;
-  
   std::unique_ptr<Module> M_ptr(&M);
   EngineBuilder builder(std::move(M_ptr));
   builder.setErrorStr(&ErrorMsg);
   builder.setEngineKind(EngineKind::Interpreter); // LLVM Interpreter
-  
+
+  //m_ee = llvm::make_unique<ExecutionEngine>(builder.create());
   std::unique_ptr<ExecutionEngine> EE(builder.create());
-  if (!EE) {
+  m_ee = std::move(EE);
+
+  if (!m_ee) {
     if (!ErrorMsg.empty())
       errs() << "Error creating EE: " << ErrorMsg << "\n";
     else
       errs() << "Unknown error creating EE!\n";
     return false;
   }
+
   
-  if (Function* main=EE->FindFunctionNamed("main")) {
+  runInterpreterAsMain(M, Res);
 
-    // Run static constructors.    
-    EE->runStaticConstructorsDestructors(false);
-
-    // Run main
-    std::vector<std::string> mainArgV;
-    // Add the module's name to the start of the vector of arguments to main().    
-    mainArgV.push_back(InputFile);
-    unsigned i=1;
-    for(auto a: InputArgv) {
-      errs() << "ConfigPrime: reading argv[" << i++ << "] " << a << "\n";
-      mainArgV.push_back(a);
-    }
-    unsigned argc = mainArgV.size() + UnknownArgs;
-    std::vector<std::string> envp; /* unused */
-    ArgvArray CArgv, CEnv; // they need to be alive while EE may use them
-    std::vector<GenericValue> mainArgVGV =
-      prepareArgumentsForMain(main, argc, mainArgV, envp, *EE, CArgv, CEnv);
-
-    GenericValue Result = EE->runFunction(main,ArrayRef<GenericValue>(mainArgVGV));
-    errs() << "ConfigPrime: execution of main returned with status " << Result.IntVal << "\n";
-
-    /// -- Extract values from the execution
-    Interpreter *Interp = static_cast<Interpreter*>(&*EE);
-    DenseMap<Value*, RawAndDerefValue> GlobalValues, StackValues;
-    BasicBlock* LastExecBlock =
-      Interp->inspectStackAndGlobalState(GlobalValues, StackValues);
-
-   // JN: If the last executed block BB is not inside any loop then
-   // the continuation should be BB.  Otherwise, we identify the
-   // outermost loop where BB is defined and return the exit block or
-   // blocks of that loop.
-   // 
-   // My intuition is that the execution will be typically stopped in
-   // the middle of the get-opt loop that reads input parameters. We
-   // pretend that the rest of the loop won't modify either globalVals
-   // or stackVals.
-    if (LastExecBlock) {
-      errs() << "Last executed block: " << LastExecBlock->getName() << "\n";
-      Function &F = *(LastExecBlock->getParent());
-      LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
-      if (Loop *OuterMostL = LI.getLoopFor(LastExecBlock)) {
-	while (OuterMostL->getLoopDepth() > 1) {
-	  OuterMostL = OuterMostL->getParentLoop();
-	}
-	OuterMostL->dump();
-	SmallVector<BasicBlock*, 4> Exits;
-	OuterMostL->getExitingBlocks(Exits);
-	errs() << "Candidates for continuation block:\n";
-	for (BasicBlock* Exit: Exits) {
-	  errs() << "\t" << Exit->getName() << "\n";
-	}
+  /// -- Extract values from the execution
+  Interpreter *Interp = static_cast<Interpreter*>(&*m_ee);
+  DenseMap<Value*, RawAndDerefValue> GlobalValues, StackValues;
+  SmallVector<BasicBlock*, 4> Continuations;
+  extractValuesFromRun(*Interp, this,
+		       GlobalValues, StackValues, Continuations);
+				       
+  #if 0
+  auto printValueMap = [](DenseMap<Value*,RawAndDerefValue> &m, raw_ostream &o) {
+    for (auto &kv: m) {
+      if (kv.second.hasDerefValue()) {
+	o << "*(" << kv.first->getName() << ")=";
+	printAbsGenericValue(kv.first->getType()->getPointerElementType(),
+			     kv.second.getDerefValue());
       } else {
-	errs() << "Candidate for continuation block: "
-	       << LastExecBlock->getName() << "\n";	
+	o << kv.first->getName() << "=";	  
+	printAbsGenericValue(kv.first->getType(), kv.second.getRawValue());
+      }
+      o << "\n";
+    }
+  };
+  
+  errs() << "Global values:\n";
+  printValueMap(GlobalValues, errs());
+  errs() << "Local values:\n";
+  printValueMap(StackValues, errs());
+  #endif 
+
+  /// -- Simplify program
+  bool Change = false;
+  if (!Continuations.empty()) {
+
+    // Sanity check
+    BasicBlock *ContBB = *(Continuations.begin());
+    auto it = Continuations.begin();
+    assert(std::all_of(++it, Continuations.end(), [&ContBB](const BasicBlock *B) {
+	return ContBB->getParent() == B->getParent();
+	}));
+		    
+    // TODOX: this is very limited.
+    // 
+    // We only replace loads from global variables with the constant
+    // values from the interpreter's execution. Moreover, we only
+    // perform the replacement if the memory load and the last
+    // executed block belong to the same function.
+    for (auto &kv: GlobalValues) {
+      if (kv.second.hasDerefValue()) {
+  	Type *ElementType = kv.first->getType()->getPointerElementType();
+  	GenericValue ElementVal = kv.second.getDerefValue();
+  	if (Constant *C = convertToLLVMConstant(ElementType, ElementVal)) {
+  	  for (auto &U: kv.first->uses()) {
+  	    if (LoadInst *LI = dyn_cast<LoadInst>(U.getUser())) {
+  	      if (may_dominate(Continuations, LI, this)) {
+  		errs() << "Replaced " << "lhs of " << *LI << " with " << *C << "\n";
+		errs() << *(LI->getParent()) << "\n";
+  		LI->replaceAllUsesWith(C);
+  		Change = true;
+  	      }
+  	    }
+  	  }
+  	}
       }
     }
-
-    auto printValueMap = [](DenseMap<Value*,RawAndDerefValue> &m, raw_ostream &o) {
-      for (auto &kv: m) {
-	if (kv.second.hasDerefValue()) {
-	  o << "*(" << kv.first->getName() << ")=";
-	  printAbsGenericValue(kv.first->getType()->getPointerElementType(),
-			       kv.second.getDerefValue());
-	} else {
-	  o << kv.first->getName() << "=";	  
-	  printAbsGenericValue(kv.first->getType(), kv.second.getRawValue());
-	}
-	o << "\n";
-      }
-    };
-    
-    errs() << "Global values:\n";
-    printValueMap(GlobalValues, errs());
-    errs() << "Local values:\n";
-    printValueMap(StackValues, errs());
-
-    
-    // Run static destructors.    
-    EE->runStaticConstructorsDestructors(true);
-
-    // If the program didn't call exit explicitly, we should call it now.
-    // This ensures that any atexit handlers get called correctly.
-    auto &Context = M.getContext();
-    Constant *Exit = M.getOrInsertFunction("exit", Type::getVoidTy(Context),
-					   Type::getInt32Ty(Context));
-    if (Function *ExitF = dyn_cast<Function>(Exit)) {
-      std::vector<GenericValue> Args;
-      Args.push_back(Result);
-      EE->runFunction(ExitF, Args);
-      errs() << "ERROR: exit(" << Result.IntVal << ") returned!\n";
-      abort();
-    } else {
-      errs() << "ERROR: exit defined with wrong prototype!\n";
-      abort();
-    }
-
+  } else {
+    // TODOX: best case scenario. The interpreter finishes so the
+    // program can be reduced to one single execution.
   }
 
-  return false;
+  if (Continuations.empty()) {
+    // XXX: I think it makes sense to call the destructors and
+    // finalization routines if the execution finished.
+    stopInterpreter(M, Res);
+  }
+  
+  return Change;
 }
 
 void ConfigPrime::getAnalysisUsage(AnalysisUsage &AU) const {
-  AU.setPreservesAll();
+  // TODOX: update on the fly
+  // AU.setPreservesAll();
+  AU.addRequiredID(LoopSimplifyID);
   AU.addRequired<LoopInfoWrapperPass>();
+  AU.addRequired<llvm::DominatorTreeWrapperPass>();  
 }
 
 } // end namespace previrt
@@ -217,6 +386,6 @@ void ConfigPrime::getAnalysisUsage(AnalysisUsage &AU) const {
 char previrt::ConfigPrime::ID = 0;
 
 static RegisterPass<previrt::ConfigPrime>
-X("Pconfig-prime", "Configuration priming ", false, false);
+X("Pconfig-prime", "Configuration priming");
   
 

@@ -274,6 +274,12 @@ static bool ffiInvoke(RawFunc Fn, Function *F, ArrayRef<GenericValue> ArgVals,
 
 previrt::AbsGenericValue previrt::Interpreter::
 callExternalFunction(Function *F, ArrayRef<AbsGenericValue> AArgVals) {
+  
+  // XXX: we don't want to call exit inside OCCAM (i.e. opt).
+  if (F->getName().equals("exit")) {
+    return llvm::None;
+  }
+  
   TheInterpreter = this;
 
   std::vector<GenericValue> ArgVals;

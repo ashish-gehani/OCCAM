@@ -429,6 +429,25 @@ def specialize_program_args(input_file, output_file, args, filename=None, name=N
     if filename is None:
         os.unlink(arg_file)
 
+def config_prime(input_file, output_file, known_args, num_unknown_args):
+    """ 
+    Execute the program until a branch condition is unknown.
+    known_args is a list of strings
+    num_unknown_args is a non-negative number.
+    """
+    ## TODOX: find subset of -O1 that simplify loops for dominance queries
+    args = ['-O1'] # '-loop-simplify', '-simplifycfg'
+    args += ['-Pconfig-prime']
+    index = 0
+    for x in known_args:
+        if index == 0:
+            args.append('-Pconfig-prime-file=\"{0}\"'.format(x))
+        else:
+            args.append('-Pconfig-prime-input-arg=\"{0}\"'.format(x))
+        index += 1
+    args.append('-Pconfig-prime-unknown-args={0}'.format(num_unknown_args))
+    driver.previrt(input_file, output_file, args)
+    
 def deep(libs, ifaces):
     """ compute interfaces across modules.
     """

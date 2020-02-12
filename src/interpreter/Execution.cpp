@@ -45,8 +45,14 @@ llvm::errs() << "ERROR: "
 //                     Memory management helpers
 //===----------------------------------------------------------------------===//
 
+MemoryHolder::~MemoryHolder() {
+  // FIXME: memory leaks
+  // for (void *p: m_owned_memory) {
+  //   free(p);
+  // }
+}
+
 bool MemoryHolder::isAllocatedMemory(void *mem) const {
-  
   intptr_t addr = intptr_t (mem);
   auto it = m_mem_map.lower_bound (addr+1);
   if (it == m_mem_map.end()) return false;
@@ -63,9 +69,15 @@ static void memlog (const char *format, ...) {
 }
 
 void MemoryHolder::add(void *mem, unsigned size) {
-  intptr_t addr = intptr_t(mem);  
-  m_mem_map[addr] = addr + size;
-  memlog("Allocated %d bytes: [%#lx,%#lx]\n", size, addr, addr+size);    
+  if (isAllocatedMemory(mem)) return;
+  intptr_t addr = intptr_t(mem);
+  m_mem_map.insert({addr, addr + size});
+  memlog("Allocated %d bytes: [%#lx,%#lx]\n", size, addr, addr+size);        
+}
+
+void MemoryHolder::addWithOwnershipTransfer(void *mem, unsigned size) {
+  add(mem, size);
+  //m_owned_memory.push_back(intptr_t(mem));  
 }
 
 #if 0
@@ -141,7 +153,7 @@ void Interpreter::initializeGlobalVariable(GlobalVariable &GV) {
   LOG << "Collecting addresses from global initializer for " << GV.getName() << ".\n";
   if (void *GA = getPointerToGlobalIfAvailable(&GV)) {
     // Not sure if this is necessary
-    MemGlobals.add(GA, (size_t)getDataLayout().getTypeAllocSize(GV.getType()));
+    // MemGlobals.add(GA, (size_t)getDataLayout().getTypeAllocSize(GV.getType()));
     // XXX: mark as initialized all the memory of the initializer
     initMemory(GV.getInitializer(), GA);
   } else {
@@ -1485,8 +1497,7 @@ void Interpreter::visitAllocaInst(AllocaInst &I) {
 
   // Allocate enough memory to hold the type...
   void *Memory = malloc(MemToAlloc);
-
-  ECStack.back().Allocas.add(Memory, MemToAlloc);
+  ECStack.back().Allocas.addWithOwnershipTransfer(Memory, MemToAlloc);
   
   LOG << "Allocated stack Type: " << *Ty << " (" << TypeSize << " bytes) x " 
       << NumElements << " (Total: " << MemToAlloc << ") at "
@@ -1512,12 +1523,9 @@ void Interpreter::visitMallocInst(CallSite &CS) {
   
   unsigned MemToAlloc = AMemToAlloc.getValue().IntVal.getZExtValue();
   void *Memory = malloc(MemToAlloc);
-
-  LOG << "Allocated heap memory: " << MemToAlloc
-      << " at " << uintptr_t(Memory) << "\n";
-	 
+  LOG << "Allocated heap memory: " << MemToAlloc << " at " << uintptr_t(Memory) << "\n";
   GenericValue Result = PTOGV(Memory);
-  MemMallocs.add(Memory, MemToAlloc);
+  MemMallocs.addWithOwnershipTransfer(Memory, MemToAlloc);
   SetValue(CS.getInstruction(), Result, SF);  
 }
 

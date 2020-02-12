@@ -67,22 +67,24 @@ public:
 // MemoryHolder - Object to track all the blocks of allocated memory.
 class MemoryHolder {
   std::map<intptr_t, intptr_t, std::greater<intptr_t>> m_mem_map;
+  //std::vector<intptr_t> m_owned_memory;
+  
 public:
   MemoryHolder() {}
 
   // Make this type move-only.
+  MemoryHolder(const MemoryHolder &) = delete;
+  MemoryHolder &operator=(const MemoryHolder &RHS) = delete;  
   MemoryHolder(MemoryHolder &&) = default;
   MemoryHolder &operator=(MemoryHolder &&RHS) = default;
   
-  ~MemoryHolder() {
-    for (auto &kv: m_mem_map) {
-      free((void*) kv.first);
-    }
-  }
+  ~MemoryHolder();
 
   bool isAllocatedMemory(void *mem) const;
   
   void add(void *mem, unsigned size);
+
+  void addWithOwnershipTransfer(void *mem, unsigned size);  
   
   // TODOX: remove method that free memory.
 };

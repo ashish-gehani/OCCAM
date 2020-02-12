@@ -118,6 +118,13 @@ Interpreter::Interpreter(std::unique_ptr<Module> M)
 }
 
 Interpreter::~Interpreter() {
+  // Important hack for Occam: We need to release ownership of the
+  // LLVM modules.  Otherwise, they will be removed and then opt will
+  // crash.
+  for (unsigned i = 0, sz = Modules.size(); i <sz; ++i) {
+    Modules[i].release();
+  }
+  
   delete IL;
 }
 
