@@ -75,8 +75,9 @@ if [[ "${LINK}" != "dynamic"  &&  "${LINK}" != "static" ]]; then
 fi
 
 #check that the required dependencies are built
-declare -a bitcode=("httpd.bc" "libapr-1.shared.bc" "libaprutil-1.shared.bc" "libpcre.shared.bc")
+declare -a bitcode=("httpd.bc" "libapr-1.shared.bc" "libaprutil-1.shared.bc" "libpcre.shared.bc" "libexpat.shared.bc")
 
+echo "Checking all the bitcode files are available ..."
 for bc in "${bitcode[@]}"
 do
     if [ -a  "$bc" ]
@@ -87,6 +88,7 @@ do
         exit 1
     fi
 done
+echo "OK!"
 
 SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC} --devirt=${DEVIRT} --stats $OPT_OPTIONS"
 
@@ -100,18 +102,17 @@ function dynamic_link() {
     cat > httpd.manifest <<EOF
 { "main" : "httpd.bc"
 , "binary"  : "httpd_slashed"
-, "modules"    : ["libapr-1.shared.bc", "libaprutil-1.shared.bc", "libpcre.shared.bc"]
-, "native_libs" : ["-liconv", "-ldl", "-lpthread", "-lexpat"]
+, "modules"    : ["libapr-1.shared.bc", "libaprutil-1.shared.bc", "libpcre.shared.bc","libexpat.shared.bc"]
+, "native_libs" : ["-liconv", "-ldl", "-lpthread"]
 , "args"    : ["-d", "/vagrant/www"]
 , "name"    : "httpd"
 }
 EOF
 
     echo "============================================================"
-    echo "Running httpd with dynamic libraries apr-1, aprutil-1 and pcre"
-    echo "slash options ${SLASH_OPTS}                                 "
-    echo "i.e.:                                                       "
-    echo " slash ${SLASH_OPTS} --work-dir=slash httpd.manifest        "
+    echo "Running slash ${SLASH_OPTS} --work-dir=slash httpd.manifest "
+    echo "                                                            "    
+    cat httpd.manifest
     echo "                                                            "
     echo "============================================================"
     slash ${SLASH_OPTS} --work-dir=slash httpd.manifest
@@ -127,36 +128,39 @@ EOF
 
 # OCCAM with program and libraries statically linked
 function static_link() {
-    llvm-link httpd.bc libapr-1.shared.bc libaprutil-1.shared.bc libpcre.shared.bc -o linked_httpd.bc
-    #FIXME: generate an executable to run ROPgadge on it
-    #libexpat.shared.bc
+    
+    llvm-link httpd.bc libapr-1.shared.bc libaprutil-1.shared.bc \
+	      libpcre.shared.bc libexpat.shared.bc -o combined_httpd.bc
 
     # Build the manifest file
-    cat > linked_httpd.manifest <<EOF
-{ "main" : "linked_httpd.bc"
-, "binary"  : "httpd_static_linked_slashed"
+    cat > combined_httpd.manifest <<EOF
+{ "main" : "combined_httpd.bc"
+, "binary"  : "httpd_static_combined_slashed"
 , "modules"    : []
-, "native_libs" : ["-liconv", "-ldl", "-lpthread", "-lexpat"]
+, "native_libs" : ["-liconv", "-ldl", "-lpthread"]
 , "args"    : ["-d", "/vagrant/www"]
-, "name"    : "httpd_linked"
+, "name"    : "httpd_combined"
 }
 EOF
 
-    export OCCAM_LOGFILE=${PWD}/linked_slash/occam.log
+    export OCCAM_LOGFILE=${PWD}/combined_slash/occam.log
 
     # OCCAM
     echo "============================================================"
-    echo "Running httpd with apr-1, aprutil-1 and pcre statically linked"
-    echo "slash options ${SLASH_OPTS}"
-    echo "============================================================"
-    slash ${SLASH_OPTS} --work-dir=linked_slash linked_httpd.manifest
+    echo "Running slash ${SLASH_OPTS} --work-dir=combined_slash combined_httpd.manifest "
+    echo "                                                            "    
+    cat combined_httpd.manifest
+    echo "                                                            "
+    echo "============================================================"    
+    slash ${SLASH_OPTS} --work-dir=combined_slash combined_httpd.manifest
+    
     status=$?
     if [ $status -ne 0 ]
     then
 	echo "Something failed while running slash"
 	exit 1
     fi
-    cp linked_slash/httpd_static_linked_slashed .
+    cp combined_slash/httpd_static_combined_slashed .
 }
 
 if [ "${LINK}" == "dynamic" ]; then

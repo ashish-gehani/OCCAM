@@ -214,7 +214,6 @@ namespace previrt
   }
 
   Constant* charStarFromStringConstant(llvm::Module& m, llvm::Constant* v) {
-    errs()<<"CHAR STAR \n\n\n\n\n" ;
     Constant* zero = ConstantInt::
       getSigned(IntegerType::getInt32Ty(m.getContext()), 0);
     Constant* args[2] = {zero, zero};

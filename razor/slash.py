@@ -176,6 +176,10 @@ class Slash(object):
 
 
     def run(self):
+        """Run the main algorithm described in the paper Automated Software
+           Winnowing (SAC 2015) available here
+           http://www.csl.sri.com/users/gehani/papers/SAC-2015.Winnow.pdf
+        """
 
         if not self.valid:
             return 1
@@ -296,8 +300,6 @@ class Slash(object):
         files = utils.populate_work_dir(module, libs, self.work_dir)
         os.chdir(self.work_dir)
 
-        #watches were inserted here ...
-
         profile_maps, profile_map_titles = [], []
 
         def add_profile_map(title):
@@ -342,7 +344,7 @@ class Slash(object):
             print_profile_maps()
             return
 
-        #specialize the arguments ...
+        ### 0. Lift deployment information into main's module
         if args is not None:
             main = files[module]
             pre = main.get()
@@ -355,11 +357,10 @@ class Slash(object):
             post = main.new('a')
             passes.constrain_program_args(pre, post, constraints, 'constraints')
 
-        # Internalize everything that we can
-        # We can never internalize main
+        # Create interface for main. We can never internalize main
         interface.writeInterface(interface.mainInterface(), 'main.iface')
 
-        # First compute the simple interfaces
+        ### 1. First compute the simple interfaces
         vals = files.items()
         def mkvf(k):
             return provenance.VersionedFile(utils.prevent_collisions(k[:k.rfind('.bc')]),
@@ -373,8 +374,9 @@ class Slash(object):
 
         pool.InParallel(_references, vals, self.pool)
 
+        ### 2. And internalize everything that we can
         def _internalize((m, i)):
-            "Internalizing from references"
+            "Internalizing from interfaces"
             pre = i.get()
             post = i.new('i')
             ifaces = [refs[f].get() for f in refs.keys() if f != m] + ['main.iface']
@@ -408,7 +410,7 @@ class Slash(object):
                 break
             progress = False
 
-            # Intra-module partial evaluation and debloating
+            ### 3. Intra-module partial evaluation
             def intra(m):
                 "Intra-module specialization/optimization"
                 pre = m.get()
@@ -427,13 +429,15 @@ class Slash(object):
 
             pool.InParallel(intra, files.values(), self.pool)
 
-            # Gather Inter-module interfaces
+            ### 4. Gather Inter-module interfaces
             iface = passes.deep([x.get() for x in files.values()],
                                 ['main.iface'])
             interface.writeInterface(iface, iface_before_file.new())
 
-            # Inter-specialize
+            ### 5. Inter-specialize
             if inter_spec_policy <> 'none':
+
+                # Create specialized functions and rewrite specification
                 def inter_spec((nm, m)):
                     "Inter-module module specialization"
                     pre = m.get()
@@ -461,6 +465,7 @@ class Slash(object):
                     return retcode
 
                 rws = pool.InParallel(inter_rewrite, files.items(), self.pool)
+                
                 progress = any(rws)
             else:
                 print "Skipped inter-module specialization"
@@ -469,17 +474,20 @@ class Slash(object):
             pool.InParallel(_references, vals, self.pool)
             pool.InParallel(_internalize, vals, self.pool)
 
-            # Compute the interface again
+            ### 6. Sealing
+            
+            # Compute the interfaces again after new specialized functions
             iface = passes.deep([x.get() for x in files.values()], ['main.iface'])
             interface.writeInterface(iface, iface_after_file.new())
 
-            # # Prune
-            # def prune(m):
-            #     "Pruning dead code/variables"
-            #     pre = m.get()
-            #     post = m.new('occam')
-            #     passes.internalize(pre, post, [iface_after_file.get()], self.whitelist)
-            # pool.InParallel(prune, files.values(), self.pool)
+            # internalize 
+            def sealing(m):
+                "Hides exported functions that are not referenced from outside the module"
+                pre = m.get()
+                post = m.new('h')
+                passes.internalize(pre, post, [iface_after_file.get()], self.whitelist)
+                
+            pool.InParallel(sealing, files.values(), self.pool)
 
         utils.write_timestamp("Finished global fixpoint.")
 
