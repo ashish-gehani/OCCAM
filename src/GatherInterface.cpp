@@ -31,16 +31,11 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-//#include "llvm/ADT/StringMap.h"
-//#include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/iterator_range.h"
 #include "llvm/IR/Constants.h"
-//#include "llvm/IR/User.h"
-//#include "llvm/IR/InstVisitor.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/Pass.h"
-//#include "llvm/Transforms/IPO.h"
-//#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
@@ -50,7 +45,6 @@
 
 #include <vector>
 #include <set>
-#include <queue>
 #include <string>
 #include <fstream>
 
@@ -65,217 +59,218 @@ GatherInterfaceOutput("Pinterface-output",
 		      cl::desc("specifies the output file for the interface description"));
 
 static cl::list<std::string>
-GatherInterfaceMain("Pinterface-function",
-		    cl::Hidden,
-		    cl::desc("specifies the function that is called"));
-			     
-static cl::list<std::string>
 GatherInterfaceEntry("Pinterface-entry",
 		     cl::Hidden,
 		     cl::desc("specifies the interface that is used (only function names)"));
 
-namespace previrt
-{
+namespace previrt {
 
-  static bool isInternal(Function* f) {
-    if (f->isDeclaration() && !f->isIntrinsic())
-      return false;
+static bool isInternal(const Function* f) {
+  if (f->isDeclaration() && !f->isIntrinsic()) {
+    return false;
+  } else {
     return true;
   }
+}
 
-  static GlobalValue* getGlobal(Value* value) {
-    if (GlobalValue* GV = dyn_cast<GlobalValue>(value)) {
-      return GV;
-    } else if (CastInst* CI = dyn_cast<CastInst>(value)) {
-      if (Value* v = CI->getOperand(0)) {
-	return getGlobal(v);
-      }
-    } else if (ConstantExpr* CE = dyn_cast<ConstantExpr>(value)) {
-      return getGlobal(CE->getOperand(0));
+static GlobalValue* getGlobal(Value* value) {
+  if (GlobalValue* GV = dyn_cast<GlobalValue>(value)) {
+    return GV;
+  } else if (CastInst* CI = dyn_cast<CastInst>(value)) {
+    if (Value* v = CI->getOperand(0)) {
+      return getGlobal(v);
     }
-    
-    return NULL;
+  } else if (ConstantExpr* CE = dyn_cast<ConstantExpr>(value)) {
+    return getGlobal(CE->getOperand(0));
   }
+  
+  return NULL;
+}
 
 
-  class GatherInterfacePass : public ModulePass {
-  public:
-    ComponentInterface interface;
-    static char ID;
+static Value *stripBitCast(Value *V) {
+  if (BitCastInst *BC = dyn_cast_or_null<BitCastInst>(V)) {
+    return BC->getOperand(0);
+  } else {
+    return V;
+  }
+}
+
+class GatherInterfacePass : public ModulePass {
+public:
+  ComponentInterface interface;
+  static char ID;
+  
+public:
+  GatherInterfacePass(): ModulePass(ID) {}
+  
+  virtual ~GatherInterfacePass() {}
+  
+  virtual void getAnalysisUsage(AnalysisUsage &AU) const {
+    AU.addRequired<CallGraphWrapperPass> ();
+    AU.setPreservesAll();
+  }
+  
+  virtual bool runOnModule(Module& M) {
+    // TODO: use SeaDsaCompleteCallGraph
+    CallGraphWrapperPass& cg = getAnalysis<CallGraphWrapperPass>();
     
-  public:
-    GatherInterfacePass(): ModulePass(ID) {}
-      
-    virtual ~GatherInterfacePass() {}
+    errs() << "GatherInterfacePass::runOnModule: " << M.getModuleIdentifier() << "\n";
+
+    errs() << "#=========== CallGraph=========#\n";
+    cg.dump();
     
-    virtual void getAnalysisUsage(AnalysisUsage &AU) const {
-      AU.addRequired<CallGraphWrapperPass> ();
-      AU.setPreservesAll();
-    }
-    
-    virtual bool runOnModule(Module& M) {
-      CallGraphWrapperPass& cg = this->getAnalysis<CallGraphWrapperPass>();
-
-      bool checked = false;
-      errs() << "GatherInterfacePass::runOnModule: " << M.getModuleIdentifier() << "\n";
-      
-      // Add all nodes in llvm.compiler.used and llvm.used
-      // *** This is very important for correctly compiling libc
-      static const char* used_vars[2] = {"llvm.compiler.used", "llvm.used"};
-      for (int i = 0; i < 2; ++i) {
-        GlobalVariable* used = M.getGlobalVariable(used_vars[i], true);
-        if (used) {
-          Constant* value = used->getInitializer();
-          assert(value);
-
-          if (value->getType()->isVectorTy()) {
-	    for (unsigned int i=0; i < value->getNumOperands(); ++i) {
-	      GlobalValue* gv = getGlobal(value->getAggregateElement(i));
-              if (!gv || gv->hasInternalLinkage()) continue;
-              this->interface.reference(gv->getName());
-              errs() << "adding reference to '" << gv->getName() << "'\n";
-            }
-            errs() << "vector!";
-          } else if (ConstantArray* ary = dyn_cast<ConstantArray>(value)) {
-            for (ConstantArray::op_iterator begin = ary->op_begin(), end = ary->op_end();
-		 begin != end; ++begin) {
-              if (GlobalValue* gv = getGlobal(begin->get())) {
-                this->interface.reference(gv->getName());
-              }
-            }
-          } else {
-            errs() << used_vars[i] << " = \n" << *value << "\n";
-          }
-        }
-      }
-
-      // Traverse the call graph
-      // XXX: replace queue with vector if FIFO ordering does not matter.
-      std::queue<CallGraphNode*> queue;
-
-      // Compute the calls set
-      if (!GatherInterfaceMain.empty()) {
-        checked = true;
-        for (cl::list<std::string>::const_iterator i = GatherInterfaceMain.begin(), e = GatherInterfaceMain.end();
-	     i != e; ++i) {
-          if (Function* f = M.getFunction(*i)) {
-            queue.push(cg.getOrInsertFunction(f));
-          } else {
-            assert(false && "got null");
-          }
-        }
-      }
-      
-      if (!GatherInterfaceEntry.empty()) {
-        checked = true;
-        ComponentInterface ci;
-        for (cl::list<std::string>::const_iterator i = GatherInterfaceEntry.begin(), e = GatherInterfaceEntry.end();
-              i != e; ++i) {
-          errs() << "Reading interface from '" << *i << "'...";
-          if (ci.readFromFile(*i)) {
-            errs() << "success\n";
-          } else {
-            errs() << "failed\n";
-          }
-        }
+    // Add all nodes in llvm.compiler.used and llvm.used
+    // *** This is very important for correctly compiling libc
+    static const char* used_vars[2] = {"llvm.compiler.used", "llvm.used"};
+    for (int i = 0; i < 2; ++i) {
+      GlobalVariable* used = M.getGlobalVariable(used_vars[i], true);
+      if (used) {
+	Constant* value = used->getInitializer();
+	assert(value);
 	
-        for (ComponentInterface::FunctionIterator i = ci.begin(), e = ci.end(); i != e; ++i) {
-          if (Function* f = M.getFunction(i->first())) {
-	    queue.push(cg.getOrInsertFunction(f));
+	if (value->getType()->isVectorTy()) {
+	  for (unsigned int i=0; i < value->getNumOperands(); ++i) {
+	    GlobalValue* gv = getGlobal(value->getAggregateElement(i));
+	    if (!gv || gv->hasInternalLinkage()) continue;
+	    interface.reference(gv->getName());
+	    errs() << "adding reference to '" << gv->getName() << "'\n";
+            }
+	  errs() << "vector!";
+	} else if (ConstantArray* ary = dyn_cast<ConstantArray>(value)) {
+	  for (ConstantArray::op_iterator begin = ary->op_begin(), end = ary->op_end();
+	       begin != end; ++begin) {
+	    if (GlobalValue* gv = getGlobal(begin->get())) {
+	      interface.reference(gv->getName());
+	    }
 	  }
-        }
+	} else {
+	  errs() << used_vars[i] << " = \n" << *value << "\n";
+	}
       }
-
-      // Only check the external calling node once
-      if (!checked) {
-        queue.push(cg.getExternalCallingNode());
+    }
+    
+    // Traverse the call graph
+    std::vector<CallGraphNode*> queue;
+    
+    if (!GatherInterfaceEntry.empty()) {
+      ComponentInterface ci;
+      for (cl::list<std::string>::const_iterator i = GatherInterfaceEntry.begin(),
+	     e = GatherInterfaceEntry.end();
+	   i != e; ++i) {
+	errs() << "Reading interface from '" << *i << "'...";
+	if (ci.readFromFile(*i)) {
+	  errs() << "success\n";
+	} else {
+	  errs() << "failed\n";
+	}
       }
-
-      std::set<CallGraphNode*> visited;
-      while (!queue.empty()) {
-        CallGraphNode* cgn = queue.front();
-        queue.pop();
-
-        if (cgn->getFunction() && !isInternal(cgn->getFunction())) {
-          // this is a declaration and doesn't have any calls
-          continue;
-        }
-
-        if (cgn == cg.getCallsExternalNode()) {
-          // In this case, we're here from a call that we can't resolve,
-          // so we need to be conservative.
-          // Everything that could have made it into this set is in the
-          // "External Calling" node, i.e. can be called externally
-          // - stored in a variable or externally visible
-          // NOTE: for this to be useful, we're going to need to minimize
-          // the size of the "externally visible" set.
-          cgn = cg.getExternalCallingNode();
-          if (visited.find(cgn) != visited.end()) {
-            continue;
-          }
-        }
-
-        for (CallGraphNode::const_iterator i = cgn->begin(), e = cgn->end(); i != e; ++i) {
-          Value* instr = (Value*)i->first;
-          if (!instr) {
-            assert (i->second->getFunction() != NULL);
-            this->interface.callAny(i->second->getFunction());
-          } else {
-            CallSite cs;
-            if (CallInst* ci = dyn_cast<CallInst>(instr)) {
-              cs = CallSite(ci);
-            } else if (InvokeInst* ii = dyn_cast<InvokeInst>(instr)) {
-              cs = CallSite(ii);
-            } else {
-              // Probably not true
-              //this->interface.callAny(i->second->getFunction());
-              assert (false && "call from non-call instruction");
-            }
-
-            Function* called = i->second->getFunction();
-            if (called && !isInternal(called)) {
-              interface.call(called->getName(), cs.arg_begin(), cs.arg_end());
-              continue;
-            }
-          }
-
-          if (visited.find(cgn) == visited.end()) {
-            visited.insert(cgn);
-            queue.push(i->second);
-            //errs() << "adding...\n";
-          }
-        }
+      //errs() << "Searching for external symbols starting from "
+      //       << "entries given by the interfaces of other modules:\n";
+      for (ComponentInterface::FunctionIterator i = ci.begin(), e = ci.end(); i != e; ++i) {
+	if (Function* f = M.getFunction(i->first())) {
+	  // errs() << "\tAdded " << f->getName() << "into the queue.\n";	  
+	  queue.push_back(cg.getOrInsertFunction(f));
+	}
       }
-
-      // A little bit simpler, compute the references set
-      for (Module::const_iterator i = M.begin(), e = M.end(); i != e; ++i) {
-        if (i->isDeclaration()) {
-          this->interface.reference(i->getName());
-        }
+    } else {
+      //errs() << "Searching for external symbols starting from non-internal and "
+      //       << "address-taken functions:\n";
+      queue.push_back(cg.getExternalCallingNode());
+    }
+    
+    std::set<CallGraphNode*> visited;
+    while (!queue.empty()) {
+      CallGraphNode* cgn = queue.back();
+      queue.pop_back();
+      
+      if (cgn->getFunction() && !isInternal(cgn->getFunction())) {
+	// this is a declaration and doesn't have any calls
+	continue;
       }
       
-      for (Module::global_iterator i = M.global_begin(), e = M.global_end(); i != e; ++i) {
-        if (i->isDeclaration()) {
-          this->interface.reference(i->getName());
-        }
+      if (cgn == cg.getCallsExternalNode()) {
+	// In this case, we're here from a call that we can't resolve,
+	// so we need to be conservative.
+	// Everything that could have made it into this set is in the
+	// "External Calling" node, i.e. can be called externally
+	// - stored in a variable or externally visible
+	// NOTE: for this to be useful, we're going to need to minimize
+	// the size of the "externally visible" set.
+	cgn = cg.getExternalCallingNode();
+	if (visited.find(cgn) != visited.end()) {
+	  continue;
+	}
       }
-
-      if (GatherInterfaceOutput != "") {
-        proto::ComponentInterface ci;
-        codeInto<ComponentInterface, proto::ComponentInterface> (
-            this->interface, ci);
-        std::ofstream output(GatherInterfaceOutput.c_str(), std::ios::binary);
-	assert(output.good());
-        bool success = ci.SerializeToOstream(&output);
-	if (!success)
-	  assert(false && "failed to write out interface");
-        output.close();
+      
+      for (auto &callRecord : *cgn) {
+	Value *calledV = stripBitCast(callRecord.first);
+	if (!calledV) {
+	  /////
+	  // JN: I think we are here if cgn is cg.getExternalCallingNode()
+	  //////
+	  assert(cgn == cg.getExternalCallingNode());
+	  assert(callRecord.second->getFunction());	  
+	  interface.callAny(callRecord.second->getFunction());
+	} else {
+	  CallSite CS(calledV);
+	  const Function *callee = callRecord.second->getFunction();
+	  if (callee && !isInternal(callee)) {
+	    errs() << "External call to "
+		   << callRecord.second->getFunction()->getName() << "\n";
+	    // record in the interface a known external call
+	    interface.call(callee->getName(), CS.arg_begin(), CS.arg_end());
+	    continue;
+	  }
+	}
+	
+	if (visited.insert(cgn).second) {
+	  queue.push_back(callRecord.second);
+	}
       }
-
-      return false;
     }
+    
+    // functions
+    for (Function &F: llvm::make_range(M.begin(), M.end())) {
+      if (F.isDeclaration() && !F.isIntrinsic()) {
+	errs() << "Added reference to function " << F.getName() << "\n";
+	interface.reference(F.getName());
+      }
+    }
+    
+    // global variables
+    for (GlobalVariable &gv: M.globals()) {
+      if (gv.isDeclaration()) {
+	errs() << "Added reference to global " << gv.getName() << "\n";	
+	interface.reference(gv.getName());
+      }
+    }
+    
+    // aliases 
+    for (GlobalAlias &alias: M.aliases()) {
+      if (alias.isDeclaration()) {
+	errs() << "Added reference to alias " << alias.getName() << "\n";		
+	interface.reference(alias.getName());
+      }
+    }
+    
+    if (GatherInterfaceOutput != "") {
+      proto::ComponentInterface ci;
+      codeInto<ComponentInterface, proto::ComponentInterface>(interface, ci);
+      std::ofstream output(GatherInterfaceOutput.c_str(), std::ios::binary);
+      assert(output.good());
+      bool success = ci.SerializeToOstream(&output);
+      if (!success) {
+	errs() << "[GatherInterface] failed to write out interface\n";
+	assert(false && "failed to write out interface");
+      }
+      output.close();
+    }
+    
+    return false;
+  }
   };
-  char GatherInterfacePass::ID;
+char GatherInterfacePass::ID;
 
 } // end namespace previrt
 
