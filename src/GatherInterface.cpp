@@ -117,8 +117,8 @@ public:
     
     errs() << "GatherInterfacePass::runOnModule: " << M.getModuleIdentifier() << "\n";
 
-    errs() << "#=========== CallGraph=========#\n";
-    cg.dump();
+    //errs() << "#=========== CallGraph=========#\n";
+    //cg.dump();
     
     // Add all nodes in llvm.compiler.used and llvm.used
     // *** This is very important for correctly compiling libc
