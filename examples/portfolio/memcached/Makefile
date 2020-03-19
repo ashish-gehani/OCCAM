@@ -37,9 +37,9 @@ ${MEM}.bc: ${MEM_INSTALL}/bin/${MEM}
 clean:
 	rm -rf ${MEM}-${MEM_VERSION} OCCAM ${MEM_TAR} ${MEM}.bc
 	make -f Makefile_libevent clean
-	rm -f memcached_orig memcached_slashed memcached.manifest
+	rm -f memcached_orig memcached_slashed memcached.manifest 
+	rm -rf install
 
 distclean:
 	make clean
-	rm -rf install
 	rm -rf slash
