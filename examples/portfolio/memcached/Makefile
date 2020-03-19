@@ -27,7 +27,7 @@ ${LIBEVENT_INSTALL}:
 ${MEM_INSTALL}/bin/${MEM}: ${MEM_TAR} ${LIBEVENT_INSTALL}
 	tar -xvzf ${MEM_TAR}
 	cd ${MEM}-${MEM_VERSION}; \
-	CC=${LLVMCC} ./configure --prefix=${MEM_INSTALL} --with-libevent=${LIBEVENT_INSTALL}; \
+	CC=${LLVMCC} ./configure --disable-coverage --prefix=${MEM_INSTALL} --with-libevent=${LIBEVENT_INSTALL}; \
 	make; make install
 
 ${MEM}.bc: ${MEM_INSTALL}/bin/${MEM}
