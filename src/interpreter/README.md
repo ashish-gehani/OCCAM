@@ -9,7 +9,15 @@ interpreter allows __unknown__ values as long as they are not used for
 branching. If a branch depends on an unknown value the execution stops
 there.
 
-To deal with external calls, LLVM must be compiled with
+To deal with external calls, you need to install FFI library. In
+Ubuntu, type:
+
+     sudo apt-get install libffi-dev
+
+
+Note: the original LLVM Interpreter has some code that tries to find
+FFI in different locations (see `ExternalFunctions.cpp`). It's
+disabled because it has effect only if LLVM is compiled with
 `--enable-libffi`.
 
 ## Usage ## 
