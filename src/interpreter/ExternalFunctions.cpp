@@ -48,6 +48,9 @@
 #include <utility>
 #include <vector>
 
+/// HAVE_FFI_CALL, HAVE_FFI_H, and HAVE_HAVE_FFI_FFI_H are defined if
+/// LLVM is compiled with --enable-libffi.
+//
 // #ifdef HAVE_FFI_CALL
 // #ifdef HAVE_FFI_H
 // #include <ffi.h>
@@ -58,8 +61,10 @@
 // #endif
 // #endif
 
-// HACK: use llvm config to find out where ffi is installed
-#include <ffi/ffi.h>
+// XXX (checked only for ubuntu): it requires to install libffi-dev.
+#include <ffi.h>
+//#include <ffi/ffi.h>
+
 #define USE_LIBFFI
 
 using namespace llvm;
@@ -185,6 +190,7 @@ static void *ffiValueFor(Type *Ty, const GenericValue &AV,
           return ArgDataPtr;
         }
       }
+      break;
     case Type::FloatTyID: {
       float *FloatPtr = (float *) ArgDataPtr;
       *FloatPtr = AV.FloatVal;

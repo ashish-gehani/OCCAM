@@ -127,7 +127,8 @@ static void extractValuesFromRun(Interpreter &Interp, Pass *CPPass,
     Function &F = *(LastExecBlock->getParent());
     LoopInfo &LI = CPPass->getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
     if (Loop *OuterMostL = getRootLoop(LI, LastExecBlock)) {
-      OuterMostL->dump();
+      // XXX: only for LLVM debug builds:
+      // OuterMostL->dump();
       //// Consider the outermost loop's header as continuation.
       //Continuations.push_back(OuterMostL->getHeader());
       //errs() << "Candidate for continuation block: "

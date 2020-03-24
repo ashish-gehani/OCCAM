@@ -28,6 +28,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
 #include <cmath>
+#include <cstdarg>
 
 //#define INTERACTIVE
 #ifdef INTERACTIVE
@@ -189,7 +190,7 @@ void printAbsGenericValue(Type *Ty, AbsGenericValue AGV) {
   switch (Ty->getTypeID()) {
   case Type::IntegerTyID:
     if (GV.IntVal.getBitWidth() == 1) {
-      if (bool res = GV.IntVal.getBoolValue()) {
+      if (GV.IntVal.getBoolValue()) {
 	LOG << "True";
       } else {
 	LOG << "False";	  
@@ -1677,7 +1678,7 @@ void Interpreter::visitCallSite(CallSite CS) {
   
   //Function *F = CS.getCalledFunction();
   Function *F = dyn_cast<Function>(V);
-  if (F && F->isDeclaration())
+  if (F && F->isDeclaration()) {
 
     // HACK: maybe use isMallocLikeFn from MemoryBuiltins
     if (F->getName().equals("malloc")) {
@@ -1721,7 +1722,7 @@ void Interpreter::visitCallSite(CallSite CS) {
       }
       return;
     }
-
+  }
 
   SF.Caller = CS;
   std::vector<AbsGenericValue> ArgVals;
