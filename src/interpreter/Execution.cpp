@@ -65,7 +65,7 @@ bool MemoryHolder::isAllocatedMemory(void *mem) const {
 static void memlog (const char *format, ...) {
     va_list args;
     va_start(args, format);
-    vprintf(format, args);
+    vfprintf(stderr, format, args);
     va_end(args);
 }
 
@@ -1685,7 +1685,12 @@ void Interpreter::visitCallSite(CallSite CS) {
       visitMallocInst(CS);
       return;
     }
-  
+
+    // Ignore debug llvm functions
+    if (F->getName().startswith("llvm.dbg")) {
+      return;
+    }
+    
     switch (F->getIntrinsicID()) {
     case Intrinsic::not_intrinsic:
       break;
