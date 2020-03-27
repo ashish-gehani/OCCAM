@@ -47,9 +47,9 @@ namespace previrt
     
     typedef llvm::SmallSet<llvm::Function*, 32> FunctionSet;
 
-    llvm::CallGraph& cg;
-    SpecializationPolicy* const delegate;
-    FunctionSet rec_functions;
+    llvm::CallGraph& m_cg;
+    std::unique_ptr<SpecializationPolicy> m_subpolicy;
+    FunctionSet m_rec_functions;
     
     void markRecursiveFunctions();
     bool isRecursive(llvm::Function* f) const;    
@@ -57,22 +57,17 @@ namespace previrt
 
   public:
     
-    RecursiveGuardSpecPolicy(SpecializationPolicy* delegate, llvm::CallGraph& cg);
+    RecursiveGuardSpecPolicy(std::unique_ptr<SpecializationPolicy> subpolicy,
+			     llvm::CallGraph& cg);
 
     virtual ~RecursiveGuardSpecPolicy();
     
     virtual bool specializeOn(llvm::CallSite CS,
-			      std::vector<llvm::Value*>& slice) const override;
+			      std::vector<llvm::Value*>& marks) override;
 
     virtual bool specializeOn(llvm::Function* F,
-			      const PrevirtType* begin,
-			      const PrevirtType* end,
-			      llvm::SmallBitVector& slice) const override;
-
-    virtual bool specializeOn(llvm::Function* F,
-			      std::vector<PrevirtType>::const_iterator begin,
-			      std::vector<PrevirtType>::const_iterator end,
-			      llvm::SmallBitVector& slice) const override;
+			      const std::vector<PrevirtType>& args,
+			      llvm::SmallBitVector& marks) override;
 
   };
 } // end namespace previrt

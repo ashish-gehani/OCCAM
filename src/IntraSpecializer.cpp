@@ -83,7 +83,7 @@ namespace previrt
    Return true if any callsite in f is specialized using policy.
 **/
 static bool trySpecializeFunction(Function* f, SpecializationTable& table,
-				  SpecializationPolicy* policy,
+				  SpecializationPolicy& policy,
 				  std::vector<Function*>& to_add) {
   
   std::vector<Instruction*> worklist;
@@ -130,7 +130,7 @@ static bool trySpecializeFunction(Function* f, SpecializationTable& table,
     //                 c if the i-th parameter of the callsite is a
     //                   constant c
     std::vector<Value*> specScheme;
-    bool specialize = policy->specializeOn(cs, specScheme);
+    bool specialize = policy.specializeOn(cs, specScheme);
           
     if (!specialize) {
       continue;
@@ -216,17 +216,18 @@ public:
 bool SpecializerPass::runOnModule(Module &M) {
 
   // -- Create the specialization policy. Bail out if no policy.
-  SpecializationPolicy* policy = nullptr;    
+  std::unique_ptr<SpecializationPolicy> policy;
   switch (SpecPolicy) {
     case NOSPECIALIZE:
       return false;
     case AGGRESSIVE:
-      policy = new AggressiveSpecPolicy();
+      policy.reset(new AggressiveSpecPolicy());
       break;
     case NONRECURSIVE_WITH_AGGRESSIVE: {
-      SpecializationPolicy* subpolicy = new AggressiveSpecPolicy();
+      std::unique_ptr<SpecializationPolicy> subpolicy =
+	llvm::make_unique<AggressiveSpecPolicy>();
       CallGraph& cg = getAnalysis<CallGraphWrapperPass>().getCallGraph();      
-      policy = new RecursiveGuardSpecPolicy(subpolicy, cg);
+      policy.reset(new RecursiveGuardSpecPolicy(std::move(subpolicy), cg));
       break;
     }
   }
@@ -237,13 +238,13 @@ bool SpecializerPass::runOnModule(Module &M) {
   bool modified = false;
   for (auto &f: M) {
     if(f.isDeclaration()) continue;
-    modified |= trySpecializeFunction(&f, table, policy, to_add);
+    modified |= trySpecializeFunction(&f, table, *policy, to_add);
   }
   
   // -- Optimize new function and add it into the module
-  llvm::legacy::FunctionPassManager* optimizer = nullptr;
+  std::unique_ptr<llvm::legacy::FunctionPassManager> optimizer;
   if (optimize) {
-    optimizer = new llvm::legacy::FunctionPassManager(&M);
+    optimizer.reset(new llvm::legacy::FunctionPassManager(&M));
     //PassManagerBuilder builder;
     //builder.OptLevel = 3;
     //builder.populateFunctionPassManager(*optimizer);
@@ -270,14 +271,6 @@ bool SpecializerPass::runOnModule(Module &M) {
     errs() << "...no progress...\n";
   }
   
-  if (policy) {
-    delete policy;
-  }
-  
-  if (optimizer) {
-    delete optimizer;
-  }
-
   return modified;
 }
 

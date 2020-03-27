@@ -32,6 +32,7 @@
 //
 
 #include "AggressiveSpecPolicy.h"
+#include "llvm/ADT/SmallBitVector.h"
 
 using namespace llvm;
 
@@ -44,45 +45,30 @@ namespace previrt
   AggressiveSpecPolicy::~AggressiveSpecPolicy() {
   }
   
-  bool AggressiveSpecPolicy::specializeOn(CallSite CS,
-					  std::vector<Value*>& slice) const {
+  bool AggressiveSpecPolicy::specializeOn(CallSite CS, std::vector<Value*>& marks) {
     bool specialize = false;
-    slice.reserve(CS.arg_size());
+    marks.reserve(CS.arg_size());
     for (unsigned i=0, e = CS.arg_size(); i<e; ++i) {
       Constant* cst = dyn_cast<Constant> (CS.getArgument(i));
       // XXX: cst can be nullptr
       if (SpecializationPolicy::isConstantSpecializable(cst)) {
-	slice.push_back(cst);
+	marks.push_back(cst);
 	specialize=true;
       } else {
-	slice.push_back(nullptr);
+	marks.push_back(nullptr);
       } 
     }
     return specialize;
   }
 
   bool AggressiveSpecPolicy::specializeOn(Function* F,
-					  const PrevirtType* begin, const PrevirtType* end,
-					  SmallBitVector& slice) const {
+					  const std::vector<PrevirtType>& args,
+					  SmallBitVector& marks) {
     bool specialize = false;
-    for (unsigned int i = 0; begin != end; ++begin, ++i) {
-      if (begin->isConcrete()) {
+    for (unsigned int i = 0, sz = args.size(); i<sz; ++i) {
+      if (args[i].isConcrete()) {
         specialize = true;
-        slice.set(i);
-      }
-    }
-    return specialize;
-  }
-
-  bool AggressiveSpecPolicy::specializeOn(Function* F,
-					  std::vector<PrevirtType>::const_iterator begin,
-					  std::vector<PrevirtType>::const_iterator end,
-					  SmallBitVector& slice) const {
-    bool specialize = false;
-    for (unsigned int i = 0; begin != end; ++begin, ++i) {
-      if (begin->isConcrete()) {
-        specialize = true;
-        slice.set(i);
+        marks.set(i);
       }
     }
     return specialize;

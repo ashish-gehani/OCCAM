@@ -42,14 +42,14 @@
 #include "llvm/IR/Value.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/CallSite.h"
-#include "llvm/ADT/SmallBitVector.h"
-
 #include "PrevirtTypes.h"
-
 #include <vector>
 
-namespace previrt
-{
+namespace llvm {
+  class SmallBitVector;
+}
+
+namespace previrt {
   
   /* Here specialization policies */
   enum SpecializationPolicyType {
@@ -73,16 +73,12 @@ namespace previrt
     
     virtual ~SpecializationPolicy(){}
     
-    virtual bool specializeOn(llvm::CallSite, std::vector<llvm::Value*>&) const = 0;
+    virtual bool specializeOn(llvm::CallSite CS,
+			      std::vector<llvm::Value*>& marks) = 0;
 			      
-    virtual bool specializeOn(llvm::Function*,
-			      const PrevirtType*, const PrevirtType*,
-			      llvm::SmallBitVector&) const = 0;
-
-    virtual bool specializeOn(llvm::Function*,
-			      std::vector<PrevirtType>::const_iterator,
-			      std::vector<PrevirtType>::const_iterator,
-			      llvm::SmallBitVector&) const = 0;
+    virtual bool specializeOn(llvm::Function* F,
+			      const std::vector<PrevirtType>& args,
+			      llvm::SmallBitVector& marks) = 0;
 
   };
 } // end namespace

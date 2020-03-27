@@ -38,9 +38,10 @@
  **/
 
 #include "llvm/Pass.h"
+#include "llvm/ADT/SmallBitVector.h"
+#include "llvm/Analysis/CallGraph.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Instructions.h"
-#include "llvm/Analysis/CallGraph.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Support/CommandLine.h"
@@ -108,7 +109,7 @@ namespace previrt
    * code to use the new API
    */
   static bool SpecializeComponent(Module& M, ComponentInterfaceTransform& T,
-				  SpecializationPolicy* policy,
+				  SpecializationPolicy& policy,
 				  std::vector<Function*>& to_add) {
     errs() << "SpecializeComponent()\n";
 
@@ -142,13 +143,12 @@ namespace previrt
         }
 
 	/*
-	  should we specialize? if yes then each bit in slice will
+	  should we specialize? if yes then each bit in marks will
 	  indicate whether the argument is a specializable constant
 	 */
-        SmallBitVector slice(arg_count);
-        bool shouldSpecialize = policy->specializeOn(func,
-						     call->args.begin(), call->args.end(),
-						     slice);
+        SmallBitVector marks(arg_count);
+        bool shouldSpecialize = policy.specializeOn(func, call->args, marks);
+						     
 
         if (!shouldSpecialize)
           continue;
@@ -156,9 +156,9 @@ namespace previrt
         std::vector<Value*> args;
         std::vector<unsigned> argPerm;
         args.reserve(arg_count);
-        argPerm.reserve(slice.count());
+        argPerm.reserve(marks.count());
         for (unsigned i = 0; i < arg_count; i++) {
-          if (slice.test(i)) {
+          if (marks.test(i)) {
 	      Type * paramType = func->getFunctionType()->getParamType(i);
 	      Value *concreteArg = call->args[i].concretize(M, paramType);
 	      args.push_back(concreteArg);
@@ -193,7 +193,7 @@ namespace previrt
 
         #if 0
 	for (unsigned i = 0; i < arg_count; i++) {
-	  errs() << "i = " << i << ": slice[i] = " << slice[i]
+	  errs() << "i = " << i << ": marks[i] = " << marks[i]
 		 << " args[i] = " << args.at(i) << "\n";
 	}
 	errs() << " argPerm = [";
@@ -253,25 +253,25 @@ namespace previrt {
       }
 
       // -- Create the specialization policy. Bail out if no policy.
-      SpecializationPolicy* policy = nullptr;
+      std::unique_ptr<SpecializationPolicy> policy;
       switch (SpecPolicy) {
         case NOSPECIALIZE:
 	  return false;
         case AGGRESSIVE:
-	  policy = new AggressiveSpecPolicy();
+	  policy.reset(new AggressiveSpecPolicy());
 	  break;
         case NONRECURSIVE_WITH_AGGRESSIVE: {
-	  SpecializationPolicy* subpolicy = new AggressiveSpecPolicy();
+	  std::unique_ptr<SpecializationPolicy> subpolicy =
+	    llvm::make_unique<AggressiveSpecPolicy>();
 	  CallGraph& cg = getAnalysis<CallGraphWrapperPass>().getCallGraph();      
-	  policy = new RecursiveGuardSpecPolicy(subpolicy, cg);
+	  policy.reset(new RecursiveGuardSpecPolicy(std::move(subpolicy), cg));
 	  break;
 	}
       }
 
-      assert(policy);      
       errs() << "InterSpecializerPass::runOnModule(): " << M.getModuleIdentifier() << "\n";
       std::vector<Function*> to_add;
-      bool modified = SpecializeComponent(M, transform, policy, to_add);
+      bool modified = SpecializeComponent(M, transform, *policy, to_add);
       
       /*
 	 adding the "new" specialized definitions (in to_add) to M;
@@ -303,9 +303,6 @@ namespace previrt {
         output.close();
       }
       
-      if (policy) {
-	delete policy;
-      }
       return modified;
     }
     

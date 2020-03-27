@@ -32,31 +32,26 @@
 //
 
 #include "RecursiveGuardSpecPolicy.h"
-
 #include "llvm/ADT/SCCIterator.h"
+#include "llvm/ADT/SmallBitVector.h"
 
 using namespace llvm;
 
-namespace previrt
-{
-
-  RecursiveGuardSpecPolicy::RecursiveGuardSpecPolicy(SpecializationPolicy* _delegate,
-						     CallGraph& _cg)
-    : cg(_cg)
-    , delegate(_delegate) {
+namespace previrt {
+  
+  RecursiveGuardSpecPolicy::
+  RecursiveGuardSpecPolicy(std::unique_ptr<SpecializationPolicy> subpolicy,
+			   CallGraph& cg)
+    : m_cg(cg)
+    , m_subpolicy(std::move(subpolicy)) {
     
-    assert(delegate);
     markRecursiveFunctions();
   }
   
-  RecursiveGuardSpecPolicy::~RecursiveGuardSpecPolicy() {
-    if (delegate) {
-      delete delegate;
-    }
-  }
+  RecursiveGuardSpecPolicy::~RecursiveGuardSpecPolicy() {}
 
   void RecursiveGuardSpecPolicy::markRecursiveFunctions() {
-    for (auto it = scc_begin(&cg); !it.isAtEnd(); ++it) {
+    for (auto it = scc_begin(&m_cg); !it.isAtEnd(); ++it) {
       auto &scc = *it;
       bool recursive = false;
       
@@ -74,14 +69,14 @@ namespace previrt
 	  if (!fn || fn->isDeclaration() || fn->empty()) {
 	    continue;
 	  }
-	  rec_functions.insert(fn);
+	  m_rec_functions.insert(fn);
 	}
       }
     }
   }
 
   bool RecursiveGuardSpecPolicy::isRecursive(Function* F) const {
-    return rec_functions.count(F);
+    return m_rec_functions.count(F) > 0;
   }
   
   // Return true if F is not recursive  
@@ -90,32 +85,20 @@ namespace previrt
   }
 
   bool RecursiveGuardSpecPolicy::specializeOn(CallSite CS,
-					      std::vector<Value*>& slice) const {
+					      std::vector<Value*>& marks) {
     Function* callee = CS.getCalledFunction();
     if (callee && allowSpecialization(callee)) {
-      return delegate->specializeOn(CS, slice);
+      return m_subpolicy->specializeOn(CS, marks);
     } else {
       return false;
     }
   }
 
   bool RecursiveGuardSpecPolicy::specializeOn(Function* F,
-					      const PrevirtType* begin,
-					      const PrevirtType* end,
-					      SmallBitVector& slice) const {
+					      const std::vector<PrevirtType>& args,
+					      SmallBitVector& marks)  {
     if (allowSpecialization(F)) {
-      return delegate->specializeOn(F, begin, end, slice);
-    } else {
-      return false;
-    }
-  }
-
-  bool RecursiveGuardSpecPolicy::specializeOn(Function* F,
-					      std::vector<PrevirtType>::const_iterator begin,
-					      std::vector<PrevirtType>::const_iterator end,
-					      SmallBitVector& slice) const {
-    if (allowSpecialization(F)) {
-      return delegate->specializeOn(F, begin, end, slice);
+      return m_subpolicy->specializeOn(F, args, marks);
     } else {
       return false;
     }

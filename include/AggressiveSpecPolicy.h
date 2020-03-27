@@ -35,8 +35,8 @@
 
 #include "SpecializationPolicy.h"
 
-namespace previrt
-{
+namespace previrt {
+  
   /* Specialize always a callsite if some argument is a constant */
   class AggressiveSpecPolicy : public SpecializationPolicy
   {
@@ -47,17 +47,11 @@ namespace previrt
     virtual ~AggressiveSpecPolicy();
 
     virtual bool specializeOn(llvm::CallSite CS,
-			      std::vector<llvm::Value*>& slice) const override;
-
-    virtual bool specializeOn(llvm::Function* F,
-			      const PrevirtType* begin,
-			      const PrevirtType* end,
-			      llvm::SmallBitVector& slice) const override;
+			      std::vector<llvm::Value*>& marks) override;
     
     virtual bool specializeOn(llvm::Function* F,
-			      std::vector<PrevirtType>::const_iterator begin,
-			      std::vector<PrevirtType>::const_iterator end,
-			      llvm::SmallBitVector& slice) const override;
+			      const std::vector<PrevirtType>& args,
+			      llvm::SmallBitVector& marks) override;
   };
 
 } // end namespace
