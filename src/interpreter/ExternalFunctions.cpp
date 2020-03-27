@@ -61,11 +61,13 @@
 // #endif
 // #endif
 
-// XXX (checked only for ubuntu): it requires to install libffi-dev.
+#ifdef HAVE_FFI_H
 #include <ffi.h>
-//#include <ffi/ffi.h>
-
 #define USE_LIBFFI
+#elif HAVE_FFI_FFI_H
+#include <ffi/ffi.h>
+#define USE_LIBFFI
+#endif
 
 using namespace llvm;
 

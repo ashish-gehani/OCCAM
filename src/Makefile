@@ -28,6 +28,8 @@ C_FLAGS = $(shell  ${LLVM_CFG} --cflags)
 
 CPP_FLAGS += $(shell  ${LLVM_CFG} --cppflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include
 
+
+
 CONFIG_PRIME_LIBDIR = $(shell ${LLVM_CFG} --libdir)
 CONFIG_PRIME_LIBS += -L${CONFIG_PRIME_LIBDIR} -lLLVMExecutionEngine -lffi
 
@@ -42,16 +44,18 @@ LIBRARY = ${LIBRARYNAME}.dylib
 LIBFLAGS = -dynamiclib
 OTHERLIBS = -lpthread -lprotobuf -lcurses  
 LD_FLAGS += -undefined suppress -flat_namespace
+CXX_FLAGS += -DHAVE_FFI_FFI_H
 else ifeq (FreeBSD, $(findstring FreeBSD, ${OS}))
 # FreeBSD
 LIBRARY = ${LIBRARYNAME}.so
 LIBFLAGS = -shared -Wl,-soname,${LIBRARY}
-OTHERLIBS = -L/usr/local/lib -lpthread -lprotobuf 
+OTHERLIBS = -L/usr/local/lib -lpthread -lprotobuf
 else
 # LINUX
 LIBRARY = ${LIBRARYNAME}.so
 LIBFLAGS = -shared -Wl,-soname,${LIBRARY}
-OTHERLIBS =  -lpthread -lprotobuf 
+OTHERLIBS =  -lpthread -lprotobuf
+CXX_FLAGS += -DHAVE_FFI_H
 endif
 
 PROTOC = $(shell which protoc)
