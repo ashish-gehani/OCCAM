@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2018, SRI International
+// Copyright (c) 2020, SRI International
 //
 //  All rights reserved.
 //
@@ -31,67 +31,44 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-/*
- *  Initial implementation created on: Jul 11, 2011
- *  Author: malecha
- */
-
 #pragma once
 
-#include "llvm/IR/Function.h"
-#include "llvm/IR/Value.h"
-#include "llvm/IR/Constants.h"
-#include "llvm/IR/CallSite.h"
-#include "PrevirtTypes.h"
-#include "PrevirtualizeInterfaces.h"
-#include <vector>
-
-namespace llvm {
-  class SmallBitVector;
-}
+#include "SpecializationPolicy.h"
+#include "llvm/ADT/DenseMap.h"
 
 namespace previrt {
-  
-  /* Here specialization policies */
-  enum class SpecializationPolicyType {
-    NOSPECIALIZE, // never specialize
-    AGGRESSIVE,   // always specialize
-    BOUNDED,      // always specialize up to certain threshold
-    ONLY_ONCE,    // specialize if function called only once
-    NONREC        // always specialize if function is non-recursive
-  };
-  
-  class SpecializationPolicy {
-  protected:
-    
-    SpecializationPolicy(){}
-    
-    static bool isConstantSpecializable(llvm::Constant* cst) {
-      if (!cst) return false;
-      return PrevirtType::abstract(cst).isConcrete();
-    }    
+  /* 
+   * This policy is actually a "functor" policy (i.e., it takes as
+   * argument another policy p).
+
+   * Allow a new (specialized) copy of a function if the number of
+   * copies of that function is not greater than m_threshold and p
+   * also agrees.
+  */
+  class BoundedSpecPolicy : public SpecializationPolicy {
+    std::unique_ptr<SpecializationPolicy> m_subpolicy;
+    const unsigned m_threshold;
+    llvm::DenseMap<const llvm::Function*, unsigned> m_num_copy_map;
+
+    // Add counter for f and return counter's value after the
+    // increment.
+    unsigned addCounter(const llvm::Function& f);
     
   public:
-    
-    virtual ~SpecializationPolicy(){}
 
-    // Decide whether a callsite CS should be specialized.
-    //
-    // marks[i] is either null or Constant* containing the value of
-    // i-th actual parameter of the call.
+    BoundedSpecPolicy(llvm::Module &M,
+		      std::unique_ptr<SpecializationPolicy> subpolicy,
+		      unsigned threshold);
+
+    virtual ~BoundedSpecPolicy() = default;
+
     virtual bool intraSpecializeOn(llvm::CallSite CS,
-				   std::vector<llvm::Value*>& marks) = 0;
-
-    // Decide whether we should create a specialized version of
-    // CalleeF by looking at its interface (i.e., how other modules
-    // call CalleeF).
-    // 
-    // marks[i] is true iff i-th parameter of the call can be
-    // specialized.
-    virtual bool interSpecializeOn(const llvm::Function& CalleeF,
+				   std::vector<llvm::Value*>& marks) override;
+    
+    virtual bool interSpecializeOn(const llvm::Function& F,
 				   const std::vector<PrevirtType>& args,
 				   const ComponentInterface& interface,
-				   llvm::SmallBitVector& marks) = 0;
-
+				   llvm::SmallBitVector& marks) override;
   };
+
 } // end namespace

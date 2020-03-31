@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2018, SRI International
+// Copyright (c) 2011-2020, SRI International
 //
 //  All rights reserved.
 //
@@ -53,6 +53,8 @@
 /* here specialization policies */
 #include "AggressiveSpecPolicy.h"
 #include "RecursiveGuardSpecPolicy.h"
+#include "BoundedSpecPolicy.h"
+#include "OnlyOnceSpecPolicy.h"
 
 #include <vector>
 #include <string>
@@ -63,16 +65,25 @@ using namespace llvm;
 
 static cl::opt<previrt::SpecializationPolicyType>
 SpecPolicy("Pspecialize-policy",
-	   cl::desc("Inter-module specialization policy"),
-	   cl::values
-	   (clEnumValN (previrt::NOSPECIALIZE, "nospecialize",
-			"Skip inter-module specialization"),
-	    clEnumValN (previrt::AGGRESSIVE, "aggressive",
-			"Specialize always if some constant argument"),
-	    clEnumValN (previrt::NONRECURSIVE_WITH_AGGRESSIVE, "nonrec-aggressive",
-			"aggressive + non-recursive function")),
-	   cl::init(previrt::NONRECURSIVE_WITH_AGGRESSIVE));
-  
+	cl::desc("Inter-module specialization policy"),
+	cl::values
+       (clEnumValN(previrt::SpecializationPolicyType::NOSPECIALIZE, "nospecialize",
+		   "Skip inter-module specialization"),
+	clEnumValN(previrt::SpecializationPolicyType::AGGRESSIVE, "aggressive",
+		   "Specialize always if some constant argument"),
+	clEnumValN(previrt::SpecializationPolicyType::ONLY_ONCE, "onlyonce",
+		   "Specialize a function if it is called once"),
+	clEnumValN(previrt::SpecializationPolicyType::BOUNDED, "bounded",
+		   "Always specialize if number of copies so far <= Ppeval-max-spec-copies"),
+	clEnumValN(previrt::SpecializationPolicyType::NONREC, "nonrec-aggressive",
+		   "Specialize always if some constant arg and function is non-recursive")),
+        cl::init(previrt::SpecializationPolicyType::NONREC));
+
+static cl::opt<unsigned>
+MaxSpecCopies("Pspecialize-max-bounded", 
+	   cl::init(5),
+	   cl::desc("Maximum number of copies for a function if -Pspecialize-policy=bounded"));
+
 static cl::list<std::string>
 SpecCompIn("Pspecialize-input",
 	   cl::NotHidden,
@@ -147,7 +158,7 @@ namespace previrt
 	  indicate whether the argument is a specializable constant
 	 */
         SmallBitVector marks(arg_count);
-        bool shouldSpecialize = policy.specializeOn(func, call->args, marks);
+        bool shouldSpecialize = policy.interSpecializeOn(*func, call->args, I, marks);
 						     
 
         if (!shouldSpecialize)
@@ -255,20 +266,34 @@ namespace previrt {
       // -- Create the specialization policy. Bail out if no policy.
       std::unique_ptr<SpecializationPolicy> policy;
       switch (SpecPolicy) {
-        case NOSPECIALIZE:
-	  return false;
-        case AGGRESSIVE:
-	  policy.reset(new AggressiveSpecPolicy());
-	  break;
-        case NONRECURSIVE_WITH_AGGRESSIVE: {
-	  std::unique_ptr<SpecializationPolicy> subpolicy =
-	    llvm::make_unique<AggressiveSpecPolicy>();
-	  CallGraph& cg = getAnalysis<CallGraphWrapperPass>().getCallGraph();      
-	  policy.reset(new RecursiveGuardSpecPolicy(std::move(subpolicy), cg));
-	  break;
-	}
+      case SpecializationPolicyType::NOSPECIALIZE:
+	return false;
+      case SpecializationPolicyType::AGGRESSIVE:
+	policy.reset(new AggressiveSpecPolicy());
+	break;
+      case SpecializationPolicyType::BOUNDED: {
+	std::unique_ptr<SpecializationPolicy> subpolicy =
+	  llvm::make_unique<AggressiveSpecPolicy>();
+	policy.reset(new BoundedSpecPolicy(M, std::move(subpolicy), MaxSpecCopies));
+	break;
       }
-
+      case SpecializationPolicyType::ONLY_ONCE:
+	policy.reset(new OnlyOnceSpecPolicy());
+	break;
+      case SpecializationPolicyType::NONREC: {
+	std::unique_ptr<SpecializationPolicy> subpolicy =
+	  llvm::make_unique<AggressiveSpecPolicy>();
+	CallGraph& cg = getAnalysis<CallGraphWrapperPass>().getCallGraph();      
+	policy.reset(new RecursiveGuardSpecPolicy(std::move(subpolicy), cg));
+      break;
+      }
+      default:;;
+      }
+      
+      if (!policy) {
+	return false;
+      }
+      
       errs() << "InterSpecializerPass::runOnModule(): " << M.getModuleIdentifier() << "\n";
       std::vector<Function*> to_add;
       bool modified = SpecializeComponent(M, transform, *policy, to_add);

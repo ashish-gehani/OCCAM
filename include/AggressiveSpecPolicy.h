@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2018, SRI International
+// Copyright (c) 2011-2020, SRI International
 //
 //  All rights reserved.
 //
@@ -37,21 +37,24 @@
 
 namespace previrt {
   
-  /* Specialize always a callsite if some argument is a constant */
-  class AggressiveSpecPolicy : public SpecializationPolicy
-  {
+  /* 
+   * Allow a new (specialized) copy of a function whenever there is a
+   * callsite to it with some constant argument.
+   */
+  class AggressiveSpecPolicy : public SpecializationPolicy {
   public:
 
-    AggressiveSpecPolicy();
+    AggressiveSpecPolicy() = default;
     
-    virtual ~AggressiveSpecPolicy();
+    virtual ~AggressiveSpecPolicy() = default;
 
-    virtual bool specializeOn(llvm::CallSite CS,
-			      std::vector<llvm::Value*>& marks) override;
+    virtual bool intraSpecializeOn(llvm::CallSite CS,
+				   std::vector<llvm::Value*>& marks) override;
     
-    virtual bool specializeOn(llvm::Function* F,
-			      const std::vector<PrevirtType>& args,
-			      llvm::SmallBitVector& marks) override;
+    virtual bool interSpecializeOn(const llvm::Function& F,
+				   const std::vector<PrevirtType>& args,
+				   const ComponentInterface& interface,
+				   llvm::SmallBitVector& marks) override;
   };
 
 } // end namespace

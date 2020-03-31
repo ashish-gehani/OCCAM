@@ -48,8 +48,6 @@ namespace previrt {
     markRecursiveFunctions();
   }
   
-  RecursiveGuardSpecPolicy::~RecursiveGuardSpecPolicy() {}
-
   void RecursiveGuardSpecPolicy::markRecursiveFunctions() {
     for (auto it = scc_begin(&m_cg); !it.isAtEnd(); ++it) {
       auto &scc = *it;
@@ -75,30 +73,35 @@ namespace previrt {
     }
   }
 
-  bool RecursiveGuardSpecPolicy::isRecursive(Function* F) const {
-    return m_rec_functions.count(F) > 0;
+  bool RecursiveGuardSpecPolicy::isRecursive(const Function& F) const {
+    return m_rec_functions.count(&F) > 0;
   }
   
   // Return true if F is not recursive  
-  bool RecursiveGuardSpecPolicy::allowSpecialization(Function* F) const {
+  bool RecursiveGuardSpecPolicy::allowSpecialization(const Function& F) const {
     return (!isRecursive(F));
   }
 
-  bool RecursiveGuardSpecPolicy::specializeOn(CallSite CS,
-					      std::vector<Value*>& marks) {
-    Function* callee = CS.getCalledFunction();
-    if (callee && allowSpecialization(callee)) {
-      return m_subpolicy->specializeOn(CS, marks);
+  bool RecursiveGuardSpecPolicy::intraSpecializeOn(CallSite CS,
+						   std::vector<Value*>& marks) {
+    const Function* calleeF = CS.getCalledFunction();
+    if (!calleeF) {
+      return false;
+    }
+    
+    if (allowSpecialization(*calleeF)) {
+      return m_subpolicy->intraSpecializeOn(CS, marks);
     } else {
       return false;
     }
   }
 
-  bool RecursiveGuardSpecPolicy::specializeOn(Function* F,
-					      const std::vector<PrevirtType>& args,
-					      SmallBitVector& marks)  {
-    if (allowSpecialization(F)) {
-      return m_subpolicy->specializeOn(F, args, marks);
+  bool RecursiveGuardSpecPolicy::interSpecializeOn(const Function& CalleeF,
+						   const std::vector<PrevirtType>& args,
+						   const ComponentInterface& interface,
+						   SmallBitVector& marks)  {
+    if (allowSpecialization(CalleeF)) {
+      return m_subpolicy->interSpecializeOn(CalleeF, args, interface, marks);
     } else {
       return false;
     }

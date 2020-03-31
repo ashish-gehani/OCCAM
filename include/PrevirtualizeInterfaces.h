@@ -31,8 +31,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-#ifndef __PREVIRTUALIZE_INTERFACES_H__
-#define __PREVIRTUALIZE_INTERFACES_H__
+#pragma once 
 
 #include "llvm/ADT/StringMap.h"
 #include "llvm/IR/Function.h"
@@ -72,8 +71,7 @@ namespace previrt
     Create(const std::vector<PrevirtType>&, unsigned count = 0);
   };
 
-  class ComponentInterface
-  {
+  class ComponentInterface {
   public:
     typedef llvm::StringMap<std::vector<CallInfo*> >::const_iterator
         FunctionIterator;
@@ -85,68 +83,48 @@ namespace previrt
 
   public:
     ComponentInterface();
-    virtual
-    ~ComponentInterface();
+    virtual ~ComponentInterface();
 
   public:
     // add a call to the interface
-    void
-    call(FunctionHandle f, llvm::User::op_iterator args_begin,
-        llvm::User::op_iterator args_end);
+    void call(FunctionHandle f, llvm::User::op_iterator args_begin,
+	      llvm::User::op_iterator args_end);
 
-    void
-    callAny(const llvm::Function* f);
+    void callAny(const llvm::Function* f);
 
-    void
-    reference(llvm::StringRef);
+    void reference(llvm::StringRef);
 
-    CallInfo*
-    getOrCreateCall(FunctionHandle f, const std::vector<PrevirtType>& args);
+    CallInfo* getOrCreateCall(FunctionHandle f, const std::vector<PrevirtType>& args);
 
-//    void
-//    updateWith(ComponentInterface&);
-
-    void
-    dump() const;
+    void dump() const;
+    
   public:
     // iteration over the functions
-    FunctionIterator
-    begin() const;
-    FunctionIterator
-    end() const;
+    FunctionIterator begin() const;
+    FunctionIterator end() const;
 
     // Find function
-    FunctionIterator
-    find(llvm::StringRef) const;
+    FunctionIterator find(llvm::StringRef) const;
 
     // iteration over the calls to a function
-    CallIterator
-    call_begin(llvm::StringRef) const;
-    CallIterator
-    call_end(llvm::StringRef) const;
+    CallIterator call_begin(llvm::StringRef) const;
+    CallIterator call_end(llvm::StringRef) const;
 
-    CallIterator
-    call_begin(FunctionIterator) const;
-    CallIterator
-    call_end(FunctionIterator) const;
+    CallIterator call_begin(FunctionIterator) const;
+    CallIterator call_end(FunctionIterator) const;
 
   public:
-    bool
-    readFromFile(const std::string& filename);
+    bool readFromFile(const std::string& filename);
 
   public:
     FRIEND_SERIALIZERS(ComponentInterface, proto::ComponentInterface)
   };
 
-  struct CallRewrite
-  {
+  struct CallRewrite {
     FunctionHandle function;
     const std::vector<unsigned> args;
   public:
-    CallRewrite() :
-      args()
-    {
-    }
+    CallRewrite() : args() { }
     CallRewrite(FunctionHandle h, const std::vector<unsigned>& a);
     CallRewrite(const CallRewrite&);
 
@@ -154,8 +132,7 @@ namespace previrt
     FRIEND_SERIALIZERS(CallRewrite, proto::CallRewrite)
   };
 
-  class ComponentInterfaceTransform
-  {
+  class ComponentInterfaceTransform {
   public:
     typedef std::map<const CallInfo* const , const CallRewrite> CMap;
     typedef std::map<FunctionHandle, CMap> FMap;
@@ -168,38 +145,28 @@ namespace previrt
   public:
     ComponentInterfaceTransform();
     ComponentInterfaceTransform(ComponentInterface*);
-    virtual
-    ~ComponentInterfaceTransform();
+    virtual ~ComponentInterfaceTransform();
+    
+  public:
+    void rewrite(FunctionHandle, const CallInfo* const , FunctionHandle,
+		 const std::vector<unsigned>&);
+    void rewrite(FunctionHandle, const CallInfo* const , const CallRewrite&);
+
+    void dump() const;
 
   public:
-    void
-    rewrite(FunctionHandle, const CallInfo* const , FunctionHandle,
-        const std::vector<unsigned>&);
-    void
-    rewrite(FunctionHandle, const CallInfo* const , const CallRewrite&);
+    const ComponentInterface& getInterface() const;
 
-    void
-    dump() const;
+    unsigned rewriteCount() const;
 
-  public:
-    const ComponentInterface&
-    getInterface() const;
+    const CallRewrite* lookupRewrite(FunctionHandle, llvm::User::op_iterator,
+				     llvm::User::op_iterator) const;
 
-    unsigned
-    rewriteCount() const;
-
-    const CallRewrite*
-    lookupRewrite(FunctionHandle, llvm::User::op_iterator,
-        llvm::User::op_iterator) const;
-
-    const CallRewrite*
-    lookupRewrite(FunctionHandle, const CallInfo* const ) const;
+    const CallRewrite* lookupRewrite(FunctionHandle, const CallInfo* const ) const;
 
   public:
-    bool
-    readInterfaceFromFile(const std::string&);
-    bool
-    readTransformFromFile(const std::string&);
+    bool readInterfaceFromFile(const std::string&);
+    bool readTransformFromFile(const std::string&);
 
   public:
     FRIEND_SERIALIZERS(ComponentInterfaceTransform, proto::ComponentInterfaceTransform)
@@ -210,4 +177,3 @@ namespace previrt
   };
 }
 
-#endif /** __PREVIRTUALIZE_INTERFACES_H__ **/

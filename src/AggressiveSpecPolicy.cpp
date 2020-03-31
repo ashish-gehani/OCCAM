@@ -33,19 +33,23 @@
 
 #include "AggressiveSpecPolicy.h"
 #include "llvm/ADT/SmallBitVector.h"
+#include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
 
-namespace previrt
-{
-  
-  AggressiveSpecPolicy::AggressiveSpecPolicy() {
-  }
+#define ASP_LOG(...) __VA_ARGS__
+//#define ASP_LOG(...)
 
-  AggressiveSpecPolicy::~AggressiveSpecPolicy() {
-  }
+namespace previrt {
   
-  bool AggressiveSpecPolicy::specializeOn(CallSite CS, std::vector<Value*>& marks) {
+  bool AggressiveSpecPolicy::intraSpecializeOn(CallSite CS, std::vector<Value*>& marks) {
+    const Function *calleeF = CS.getCalledFunction();
+    if (!calleeF) {
+      return false;
+    }
+
+    ASP_LOG(errs() << "[ASP] Checking if " << *CS.getInstruction()
+	    << " can be specialized ... ";);
     bool specialize = false;
     marks.reserve(CS.arg_size());
     for (unsigned i=0, e = CS.arg_size(); i<e; ++i) {
@@ -58,19 +62,24 @@ namespace previrt
 	marks.push_back(nullptr);
       } 
     }
+    ASP_LOG(errs() << (specialize ? "yes\n" : "no\n"));
     return specialize;
   }
 
-  bool AggressiveSpecPolicy::specializeOn(Function* F,
-					  const std::vector<PrevirtType>& args,
-					  SmallBitVector& marks) {
+  bool AggressiveSpecPolicy::interSpecializeOn(const Function& CalleeF /*unused*/,
+					       const std::vector<PrevirtType>& args,
+					       const ComponentInterface& interface /*unused*/,
+					       SmallBitVector& marks) {
     bool specialize = false;
+    ASP_LOG(errs() << "[ASP] Checking if call to " << CalleeF.getName()
+	    << " can be specialized ... ";);
     for (unsigned int i = 0, sz = args.size(); i<sz; ++i) {
       if (args[i].isConcrete()) {
         specialize = true;
         marks.set(i);
       }
     }
+    ASP_LOG(errs() << (specialize ? "yes\n" : "no\n"));    
     return specialize;
   }
   

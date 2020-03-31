@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2018, SRI International
+// Copyright (c) 2011-2020, SRI International
 //
 //  All rights reserved.
 //
@@ -37,12 +37,14 @@
 
 #include "SpecializationPolicy.h"
 
-namespace previrt
-{
-  
-  /* This class takes as argument another specialization policy p.
-     Specialize a callsite if the callee function is not recursive AND
-     p also decides to specialize. */
+namespace previrt {
+  /* 
+   * This policy is actually a "functor" policy (i.e., it takes as
+   * argument another policy).
+   *
+   * Allows a new (specialized) copy of a function if it is not
+   * recursive AND p also decides to specialize.
+  */
   class RecursiveGuardSpecPolicy : public SpecializationPolicy {
     
     typedef llvm::SmallSet<llvm::Function*, 32> FunctionSet;
@@ -52,22 +54,23 @@ namespace previrt
     FunctionSet m_rec_functions;
     
     void markRecursiveFunctions();
-    bool isRecursive(llvm::Function* f) const;    
-    bool allowSpecialization(llvm::Function* f) const;
+    bool isRecursive(const llvm::Function& f) const;    
+    bool allowSpecialization(const llvm::Function& f) const;
 
   public:
     
     RecursiveGuardSpecPolicy(std::unique_ptr<SpecializationPolicy> subpolicy,
 			     llvm::CallGraph& cg);
 
-    virtual ~RecursiveGuardSpecPolicy();
+    virtual ~RecursiveGuardSpecPolicy() = default;
     
-    virtual bool specializeOn(llvm::CallSite CS,
-			      std::vector<llvm::Value*>& marks) override;
+    virtual bool intraSpecializeOn(llvm::CallSite CS,
+				   std::vector<llvm::Value*>& marks) override;
 
-    virtual bool specializeOn(llvm::Function* F,
-			      const std::vector<PrevirtType>& args,
-			      llvm::SmallBitVector& marks) override;
+    virtual bool interSpecializeOn(const llvm::Function& F,
+				   const std::vector<PrevirtType>& args,
+				   const ComponentInterface& interface,
+				   llvm::SmallBitVector& marks) override;
 
   };
 } // end namespace previrt
