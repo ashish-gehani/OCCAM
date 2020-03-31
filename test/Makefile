@@ -14,20 +14,24 @@ endif
 ifeq ($(FILECHECK),)
 	$(error you need to install FileCheck (see README.md))
 endif
-# Test simple features
-	${LIT} --param=test_dir=../examples ../test/simple -v -o ${OUTPUT_LOG}
+# Test OCCAM features
+	${LIT} --param=test_dir=simple-c simple -v -o ${OUTPUT_LOG}
 # Test inter-procedural dead store elimination
-	${LIT} --param=test_dir=../test/ipdse ../test/ipdse -v -o ${OUTPUT_LOG}
+	${LIT} --param=test_dir=ipdse ipdse -v -o ${OUTPUT_LOG}
 
 clean:
 	rm -f out.log
-	$(MAKE) -C ../examples/multiple clean
-	$(MAKE) -C ../examples/simple clean
-	$(MAKE) -C ../examples/tree clean
-	$(MAKE) -C ../examples/funcs/1 clean
-	$(MAKE) -C ../examples/funcs/2 clean
-	$(MAKE) -C ../examples/funcs/3 clean
-	$(MAKE) -C ../examples/funcs/4 clean
-	$(MAKE) -C ../examples/fib clean
-	$(MAKE) -C ../examples/fiblib clean
-	$(MAKE) -C ../test/ipdse clean
+	$(MAKE) -C simple-c/multiple clean
+	$(MAKE) -C simple-c/simple clean
+	$(MAKE) -C simple-c/tree clean
+	$(MAKE) -C simple-c/funcs/1 clean
+	$(MAKE) -C simple-c/funcs/2 clean
+	$(MAKE) -C simple-c/funcs/3 clean
+	$(MAKE) -C simple-c/funcs/4 clean
+	$(MAKE) -C simple-c/fib clean
+	$(MAKE) -C simple-c/fiblib clean
+	$(MAKE) -C simple-c/bounded-intra clean
+	$(MAKE) -C simple-c/bounded-inter clean
+	$(MAKE) -C simple-c/onlyonce-intra clean
+	$(MAKE) -C simple-c/onlyonce-inter clean
+	$(MAKE) -C ipdse clean
