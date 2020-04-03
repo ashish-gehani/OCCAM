@@ -34,6 +34,7 @@
 #include "llvm/Pass.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/Instructions.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/LinkAllPasses.h" //SROA and Mem2Reg
@@ -222,9 +223,49 @@ bool PartialCommandLineArguments::runOnModule(Module &M) {
   }
 
   // new argv
-  Value* new_argv = builder.CreateAlloca(strty, new_argc, "new_argv");
+  
+  // XXX: We cannot store new argv in the stack.
+  // 
+  // If new_argv is passed to another function then the callee won't
+  // have access to new_argv since it's in the caller's stack.  This
+  // happens with this code:
+  //
+  // main(...,argv) { foo(...,argv);}
+  // 
+  // Our code will create something like this:
+  //
+  // main(...,argv) { char*[N] newargv; ... foo(...,newargv);}
+  //
+  // Value* new_argv = builder.CreateAlloca(strty, new_argc, "new_argv");
 
+  
+  Value *ptrSz = ConstantInt::get(intptrty, M.getDataLayout().getPointerSize(), false);
 
+  // Add the following instruction at the back of entry:
+  //    strty p = (strty) malloc(sizeof(type) * array_sz)
+  //
+  // CreateMalloc: insert the malloc call at the end of entry.
+  // CreateMalloc returns the BitCast instruction to cast the malloced
+  // pointer to its type.  That BitCast instruction is not inserted
+  // anywhere.
+  Value* new_argv = CallInst::CreateMalloc(entry,
+					   /*expected type for malloc argument (size_t)*/
+					   intptrty,
+					   /*used only for cast*/
+					   strty,
+					   /*sizeof(type)*/
+					   ptrSz,
+					   /*array_sz*/
+					   builder.CreateSExtOrTrunc(new_argc, intptrty),
+					   (Function*) nullptr);
+  entry->getInstList().push_back(cast<Instruction>(new_argv));
+
+  /* Prepare the IR builder to insert next time _after_ argv */
+  builder.SetInsertPoint(cast<Instruction>(new_argv));
+  auto it = builder.GetInsertPoint();
+  ++it;
+  builder.SetInsertPoint(entry, it);
+  
   // copy the manifest into new_argv
   unsigned i=0;
   for (auto &kv: argv_map) {
