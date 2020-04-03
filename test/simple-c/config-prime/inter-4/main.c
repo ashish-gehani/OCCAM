@@ -12,11 +12,11 @@ int flag_b = 0;
 int flag_c = 0;
 
 /* 
-   The location where the Config Prime engine
-   stops and the relevant memory uses are in different functions.
+   The location where the Config Prime engine stops and the relevant
+   memory uses are in different functions.
 
-   We should remove messages "You should NOT see this message" since
-   modify_flags is called *after* use_flags.
+   We shouldn't remove messages "You should NOT see this message"
+   since modify_flags is called before use_flags.
 */
 
 void modify_flags() {
@@ -64,9 +64,9 @@ void use_flags() {
 int main (int argc, char **argv){
   get_opt(argc, argv);
   
-  use_flags();
-
   modify_flags();
+  
+  use_flags();
   
   return 0;
 }

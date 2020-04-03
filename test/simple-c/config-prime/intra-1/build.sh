@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
 
-# Build the manifest file
+# Build the *full* manifest file
 cat > multiple.manifest <<EOF
 { "main" : "main.bc"
-, "binary"  : "main"
+, "binary"  : "main_slash"
 , "modules"    : []
 , "native_libs" : []
 , "args"    : ["-b"]
@@ -25,7 +25,7 @@ slash --enable-config-prime \
       --no-strip \
       --work-dir=slash multiple.manifest
 
-cp slash/main main_slash
+cp slash/main_slash main_slash
 
 #debugging stuff below:
 for bitcode in slash/*.bc; do

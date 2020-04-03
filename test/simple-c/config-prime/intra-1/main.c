@@ -2,8 +2,13 @@
 #include <stdlib.h>
 
 /* 
-   Simplest case for Config Prime engine: the location where the
-   engine stops and the relevant memory uses are in main.
+ *  We use a fully instantiated manifest.
+ *
+ * The Config Prime engine should remove everthing except the only
+ * possible execution.
+ *
+ * EXPECTED: all strings "You should NOT see this message" are removed
+ * in the bitcode.
 */
 
 int main (int argc, char **argv){
@@ -17,13 +22,13 @@ int main (int argc, char **argv){
     if(argv[iter][0] == '-' && argv[iter][1]){ 
       switch(argv[iter][1]){ 
       case 'a':
-	flag_a = 2; 
+	flag_a = 1; 
 	  break;
       case 'b':
-	flag_b = 2;
+	flag_b = 1;
 	break;
       case 'c':
-	flag_c = 2;
+	flag_c = 1;
 	break;
 	default:
 	  break;

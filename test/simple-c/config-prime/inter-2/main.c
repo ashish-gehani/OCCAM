@@ -12,16 +12,16 @@ int flag_b = 0;
 int flag_c = 0;
 
 /* 
-   More complex for Config Prime engine: the location where the engine
-   stops and the relevant memory uses are in different functions.
-
-   We cannot remove messages "You should NOT see this message" since
-   kill_flag_b is called before use_flag_b.
+ * We use a fully instantiated manifest.
+ *
+ * We shouldn't remove messages "You should NOT see this message"
+ * since modify_flags is called before use_flags.
 */
 
-void kill_flag_b() {
+void modify_flags() {
   if(nd_int()) {
-    flag_b = 5;
+    flag_b = 0;
+    flag_a = 1;
   }
 }
 
@@ -32,13 +32,13 @@ void get_opt(int argc, char **argv) {
     if(argv[iter][0] == '-' && argv[iter][1]){ 
       switch(argv[iter][1]){ 
       case 'a':
-	flag_a = 2; 
+	flag_a = 1; 
 	  break;
       case 'b':
-	flag_b = 2;
+	flag_b = 1;
 	break;
       case 'c':
-	flag_c = 2;
+	flag_c = 1;
 	break;
 	default:
 	  break;
@@ -47,7 +47,7 @@ void get_opt(int argc, char **argv) {
   }
 }
 
-void use_flag_b() {
+void use_flags() {
   if (flag_b) {
     printf("You should see this message\n");
   }
@@ -62,10 +62,8 @@ void use_flag_b() {
 
 int main (int argc, char **argv){
   get_opt(argc, argv);
-  
-  kill_flag_b();
-  
-  use_flag_b();
+  modify_flags();
+  use_flags();
   
   return 0;
 }

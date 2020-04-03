@@ -2,8 +2,13 @@
 #include <stdlib.h>
 
 /* 
-   Simple case for Config Prime engine: the location where the engine
-   stops and the relevant memory uses are in the same function.
+ *  We use a fully instantiated manifest.
+ *
+ * The Config Prime engine should remove everthing except the only
+ * possible execution.
+ *
+ * EXPECTED: all strings "You should NOT see this message" are removed
+ * in the bitcode.
 */
 
 

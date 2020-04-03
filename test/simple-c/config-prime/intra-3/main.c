@@ -1,32 +1,22 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
-
-int nd_int(){
-  srand(time(NULL));
-  return rand() ;
-}
-
-int flag_a = 0;
-int flag_b = 0;
-int flag_c = 0;
 
 /* 
-   The location where the Config Prime engine
-   stops and the relevant memory uses are in different functions.
-
-   We should remove messages "You should NOT see this message" since
-   modify_flags is called *after* use_flags.
+ * Simplest case for Config Prime engine:  location where the
+ * engine stops and the relevant memory uses are in main.
+ *
+ * The manifest is not fully given so the Config Prime interpreter
+ * shouldn't finish completely.
+ *
+ * EXPECTED: all strings "You should NOT see this message" are removed
+ * in the bitcode.
 */
 
-void modify_flags() {
-  if(nd_int()) {
-    flag_b = 0;
-    flag_a = 1;
-  }
-}
-
-void get_opt(int argc, char **argv) {
+int main (int argc, char **argv){
+  int flag_a = 0;
+  int flag_b = 0;
+  int flag_c = 0;
+  
   // assigning a literal value 1 to each flag
   unsigned iter;
   for(iter = 1; iter < argc; iter++){
@@ -46,9 +36,7 @@ void get_opt(int argc, char **argv) {
       }
     }
   }
-}
 
-void use_flags() {
   if (flag_b) {
     printf("You should see this message\n");
   }
@@ -58,15 +46,5 @@ void use_flags() {
   if (flag_c) {
     printf("You should NOT see this message\n");
   }
-  
-}
-
-int main (int argc, char **argv){
-  get_opt(argc, argv);
-  
-  use_flags();
-
-  modify_flags();
-  
   return 0;
 }
