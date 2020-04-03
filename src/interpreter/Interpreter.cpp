@@ -167,4 +167,8 @@ GenericValue Interpreter::runFunction(Function *F,
   return ExitValue;
 }
 
+bool Interpreter::isExecuted(const BasicBlock &BB) const {
+  return (VisitedBlocks.count(&BB) > 0);
+}
+  
 } // end namespace previrt

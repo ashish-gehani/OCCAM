@@ -15,6 +15,8 @@
 
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/GenericValue.h"
+#include "llvm/ADT/DenseSet.h"
+#include "llvm/ADT/DenseMap.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/Function.h"
@@ -31,6 +33,7 @@ class ConstantExpr;
 typedef generic_gep_type_iterator<User::const_op_iterator> gep_type_iterator;
 class ExecutionEngine;
 class LoopInfo;
+class BasicBlock;
 } // end namespace llvm
 
 
@@ -165,6 +168,9 @@ class Interpreter : public llvm::ExecutionEngine, public llvm::InstVisitor<Inter
   // some unknown value.
   bool StopExecution;
 
+  // XXX: keep track of the blocks executed by the interpreter
+  llvm::DenseSet<const llvm::BasicBlock*> VisitedBlocks;
+  
 public:
   
   explicit Interpreter(std::unique_ptr<llvm::Module> M);
@@ -287,6 +293,8 @@ public:
   llvm::BasicBlock* inspectStackAndGlobalState(
 	       llvm::DenseMap<llvm::Value*, RawAndDerefValue> &GlobalVals,
 	       llvm::DenseMap<llvm::Value*, RawAndDerefValue> &StackVals);
+
+  bool isExecuted(const llvm::BasicBlock &) const;
   
 private:  // Helper functions
   

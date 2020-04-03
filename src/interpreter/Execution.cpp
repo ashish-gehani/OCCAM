@@ -1502,7 +1502,7 @@ void Interpreter::visitAllocaInst(AllocaInst &I) {
   
   LOG << "Allocated stack Type: " << *Ty << " (" << TypeSize << " bytes) x " 
       << NumElements << " (Total: " << MemToAlloc << ") at "
-      << uintptr_t(Memory) << "\n";
+      << Memory << "\n";
 
   GenericValue Result = PTOGV(Memory);
   assert(Result.PointerVal && "Null pointer returned by malloc!");
@@ -1615,7 +1615,7 @@ void Interpreter::visitLoadInst(LoadInst &I) {
     // 
     // isAllocatedMemory is unaware of.
     if (!isAllocatedMemory((void*) Ptr)) {
-      LOG << "Reading from an untrackable memory location.\n";
+      LOG << "Reading from an untrackable memory location " << (void*)Ptr << ".\n";
       SetValue(&I, llvm::None, SF);        
       return;
     }
@@ -2849,14 +2849,19 @@ void Interpreter::run() {
     ++NumDynamicInsts;
 
     LOG << "About to interpret: " << I << "\n";
+    if (VisitedBlocks.insert(I.getParent()).second) {
+      LOG << "Marked " << I.getParent()->getParent()->getName() << "::"
+	  << I.getParent()->getName() << " as visited \n";
+    }
+    
     visit(I);   // Dispatch to one of the visit* methods...
     if (StopExecution) {
       --SF.CurInst; // we want to point to the last executed instruction
-      LOG << "Stopped execution after " << NumDynamicInsts << " instructions\n";      
       break;
     }
   }
-  LOG << "Finished execution after " << NumDynamicInsts << " instructions\n";
+  LOG << "Finished execution after " << NumDynamicInsts << " instructions "
+      << " and " << VisitedBlocks.size() << " blocks\n";      ;
 }
 
 llvm::Instruction* Interpreter::getLastExecutedInst() const {

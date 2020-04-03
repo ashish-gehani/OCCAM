@@ -156,7 +156,7 @@ static void extractValuesFromRun(Interpreter &Interp, Pass *CPPass,
   #endif 
 }
 
-Constant* convertToLLVMConstant(Type *Ty, GenericValue &Val) {
+static Constant* convertToLLVMConstant(Type *Ty, GenericValue &Val) {
   switch(Ty->getTypeID()) {
   case Type::IntegerTyID:
     return ConstantInt::get(Ty, Val.IntVal);
@@ -211,6 +211,32 @@ static bool may_dominate(const SmallVector<BasicBlock*, 4>& BBs, Instruction *I,
     });
 }
 
+static void removeBlock(BasicBlock* BB, LLVMContext& ctx) {
+
+  TerminatorInst *BBTerm = BB->getTerminator();
+  // Loop through all of our successors and make sure they know that one
+  // of their predecessors is going away.
+  for (BasicBlock *Succ : BBTerm->successors()) {
+    Succ->removePredecessor(BB);
+  }
+  // Zap all the instructions in the block.
+  while (!BB->empty()) {
+    Instruction &I = BB->back();
+    // If this instruction is used, replace uses with an arbitrary value.
+    // Because control flow can't get here, we don't care what we replace the
+    // value with.  Note that since this block is unreachable, and all values
+    // contained within it must dominate their uses, that all uses will
+    // eventually be removed (they are themselves dead).
+    if (!I.use_empty()) {
+      I.replaceAllUsesWith(UndefValue::get(I.getType()));
+    }
+    BB->getInstList().pop_back();
+  }
+  // Add unreachable terminator
+  BB->getInstList().push_back(new UnreachableInst(ctx));
+}
+
+  
 /** End helpers **/
 
 ConfigPrime::ConfigPrime(): ModulePass(ID), m_ee(nullptr) {}
@@ -332,45 +358,67 @@ bool ConfigPrime::runOnModule(Module& M) {
     // Sanity check
     BasicBlock *ContBB = *(Continuations.begin());
     auto it = Continuations.begin();
+    (void) ContBB; // avoid warning in non-debug builds
+    (void) it;     // avoid warning in non-debug builds
     assert(std::all_of(++it, Continuations.end(), [&ContBB](const BasicBlock *B) {
 	return ContBB->getParent() == B->getParent();
 	}));
-		    
+
+    auto replaceValues = [&Continuations, this]
+      (DenseMap<Value*,RawAndDerefValue> &m, bool &change) {
+      for (auto &kv: m) {
+	if (kv.second.hasDerefValue()) {
+	  Type *ElementType = kv.first->getType()->getPointerElementType();
+	  GenericValue ElementVal = kv.second.getDerefValue();
+	  if (Constant *C = convertToLLVMConstant(ElementType, ElementVal)) {
+	    for (auto &U: kv.first->uses()) {
+	      if (LoadInst *LI = dyn_cast<LoadInst>(U.getUser())) {
+		if (may_dominate(Continuations, LI, this)) {
+		  errs() << "Replaced " << "lhs of " << *LI << " with " << *C << "\n";
+		  errs() << *(LI->getParent()) << "\n";
+		  LI->replaceAllUsesWith(C);
+		  change = true;
+		}
+	      }
+	    }
+	  }
+	}
+      }
+    };
+    
     // TODOX: this is very limited.
     // 
-    // We only replace loads from global variables with the constant
-    // values from the interpreter's execution. Moreover, we only
-    // perform the replacement if the memory load and the last
-    // executed block belong to the same function.
-    for (auto &kv: GlobalValues) {
-      if (kv.second.hasDerefValue()) {
-  	Type *ElementType = kv.first->getType()->getPointerElementType();
-  	GenericValue ElementVal = kv.second.getDerefValue();
-  	if (Constant *C = convertToLLVMConstant(ElementType, ElementVal)) {
-  	  for (auto &U: kv.first->uses()) {
-  	    if (LoadInst *LI = dyn_cast<LoadInst>(U.getUser())) {
-  	      if (may_dominate(Continuations, LI, this)) {
-  		errs() << "Replaced " << "lhs of " << *LI << " with " << *C << "\n";
-		errs() << *(LI->getParent()) << "\n";
-  		LI->replaceAllUsesWith(C);
-  		Change = true;
-  	      }
-  	    }
-  	  }
-  	}
+    // We only replace loads from global variables with the
+    // constant values from the interpreter's execution. More
+    // importantly, we only perform the replacement if the memory load
+    // and the last executed block belong to the same function.
+
+    replaceValues(GlobalValues, Change);
+    //replaceValues(StackValues, Change);
+    
+  } else {
+    // Best case scenario: The interpreter finishes so the program can
+    // be reduced to one single execution.
+
+    std::vector<BasicBlock*> toRemove;
+    for (auto &F: M) {
+      for (auto &BB: F) {
+	if (!Interp->isExecuted(BB)) {
+	  toRemove.push_back(&BB);
+	}
       }
     }
-  } else {
-    // TODOX: best case scenario. The interpreter finishes so the
-    // program can be reduced to one single execution.
-  }
+    while (!toRemove.empty()) {
+      BasicBlock *BB = toRemove.back();
+      toRemove.pop_back();
+      removeBlock(BB, M.getContext());
+    }
 
-  if (Continuations.empty()) {
     // XXX: I think it makes sense to call the destructors and
     // finalization routines if the execution finished.
     stopInterpreter(M, Res);
   }
-  
+
   return Change;
 }
 
