@@ -20,3 +20,10 @@ Build arguments (required):
 - BUILD_TYPE: Release, Debug
 
 # For OCCAM releasers: Pushing a Docker image to DockerHub #
+
+```shell
+# Login
+echo "$DOCKER_PASSWORD" | docker login --username="$DOCKER_USERNAME" --password-stdin
+# Push
+docker push sricsl/occam:bionic
+```
