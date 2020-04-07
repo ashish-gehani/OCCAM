@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2018, SRI International
+// Copyright (c) 2011-2020, SRI International
 //
 //  All rights reserved.
 //
@@ -38,9 +38,10 @@
  **/
 
 #include "llvm/Pass.h"
+#include "llvm/ADT/SmallBitVector.h"
+#include "llvm/Analysis/CallGraph.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Instructions.h"
-#include "llvm/Analysis/CallGraph.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Support/CommandLine.h"
@@ -52,6 +53,8 @@
 /* here specialization policies */
 #include "AggressiveSpecPolicy.h"
 #include "RecursiveGuardSpecPolicy.h"
+#include "BoundedSpecPolicy.h"
+#include "OnlyOnceSpecPolicy.h"
 
 #include <vector>
 #include <string>
@@ -62,16 +65,25 @@ using namespace llvm;
 
 static cl::opt<previrt::SpecializationPolicyType>
 SpecPolicy("Pspecialize-policy",
-	   cl::desc("Inter-module specialization policy"),
-	   cl::values
-	   (clEnumValN (previrt::NOSPECIALIZE, "nospecialize",
-			"Skip inter-module specialization"),
-	    clEnumValN (previrt::AGGRESSIVE, "aggressive",
-			"Specialize always if some constant argument"),
-	    clEnumValN (previrt::NONRECURSIVE_WITH_AGGRESSIVE, "nonrec-aggressive",
-			"aggressive + non-recursive function")),
-	   cl::init(previrt::NONRECURSIVE_WITH_AGGRESSIVE));
-  
+	cl::desc("Inter-module specialization policy"),
+	cl::values
+       (clEnumValN(previrt::SpecializationPolicyType::NOSPECIALIZE, "nospecialize",
+		   "Skip inter-module specialization"),
+	clEnumValN(previrt::SpecializationPolicyType::AGGRESSIVE, "aggressive",
+		   "Specialize always if some constant argument"),
+	clEnumValN(previrt::SpecializationPolicyType::ONLY_ONCE, "onlyonce",
+		   "Specialize a function if it is called once"),
+	clEnumValN(previrt::SpecializationPolicyType::BOUNDED, "bounded",
+		   "Always specialize if number of copies so far <= Ppeval-max-spec-copies"),
+	clEnumValN(previrt::SpecializationPolicyType::NONREC, "nonrec-aggressive",
+		   "Specialize always if some constant arg and function is non-recursive")),
+        cl::init(previrt::SpecializationPolicyType::NONREC));
+
+static cl::opt<unsigned>
+MaxSpecCopies("Pspecialize-max-bounded", 
+	   cl::init(5),
+	   cl::desc("Maximum number of copies for a function if -Pspecialize-policy=bounded"));
+
 static cl::list<std::string>
 SpecCompIn("Pspecialize-input",
 	   cl::NotHidden,
@@ -108,7 +120,7 @@ namespace previrt
    * code to use the new API
    */
   static bool SpecializeComponent(Module& M, ComponentInterfaceTransform& T,
-				  SpecializationPolicy* policy,
+				  SpecializationPolicy& policy,
 				  std::vector<Function*>& to_add) {
     errs() << "SpecializeComponent()\n";
 
@@ -142,13 +154,12 @@ namespace previrt
         }
 
 	/*
-	  should we specialize? if yes then each bit in slice will
+	  should we specialize? if yes then each bit in marks will
 	  indicate whether the argument is a specializable constant
 	 */
-        SmallBitVector slice(arg_count);
-        bool shouldSpecialize = policy->specializeOn(func,
-						     call->args.begin(), call->args.end(),
-						     slice);
+        SmallBitVector marks(arg_count);
+        bool shouldSpecialize = policy.interSpecializeOn(*func, call->args, I, marks);
+						     
 
         if (!shouldSpecialize)
           continue;
@@ -156,9 +167,9 @@ namespace previrt
         std::vector<Value*> args;
         std::vector<unsigned> argPerm;
         args.reserve(arg_count);
-        argPerm.reserve(slice.count());
+        argPerm.reserve(marks.count());
         for (unsigned i = 0; i < arg_count; i++) {
-          if (slice.test(i)) {
+          if (marks.test(i)) {
 	      Type * paramType = func->getFunctionType()->getParamType(i);
 	      Value *concreteArg = call->args[i].concretize(M, paramType);
 	      args.push_back(concreteArg);
@@ -193,7 +204,7 @@ namespace previrt
 
         #if 0
 	for (unsigned i = 0; i < arg_count; i++) {
-	  errs() << "i = " << i << ": slice[i] = " << slice[i]
+	  errs() << "i = " << i << ": marks[i] = " << marks[i]
 		 << " args[i] = " << args.at(i) << "\n";
 	}
 	errs() << " argPerm = [";
@@ -253,25 +264,39 @@ namespace previrt {
       }
 
       // -- Create the specialization policy. Bail out if no policy.
-      SpecializationPolicy* policy = nullptr;
+      std::unique_ptr<SpecializationPolicy> policy;
       switch (SpecPolicy) {
-        case NOSPECIALIZE:
-	  return false;
-        case AGGRESSIVE:
-	  policy = new AggressiveSpecPolicy();
-	  break;
-        case NONRECURSIVE_WITH_AGGRESSIVE: {
-	  SpecializationPolicy* subpolicy = new AggressiveSpecPolicy();
-	  CallGraph& cg = getAnalysis<CallGraphWrapperPass>().getCallGraph();      
-	  policy = new RecursiveGuardSpecPolicy(subpolicy, cg);
-	  break;
-	}
+      case SpecializationPolicyType::NOSPECIALIZE:
+	return false;
+      case SpecializationPolicyType::AGGRESSIVE:
+	policy.reset(new AggressiveSpecPolicy());
+	break;
+      case SpecializationPolicyType::BOUNDED: {
+	std::unique_ptr<SpecializationPolicy> subpolicy =
+	  llvm::make_unique<AggressiveSpecPolicy>();
+	policy.reset(new BoundedSpecPolicy(M, std::move(subpolicy), MaxSpecCopies));
+	break;
       }
-
-      assert(policy);      
+      case SpecializationPolicyType::ONLY_ONCE:
+	policy.reset(new OnlyOnceSpecPolicy());
+	break;
+      case SpecializationPolicyType::NONREC: {
+	std::unique_ptr<SpecializationPolicy> subpolicy =
+	  llvm::make_unique<AggressiveSpecPolicy>();
+	CallGraph& cg = getAnalysis<CallGraphWrapperPass>().getCallGraph();      
+	policy.reset(new RecursiveGuardSpecPolicy(std::move(subpolicy), cg));
+      break;
+      }
+      default:;;
+      }
+      
+      if (!policy) {
+	return false;
+      }
+      
       errs() << "InterSpecializerPass::runOnModule(): " << M.getModuleIdentifier() << "\n";
       std::vector<Function*> to_add;
-      bool modified = SpecializeComponent(M, transform, policy, to_add);
+      bool modified = SpecializeComponent(M, transform, *policy, to_add);
       
       /*
 	 adding the "new" specialized definitions (in to_add) to M;
@@ -303,9 +328,6 @@ namespace previrt {
         output.close();
       }
       
-      if (policy) {
-	delete policy;
-      }
       return modified;
     }
     

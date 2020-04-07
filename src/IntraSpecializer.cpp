@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2018, SRI International
+// Copyright (c) 2011-2020, SRI International
 //
 //  All rights reserved.
 //
@@ -48,54 +48,64 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
-//#include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
 #include "SpecializationTable.h"
 #include "Specializer.h"
 /* here specialization policies */
 #include "AggressiveSpecPolicy.h"
 #include "RecursiveGuardSpecPolicy.h"
+#include "BoundedSpecPolicy.h"
+#include "OnlyOnceSpecPolicy.h"
 
 using namespace llvm;
 using namespace previrt;
 
+static cl::opt<SpecializationPolicyType>
+SpecPolicy("Ppeval-policy",
+	cl::desc("Intra-module specialization policy"),
+	cl::values
+       (clEnumValN(SpecializationPolicyType::NOSPECIALIZE, "nospecialize",
+		   "Skip intra-module specialization"),
+	clEnumValN(SpecializationPolicyType::AGGRESSIVE, "aggressive",
+		   "Specialize always if some constant argument"),
+	clEnumValN(SpecializationPolicyType::ONLY_ONCE, "onlyonce",
+		   "Specialize a function if it is called once"),
+	clEnumValN(SpecializationPolicyType::BOUNDED, "bounded",
+		   "Always specialize if number of copies so far <= Ppeval-max-spec-copies"),
+	clEnumValN(SpecializationPolicyType::NONREC, "nonrec-aggressive",
+		   "Specialize always if some constant arg and function is non-recursive")),
+	cl::init(SpecializationPolicyType::NONREC));
+
+static cl::opt<unsigned>
+MaxSpecCopies("Ppeval-max-bounded", 
+	      cl::init(5),
+	      cl::desc("Maximum number of copies for a function if -Ppeval-policy=bounded"));
+
 static cl::opt<bool>
-OptSpecialized("Ppeval-opt", cl::Hidden,
+OptSpecialized("Ppeval-opt",
 	       cl::init(false),
 	       cl::desc("Optimize new specialized functions"));
 
-static cl::opt<SpecializationPolicyType>
-SpecPolicy("Ppeval-policy",
-	   cl::desc("Intra-module specialization policy"),
-	   cl::values
-	   (clEnumValN (NOSPECIALIZE, "nospecialize",
-			"Skip intra-module specialization"),
-	    clEnumValN (AGGRESSIVE, "aggressive",
-			"Specialize always if some constant argument"),
-	    clEnumValN (NONRECURSIVE_WITH_AGGRESSIVE, "nonrec-aggressive",
-			"aggressive + non-recursive function")),
-	   cl::init(NONRECURSIVE_WITH_AGGRESSIVE));
 
-namespace previrt
-{
+namespace previrt {
 
 /**
    Return true if any callsite in f is specialized using policy.
 **/
 static bool trySpecializeFunction(Function* f, SpecializationTable& table,
-				  SpecializationPolicy* policy,
+				  SpecializationPolicy& policy,
 				  std::vector<Function*>& to_add) {
   
   std::vector<Instruction*> worklist;
   for (BasicBlock& bb: *f) {
     for (Instruction& I: bb) {
 
-      Instruction* ci = dyn_cast<CallInst>(&I);
-      if (!ci) ci = dyn_cast<InvokeInst>(&I);
-      if (!ci) continue;
-      CallSite call(ci);
+      Instruction* CI = dyn_cast<CallInst>(&I);
+      if (!CI) CI = dyn_cast<InvokeInst>(&I);
+      if (!CI) continue;
+      CallSite CS(CI);
 
-      Function* callee = call.getCalledFunction();
+      Function* callee = CS.getCalledFunction();
       if (!callee) {
 	continue; 
       }
@@ -104,12 +114,15 @@ static bool trySpecializeFunction(Function* f, SpecializationTable& table,
         continue;
       }
 
-      if (callee->hasFnAttribute(Attribute::NoInline) ||
-      	  callee->hasFnAttribute(Attribute::OptimizeNone)) {
+      // if (callee->hasFnAttribute(Attribute::NoInline)) {
+      //   continue;
+      // }
+      
+      if (callee->hasFnAttribute(Attribute::OptimizeNone)) {
         continue;
       }
       
-      worklist.push_back(ci);
+      worklist.push_back(CS.getInstruction());
     }
   }
 
@@ -130,7 +143,7 @@ static bool trySpecializeFunction(Function* f, SpecializationTable& table,
     //                 c if the i-th parameter of the callsite is a
     //                   constant c
     std::vector<Value*> specScheme;
-    bool specialize = policy->specializeOn(cs, specScheme);
+    bool specialize = policy.intraSpecializeOn(cs, specScheme);
           
     if (!specialize) {
       continue;
@@ -216,19 +229,35 @@ public:
 bool SpecializerPass::runOnModule(Module &M) {
 
   // -- Create the specialization policy. Bail out if no policy.
-  SpecializationPolicy* policy = nullptr;    
+  std::unique_ptr<SpecializationPolicy> policy;
   switch (SpecPolicy) {
-    case NOSPECIALIZE:
-      return false;
-    case AGGRESSIVE:
-      policy = new AggressiveSpecPolicy();
+     case SpecializationPolicyType::NOSPECIALIZE:
+       return false;
+     case SpecializationPolicyType::AGGRESSIVE:
+       policy.reset(new AggressiveSpecPolicy());
+       break;
+     case SpecializationPolicyType::BOUNDED: {
+       std::unique_ptr<SpecializationPolicy> subpolicy =
+	 llvm::make_unique<AggressiveSpecPolicy>();
+       policy.reset(new BoundedSpecPolicy(M, std::move(subpolicy), MaxSpecCopies));
+       break;
+     }
+    case SpecializationPolicyType::ONLY_ONCE:
+      policy.reset(new OnlyOnceSpecPolicy(M));
       break;
-    case NONRECURSIVE_WITH_AGGRESSIVE: {
-      SpecializationPolicy* subpolicy = new AggressiveSpecPolicy();
+    case SpecializationPolicyType::NONREC: {
+      std::unique_ptr<SpecializationPolicy> subpolicy =
+	llvm::make_unique<AggressiveSpecPolicy>();
       CallGraph& cg = getAnalysis<CallGraphWrapperPass>().getCallGraph();      
-      policy = new RecursiveGuardSpecPolicy(subpolicy, cg);
+      policy.reset(new RecursiveGuardSpecPolicy(std::move(subpolicy), cg));
       break;
     }
+    default:;;
+  }
+
+  if (!policy) {
+    errs() << "Warning: unsupported intra-specialization policy\n";
+    return false;
   }
 
   // -- Specialize functions defined in M
@@ -237,13 +266,13 @@ bool SpecializerPass::runOnModule(Module &M) {
   bool modified = false;
   for (auto &f: M) {
     if(f.isDeclaration()) continue;
-    modified |= trySpecializeFunction(&f, table, policy, to_add);
+    modified |= trySpecializeFunction(&f, table, *policy, to_add);
   }
   
   // -- Optimize new function and add it into the module
-  llvm::legacy::FunctionPassManager* optimizer = nullptr;
+  std::unique_ptr<llvm::legacy::FunctionPassManager> optimizer;
   if (optimize) {
-    optimizer = new llvm::legacy::FunctionPassManager(&M);
+    optimizer.reset(new llvm::legacy::FunctionPassManager(&M));
     //PassManagerBuilder builder;
     //builder.OptLevel = 3;
     //builder.populateFunctionPassManager(*optimizer);
@@ -270,14 +299,6 @@ bool SpecializerPass::runOnModule(Module &M) {
     errs() << "...no progress...\n";
   }
   
-  if (policy) {
-    delete policy;
-  }
-  
-  if (optimizer) {
-    delete optimizer;
-  }
-
   return modified;
 }
 

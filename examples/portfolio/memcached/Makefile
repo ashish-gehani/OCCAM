@@ -27,7 +27,7 @@ ${LIBEVENT_INSTALL}:
 ${MEM_INSTALL}/bin/${MEM}: ${MEM_TAR} ${LIBEVENT_INSTALL}
 	tar -xvzf ${MEM_TAR}
 	cd ${MEM}-${MEM_VERSION}; \
-	CC=${LLVMCC} ./configure --prefix=${MEM_INSTALL} --with-libevent=${LIBEVENT_INSTALL}; \
+	CC=${LLVMCC} ./configure --disable-coverage --prefix=${MEM_INSTALL} --with-libevent=${LIBEVENT_INSTALL}; \
 	make; make install
 
 ${MEM}.bc: ${MEM_INSTALL}/bin/${MEM}
@@ -37,9 +37,9 @@ ${MEM}.bc: ${MEM_INSTALL}/bin/${MEM}
 clean:
 	rm -rf ${MEM}-${MEM_VERSION} OCCAM ${MEM_TAR} ${MEM}.bc
 	make -f Makefile_libevent clean
-	rm -f memcached_orig memcached_slashed memcached.manifest
+	rm -f memcached_orig memcached_slashed memcached.manifest 
+	rm -rf install
 
 distclean:
 	make clean
-	rm -rf install
 	rm -rf slash

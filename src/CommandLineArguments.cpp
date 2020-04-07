@@ -37,6 +37,7 @@
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Attributes.h"
+#include "llvm/IR/Instructions.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -124,9 +125,12 @@ namespace previrt {
     }
     
     // Build the array constant
-    Type* const i32type = IntegerType::get(M.getContext(), 32);
-    Type* const stringtype =
-      PointerType::getUnqual(IntegerType::get(M.getContext(), 8));
+
+    // typicaly whether i32 or i64
+    Type* intptrTy = M.getDataLayout().getIntPtrType(M.getContext(), 0);
+    // stringTy = i8*
+    Type* const stringTy = PointerType::get(IntegerType::get(M.getContext(), 8),
+					      0 /*AddressSpace*/);
 
     Function *new_main = Function::Create(f->getFunctionType(),
 					  f->getLinkage(), "", &M);
@@ -161,10 +165,48 @@ namespace previrt {
       auto* sty = cast<PointerType>(gvT);
       cargs.push_back(irb.CreateConstGEP2_32(sty->getElementType(), gv, 0, 0));
     }
+
+    // XXX: We cannot store the new argv in the stack.
+    // 
+    // If the new argv is passed to another function then the callee
+    // won't have access to new_argv since it's in the caller's stack.
+    // This happens with this code:
+    //
+    // main(...,argv) { foo(...,argv);}
+    // 
+    // Our code will create something like this:
+    //
+    // main(...,argv) { char*[N] newargv; ... foo(...,newargv);}
+    //
+
+    Value *numArgs = ConstantInt::get(intptrTy, cargs.size(), false);
+    /// XXX: We cannot do stack allocation
+    // Value* argv = irb.CreateAlloca(stringTy, numArgs);
     
-    Value* argv = irb.CreateAlloca(stringtype,
-				   ConstantInt::get(i32type,
-						    cargs.size(), false));
+    // Add the following instruction:
+    // 
+    // stringTy p = (stringTy) malloc(sizeof(type) * array_sz)
+    //
+    Value *ptrSz = ConstantInt::get(intptrTy, M.getDataLayout().getPointerSize(), false);
+
+    // Insert the malloc call at the end of bb which at this point is
+    // still empty.  CreateMalloc returns the BitCast instruction to
+    // cast the malloced pointer to its type.  That BitCast
+    // instruction is not inserted anywhere.
+    Value* argv = CallInst::CreateMalloc(bb,
+					 /*expected type for malloc argument (size_t)*/
+					 intptrTy,
+					 stringTy /*used only for cast*/, 
+					 ptrSz    /*sizeof(type)*/,
+					 numArgs  /*array_sz*/,
+					 (Function*) nullptr, "new_argv");
+    bb->getInstList().push_back(cast<Instruction>(argv));
+    
+    /* Prepare the IR builder to insert next time _after_ argv */
+    irb.SetInsertPoint(cast<Instruction>(argv));
+    auto it = irb.GetInsertPoint();
+    ++it;
+    irb.SetInsertPoint(bb, it);
 
     int idx = 0;
     for (std::vector<Value*>::iterator i = cargs.begin(), e = cargs.end(); i

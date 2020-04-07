@@ -4,7 +4,7 @@
 set -e
 
 function usage() {
-    echo "Usage: $0 [--disable-inlining] [--ipdse] [--ai-dce] [--devirt VAL1] [--inter-spec VAL2] [--intra-spec VAL2] [--help]"
+    echo "Usage: $0 [--disable-inlining] [--ipdse] [--ai-dce] [--devirt VAL1] [--inter-spec VAL2] [--intra-spec VAL2] [--enable-config-prime] [--help]"
     echo "       VAL1=none|dsa|cha_dsa"    
     echo "       VAL2=none|aggressive|nonrec-aggressive"
 }
@@ -32,6 +32,10 @@ case $key in
 	;;
     -disable-inlining|--disable-inlining)
 	OPT_OPTIONS="${OPT_OPTIONS} --disable-inlining"
+	shift # past argument
+	;;
+    -enable-config-prime|--enable-config-prime)
+	OPT_OPTIONS="${OPT_OPTIONS} --enable-config-prime"
 	shift # past argument
 	;;
     -ipdse|--ipdse)

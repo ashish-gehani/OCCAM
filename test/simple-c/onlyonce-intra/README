@@ -1,0 +1,2 @@
+LLVM opt already specializes an internal function if it's called only
+once in the module. Thus, we don't need OCCAM onlyonce policy.

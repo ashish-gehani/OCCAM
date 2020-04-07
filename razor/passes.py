@@ -1,7 +1,7 @@
 """
  OCCAM
 
- Copyright (c) 2011-2017, SRI International
+ Copyright (c) 2011-2020, SRI International
 
   All rights reserved.
 
@@ -56,7 +56,8 @@ def interface(input_file, output_file, wrt):
     args += driver.all_args('-Pinterface-entry', wrt)
     return driver.previrt(input_file, '/dev/null', args)
 
-def specialize(input_file, output_file, rewrite_file, interfaces, policy):
+def specialize(input_file, output_file, rewrite_file, interfaces, \
+               policy, max_bounded):
     """ inter module specialization.
     """
     args = ['-Pspecialize']
@@ -65,6 +66,8 @@ def specialize(input_file, output_file, rewrite_file, interfaces, policy):
     args += driver.all_args('-Pspecialize-input', interfaces)
     if policy <> 'none':
         args += ['-Pspecialize-policy={0}'.format(policy)]
+    if policy == 'bounded':
+        args += ['-Pspecialize-max-bounded={0}'.format(max_bounded)]
     if output_file is None:
         output_file = '/dev/null'
     return driver.previrt(input_file, output_file, args)
@@ -189,7 +192,7 @@ def clam(cmd, input_file, output_file):
 
 def peval(input_file, output_file, \
           opt_options, \
-          policy, \
+          policy, max_bounded, \
           devirt_method, \
           force_inline_bounce, force_inline_spec, \
           use_llpe, use_ipdse, use_ai_dce, log=None):
@@ -334,8 +337,11 @@ def peval(input_file, output_file, \
                 shutil.copy(done.name, opt.name)
 
             # perform specialization using policies
-            passes = ['-Ppeval', '-Ppeval-policy={0}'.format(policy), '-Ppeval-opt']
-            progress = driver.previrt_progress(opt.name, tmp.name, passes, output=out)
+            pass_args = ['-Ppeval', '-Ppeval-policy={0}'.format(policy), '-Ppeval-opt']
+            if policy == 'bounded':
+                pass_args += ['-Ppeval-max-bounded={0}'.format(max_bounded)]
+                
+            progress = driver.previrt_progress(opt.name, tmp.name, pass_args, output=out)
             sys.stderr.write("\tintra-module specialization finished\n")
             # forcing inlining of specialized functions if option is enabled
             force_inline(tmp.name, done.name, False, force_inline_spec)
@@ -429,6 +435,25 @@ def specialize_program_args(input_file, output_file, args, filename=None, name=N
     if filename is None:
         os.unlink(arg_file)
 
+def config_prime(input_file, output_file, known_args, num_unknown_args):
+    """ 
+    Execute the program until a branch condition is unknown.
+    known_args is a list of strings
+    num_unknown_args is a non-negative number.
+    """
+    ## TODOX: find subset of -O1 that simplify loops for dominance queries
+    args = ['-O1'] # '-loop-simplify', '-simplifycfg'
+    args += ['-Pconfig-prime']
+    index = 0
+    for x in known_args:
+        if index == 0:
+            args.append('-Pconfig-prime-file=\"{0}\"'.format(x))
+        else:
+            args.append('-Pconfig-prime-input-arg=\"{0}\"'.format(x))
+        index += 1
+    args.append('-Pconfig-prime-unknown-args={0}'.format(num_unknown_args))
+    driver.previrt(input_file, output_file, args)
+    
 def deep(libs, ifaces):
     """ compute interfaces across modules.
     """

@@ -3,5 +3,5 @@
 , "modules"    : []
 , "native_libs" : []
 , "name"    : "hello"
-, "constraints" : "{ argc = 1, argv[0] = \"hello\", argv[1] = \"donald duck\", argv[2] = \"-mcsat\" }"
+, "constraints" : ["1", "hello", "donald duck", "-mcsat"]
 }

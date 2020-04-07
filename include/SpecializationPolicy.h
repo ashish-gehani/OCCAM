@@ -42,24 +42,26 @@
 #include "llvm/IR/Value.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/CallSite.h"
-#include "llvm/ADT/SmallBitVector.h"
-
 #include "PrevirtTypes.h"
-
+#include "PrevirtualizeInterfaces.h"
 #include <vector>
 
-namespace previrt
-{
+namespace llvm {
+  class SmallBitVector;
+}
+
+namespace previrt {
   
   /* Here specialization policies */
-  enum SpecializationPolicyType {
-    NOSPECIALIZE,
-    AGGRESSIVE,
-    NONRECURSIVE_WITH_AGGRESSIVE
+  enum class SpecializationPolicyType {
+    NOSPECIALIZE, // never specialize
+    AGGRESSIVE,   // always specialize
+    BOUNDED,      // always specialize up to certain threshold
+    ONLY_ONCE,    // specialize if function called only once
+    NONREC        // always specialize if function is non-recursive
   };
   
-  class SpecializationPolicy
-  {
+  class SpecializationPolicy {
   protected:
     
     SpecializationPolicy(){}
@@ -72,17 +74,24 @@ namespace previrt
   public:
     
     virtual ~SpecializationPolicy(){}
-    
-    virtual bool specializeOn(llvm::CallSite, std::vector<llvm::Value*>&) const = 0;
-			      
-    virtual bool specializeOn(llvm::Function*,
-			      const PrevirtType*, const PrevirtType*,
-			      llvm::SmallBitVector&) const = 0;
 
-    virtual bool specializeOn(llvm::Function*,
-			      std::vector<PrevirtType>::const_iterator,
-			      std::vector<PrevirtType>::const_iterator,
-			      llvm::SmallBitVector&) const = 0;
+    // Decide whether a callsite CS should be specialized.
+    //
+    // marks[i] is either null or Constant* containing the value of
+    // i-th actual parameter of the call.
+    virtual bool intraSpecializeOn(llvm::CallSite CS,
+				   std::vector<llvm::Value*>& marks) = 0;
+
+    // Decide whether we should create a specialized version of
+    // CalleeF by looking at its interface (i.e., how other modules
+    // call CalleeF).
+    // 
+    // marks[i] is true iff i-th parameter of the call can be
+    // specialized.
+    virtual bool interSpecializeOn(const llvm::Function& CalleeF,
+				   const std::vector<PrevirtType>& args,
+				   const ComponentInterface& interface,
+				   llvm::SmallBitVector& marks) = 0;
 
   };
 } // end namespace

@@ -38,8 +38,7 @@
  *      Author: malecha
  */
 
-#ifndef __PREVIRT_TYPES_H__
-#define __PREVIRT_TYPES_H__
+#pragma once 
 
 #include "Serializer.h"
 #include "proto/Previrt.pb.h"
@@ -52,14 +51,12 @@ namespace llvm {
   class LLVMContext;
 }
 
-namespace previrt
-{
+namespace previrt {
 #define NO_MATCH    (-1)
 #define EXACT_MATCH  0
 #define LOOSE_MATCH  1
 
-  class PrevirtType
-  {
+  class PrevirtType {
   private:
     proto::PrevirtType buffer;
     typedef std::map<llvm::Type*, llvm::Function*> EqCache;
@@ -73,28 +70,16 @@ namespace previrt
     unknown();
 
   public:
-    PrevirtType&
-    operator=(const PrevirtType&);
-    bool
-    operator!=(const PrevirtType&) const;
-    bool
-    operator==(const PrevirtType&) const;
+    PrevirtType& operator=(const PrevirtType&);
+    bool operator!=(const PrevirtType&) const;
+    bool operator==(const PrevirtType&) const;
 
   public:
-    int
-    refines(const llvm::Value* const) const;
-
-    llvm::Value*
-    concretize(llvm::Module&, llvm::Type*) const;
-
-    bool
-    isConcrete() const;
-
-    bool
-    isUnknown() const;
-
-    std::string
-    to_string() const;
+    int refines(const llvm::Value* const) const;
+    llvm::Value* concretize(llvm::Module&, llvm::Type*) const;
+    bool isConcrete() const;
+    bool isUnknown() const;
+    std::string to_string() const;
 
   public:
     llvm::Function*
@@ -105,4 +90,3 @@ namespace previrt
   };
 }
 
-#endif /** __PREVIRT_TYPES_H__ **/
