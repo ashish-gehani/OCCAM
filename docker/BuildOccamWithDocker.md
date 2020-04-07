@@ -1,3 +1,11 @@
+
+# For OCCAM users: #
+
+```shell
+docker pull sricsl/occam:bionic
+docker run -v `pwd`:/host -it sricsl/occam:bionic
+```
+
 # For OCCAM developers: Building a new Docker image #
 
 ```shell
@@ -11,9 +19,4 @@ Build arguments (required):
 - UBUNTU: trusty, xenial, bionic
 - BUILD_TYPE: Release, Debug
 
-# For OCCAM users: #
-
-```shell
-docker pull sricsl/occam:bionic
-docker run -v `pwd`:/host -it sricsl/occam:bionic
-```
+# For OCCAM releasers: Pushing a Docker image to DockerHub #
