@@ -1,0 +1,7 @@
+The 'lighttpd' program was configured to NOT write error log to 'syslog'.
+
+The 'server.errorlog-use-syslog' toggles the behavior mentioned above.
+
+When the value of key 'server.errorlog-use-syslog' is 'disable' then the 
+functions in the 'uncalled_functions' file are never called from anywhere 
+else in the program.

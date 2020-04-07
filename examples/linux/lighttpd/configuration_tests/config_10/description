@@ -1,0 +1,2 @@
+The key 'server.groupname' is commented out because of which the function call 'setgid' is never
+executed.

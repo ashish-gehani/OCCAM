@@ -1,0 +1,3 @@
+No modules are specified in the configuration file by commenting out the
+'server.modules' key. That should cause the functions in 'uncalled_functions'
+to be never called.

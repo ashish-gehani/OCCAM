@@ -1,0 +1,2 @@
+The key 'server.chroot' is commented out because of the function call 'chroot' is never
+executed.

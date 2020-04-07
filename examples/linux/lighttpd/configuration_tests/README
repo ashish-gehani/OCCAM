@@ -1,0 +1,27 @@
+This directory contains the files which were involved in trying different configurations for the 'lighttpd' program
+and the expected changes (because of the configuration changes) in the functions called or not called by the program.
+
+The following describes the contents of this directory:
+
+1) 'run.command': This file contains the command used to run the program with different configuration files
+2) 'config_<num>': This directory contains files necessary to describe changes in program execution (with respect to
+function calls) when a SINGLE feature is updated in a 'lighttpd' configuration file. The '<num>' is used to just
+distinguish between different configuration files used. Each of these directories contains the following files:
+        a) 'description': This file describes the feature that was updated
+        b) 'lighttpd.conf': This is the configuration file used
+        c) 'uncalled_functions': This is the file to describe the expected changes in program execution with respect
+        to function calls. This file contains a list of function names in the 'lighttpd' program or in libc which would 
+	NOT be executed because of the configuration file used. In this file each line is a function name	
+
+*** CAVEAT ***
+For each 'config_<num>' directory, the 'uncalled_functions' file describes only the functions which don't
+get called because of the feature update described in its 'description' file. That means there could be more functions
+(not listed in the 'uncalled_functions' file) which might not get called because of the configuration file for a given 
+'config_<num>' directory. 
+An example of this would be 'config_02' and 'config_04' directories. In 'config_02', the feature updated is 
+the disabling of the application logging to 'syslog'. That causes only two functions to not get called and those are 
+mentioned in its 'uncalled_functions' file. The configuration file for 'config_02' also contains the same subset of 
+configuration (used to update a separate feature) which is described in 'config_04' directory. The functions that 
+do not get called because of configuration update in 'config_04' are not listed in the 'uncalled_functions' file for 
+'config_02' because 'config_02' describes a different feature.
+
