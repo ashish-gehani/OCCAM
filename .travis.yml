@@ -15,9 +15,9 @@ services:
 install: true
 
 script:
-  - docker build --build-arg UBUNTU=${UBUNTU_DIST} --build-arg BUILD_TYPE=${BUILD_TYPE} -t occam/occam_${UBUNTU_DIST}_rel -f docker/occam.Dockerfile .
+  - docker build --build-arg UBUNTU=${UBUNTU_DIST} --build-arg BUILD_TYPE=${BUILD_TYPE} -t sricsl/occam:${UBUNTU_DIST} -f docker/occam.Dockerfile .
 
   - 'if [ "$TRAVIS_EVENT_TYPE" = "cron" ] ;
         then echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-          && docker push occam/occam_${UBUNTU_DIST}_rel;
+          && docker push sricsl/occam:${UBUNTU_DIST};
      fi '
