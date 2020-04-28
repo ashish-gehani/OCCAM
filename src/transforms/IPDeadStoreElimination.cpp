@@ -2,13 +2,17 @@
    Inter-procedural Dead Store Elimination.
 
    Consider only global variables whose addresses have not been taken.
-   1. Compute a Memory SSA form.
+
+   1. Run seadsa ShadowMem pass to instrument code with shadow.mem
+      function calls.
    2. Follow inter-procedural def-use chains to check if a store to a
       singleton global variable has no use. If yes, the store is dead
       and it can be removed.
+   3. Remove shadow.mem function calls.
+
 */
 
-#include "transforms/AssistMemorySSA.h"
+#include "analysis/MemorySSA.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Module.h"
@@ -16,6 +20,8 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Transforms/Utils/UnifyFunctionExitNodes.h"
+
+#include "sea_dsa/ShadowMem.hh"
 
 #include <boost/functional/hash.hpp>
 #include <boost/unordered_set.hpp>
@@ -42,7 +48,8 @@ namespace previrt {
 namespace transforms {
 
 using namespace llvm;
-
+using namespace analysis;
+  
 static bool hasFunctionPtrParam(Function* F) {
   FunctionType* FTy = F->getFunctionType();
   for(unsigned i=0, e=FTy->getNumParams(); i<e; ++i) {
@@ -58,28 +65,28 @@ static bool hasFunctionPtrParam(Function* F) {
 class IPDeadStoreElimination: public ModulePass {
   
   struct QueueElem {
-    const Instruction *mem_ssa_inst;
+    const Instruction *shadow_mem_inst;
     StoreInst *store_inst;
-    // number of steps between store_inst and mem_ssa_inst
+    // number of steps between store_inst and shadow_mem_inst
     unsigned length;
     
     QueueElem(const Instruction *inst, StoreInst *si, unsigned len)
-      : mem_ssa_inst(inst), store_inst(si), length(len) { }
+      : shadow_mem_inst(inst), store_inst(si), length(len) { }
     
     size_t hash() const {
       size_t val = 0;
-      boost::hash_combine(val, mem_ssa_inst);
+      boost::hash_combine(val, shadow_mem_inst);
       boost::hash_combine(val, store_inst);
       return val;
     }
     
     bool operator==(const QueueElem& o) const {
-      return (mem_ssa_inst == o.mem_ssa_inst &&
+      return (shadow_mem_inst == o.shadow_mem_inst &&
 	      store_inst == o.store_inst);
     }
     
     void write(raw_ostream &o) const {
-      o << "(" << *mem_ssa_inst << ", " << *store_inst << ")";
+      o << "(" << *shadow_mem_inst << ", " << *store_inst << ")";
     }
     
     friend raw_ostream& operator<<(raw_ostream &o, const QueueElem &e) {
@@ -112,7 +119,7 @@ class IPDeadStoreElimination: public ModulePass {
     m_store_map[SI] = false;
   }
   
-  // Given a call to mem.ssa.arg.XXX it founds the nearest actual
+  // Given a call to shadow.mem.arg.XXX it founds the nearest actual
   // callsite from the original program and return the calleed
   // function.
   const Function* findCalledFunction(ImmutableCallSite &MemSsaCS) {
@@ -124,7 +131,7 @@ class IPDeadStoreElimination: public ModulePass {
 	  return nullptr;
 	}
 	
-	if (CS.getCalledFunction()->getName().startswith("mem.ssa")) {
+	if (CS.getCalledFunction()->getName().startswith("shadow.mem")) {
 	  continue;
 	} else {
 	  return CS.getCalledFunction();
@@ -146,225 +153,231 @@ public:
     }
 
     errs() << "Started ip-dse ... \n";
-    unsigned too_long_chains = 0;
+    unsigned skipped_chains = 0;
     
-    // Worklist: collect all memory ssa store instructions whose
+    // Worklist: collect all shadow.mem store instructions whose
     // pointer operand is a global variable.
     std::vector<QueueElem> queue;
     for (auto& F: M) {
       for (auto &I: instructions(&F)) {
 	if (isMemSSAStore(&I, OnlySingleton)) {
+	  llvm::errs() << I << "\n";
 	  auto it = I.getIterator();
 	  ++it;
+	  llvm::errs() << *it << "\n";
 	  if (StoreInst *SI = dyn_cast<StoreInst>(&*it)) {
 	    queue.push_back(QueueElem(&I, SI, 0));
 	    // All the store instructions will be removed unless the
 	    // opposite is proven.
 	    markStoreToRemove(SI);
 	  } else {
-	    report_fatal_error("[IP-DSE] after mem.ssa.store we expect a StoreInst");
+	    report_fatal_error("[IP-DSE] after shadow.mem.store we expect a StoreInst");
 	  }
 	}
       }
     }
     
-    if (queue.empty()) {
-      errs() << "\tNumber of deleted stores 0\n";
-      errs() << "Finished ip-dse\n";    
-      return false;
-    }
+    if (!queue.empty()) {
 
-    errs() << "Number of stores: " << queue.size() << "\n";
-    MemorySSACallsManager MMan(M, *this, OnlySingleton);
-    
-    DSE_LOG(errs() << "[IP-DSE] BEGIN initial queue: \n";
-	    for(auto &e: queue) {
-	      errs () << "\t" << e << "\n";
-	    }
-	    errs () << "[IP-DSE] END initial queue\n";);
+      errs() << "Number of stores: " << queue.size() << "\n";
+      MemorySSACallsManager MMan(M, *this, OnlySingleton);
       
-    boost::unordered_set<QueueElem, QueueElemHasher> visited;
-    while (!queue.empty()) {
-      QueueElem w = queue.back();
-      DSE_LOG(errs() << "[IP-DSE] Processing " << *(w.mem_ssa_inst) << "\n");
-      queue.pop_back();
-
-      if (!visited.insert(w).second) {
-	markStoreToKeep(w.store_inst);
-	continue;
-      }
+      DSE_LOG(errs() << "[IP-DSE] BEGIN initial queue: \n";
+	      for(auto &e: queue) {
+		errs () << "\t" << e << "\n";
+	      }
+	      errs () << "[IP-DSE] END initial queue\n";);
       
-      if (w.length == MaxLenDefUse) {
-	too_long_chains++;
-	markStoreToKeep(w.store_inst);
-	continue;
-      }
-      if (hasMemSSALoadUser(w.mem_ssa_inst, OnlySingleton)) {
-	DSE_LOG(errs() << "\thas a load user: CANNOT be removed.\n");
-	markStoreToKeep(w.store_inst);
-	continue;
-      } 
-      
-      for (auto &U: w.mem_ssa_inst->uses()) {
-	Instruction *I = dyn_cast<Instruction>(U.getUser());
-	if (!I) continue;
-	DSE_LOG(errs() << "\tChecking user " << *I << "\n");
-		  
-	if (PHINode *PHI = dyn_cast<PHINode>(I)) {
-	  DSE_LOG(errs () << "\tPHI node: enqueuing lhs\n");
-	  enqueue(queue, QueueElem(PHI, w.store_inst, w.length+1));
-	} else if (isa<CallInst>(I)) {
-	  ImmutableCallSite CS(I);
-	  if (!CS.getCalledFunction()) continue;
-	  if (isMemSSAStore(CS, OnlySingleton)) {
-	    DSE_LOG(errs() << "\tstore: skipped\n");
-	    continue;
-	  } else if (isMemSSAArgRef(CS, OnlySingleton)) { 
-	    DSE_LOG(errs() << "\targ ref: CANNOT be removed\n");
-	    markStoreToKeep(w.store_inst);		
-	  } else if (isMemSSAArgMod(CS, OnlySingleton)) {
-	    DSE_LOG(errs() << "\targ mod: skipped\n");
-	    continue;
-	  } else if (isMemSSAArgRefMod(CS, OnlySingleton)) {
-	    DSE_LOG(errs() << "\tRecurse inter-procedurally in the callee\n");
-	    // Inter-procedural step: we recurse on the uses of
-	    // the corresponding formal (non-primed) variable in
-	    // the callee.
-	      
-	    int64_t idx = getMemSSAParamIdx(CS);
-	    if (idx < 0) {
-	      report_fatal_error("[IP-DSE] cannot find index in mem.ssa function");
-	    }
-	    // HACK: find the actual callsite associated with mem.ssa.arg.ref_mod(...)
-	    const Function *calleeF = findCalledFunction(CS);
-	    if (!calleeF) {
-	      report_fatal_error("[IP-DSE] cannot find callee with mem.ssa.XXX function");
-	    }
-	    const MemorySSAFunction* MemSsaFun = MMan.getFunction(calleeF);
-	    if (!MemSsaFun) {
-	      report_fatal_error("[IP-DSE] cannot find MemorySSAFunction");
-	    }
-
-	    if (MemSsaFun->getNumInFormals() == 0) {
-	      // Probably the function has only mem.ssa.arg.init
-	      errs() << "TODO: unexpected case function without mem.ssa.in.\n";
-	      markStoreToKeep(w.store_inst);
+      boost::unordered_set<QueueElem, QueueElemHasher> visited;
+      while (!queue.empty()) {
+	QueueElem w = queue.back();
+	DSE_LOG(errs() << "[IP-DSE] Processing " << *(w.shadow_mem_inst) << "\n");
+	queue.pop_back();
+	
+	if (!visited.insert(w).second) {
+	  markStoreToKeep(w.store_inst);
+	  continue;
+	}
+	
+	if (w.length == MaxLenDefUse) {
+	  skipped_chains++;
+	  markStoreToKeep(w.store_inst);
+	  continue;
+	}
+	if (hasMemSSALoadUser(w.shadow_mem_inst, OnlySingleton)) {
+	  DSE_LOG(errs() << "\thas a load user: CANNOT be removed.\n");
+	  markStoreToKeep(w.store_inst);
+	  continue;
+	} 
+	
+	for (auto &U: w.shadow_mem_inst->uses()) {
+	  Instruction *I = dyn_cast<Instruction>(U.getUser());
+	  if (!I) continue;
+	  DSE_LOG(errs() << "\tChecking user " << *I << "\n");
+	  
+	  if (PHINode *PHI = dyn_cast<PHINode>(I)) {
+	    DSE_LOG(errs () << "\tPHI node: enqueuing lhs\n");
+	    enqueue(queue, QueueElem(PHI, w.store_inst, w.length+1));
+	  } else if (isa<CallInst>(I)) {
+	    ImmutableCallSite CS(I);
+	    if (!CS.getCalledFunction()) continue;
+	    if (isMemSSAStore(CS, OnlySingleton)) {
+	      DSE_LOG(errs() << "\tstore: skipped\n");
 	      continue;
-	    }
-	    
-	    const Value* calleeInitArgV = MemSsaFun->getInFormal(idx);
-	    if (!calleeInitArgV) {
-	      report_fatal_error("[IP-DSE] getInFormal returned nullptr");
-	    }
-	    
-	    if (const Instruction* calleeInitArg =
-		dyn_cast<const Instruction>(calleeInitArgV)) {
-	      enqueue(queue, QueueElem(calleeInitArg, w.store_inst, w.length+1));
-	    } else {
-	      report_fatal_error("[IP-DSE] expected to enqueue from callee");
-	    }
-	    
-	  } else if (isMemSSAFunIn(CS, OnlySingleton)) {
-	    DSE_LOG(errs() << "\tin: skipped\n");
-	    // do nothing
-	  } else if (isMemSSAFunOut(CS, OnlySingleton)) {
-	    DSE_LOG(errs() << "\tRecurse inter-procedurally in the caller\n");
-	    // Inter-procedural step: we recurse on the uses of
-	    // the corresponding actual (primed) variable in the
-	    // caller.
+	    } else if (isMemSSAArgRef(CS, OnlySingleton)) { 
+	      DSE_LOG(errs() << "\targ ref: CANNOT be removed\n");
+	      markStoreToKeep(w.store_inst);		
+	    } else if (isMemSSAArgMod(CS, OnlySingleton)) {
+	      DSE_LOG(errs() << "\targ mod: skipped\n");
+	    continue;
+	    } else if (isMemSSAArgRefMod(CS, OnlySingleton)) {
+	      DSE_LOG(errs() << "\tRecurse inter-procedurally in the callee\n");
+	      // Inter-procedural step: we recurse on the uses of
+	      // the corresponding formal (non-primed) variable in
+	      // the callee.
 	      
-	    int64_t idx = getMemSSAParamIdx(CS);
-	    if (idx < 0) {
-	      report_fatal_error("[IP-DSE] cannot find index in mem.ssa function");
-	    }
-
-	    // Find callers
-	    Function *F = I->getParent()->getParent();	    
-	    for (auto &U: F->uses()) {
-	      if (CallInst *CI = dyn_cast<CallInst>(U.getUser())) {
-		const MemorySSACallSite* MemSsaCS = MMan.getCallSite(CI);
-		if (!MemSsaCS) {
+	      int64_t idx = getMemSSAParamIdx(CS);
+	      if (idx < 0) {
+		report_fatal_error("[IP-DSE] cannot find index in shadow.mem function");
+	      }
+	      // HACK: find the actual callsite associated with shadow.mem.arg.ref_mod(...)
+	      const Function *calleeF = findCalledFunction(CS);
+	      if (!calleeF) {
+		report_fatal_error("[IP-DSE] cannot find callee with shadow.mem.XXX function");
+	      }
+	      const MemorySSAFunction* MemSsaFun = MMan.getFunction(calleeF);
+	      if (!MemSsaFun) {
+		report_fatal_error("[IP-DSE] cannot find MemorySSAFunction");
+	      }
+	      
+	      if (MemSsaFun->getNumInFormals() == 0) {
+		// Probably the function has only shadow.mem.arg.init
+		errs() << "TODO: unexpected case function without shadow.mem.in.\n";
+		markStoreToKeep(w.store_inst);
+		continue;
+	      }
+	      
+	      const Value* calleeInitArgV = MemSsaFun->getInFormal(idx);
+	      if (!calleeInitArgV) {
+		report_fatal_error("[IP-DSE] getInFormal returned nullptr");
+	      }
+	      
+	      if (const Instruction* calleeInitArg =
+		  dyn_cast<const Instruction>(calleeInitArgV)) {
+		enqueue(queue, QueueElem(calleeInitArg, w.store_inst, w.length+1));
+	      } else {
+		report_fatal_error("[IP-DSE] expected to enqueue from callee");
+	      }
+	      
+	    } else if (isMemSSAFunIn(CS, OnlySingleton)) {
+	      DSE_LOG(errs() << "\tin: skipped\n");
+	      // do nothing
+	    } else if (isMemSSAFunOut(CS, OnlySingleton)) {
+	      DSE_LOG(errs() << "\tRecurse inter-procedurally in the caller\n");
+	      // Inter-procedural step: we recurse on the uses of
+	      // the corresponding actual (primed) variable in the
+	      // caller.
+	      
+	      int64_t idx = getMemSSAParamIdx(CS);
+	      if (idx < 0) {
+		report_fatal_error("[IP-DSE] cannot find index in shadow.mem function");
+	      }
+	      
+	      // Find callers
+	      Function *F = I->getParent()->getParent();	    
+	      for (auto &U: F->uses()) {
+		if (CallInst *CI = dyn_cast<CallInst>(U.getUser())) {
+		  const MemorySSACallSite* MemSsaCS = MMan.getCallSite(CI);
+		  if (!MemSsaCS) {
 		  report_fatal_error("[IP-DSE] cannot find MemorySSACallSite");
-		}
-
-		// make things easier ...		
-		CallSite CS(CI);
-		assert(CS.getCalledFunction());
-		if (hasFunctionPtrParam(CS.getCalledFunction())) {
-		  markStoreToKeep(w.store_inst);
-		  continue;
-		}
-		
-		if(idx >= MemSsaCS->numParams()) {
-		  // It's possible that the function has formal
-		  // parameters but the call site does not have actual
-		  // parameters. E.g., llvm can remove the return
-		  // parameter from the callsite if it's not used.
-		  errs() << "TODO: unexpected case of callsite with no actual parameters.\n";
-		  markStoreToKeep(w.store_inst);
-		  break;
-		}
-
-
-		if (OnlySingleton) {
-		  if ((!MemSsaCS->isRefMod(idx)) &&
-		      (!MemSsaCS->isMod(idx)) &&
-		      (!MemSsaCS->isNew(idx))) {
-		    // XXX: if OnlySingleton then isRefMod, isMod, and
-		    // isNew can only return true if the corresponding
-		    // memory region is a singleton. We saw cases
-		    // (e.g., curl) where we start from store to a
-		    // singleton region but after following its
-		    // def-use chain we end up having other memory ssa
-		    // instructions that do not correspond to a
-		    // singleton region. This is a sea-dsa issue. For
-		    // now, we play conservative and give up by
-		    // keeping the store.
+		  }
+		  
+		  // make things easier ...		
+		  CallSite CS(CI);
+		  assert(CS.getCalledFunction());
+		  if (hasFunctionPtrParam(CS.getCalledFunction())) {
+		    markStoreToKeep(w.store_inst);
+		    continue;
+		  }
+		  
+		  if(idx >= MemSsaCS->numParams()) {
+		    // It's possible that the function has formal
+		    // parameters but the call site does not have actual
+		    // parameters. E.g., llvm can remove the return
+		    // parameter from the callsite if it's not used.
+		    errs() << "TODO: unexpected case of callsite with no actual parameters.\n";
 		    markStoreToKeep(w.store_inst);
 		    break;
 		  }
-		}
+		  
 
-		assert(OnlySingleton ||
-		       MemSsaCS->isRefMod(idx) ||
-		       MemSsaCS->isMod(idx) ||
-		       MemSsaCS->isNew(idx));		
-		if (const Instruction* caller_primed =
-		    dyn_cast<const Instruction>(MemSsaCS->getPrimed(idx))) {
-		  enqueue(queue, QueueElem(caller_primed, w.store_inst, w.length+1));
-		} else {
-		  report_fatal_error("[IP-DSE] expected to enqueue from caller");
+		  if (OnlySingleton) {
+		    if ((!MemSsaCS->isRefMod(idx)) &&
+			(!MemSsaCS->isMod(idx)) &&
+			(!MemSsaCS->isNew(idx))) {
+		      // XXX: if OnlySingleton then isRefMod, isMod, and
+		      // isNew can only return true if the corresponding
+		      // memory region is a singleton. We saw cases
+		      // (e.g., curl) where we start from store to a
+		      // singleton region but after following its
+		      // def-use chain we end up having other shadow.mem
+		      // instructions that do not correspond to a
+		      // singleton region. This is a sea-dsa issue. For
+		      // now, we play conservative and give up by
+		      // keeping the store.
+		      markStoreToKeep(w.store_inst);
+		      break;
+		    }
+		  }
+		  
+		  assert(OnlySingleton ||
+			 MemSsaCS->isRefMod(idx) ||
+			 MemSsaCS->isMod(idx) ||
+			 MemSsaCS->isNew(idx));		
+		  if (const Instruction* caller_primed =
+		      dyn_cast<const Instruction>(MemSsaCS->getPrimed(idx))) {
+		    enqueue(queue, QueueElem(caller_primed, w.store_inst, w.length+1));
+		  } else {
+		    report_fatal_error("[IP-DSE] expected to enqueue from caller");
+		  }
 		}
 	      }
-	    }
 	  } else {
-	    errs () << "Warning: unexpected case during worklist processing " << *I << "\n";
+	      errs () << "Warning: unexpected case during worklist processing " << *I << "\n";
+	    }
 	  }
 	}
       }
+      
+      // Finally, we remove dead store instructions
+      unsigned num_deleted = 0;
+      for (auto &kv: m_store_map) {
+	if (!kv.second) {	
+	  DSE_LOG(errs() << "[IP-DSE] DELETED " <<  *(kv.first) << "\n");
+	  kv.first->eraseFromParent();
+	  num_deleted++;
+	} 
+      }
+      
+      errs() << "\tNumber of deleted stores " << num_deleted << "\n";
+      errs() << "\tSkipped " << skipped_chains
+	     << " def-use chains because they were too long\n";
+      errs() << "Finished ip-dse\n";
     }
     
-    // Finally, we remove dead store instructions
-    unsigned num_deleted = 0;
-    for (auto &kv: m_store_map) {
-      if (!kv.second) {	
-	DSE_LOG(errs() << "[IP-DSE] DELETED " <<  *(kv.first) << "\n");
-	kv.first->eraseFromParent();
-	num_deleted++;
-      } 
-    }
-
-    errs() << "\tNumber of deleted stores " << num_deleted << "\n";
-    errs() << "\tSkipped " << too_long_chains
-	   << " def-use chains because they were too long\n";
-    errs() << "Finished ip-dse\n";    
+    // Make sure that we remove all the shadow.mem functions
+    errs() << "Removing shadow.mem functions ... \n";
+    sea_dsa::StripShadowMemPass SSMP;
+    SSMP.runOnModule(M);
+    
     return false;
   }
   
   virtual void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.setPreservesAll ();
-    //AU.addRequired<previrt::transforms::MemorySSA>();
-    AU.addRequired<llvm::UnifyFunctionExitNodes> ();      
+    // This pass will instrument the code with shadow.mem calls
+    AU.addRequired<sea_dsa::ShadowMemPass>();
+    AU.addRequired<llvm::UnifyFunctionExitNodes>();      
   }
 
   virtual StringRef getPassName() const override {

@@ -42,12 +42,13 @@ echo "$CLANG -c -emit-llvm -O0 -Xclang -disable-O0-optnone $IN -o $OUT"
 $CLANG -c -emit-llvm -O0 -Xclang -disable-O0-optnone $IN -o $OUT
 
 IN=$OUT
-OUT=$dirpath/$filename.memssa.bc
-echo "$OPT $LIBS -mem2reg --lower-gv-init -memory-ssa -mem2reg $IN  -o $OUT"
-$OPT $LIBS -mem2reg --lower-gv-init -memory-ssa -mem2reg $IN  -o $OUT
+# OUT=$dirpath/$filename.memssa.bc
 
-IN=$OUT
+# echo "$OPT $LIBS -mem2reg -lower-gv-init -shadow-sea-dsa -mem2reg $IN  -o $OUT"
+# $OPT $LIBS -mem2reg -lower-gv-init -shadow-sea-dsa -mem2reg $IN  -o $OUT
+
+# IN=$OUT
 OUT=$dirpath/$filename.o.bc
-echo "$OPT $LIBS -ip-dse -strip-memory-ssa-inst -globaldce -Pipsccp -dce -globaldce $IN -o $OUT"
-$OPT $LIBS -ip-dse -strip-memory-ssa-inst -globaldce -Pipsccp -dce -globaldce $IN -o $OUT
+echo "$OPT $LIBS -ip-dse -globaldce -Pipsccp -dce -globaldce $IN -o $OUT"
+$OPT $LIBS -ip-dse -globaldce -Pipsccp -dce -globaldce $IN -o $OUT
 $DIS $OUT -o $1.output # for lit

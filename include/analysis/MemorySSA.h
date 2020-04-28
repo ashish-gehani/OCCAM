@@ -1,13 +1,72 @@
 #pragma once
 
-#include "transforms/MemorySSA.h"
+#include "llvm/Pass.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/IR/CallSite.h"
+#include "llvm/IR/Constants.h"
 #include "llvm/IR/Value.h"
 #include "llvm/Support/ErrorHandling.h"
 
+/* Notes about sea_dsa::ShadowMem
+
+   sea_dsa does not provide a direct API to access to memory SSA
+   form. Instead, sea_dsa ShadowMem pass instruments the code with
+   shadow pseudo functions from which we can extract def-use chains
+   from memory:
+
+   (1) shadow.mem.load(NodeID, TLVar, SingletonGlobal) 
+   (2) TLVar shadow.mem.store(NodeID, TLVar, SingletonGlobal) 
+   (3) TLVar shadow.mem.arg.init(NodeID, SingletonGlobal) 
+   (4) shadow.mem.arg.ref(NodeID, TLVar, Idx, SingletonGlobal) 
+   (5) TLVar shadow.mem.arg.mod(NodeID, TLVar, Idx, SingletonGlobal) 
+   (6) TLVar shadow.mem.arg.ref_mod(NodeID, TLVar, Idx, SingletonGlobal)
+   (7) TLVar shadow.mem.arg.new(NodeID, TLVar, Idx, SingletonGlobal) 
+   (8) shadow.mem.in(NodeID, TLVar, Idx, SingletonGlobal)
+   (9) shadow.mem.out(NodeID, TLVar, Idx, SingletonGlobal)
+
+   NodeID is a unique identifier (i32) for memory regions.  
+
+   LLVM callsites are surrounded by calls to shadow.mem.arg.ref,
+   shadow.mem.arg.mod, shadow.mem.arg.ref_mod, and shadow.mem.arg_new
+   (3)-(7). These functions provide information whether the memory
+   region passed to the callee is read-only, modified,
+   read-and-modified, or created by the callee, respectively.
+
+   Functions also contain calls to shadow.mem.in (8) and shadow.mem.out (9)
+   (they are always located in the exit blocks of the functions). They
+   represent the input and output regions of the function.
+
+   With (3)-(9) we have enough information to match actual and formal
+   parameters at callsites. To know which actual needs to be matched
+   to which formal we use Idx (i32).
+
+   TLVar (i32) refers to a top-level variable (i.e., LLVM register) of
+   pointer type. Note that some of these functions return a TLVar,
+   representing the primed version of the memory region after an
+   update occurs. Finally, SingletonGlobal (i8*) denotes whether the
+   memory region corresponds to a global variable whose address has
+   not been taken.
+
+   An use of memory region is denoted by (1) and (2) denotes an use
+   and definition.
+
+   Comparison with SVF (https://github.com/SVF-tools/SVF):
+
+     The effects of ShadowMem are pretty similar to what SVF does
+     (https://github.com/SVF-tools/SVF/wiki/Technical-documentation)
+     with its memory SSA construction. Our special functions
+     shadow.mem.load and shadow.mem.store correspond to SVF's MU and
+     CHI functions, respectively. Similary, shadow.mem.arg.XXX,
+     shadow.mem.in, and shadow.mem.out correspond roughly to CallMU,
+     CallCHI, EntryCHI, and RetMU. However, one advantage of our
+     instrumentation is that we don't need special calls for PHI nodes
+     (MSSAPHI in SVF). Instead, we can use standard PHI nodes where
+     operands are shadow.mem id's.
+
+*/
+
 namespace previrt {
-namespace transforms {
+namespace analysis {
 
   enum MemSSAOp {
     MEM_SSA_LOAD,        /* load (use) */
@@ -23,15 +82,15 @@ namespace transforms {
   };
   
   inline MemSSAOp MemSSAStrToOp(llvm::StringRef name) {
-    if (name.equals("mem.ssa.load"))        return MEM_SSA_LOAD;
-    if (name.equals("mem.ssa.store"))       return MEM_SSA_STORE;
-    if (name.equals("mem.ssa.arg.init"))    return MEM_SSA_ARG_INIT;    
-    if (name.equals("mem.ssa.arg.ref"))     return MEM_SSA_ARG_REF;
-    if (name.equals("mem.ssa.arg.mod"))     return MEM_SSA_ARG_MOD;
-    if (name.equals("mem.ssa.arg.ref_mod")) return MEM_SSA_ARG_REF_MOD;
-    if (name.equals("mem.ssa.arg.new"))     return MEM_SSA_ARG_NEW;
-    if (name.equals("mem.ssa.in"))          return MEM_SSA_FUN_IN;
-    if (name.equals("mem.ssa.out"))         return MEM_SSA_FUN_OUT;
+    if (name.equals("shadow.mem.load"))        return MEM_SSA_LOAD;
+    if (name.equals("shadow.mem.store"))       return MEM_SSA_STORE;
+    if (name.equals("shadow.mem.arg.init"))    return MEM_SSA_ARG_INIT;    
+    if (name.equals("shadow.mem.arg.ref"))     return MEM_SSA_ARG_REF;
+    if (name.equals("shadow.mem.arg.mod"))     return MEM_SSA_ARG_MOD;
+    if (name.equals("shadow.mem.arg.ref_mod")) return MEM_SSA_ARG_REF_MOD;
+    if (name.equals("shadow.mem.arg.new"))     return MEM_SSA_ARG_NEW;
+    if (name.equals("shadow.mem.in"))          return MEM_SSA_FUN_IN;
+    if (name.equals("shadow.mem.out"))         return MEM_SSA_FUN_OUT;
     return NON_MEM_SSA;
   }
 
@@ -117,7 +176,7 @@ namespace transforms {
 
   /* Return the non-primed and primed fields from memory ssa actual
      parameters. For instance, given 
-        %6 = call i32 @mem.ssa.arg.mod(i32 12, i32 %2, i32 1, ...)
+        %6 = call i32 @shadow.mem.arg.mod(i32 12, i32 %2, i32 1, ...)
      the non-primed variable is %2 and the primed one is %6.
   */
   inline const llvm::Value *getMemSSAParamNonPrimed(const llvm::ImmutableCallSite &CS,
@@ -165,16 +224,16 @@ namespace transforms {
    * actual parameter is identified by extra callsites executing prior
    * to c to these special functions:
    *
-   * - mem.ssa.arg_ref
-   * - mem.ssa.arg_mod
-   * - mem.ssa.arg_ref_mod
-   * - mem.ssa.arg_new
+   * - shadow.mem.arg_ref
+   * - shadow.mem.arg_mod
+   * - shadow.mem.arg_ref_mod
+   * - shadow.mem.arg_new
    *
    * For instance, given an original LLVM callsite:
    *   %y = call i32 @foo(%x)
    * if its memory SSA form looks like this:
-   *   %5 = call i32 @mem.ssa.arg.ref_mod(i32 8, i32 %4, i32 0, ...) 
-   *   %6 = call i32 @mem.ssa.arg.mod(i32 12, i32 %3, i32 1, ...) 
+   *   %5 = call i32 @shadow.mem.arg.ref_mod(i32 8, i32 %4, i32 0, ...) 
+   *   %6 = call i32 @shadow.mem.arg.mod(i32 12, i32 %3, i32 1, ...) 
    *   %y = call i32 @foo(%x)
    *
    * We know that foo accesses two memory regions denoted by
@@ -198,32 +257,32 @@ namespace transforms {
     // Return number of memory-related actual parameters
     unsigned numParams() const { return m_actual_params.size();}
 
-    // return true if the mem.ssa.XXX instruction associated with the
-    // idx-th actual parameter is mem.ssa.arg_ref and it corresponds
+    // return true if the shadow.mem.XXX instruction associated with the
+    // idx-th actual parameter is shadow.mem.arg_ref and it corresponds
     // to a singleton memory region if m_only_singleton is true.
     bool isRef(unsigned idx) const;
 
-    // return true if the mem.ssa.XXX instruction associated with the
-    // idx-th actual parameter is mem.ssa.arg_mod and it corresponds
+    // return true if the shadow.mem.XXX instruction associated with the
+    // idx-th actual parameter is shadow.mem.arg_mod and it corresponds
     // to a singleton memory region if m_only_singleton is true.
     bool isMod(unsigned idx) const;
 
-    // return true if the mem.ssa.XXX instruction associated with the
-    // idx-th actual parameter is mem.ssa.arg_ref_mod and it
+    // return true if the shadow.mem.XXX instruction associated with the
+    // idx-th actual parameter is shadow.mem.arg_ref_mod and it
     // corresponds to a singleton memory region if m_only_singleton is
     // true.
     bool isRefMod(unsigned idx) const;
 
-    // return true if the mem.ssa.XXX instruction associated with the
-    // idx-th actual parameter is mem.ssa.arg_new and it corresponds
+    // return true if the shadow.mem.XXX instruction associated with the
+    // idx-th actual parameter is shadow.mem.arg_new and it corresponds
     // to a singleton memory region if m_only_singleton is true.
     bool isNew(unsigned idx) const;
 
-    // return the non-primed top-level variable of the mem.ssa.XXX
+    // return the non-primed top-level variable of the shadow.mem.XXX
     // instruction associated with the idx-th actual parameter.
     const llvm::Value *getNonPrimed(unsigned idx) const;
 
-    // return the primed top-level variable of the mem.ssa.XXX
+    // return the primed top-level variable of the shadow.mem.XXX
     // instruction associated with the idx-th actual parameter.
     const llvm::Value *getPrimed(unsigned idx) const;
 
