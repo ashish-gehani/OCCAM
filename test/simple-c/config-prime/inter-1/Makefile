@@ -5,5 +5,5 @@ main: main.c
 
 
 clean:
-	rm -f .*.bc *.bc .*.o *.manifest main main_slash
+	rm -f .*.bc *.ll .*.o *.manifest main main_slash
 	rm -rf slash
