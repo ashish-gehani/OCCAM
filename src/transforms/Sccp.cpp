@@ -68,7 +68,7 @@ STATISTIC(IPNumInstRemoved, "Number of instructions removed by IPSCCP");
 STATISTIC(IPNumArgsElimed , "Number of arguments constant propagated by IPSCCP");
 STATISTIC(IPNumGlobalConst, "Number of globals found to be constant by IPSCCP");
 
-#define SCCP_LOG(...) DEBUG(__VA_ARGS__)
+#define SCCP_LOG(...) LLVM_DEBUG(__VA_ARGS__)
 //#define SCCP_LOG(...) __VA_ARGS__
 
 
@@ -202,7 +202,7 @@ namespace transforms {
     ///
     class SCCPSolver : public InstVisitor<SCCPSolver> {
       const DataLayout &DL;
-      const TargetLibraryInfo *TLI;
+      TargetLibraryInfoWrapperPass *TLIWrapper;
       SmallPtrSet<BasicBlock*, 8> BBExecutable; // The BBs that are executable.
       DenseMap<Value*, LatticeVal> ValueState;  // The state each value is in.
 
@@ -254,8 +254,10 @@ namespace transforms {
       DenseSet<Edge> KnownFeasibleEdges;
   
 public:
-  SCCPSolver(const DataLayout &DL, const TargetLibraryInfo *tli)
-    : DL(DL), TLI(tli) {}
+
+
+  SCCPSolver(const DataLayout &DL, TargetLibraryInfoWrapperPass *tliWrapper)
+    : DL(DL), TLIWrapper(tliWrapper) {}
 
   /// MarkBlockExecutable - This method can be used by clients to mark all of
   /// the blocks that are known to be intrinsically live in the processed unit.
@@ -564,7 +566,7 @@ private:
   // getFeasibleSuccessors - Return a vector of booleans to indicate which
   // successors are reachable from a given terminator instruction.
   //
-  void getFeasibleSuccessors(TerminatorInst &TI, SmallVectorImpl<bool> &Succs);
+  void getFeasibleSuccessors(Instruction &TI, SmallVectorImpl<bool> &Succs);
 
   // isEdgeFeasible - Return true if the control flow edge from the 'From' basic
   // block to the 'To' basic block is currently feasible.
@@ -590,7 +592,7 @@ private:
 
   // Terminators
   void visitReturnInst(ReturnInst &I);
-  void visitTerminatorInst(TerminatorInst &TI);
+  void visitTerminator(Instruction &TI);
 
   void visitCastInst(CastInst &I);
   void visitSelectInst(SelectInst &I);
@@ -600,7 +602,7 @@ private:
   void visitInsertValueInst(InsertValueInst &IVI);
   void visitCatchSwitchInst(CatchSwitchInst &CPI) {
     markOverdefined(&CPI);
-    visitTerminatorInst(CPI);
+    visitTerminator(CPI);
   }
 
   // Instructions that cannot be folded away.
@@ -612,11 +614,11 @@ private:
   }
   void visitInvokeInst    (InvokeInst &II) {
     visitCallSite(&II);
-    visitTerminatorInst(II);
+    visitTerminator(II);
   }
   void visitCallSite      (CallSite CS);
-  void visitResumeInst    (TerminatorInst &I) { /*returns void*/ }
-  void visitUnreachableInst(TerminatorInst &I) { /*returns void*/ }
+  void visitResumeInst    (ResumeInst &I) { /*returns void*/ }
+  void visitUnreachableInst(UnreachableInst &I) { /*returns void*/ }
   void visitFenceInst     (FenceInst &I) { /*returns void*/ }
   void visitInstruction(Instruction &I) {
     // All the instructions we don't do any special handling for just
@@ -629,7 +631,7 @@ private:
 // getFeasibleSuccessors - Return a vector of booleans to indicate which
 // successors are reachable from a given terminator instruction.
 //
-void SCCPSolver::getFeasibleSuccessors(TerminatorInst &TI,
+void SCCPSolver::getFeasibleSuccessors(Instruction &TI,
                                        SmallVectorImpl<bool> &Succs) {
   Succs.resize(TI.getNumSuccessors());
   if (auto *BI = dyn_cast<BranchInst>(&TI)) {
@@ -654,7 +656,7 @@ void SCCPSolver::getFeasibleSuccessors(TerminatorInst &TI,
   }
 
   // Unwinding instructions successors are always executable.
-  if (TI.isExceptional()) {
+  if (TI.isExceptionalTerminator()) {
     Succs.assign(TI.getNumSuccessors(), true);
     return;
   }
@@ -722,7 +724,7 @@ bool SCCPSolver::isEdgeFeasible(BasicBlock *From, BasicBlock *To) {
   if (!BBExecutable.count(From)) return false;
 
   // Check to make sure this edge itself is actually feasible now.
-  TerminatorInst *TI = From->getTerminator();
+  Instruction *TI = From->getTerminator();
   if (auto *BI = dyn_cast<BranchInst>(TI)) {
     if (BI->isUnconditional())
       return true;
@@ -740,7 +742,7 @@ bool SCCPSolver::isEdgeFeasible(BasicBlock *From, BasicBlock *To) {
   }
 
   // Unwinding instructions successors are always executable.
-  if (TI->isExceptional())
+  if (TI->isExceptionalTerminator())
     return true;
 
   if (auto *SI = dyn_cast<SwitchInst>(TI)) {
@@ -873,7 +875,7 @@ void SCCPSolver::visitReturnInst(ReturnInst &I) {
   }
 }
 
-void SCCPSolver::visitTerminatorInst(TerminatorInst &TI) {
+void SCCPSolver::visitTerminator(Instruction &TI) {
   SmallVector<bool, 16> SuccFeasible;
   getFeasibleSuccessors(TI, SuccFeasible);
 
@@ -1186,7 +1188,7 @@ void SCCPSolver::visitLoadInst(LoadInst &I) {
 void SCCPSolver::visitCallSite(CallSite CS) {
   Function *F = CS.getCalledFunction();
   Instruction *I = CS.getInstruction();
-
+  
   // The common case is that we aren't tracking the callee, either because we
   // are not doing interprocedural analysis or the callee is indirect, or is
   // external.  Handle these cases first.
@@ -1198,7 +1200,7 @@ CallOverdefined:
     // Otherwise, if we have a single return value case, and if the function is
     // a declaration, maybe we can constant fold it.
     if (F && F->isDeclaration() && !I->getType()->isStructTy() &&
-        canConstantFoldCallTo(CS, F)) {
+        canConstantFoldCallTo(cast<CallBase>(CS.getInstruction()), F)) {
 
       SmallVector<Constant*, 8> Operands;
       for (CallSite::arg_iterator AI = CS.arg_begin(), E = CS.arg_end();
@@ -1218,7 +1220,8 @@ CallOverdefined:
 
       // If we can constant fold this, mark the result of the call as a
       // constant.
-      if (Constant *C = ConstantFoldCall(CS, F, Operands, TLI)) {
+      if (Constant *C = ConstantFoldCall(cast<CallBase>(CS.getInstruction()), F,
+					 Operands, &(TLIWrapper->getTLI(*F)))) {
         // call -> undef.
         if (isa<UndefValue>(C))
           return;
@@ -1580,7 +1583,7 @@ bool SCCPSolver::ResolvedUndefsIn(Function &F) {
     // Check to see if we have a branch or switch on an undefined value.  If so
     // we force the branch to go one way or the other to make the successor
     // values live.  It doesn't really matter which way we force it.
-    TerminatorInst *TI = BB.getTerminator();
+    Instruction *TI = BB.getTerminator();
     if (auto *BI = dyn_cast<BranchInst>(TI)) {
       if (!BI->isConditional()) continue;
       if (!getValueState(BI->getCondition()).isUnknown())
@@ -1843,7 +1846,7 @@ static bool runIPSCCP(Module &M, SCCPSolver& Solver) {
     
     for (Function::iterator BB = F.begin(), E = F.end(); BB != E; ++BB) {
       if (!Solver.isBlockExecutable(&*BB)) {
-        DEBUG(dbgs() << "  BasicBlock Dead:" << *BB);
+        LLVM_DEBUG(dbgs() << "  BasicBlock Dead:" << *BB);
 
         ++IPNumDeadBlocks;
         IPNumInstRemoved +=
@@ -1861,8 +1864,9 @@ static bool runIPSCCP(Module &M, SCCPSolver& Solver) {
         if (Inst->getType()->isVoidTy())
           continue;
         if (tryToReplaceWithConstant(Solver, Inst)) {
-          if (!isa<CallInst>(Inst) && !isa<TerminatorInst>(Inst))
+	  if (isInstructionTriviallyDead(Inst)) {
             Inst->eraseFromParent();
+	  }
           // Hey, we just changed something!
           MadeChanges = true;
           ++IPNumInstRemoved;
@@ -1943,7 +1947,7 @@ static bool runIPSCCP(Module &M, SCCPSolver& Solver) {
     
     assert(!I->second.isOverdefined() &&
            "Overdefined values should have been taken out of the map!");
-    DEBUG(dbgs() << "Found that GV '" << GV->getName() << "' is constant!\n");
+    LLVM_DEBUG(dbgs() << "Found that GV '" << GV->getName() << "' is constant!\n");
     
     #if 0
     // Original code: assume that at this point all users of a
@@ -2009,12 +2013,15 @@ class IPSCCPPass : public ModulePass {
 private:
 
   bool skipFunction(const Function &F) const {
-    if (F.empty()) return true;
-    
-    if (!F.getContext().getOptBisect().shouldRunPass(this, F))
+
+    auto getDescription = [](const Function&F) {
+			    return "module (" + F.getParent()->getName().str() + ")";
+			  };
+    OptPassGate &Gate = F.getContext().getOptPassGate();
+    if (Gate.isEnabled() && !Gate.shouldRunPass(this, getDescription(F)))
       return true;
-    
-    // if (F.hasFnAttribute(Attribute::OptimizeNone)) {
+   
+    // if (F.hasOptNone()) {
     //   errs() << "Skipping pass '" << getPassName() << "' on function "
     // 	     << F.getName() << "\n";
     //   return true;
@@ -2023,12 +2030,12 @@ private:
   }
 
   const DataLayout* DL;
-  const TargetLibraryInfo* TLI;
+  TargetLibraryInfoWrapperPass * TLIWrapper; 
   
 public:
   static char ID; // Pass identification, replacement for typeid
   
-  IPSCCPPass() : ModulePass(ID), DL(nullptr), TLI(nullptr) {}
+  IPSCCPPass() : ModulePass(ID), DL(nullptr), TLIWrapper(nullptr) {}
 
   bool runOnModule (Module &M) override {
     if (skipModule(M)) {
@@ -2038,9 +2045,9 @@ public:
     SCCP_LOG(errs () << "Running IPSCCP pass ... \n");
 
     DL = &M.getDataLayout();
-    TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
+    TLIWrapper = &getAnalysis<TargetLibraryInfoWrapperPass>();
 
-    SCCPSolver Solver(*DL, TLI);
+    SCCPSolver Solver(*DL, TLIWrapper);
     return runIPSCCP(M, Solver);
   }
 
