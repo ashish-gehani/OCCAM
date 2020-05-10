@@ -71,13 +71,10 @@ INSTALL = install
 
 all: ${LIBRARY}
 
-# Pointer Analysis
 libSeaDsa:
 	$(MAKE) -C analysis -f Makefile.sea-dsa install INSTALL_DIR=${OCCAM_LIB}
 
-extern_libs: libSeaDsa 
-
-${LIBRARY}: extern_libs ${SOURCES}
+${LIBRARY}: libSeaDsa ${SOURCES}
 	echo "The source is being built according to ${LLVM_CFG}"
 	$(MAKE) protoc	
 	$(MAKE) lib
