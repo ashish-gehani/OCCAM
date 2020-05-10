@@ -277,15 +277,15 @@ def peval(input_file, output_file, \
     if use_ipdse:
         ## 1. lower global initializers to store's in main 
         passes = ['-lower-gv-init']
-        ## 2. dead store elimination (improve precision of sccp)
-        passes += [##Memory SSA
-                   ###Context-insensitive dsa  
-                   '-sea-dsa=ci', 
-                   '-memory-ssa', '-Pmem-ssa-local-mod','-Pmem-ssa-split-fields', '-mem2reg',
+        
+        ## 2. dead store elimination based on sea-dsa (improve
+        ##    precision of sccp)
+        passes += [
+                   ###Context-insensitive sea-dsa  
+                   '-sea-dsa=ci', '-horn-sea-dsa-local-mod',
                    ##Inter-procedural dead store elimination
-                   '-ip-dse', '-ip-dse-max-def-use=25',
-                   ##Remove some instrumentation added by Memory SSA
-                   '-strip-memory-ssa-inst']
+                   '-ip-dse', '-ip-dse-max-def-use=25']
+        
         ## 3. perform IPSCCP
         passes += ['-Pipsccp']
         ## 4. cleanup after IPSCCP

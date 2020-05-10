@@ -1,0 +1,2 @@
+The value of 'server.event-handler' is set to 'poll' which causes the functions
+in the file 'uncalled_functions' to be unused.

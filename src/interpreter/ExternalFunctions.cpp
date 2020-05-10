@@ -538,6 +538,13 @@ static GenericValue lle_X_memcpy(FunctionType *FT,
   return GV;
 }
 
+static GenericValue lle_X_fgets(FunctionType *FT,
+				ArrayRef<GenericValue> Args){
+  llvm::errs() << "WARNING: fgets not executed with ffi. "
+	       << "Returning an unknown value ...\n";
+  return GenericValue();
+}
+
 void previrt::Interpreter::initializeExternalFunctions() {
   sys::ScopedLock Writer(*FunctionsLock);
   (*FuncNames)["lle_X_atexit"]       = lle_X_atexit;
@@ -551,4 +558,5 @@ void previrt::Interpreter::initializeExternalFunctions() {
   (*FuncNames)["lle_X_fprintf"]      = lle_X_fprintf;
   (*FuncNames)["lle_X_memset"]       = lle_X_memset;
   (*FuncNames)["lle_X_memcpy"]       = lle_X_memcpy;
+  (*FuncNames)["lle_X_fgets"]        = lle_X_fgets;  
 }
