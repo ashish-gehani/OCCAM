@@ -421,6 +421,19 @@ namespace previrt
     return buffer.type() == proto::U;
   }
 
+  /// HashString - Hash function for strings.
+  ///
+  /// This is the Bernstein hash function.
+  //
+  // FIXME: Investigate whether a modified bernstein hash function performs
+  // better: http://eternallyconfuzzled.com/tuts/algorithms/jsw_tut_hashing.aspx
+  //   X*33+c -> X*33^c
+  static inline unsigned HashString(StringRef Str, unsigned Result = 0) {
+    for (StringRef::size_type i = 0, e = Str.size(); i != e; ++i)
+      Result = Result * 33 + (unsigned char)Str[i];
+    return Result;
+  }
+  
   std::string
   PrevirtType::to_string() const
   {
