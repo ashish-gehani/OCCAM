@@ -6,6 +6,3 @@
 	path = src/analysis/llvm-dsa
 	url = https://github.com/seahorn/llvm-dsa.git
 	branch = master
-[submodule "src/analysis/llpe"]
-	path = src/analysis/llpe
-	url = https://github.com/caballa/llpe

@@ -195,7 +195,7 @@ def peval(input_file, output_file, \
           policy, max_bounded, \
           devirt_method, \
           force_inline_bounce, force_inline_spec, \
-          use_llpe, use_ipdse, use_ai_dce, log=None):
+          use_ipdse, use_ai_dce, log=None):
     """ intra module specialization/optimization
     """
     opt = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
@@ -256,24 +256,6 @@ def peval(input_file, output_file, \
     #     if retcode != 0:
     #         return retcode
         
-    if use_llpe:
-        sys.stderr.write('Skipped llpe because it is too deprecated')
-        # llpe_libs = []
-        # for lib in config.get_llpelibs():
-        #     llpe_libs.append('-load={0}'.format(lib))
-        #     args = llpe_libs + ['-loop-simplify', '-lcssa', \
-        #                         '-llpe', '-llpe-omit-checks', '-llpe-single-threaded', \
-        #                         done.name, '-o=%s' % tmp.name]
-        # retcode = driver.run('opt', args)
-        # if retcode != 0:
-        #     sys.stderr.write("ERROR: llpe failed!\n")
-        #     shutil.copy(done.name, output_file)
-        #     #FIXME: unlink files
-        #     return retcode
-        # else:
-        #     sys.stderr.write("\tllpe finished succesfully\n")
-        # shutil.copy(tmp.name, done.name)
-
     if use_ipdse:
         ## 1. lower global initializers to store's in main 
         passes = ['-lower-gv-init']
@@ -328,7 +310,7 @@ def peval(input_file, output_file, \
         while True:
             iteration += 1
             if iteration > 1 or \
-               (use_llpe or use_ipdse):
+               use_ipdse:
                 # optimize using standard llvm transformations
                 retcode = _optimize(done.name, opt.name, use_ai_dce or use_ipdse)
                 if retcode != 0:
