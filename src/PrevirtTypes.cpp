@@ -519,7 +519,7 @@ namespace previrt
 
     FunctionType* strcmp_type = FunctionType::get(
         Type::getInt32Ty(M.getContext()), ArrayRef<Type*>(ft), false);
-    Constant* strcmp = M.getOrInsertFunction("strcmp", strcmp_type);
+    Constant* strcmp = cast<Constant>(M.getOrInsertFunction("strcmp", strcmp_type).getCallee());
 
     auto it = f->arg_begin();
     auto a1 = &*(it);
