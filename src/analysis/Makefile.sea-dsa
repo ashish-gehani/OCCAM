@@ -46,7 +46,7 @@ LIBRARY = ${LIBRARYNAME}.so
 LIBFLAGS = -shared -Wl,-soname,${LIBRARY}
 endif
 
-SOURCES = $(wildcard sea-dsa/src/*.cc)
+SOURCES = $(wildcard sea-dsa/lib/seadsa/*.cc)
 
 OBJECTS := $(patsubst %.cc,%.o,${SOURCES}) 
 
@@ -58,7 +58,7 @@ ${LIBRARY}: ${SOURCES} ${OBJECTS}
 	@echo "The sources ${SOURCES} are being built according to ${LLVM_CFG}"
 	$(CXX) ${OBJECTS} ${LIBFLAGS} -o ${LIBRARY} ${CXX_FLAGS} ${LD_FLAGS} 
 
-sea-dsa/src/%.o: sea-dsa/src/%.cc
+sea-dsa/lib/seadsa/%.o: sea-dsa/lib/seadsa/%.cc
 	$(CXX) ${CXX_FLAGS} $< -c -o $@
 
 %.o: %.cc

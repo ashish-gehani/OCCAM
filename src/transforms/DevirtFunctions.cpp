@@ -5,7 +5,7 @@
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "sea_dsa/CompleteCallGraph.hh"
+#include "seadsa/CompleteCallGraph.hh"
 
 #include <set>
 #include <algorithm>
@@ -167,7 +167,7 @@ namespace transforms {
   }
   
   CallSiteResolverBySeaDsa::CallSiteResolverBySeaDsa(Module& M,
-						     sea_dsa::CompleteCallGraph &cg,
+						     seadsa::CompleteCallGraph &cg,
 						     bool incomplete, unsigned max_num_targets)
     : CallSiteResolverByTypes(M)
     , m_M(M)
@@ -178,7 +178,7 @@ namespace transforms {
     CallSiteResolver::m_kind = RESOLVER_SEADSA;
     
     /*
-      Assume that sea_dsa::CompleteCallGraph provides these methods:
+      Assume that seadsa::CompleteCallGraph provides these methods:
        - bool isComplete(CallSite&)
        - iterator begin(CallSite&)
        - iterator end(CallSite&) 

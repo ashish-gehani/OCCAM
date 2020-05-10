@@ -17,9 +17,9 @@ class PointerType;
 class CallGraph;
 } // namespace llvm
 
-namespace sea_dsa {
+namespace seadsa {
 class CompleteCallGraph;
-} // namespace sea_dsa
+} // namespace seadsa
 
 namespace previrt {
 
@@ -109,7 +109,7 @@ private:
  */
 class CallSiteResolverBySeaDsa final: public CallSiteResolverByTypes {
   /*
-    Assume that sea_dsa::CompleteCallGraph provides these methods:
+    Assume that seadsa::CompleteCallGraph provides these methods:
     - bool isComplete(CallSite&)
     - iterator begin(CallSite&)
     - iterator end(CallSite&) 
@@ -121,7 +121,7 @@ public:
   using AliasSet = CallSiteResolverByTypes::AliasSet;
   
   CallSiteResolverBySeaDsa(llvm::Module& M,
-			   sea_dsa::CompleteCallGraph& seadsa_cg,
+			   seadsa::CompleteCallGraph& seadsa_cg,
 			   bool incomplete, unsigned max_num_targets);
     
   ~CallSiteResolverBySeaDsa() = default;
@@ -139,7 +139,7 @@ private:
   // -- the module
   llvm::Module& m_M;
   // -- call graph produced by seadsa
-  sea_dsa::CompleteCallGraph& m_seadsa_cg;
+  seadsa::CompleteCallGraph& m_seadsa_cg;
   // -- Resolve incomplete nodes (unsound, in general)
   bool m_allow_incomplete;
   // -- Maximum number of targets (used to avoid having too large
