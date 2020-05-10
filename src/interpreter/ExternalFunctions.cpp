@@ -35,7 +35,6 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/ManagedStatic.h"
 #include "llvm/Support/Mutex.h"
-#include "llvm/Support/UniqueLock.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
 #include <cmath>
@@ -300,7 +299,7 @@ callExternalFunction(Function *F, ArrayRef<AbsGenericValue> AArgVals) {
     }
   }
   
-  unique_lock<sys::Mutex> Guard(*FunctionsLock);
+  std::unique_lock<sys::Mutex> Guard(*FunctionsLock);
 
   // Do a lookup to see if the function is in our cache... this should just be a
   // deferred annotation!
