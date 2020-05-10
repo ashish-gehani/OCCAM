@@ -49,6 +49,7 @@
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"
+#include "llvm/Support/CommandLine.h"
 
 #include "utils/Inliner.h"
 
