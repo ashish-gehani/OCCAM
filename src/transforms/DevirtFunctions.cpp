@@ -317,7 +317,7 @@ namespace transforms {
 
   CallSiteResolverByCHA::CallSiteResolverByCHA(Module& M)
     : CallSiteResolverByTypes(M)
-    , m_cha(make_unique<analysis::ClassHierarchyAnalysis>(M)) {
+    , m_cha(std::make_unique<analysis::ClassHierarchyAnalysis>(M)) {
     CallSiteResolver::m_kind = RESOLVER_CHA;
     m_cha->calculate();
     DEVIRT_LOG(errs() << "Results of the Class Hierarchy Analysis\n";
