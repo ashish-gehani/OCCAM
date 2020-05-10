@@ -1,5 +1,5 @@
 #include "llvm/Pass.h"
-#include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Analysis/LoopPass.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/GenericValue.h"
 #include "llvm/IR/Module.h"
@@ -9,6 +9,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Utils.h"
 
 #include "interpreter/Interpreter.h"
 #include "ConfigPrime.h"
@@ -428,7 +429,7 @@ void ConfigPrime::getAnalysisUsage(AnalysisUsage &AU) const {
   // AU.setPreservesAll();
   AU.addRequiredID(LoopSimplifyID);
   AU.addRequired<LoopInfoWrapperPass>();
-  AU.addRequired<llvm::DominatorTreeWrapperPass>();  
+  AU.addRequired<DominatorTreeWrapperPass>();  
 }
 
 } // end namespace previrt
