@@ -238,7 +238,7 @@ bool SpecializerPass::runOnModule(Module &M) {
        break;
      case SpecializationPolicyType::BOUNDED: {
        std::unique_ptr<SpecializationPolicy> subpolicy =
-	 llvm::make_unique<AggressiveSpecPolicy>();
+	 std::make_unique<AggressiveSpecPolicy>();
        policy.reset(new BoundedSpecPolicy(M, std::move(subpolicy), MaxSpecCopies));
        break;
      }
@@ -247,7 +247,7 @@ bool SpecializerPass::runOnModule(Module &M) {
       break;
     case SpecializationPolicyType::NONREC: {
       std::unique_ptr<SpecializationPolicy> subpolicy =
-	llvm::make_unique<AggressiveSpecPolicy>();
+	std::make_unique<AggressiveSpecPolicy>();
       CallGraph& cg = getAnalysis<CallGraphWrapperPass>().getCallGraph();      
       policy.reset(new RecursiveGuardSpecPolicy(std::move(subpolicy), cg));
       break;
