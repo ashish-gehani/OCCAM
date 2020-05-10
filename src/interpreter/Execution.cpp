@@ -2915,7 +2915,7 @@ static AbsGenericValue dereferencePointerIfBasicElementType(AbsGenericValue Val,
 	switch(ElementType->getTypeID()) {
 	case Type::IntegerTyID: {
 	  APInt val(cast<IntegerType>(ElementType)->getBitWidth(), 0);		
-	  LoadIntFromMemory(val, (uint8_t*)addr, dl.getTypeStoreSize(ElementType));
+	  ::LoadIntFromMemory(val, (uint8_t*)addr, dl.getTypeStoreSize(ElementType));
 	  Res.IntVal = val;
 	  break;
 	}
