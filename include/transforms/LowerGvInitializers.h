@@ -1,6 +1,8 @@
 #pragma once
 
+#include "llvm/Pass.h"
 #include "llvm/IR/Module.h"
+
 
 /** 
     Pass to lower scalar initializers to global variables into
