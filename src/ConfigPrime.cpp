@@ -214,11 +214,11 @@ static bool may_dominate(const SmallVector<BasicBlock*, 4>& BBs, Instruction *I,
 
 static void removeBlock(BasicBlock* BB, LLVMContext& ctx) {
 
-  TerminatorInst *BBTerm = BB->getTerminator();
+  auto *BBTerm = BB->getTerminator();
   // Loop through all of our successors and make sure they know that one
   // of their predecessors is going away.
-  for (BasicBlock *Succ : BBTerm->successors()) {
-    Succ->removePredecessor(BB);
+  for (unsigned i = 0, e = BBTerm->getNumSuccessors(); i != e; ++i) {
+    BBTerm->getSuccessor(i)->removePredecessor(BB);
   }
   // Zap all the instructions in the block.
   while (!BB->empty()) {
