@@ -1,5 +1,5 @@
 [![PyPI version](https://badge.fury.io/py/razor.svg)](https://badge.fury.io/py/razor)
-[![Build Status](https://travis-ci.org/SRI-CSL/OCCAM.svg?branch=master)](https://travis-ci.org/SRI-CSL/OCCAM)
+[![Build Status](https://travis-ci.org/SRI-CSL/OCCAM.svg?branch=llvm10)](https://travis-ci.org/SRI-CSL/OCCAM)
 
 Description
 ============
@@ -17,8 +17,8 @@ Docker
 A pre-built and installed version of OCCAM can be obtained using Docker:
 
 ```shell
-docker pull sricsl/occam:bionic
-docker run -v `pwd`:/host -it sricsl/occam:bionic
+docker pull sricsl/occam10:bionic
+docker run -v `pwd`:/host -it sricsl/occam10:bionic
 ```
 Alternatively, it can be built and installed from source as follows.
 
