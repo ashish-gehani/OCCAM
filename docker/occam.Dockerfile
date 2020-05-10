@@ -1,7 +1,7 @@
 # Dockerfile for OCCAM binary
 # produces package in /occam/build
 # Arguments:
-#  - UBUNTU:     trusty, xenial, bionic
+#  - UBUNTU:     bionic
 #  - BUILD_TYPE: debug, release
 
 ARG UBUNTU
@@ -23,10 +23,6 @@ RUN pip --version && \
     pip install wheel && \
     pip install protobuf && \
     pip install lit
-
-RUN apt-get install -y llvm-5.0 && \
-    apt-get install -y clang-5.0
-    
 RUN apt-get install -yqq libboost-dev
 
 RUN mkdir /go
@@ -35,11 +31,17 @@ ENV GOPATH "/go"
 RUN apt-get -y install golang-go && \
     go get github.com/SRI-CSL/gllvm/cmd/...
 
-ENV LLVM_HOME "/usr/lib/llvm-5.0"
+# Install llvm10 from llvm repo since bionic comes with much older version
+WORKDIR /tmp
+RUN wget https://apt.llvm.org/llvm.sh && \
+  chmod +x llvm.sh && \
+  ./llvm.sh 10
+
+ENV LLVM_HOME "/usr/lib/llvm-10"
 ENV PATH "$LLVM_HOME/bin:/bin:/usr/bin:/usr/local/bin:/occam/utils/FileCheck_trusty:$GOPATH/bin:$PATH"
 
 RUN cd / && rm -rf /occam && \
-    git clone --recurse-submodules https://github.com/SRI-CSL/OCCAM.git occam --depth=10
+    git clone --recurse-submodules https://github.com/SRI-CSL/OCCAM.git occam --branch llvm10 --depth=10
     
 WORKDIR /occam
 ENV CC clang
@@ -51,4 +53,4 @@ ENV OCCAM_HOME "/occam"
 # Build configuration.
 RUN make
 RUN make install
-RUN make test
+#RUN make test
