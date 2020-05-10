@@ -14,7 +14,7 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "sea_dsa/CompleteCallGraph.hh"
+#include "seadsa/CompleteCallGraph.hh"
 
 static llvm::cl::opt<unsigned>
 MaxNumTargets("Pmax-num-targets",
@@ -80,7 +80,7 @@ namespace transforms {
 	res |= DF.resolveCallSites(M, &CSResolver);	
       }      
 
-      CallSiteResolverBySeaDsa CSResolver(M, getAnalysis<sea_dsa::CompleteCallGraph>(),
+      CallSiteResolverBySeaDsa CSResolver(M, getAnalysis<seadsa::CompleteCallGraph>(),
 					  ResolveIncompleteCalls, MaxNumTargets);
       res |= DF.resolveCallSites(M, &CSResolver);
       
@@ -89,7 +89,7 @@ namespace transforms {
     
     virtual void getAnalysisUsage(AnalysisUsage &AU) const override {
       //AU.addRequired<CallGraphWrapperPass>();
-      AU.addRequired<sea_dsa::CompleteCallGraph>();
+      AU.addRequired<seadsa::CompleteCallGraph>();
       // FIXME: DevirtualizeFunctions does not fully update the call
       // graph so we don't claim it's preserved.
       // AU.setPreservesAll();

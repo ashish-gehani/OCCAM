@@ -21,7 +21,7 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Transforms/Utils/UnifyFunctionExitNodes.h"
 
-#include "sea_dsa/ShadowMem.hh"
+#include "seadsa/ShadowMem.hh"
 
 #include <boost/functional/hash.hpp>
 #include <boost/unordered_set.hpp>
@@ -367,7 +367,7 @@ public:
     
     // Make sure that we remove all the shadow.mem functions
     errs() << "Removing shadow.mem functions ... \n";
-    sea_dsa::StripShadowMemPass SSMP;
+    seadsa::StripShadowMemPass SSMP;
     SSMP.runOnModule(M);
     
     return false;
@@ -376,7 +376,7 @@ public:
   virtual void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.setPreservesAll ();
     // This pass will instrument the code with shadow.mem calls
-    AU.addRequired<sea_dsa::ShadowMemPass>();
+    AU.addRequired<seadsa::ShadowMemPass>();
     AU.addRequired<llvm::UnifyFunctionExitNodes>();      
   }
 
