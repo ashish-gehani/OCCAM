@@ -40,6 +40,7 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/CommandLine.h"
 
 #include <vector>
 #include <string>
@@ -49,6 +50,18 @@
 #include "CommandLineArguments.h"
 
 using namespace llvm;
+
+static cl::opt<std::string>
+ArgumentsFileName("Parguments-input",
+		  cl::init(""),
+		  cl::Hidden,
+		  cl::desc("specifies the input file for the arguments"));
+
+static cl::opt<std::string>
+SpecializeProgName("Parguments-name",
+		   cl::init(""),
+		   cl::Hidden,
+		   cl::desc("specifies the program name"));
 
 namespace previrt {
   
@@ -230,16 +243,6 @@ namespace previrt {
 
     return true;
   }
-
-  static cl::opt<std::string>
-  ArgumentsFileName("Parguments-input",
-		    cl::init(""), cl::Hidden,
-		    cl::desc("specifies the input file for the arguments"));
-			     
-  static cl::opt<std::string>
-  SpecializeProgName("Parguments-name",
-		     cl::init(""), cl::Hidden,
-		     cl::desc("specifies the program name"));
   
   class RegisterArguments : public SpecializeArguments {
   public:
