@@ -17,6 +17,10 @@ class PointerType;
 class CallGraph;
 } // namespace llvm
 
+namespace sea_dsa {
+class CompleteCallGraph;
+} // namespace sea_dsa
+
 namespace previrt {
 
 namespace analysis {
@@ -38,7 +42,7 @@ AliasSetId typeAliasId(llvm::CallSite &CS);
 
 enum CallSiteResolverKind {
    RESOLVER_TYPES
- , RESOLVER_DSA
+ , RESOLVER_SEADSA
  , RESOLVER_CHA   
 };
 
@@ -101,12 +105,11 @@ private:
 };
 
 /*
- * Resolve indirect call by using DSA pointer analysis
+ * Resolve indirect call by using seadsa
  */
-template<typename Dsa>  
-class CallSiteResolverByDsa final: public CallSiteResolverByTypes {
+class CallSiteResolverBySeaDsa final: public CallSiteResolverByTypes {
   /*
-    Assume that Dsa provides these methods:
+    Assume that sea_dsa::CompleteCallGraph provides these methods:
     - bool isComplete(CallSite&)
     - iterator begin(CallSite&)
     - iterator end(CallSite&) 
@@ -117,9 +120,11 @@ public:
   using AliasSetId = CallSiteResolverByTypes::AliasSetId;  
   using AliasSet = CallSiteResolverByTypes::AliasSet;
   
-  CallSiteResolverByDsa(llvm::Module& M, Dsa& dsa, bool incomplete, unsigned max_num_targets);
+  CallSiteResolverBySeaDsa(llvm::Module& M,
+			   sea_dsa::CompleteCallGraph& seadsa_cg,
+			   bool incomplete, unsigned max_num_targets);
     
-  ~CallSiteResolverByDsa();
+  ~CallSiteResolverBySeaDsa() = default;
   
   const AliasSet* getTargets(llvm::CallSite &CS);
 
@@ -133,8 +138,8 @@ private:
   using BounceMap = std::multimap<AliasSetId, std::pair<const AliasSet*, llvm::Function *>>;
   // -- the module
   llvm::Module& m_M;
-  // -- the pointer analysis to resolve function pointers
-  Dsa& m_dsa;
+  // -- call graph produced by seadsa
+  sea_dsa::CompleteCallGraph& m_seadsa_cg;
   // -- Resolve incomplete nodes (unsound, in general)
   bool m_allow_incomplete;
   // -- Maximum number of targets (used to avoid having too large

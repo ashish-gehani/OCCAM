@@ -1,8 +1,11 @@
-#include "transforms/DevirtFunctions.hh"
 #include "analysis/ClassHierarchyAnalysis.hh"
+#include "transforms/DevirtFunctions.hh"
+
 #include "llvm/Pass.h"
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/Support/raw_ostream.h"
+
+#include "sea_dsa/CompleteCallGraph.hh"
 
 #include <set>
 #include <algorithm>
@@ -163,18 +166,19 @@ namespace transforms {
     m_bounce_map.insert({id, bounce});
   }
   
-  template<typename Dsa>
-  CallSiteResolverByDsa<Dsa>::CallSiteResolverByDsa(Module& M, Dsa& dsa, bool incomplete, unsigned max_num_targets)
+  CallSiteResolverBySeaDsa::CallSiteResolverBySeaDsa(Module& M,
+						     sea_dsa::CompleteCallGraph &cg,
+						     bool incomplete, unsigned max_num_targets)
     : CallSiteResolverByTypes(M)
     , m_M(M)
-    , m_dsa(dsa)
+    , m_seadsa_cg(cg)
     , m_allow_incomplete(incomplete)
     , m_max_num_targets(max_num_targets) {
     
-    CallSiteResolver::m_kind = RESOLVER_DSA;
+    CallSiteResolver::m_kind = RESOLVER_SEADSA;
     
     /*
-      Assume that Dsa provides these methods:
+      Assume that sea_dsa::CompleteCallGraph provides these methods:
        - bool isComplete(CallSite&)
        - iterator begin(CallSite&)
        - iterator end(CallSite&) 
@@ -191,10 +195,10 @@ namespace transforms {
 	  CallSite CS(&I);
 	  if (CS.getInstruction() && isIndirectCall(CS)) {
 	    num_indirect_calls++;
-	    if (m_allow_incomplete || m_dsa.isComplete(CS)) {
+	    if (m_allow_incomplete || m_seadsa_cg.isComplete(CS)) {
 	      num_complete_calls++;
 	      AliasSet dsa_targets;
-	      dsa_targets.append(m_dsa.begin(CS), m_dsa.end(CS));
+	      dsa_targets.append(m_seadsa_cg.begin(CS), m_seadsa_cg.end(CS));
 	      if (dsa_targets.empty()) {
 		  errs() << "WARNING Devirt (dsa): does not have any target for "
 			 << *(CS.getInstruction()) << "\n";
@@ -261,7 +265,7 @@ namespace transforms {
 		     << " because the corresponding dsa node is not complete\n";
 	      
 	      DEVIRT_LOG(AliasSet targets;
-			 targets.append(m_dsa.begin(CS), m_dsa.end(CS));
+			 targets.append(m_seadsa_cg.begin(CS), m_seadsa_cg.end(CS));
 			 errs() << "Dsa-based targets: \n";
 			 for(auto F: targets) {
 			   errs() << "\t" << F->getName() << "::" << *(F->getType()) << "\n";
@@ -277,15 +281,8 @@ namespace transforms {
     errs() << "BRUNCH_STAT RESOLVED CALLS " << num_resolved_calls << "\n";
   }
 
-  template<typename Dsa>
-  CallSiteResolverByDsa<Dsa>::~CallSiteResolverByDsa(){
-    m_targets_map.clear();    
-    m_bounce_map.clear();
-  }
-  
-  template<typename Dsa>  
-  const typename CallSiteResolverByDsa<Dsa>::AliasSet*
-  CallSiteResolverByDsa<Dsa>::getTargets(CallSite& CS) {
+  const typename CallSiteResolverBySeaDsa::AliasSet*
+  CallSiteResolverBySeaDsa::getTargets(CallSite& CS) {
     auto it = m_targets_map.find(CS.getInstruction());
     if (it != m_targets_map.end()) {
       return &(it->second);
@@ -293,8 +290,7 @@ namespace transforms {
     return nullptr;
   }
   
-  template<typename Dsa>
-  Function* CallSiteResolverByDsa<Dsa>::getBounceFunction(CallSite&CS) {
+  Function* CallSiteResolverBySeaDsa::getBounceFunction(CallSite&CS) {
     AliasSetId id = devirt_impl::typeAliasId(CS, false);
     auto it = m_bounce_map.find(id);
     if (it != m_bounce_map.end()) {
@@ -310,8 +306,7 @@ namespace transforms {
     return nullptr;
   }
   
-  template<typename Dsa>
-  void CallSiteResolverByDsa<Dsa>::cacheBounceFunction(CallSite& CS, Function* bounce) {
+  void CallSiteResolverBySeaDsa::cacheBounceFunction(CallSite& CS, Function* bounce) {
     if (const AliasSet* targets = getTargets(CS)) {
       AliasSetId id = devirt_impl::typeAliasId(CS, false);      
       m_bounce_map.insert({id, {targets, bounce}});
@@ -647,24 +642,6 @@ namespace transforms {
     // -- sites.
     return Changed;
   }  
-} // end namespace
-} // end namespace
-
-/* Template instantiation */
-  
-// llvm-dsa 
-#include "dsa/CallTargets.h"
-namespace previrt {
-namespace transforms {  
-template class CallSiteResolverByDsa<dsa::CallTargetFinder<EQTDDataStructures>>;
-} // end namespace
-} // end namespace
-
-// sea-dsa
-#include "sea_dsa/CompleteCallGraph.hh"
-namespace previrt {
-namespace transforms {  
-template class CallSiteResolverByDsa<sea_dsa::CompleteCallGraph>;
 } // end namespace
 } // end namespace
 

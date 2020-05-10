@@ -75,7 +75,7 @@ instructions = """slash has three modes of use:
         --debug                    : Pass the debug flag into all calls to opt (too much information usually)
         --print-after-all          : Pass the print-after-all flag into all calls to opt
         --devirt=<type>            : Devirtualize indirect function calls 
-                                     (<type> should be either none, dsa, sea_dsa or cha_dsa)
+                                     (<type> should be either none, sea_dsa or cha_dsa)
         --intra-spec-policy=<type> : Specialization policy for intramodule calls 
                                      (<type> should be either none, aggressive, nonrec-aggressive, bounded, or onlyonce)
         --inter-spec-policy=<type> : Specialization policy for intermodule calls 
@@ -207,14 +207,13 @@ class Slash(object):
                 return True
 
         def check_devirt_method(method):
-            """ Supported methods: none, dsa, sea_dsa, cha_dsa """
+            """ Supported methods: none, sea_dsa, cha_dsa """
 
             if method <> 'none' and \
-               method <> 'dsa' and \
                method <> 'sea_dsa' and \
                method <> 'cha_dsa':
                 sys.stderr.write('Error: unsupported devirtualization method. ' + \
-                                 'Valid methods: none, dsa, sea_dsa, cha_dsa\n')
+                                 'Valid methods: none, sea_dsa, cha_dsa\n')
                 return False
             else:
                 return True

@@ -19,8 +19,6 @@ CXX_FLAGS += $(shell  ${LLVM_CFG} --cxxflags) -I${LLVM_INCLUDE} -I../include -I/
 
 CXX_FLAGS += -Ianalysis/sea-dsa/include
 
-CXX_FLAGS += -Ianalysis/llvm-dsa/include 
-
 C_FLAGS = $(shell  ${LLVM_CFG} --cflags)
 
 CPP_FLAGS += $(shell  ${LLVM_CFG} --cppflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include
@@ -77,14 +75,7 @@ all: ${LIBRARY}
 libSeaDsa:
 	$(MAKE) -C analysis -f Makefile.sea-dsa install INSTALL_DIR=${OCCAM_LIB}
 
-# Another Pointer Analysis
-libLlvmDsa:
-	$(MAKE) -C analysis -f Makefile.llvm-dsa install INSTALL_DIR=${OCCAM_LIB}
-
-extern_libs: libSeaDsa libLlvmDsa 
-else
-extern_libs: libSeaDsa libLlvmDsa
-endif
+extern_libs: libSeaDsa 
 
 ${LIBRARY}: extern_libs ${SOURCES}
 	echo "The source is being built according to ${LLVM_CFG}"
@@ -120,7 +111,6 @@ protoc: Previrt.proto
 
 clean: 
 	rm -rf ${OBJECTS} proto ${LIBRARY} 
-	$(MAKE) -C analysis -f Makefile.llvm-dsa clean
 	$(MAKE) -C analysis -f Makefile.sea-dsa clean
 
 install: check-occam-lib ${LIBRARY}

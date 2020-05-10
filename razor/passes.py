@@ -125,9 +125,7 @@ def devirt(devirt_method, input_file, output_file):
         args += ['-Pdevirt-with-cha']
 
     if devirt_method == 'sea_dsa': 
-        args += ['-Pdevirt-with-seadsa'
-                 , '-sea-dsa-type-aware=true'
-        ]
+        args += ['-sea-dsa-type-aware=true']
         
     retcode = driver.previrt_progress(input_file, output_file, args)
     if retcode != 0:

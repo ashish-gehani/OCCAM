@@ -13,9 +13,7 @@
 //#include "llvm/Analysis/CallGraph.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
-// llvm-dsa 
-#include "dsa/CallTargets.h"
-// sea-dsa
+
 #include "sea_dsa/CompleteCallGraph.hh"
 
 static llvm::cl::opt<unsigned>
@@ -23,14 +21,9 @@ MaxNumTargets("Pmax-num-targets",
     llvm::cl::desc("Do not resolve if number of targets is greater than this number."),
     llvm::cl::init(9999));
 
-static llvm::cl::opt<bool>
-ResolveCallsBySeaDsa("Pdevirt-with-seadsa",
-    llvm::cl::desc("Use SeaDsa instead of LLvm-Dsa to resolve indirect calls"),
-    llvm::cl::init(false));
-
 /*
 * Resolve first C++ virtual calls by using a Class Hierarchy Analysis (CHA)
-* before using a pointer analysis.
+* before using seadsa.
 **/
 static llvm::cl::opt<bool>
 ResolveCallsByCHA("Pdevirt-with-cha",
@@ -80,41 +73,23 @@ namespace transforms {
       bool res = false;
       
       // -- Access to analysis pass which finds targets of indirect function calls
-      
       DevirtualizeFunctions DF(/*CG*/ nullptr, AllowIndirectCalls);
 
-      CallSiteResolver* CSR = nullptr;
       if (ResolveCallsByCHA) {
-	CallSiteResolverByCHA csr_cha(M);
-	CSR = &csr_cha;
-	res |= DF.resolveCallSites(M, CSR);
-      }
+	CallSiteResolverByCHA CSResolver(M);
+	res |= DF.resolveCallSites(M, &CSResolver);	
+      }      
 
-      CSR = nullptr;
-      if (!ResolveCallsBySeaDsa) {
-	CSR = new CallSiteResolverByDsa<LlvmDsaResolver>
-	  (M, getAnalysis<LlvmDsaResolver>(),
-	   ResolveIncompleteCalls, MaxNumTargets);
-      } else {
-	CSR = new CallSiteResolverByDsa<SeaDsaResolver>
-	  (M, getAnalysis<sea_dsa::CompleteCallGraph>(),
-	   ResolveIncompleteCalls, MaxNumTargets);
-	
-      }
+      CallSiteResolverBySeaDsa CSResolver(M, getAnalysis<sea_dsa::CompleteCallGraph>(),
+					  ResolveIncompleteCalls, MaxNumTargets);
+      res |= DF.resolveCallSites(M, &CSResolver);
       
-      res |= DF.resolveCallSites(M, CSR);
-
-      delete CSR;
       return res;
     }
     
     virtual void getAnalysisUsage(AnalysisUsage &AU) const override {
       //AU.addRequired<CallGraphWrapperPass>();
-      if (!ResolveCallsBySeaDsa) {      
-	AU.addRequired<LlvmDsaResolver>();
-      } else {
-	AU.addRequired<SeaDsaResolver>();
-      }
+      AU.addRequired<sea_dsa::CompleteCallGraph>();
       // FIXME: DevirtualizeFunctions does not fully update the call
       // graph so we don't claim it's preserved.
       // AU.setPreservesAll();
@@ -124,17 +99,12 @@ namespace transforms {
     virtual StringRef getPassName() const override {
       return "Devirtualize indirect calls";
     }
-    
-  private:
-    using LlvmDsaResolver = dsa::CallTargetFinder<EQTDDataStructures>;
-    using SeaDsaResolver = sea_dsa::CompleteCallGraph; 
   };
   
   char DevirtualizeFunctionsDsaPass::ID = 0;
 } // end namespace
 } // end namespace
 
-static RegisterPass<previrt::transforms::DevirtualizeFunctionsDsaPass>
-X("Pdevirt",
-  "Devirtualize indirect function calls");
+static llvm::RegisterPass<previrt::transforms::DevirtualizeFunctionsDsaPass>
+X("Pdevirt", "Devirtualize indirect function calls");
 

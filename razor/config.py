@@ -55,10 +55,9 @@ __libext = libExtension()
 class ConfigObj(object):
     """All access to the environment comes through this class.
     """
-    def  __init__(self, libfile, seadsalib, llvmdsalib):
+    def  __init__(self, libfile, seadsalib):
         self._occamlib = libfile
         self._seadsalib = seadsalib
-        self._llvmdsalib = llvmdsalib
         self._env = {'clang'      :  'LLVM_CC_NAME',
                      'clang++'    :  'LLVM_CXX_NAME',
                      'llvm-link'  :  'LLVM_LINK_NAME',
@@ -84,14 +83,9 @@ class ConfigObj(object):
         return self._occamlib
 
     def get_sea_dsalib(self):
-        """ Returns the path to the SeaHorn DSA library.
+        """ Returns the path to the SeaDSA library.
         """
         return self._seadsalib
-
-    def get_llvm_dsalib(self):
-        """ Returns the path to the LLVM DSA library.
-        """
-        return self._llvmdsalib
 
     def get_llvm_tool(self, tool):
         """ Returns the appropriate tool.
@@ -111,7 +105,7 @@ def get_occamlib_path():
     return None
 
 def get_sea_dsalib_path():
-    """ Deduces the full path to the SeaHorn DSA shared/dynamic library.
+    """ Deduces the full path to the SeaDsa shared/dynamic library.
     """
     home = os.getenv('OCCAM_HOME')
     if home is None:
@@ -119,18 +113,6 @@ def get_sea_dsalib_path():
         return None
     if __libext is not None:
         return os.path.join(home, 'lib', 'libSeaDsa.{0}'.format(__libext))
-    sys.stderr.write('Unsupported platform: {0}\n'.format(__system))
-    return None
-
-def get_llvm_dsalib_path():
-    """ Deduces the full path to the LLVM DSA shared/dynamic library.
-    """
-    home = os.getenv('OCCAM_HOME')
-    if home is None:
-        sys.stderr.write('OCCAM_HOME not set!\n')
-        return None
-    if __libext is not None:
-        return os.path.join(home, 'lib', 'libDSA.{0}'.format(__libext))
     sys.stderr.write('Unsupported platform: {0}\n'.format(__system))
     return None
 
@@ -143,8 +125,7 @@ def get_logfile():
     return logfile
 
 CFG = ConfigObj(get_occamlib_path(), \
-                get_sea_dsalib_path(), \
-                get_llvm_dsalib_path())
+                get_sea_dsalib_path())
 
 def get_occamlib():
     """ Returns the path to the occam shared/dynamic library.
@@ -155,11 +136,6 @@ def get_sea_dsalib():
     """ Returns the path to the SeaHorn DSA shared/dynamic library.
     """
     return CFG.get_sea_dsalib()
-
-def get_llvm_dsalib():
-    """ Returns the path to the LLVM DSA shared/dynamic library.
-    """
-    return CFG.get_llvm_dsalib()
 
 def get_llvm_tool(tool):
     """ Returns the appropriate tool.
