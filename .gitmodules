@@ -1,4 +1,4 @@
 [submodule "src/analysis/sea-dsa"]
 	path = src/analysis/sea-dsa
 	url = https://github.com/seahorn/sea-dsa.git
-	branch = master
+	branch = dev10
