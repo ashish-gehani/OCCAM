@@ -25,7 +25,7 @@ Alternatively, it can be built and installed from source as follows.
 Prerequisites
 ============
 
-OCCAM currently works on Linux, macOS, and FreeBSD.  It depends on an installation of LLVM. OCCAM currently requires llvm-5.0. You will also need the Google protocol buffer compiler `protoc` and the corresponding Python [package](https://pypi.python.org/pypi/protobuf/).
+OCCAM currently works on Linux, macOS, and FreeBSD.  It depends on an installation of LLVM. OCCAM currently requires llvm-10.0. You will also need the Google protocol buffer compiler `protoc` and the corresponding Python [package](https://pypi.python.org/pypi/protobuf/).
 
 If you need to generate application bitcode (that OCCAM operates on), you will want to install WLLVM, either from the the pip [package](https://pypi.python.org/pypi/wllvm/) or the GitHub [repository](https://github.com/SRI-CSL/whole-program-llvm.git).
 
@@ -43,8 +43,8 @@ Set where OCCAM's library will be stored:
 
 Point to your LLVM's location, if non-standard:
 ```
-  export LLVM_HOME=/usr/local/llvm-5.0
-  export LLVM_CONFIG=llvm-config-5.0
+  export LLVM_HOME=/usr/local/llvm-10.0
+  export LLVM_CONFIG=llvm-config-10.0
 ```
 
 Set where system libraries, including Google Protocol Buffers, are located:
