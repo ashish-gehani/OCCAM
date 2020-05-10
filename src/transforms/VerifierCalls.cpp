@@ -1,9 +1,11 @@
 #include "llvm/Pass.h"
+#include "llvm/IR/CallSite.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/IR/IRBuilder.h"
 
@@ -43,7 +45,8 @@ namespace transforms {
 	m_cg = &cgwp->getCallGraph();
       }
       
-      m_errorFn = M.getOrInsertFunction("__VERIFIER_error", Type::getVoidTy (M.getContext ()));
+      m_errorFn = cast<Constant>(M.getOrInsertFunction
+				 ("__VERIFIER_error", Type::getVoidTy (M.getContext ())).getCallee());
       
       if (m_cg) {
 	m_cg->getOrInsertFunction(cast<Function>(m_errorFn));
@@ -72,7 +75,7 @@ namespace transforms {
       Builder.SetInsertPoint(entry.getFirstNonPHI());
       CallInst *call = Builder.CreateCall(m_errorFn);
       if (m_cg) {
-	(*m_cg)[&F]->addCalledFunction(CallSite(call),
+	(*m_cg)[&F]->addCalledFunction(cast<CallBase>(call),
                                        (*m_cg)[call->getCalledFunction()]);
       }
       return true;
