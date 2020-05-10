@@ -11,9 +11,9 @@
 #include "llvm/IR/Function.h"
 #include "llvm/Support/CommandLine.h"
 
-#include "sea_dsa/Global.hh"
-#include "sea_dsa/AllocWrapInfo.hh"
-#include "sea_dsa/TopDown.hh"
+#include "seadsa/Global.hh"
+#include "seadsa/AllocWrapInfo.hh"
+#include "seadsa/TopDown.hh"
 
 static llvm::cl::opt<bool>
 IncludeExpensiveFeatures("Pinclude-expensive-ml-features", 
@@ -23,7 +23,7 @@ IncludeExpensiveFeatures("Pinclude-expensive-ml-features",
 namespace previrt {
 
   using namespace llvm;
-  using namespace sea_dsa;
+  using namespace seadsa;
 
   MLFeaturesCallSite::MLFeaturesCallSite():
     m_cs(nullptr),
@@ -123,7 +123,8 @@ namespace previrt {
     // Needed to run sea-dsa
     Graph::SetFactory m_sf;
     const DataLayout &m_dl;
-    const TargetLibraryInfo &m_tli;
+    TargetLibraryInfoWrapperPass &m_tliWrapper;
+    TargetLibraryInfo* m_tli;
     LLVMContext &m_ctx;
     const AllocWrapInfo &m_allocInfo;
     CallGraph &m_cg;
@@ -138,8 +139,10 @@ namespace previrt {
       if (isa<AllocaInst>(Ptr))
 	return true;
       
-      if (auto *CI = dyn_cast<CallInst>(Ptr))
-	return isAllocationFn(CI, &m_tli);
+      if (auto *CI = dyn_cast<CallInst>(Ptr)) {
+	assert(m_tli);
+	return isAllocationFn(CI, m_tli);
+      }
       
       if (auto *GV = dyn_cast<GlobalVariable>(Ptr))
 	return GV->hasInitializer();
@@ -156,7 +159,8 @@ namespace previrt {
       ObjectSizeOpts Opts;
       Opts.RoundToAlign = true;
       Opts.EvalMode = ObjectSizeOpts::Mode::Max;
-      ObjectSizeOffsetVisitor OSOV(m_dl, &m_tli, m_ctx, Opts);
+      assert(m_tli);
+      ObjectSizeOffsetVisitor OSOV(m_dl, m_tli, m_ctx, Opts);
       auto OffsetAlign = OSOV.compute(Ptr);
       if (!OSOV.knownSize(OffsetAlign))
 	return llvm::None;
@@ -241,7 +245,9 @@ namespace previrt {
     // allocation sites are safe to access.
     void getMemoryAccessesFeatures(Graph &G, Function &F,
 				   unsigned &memory_accesses,
-				   unsigned &safe_allocation_sites) {            
+				   unsigned &safe_allocation_sites) {
+
+      m_tli = &(m_tliWrapper.getTLI(F));      
       for (auto &BB: F) {
 	for (auto &I: BB) {
 	  auto *LI = dyn_cast<LoadInst>(&I);
@@ -271,16 +277,17 @@ namespace previrt {
   public:
     
     MemoryMLFeaturesPassImpl(const DataLayout &dl,
-			     const TargetLibraryInfo &tli,
+			     TargetLibraryInfoWrapperPass &tliWrapper,
 			     LLVMContext &ctx,			     
 			     const AllocWrapInfo &allocInfo,
 			     CallGraph &cg)
-      : m_dl(dl), m_tli(tli), m_ctx(ctx), m_allocInfo(allocInfo), m_cg(cg),
+      : m_dl(dl), m_tliWrapper(tliWrapper), m_tli(nullptr),
+	m_ctx(ctx), m_allocInfo(allocInfo), m_cg(cg),
 	m_bu_graphs(nullptr) {}
 
     /* Compute summary graphs for each function */
     void computeSummaryGraphs(Module &M) {
-      m_bu_graphs.reset(new BottomUpGlobalAnalysis(m_dl, m_tli, m_allocInfo,
+      m_bu_graphs.reset(new BottomUpGlobalAnalysis(m_dl, m_tliWrapper, m_allocInfo,
 						   m_cg, m_sf));
       m_bu_graphs->runOnModule(M);
     }
@@ -300,7 +307,7 @@ namespace previrt {
 	Graph& callerG = m_bu_graphs->getGraph(*caller);
 	
 	// make a copy of the callee's graph
-	g.reset(new sea_dsa::Graph(m_dl, m_sf));
+	g.reset(new seadsa::Graph(m_dl, m_sf));
 	g->import(calleeG, true /*with formals*/);
 
 	// top-down unification 
@@ -421,7 +428,7 @@ namespace previrt {
   
   bool MemoryMLFeaturesPass::runOnModule(Module &M) {
     auto &dl = M.getDataLayout();
-    auto &tli = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
+    auto &tliWrapper = getAnalysis<TargetLibraryInfoWrapperPass>();
     auto &allocInfo = getAnalysis<AllocWrapInfo>();
     CallGraph *cg = nullptr;
     //if (UseDsaCallGraph) {  
@@ -430,7 +437,7 @@ namespace previrt {
     cg = &getAnalysis<CallGraphWrapperPass>().getCallGraph();
     //}
 
-    m_impl.reset(new MemoryMLFeaturesPassImpl(dl, tli, M.getContext(), allocInfo, *cg));
+    m_impl.reset(new MemoryMLFeaturesPassImpl(dl, tliWrapper, M.getContext(), allocInfo, *cg));
     m_impl->computeSummaryGraphs(M);
 
     #if 1
