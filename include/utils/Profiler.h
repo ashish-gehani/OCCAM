@@ -12,6 +12,7 @@
 namespace llvm {
   class DataLayout;
   class TargetLibraryInfo;
+  class TargetLibraryInfoWrapperPass;
   class LLVMContext;
   class BasicBlock;
   class Function;
@@ -53,6 +54,7 @@ namespace previrt {
     friend class llvm::InstVisitor<ProfilerPass>;
 
     const llvm::DataLayout *DL;
+    llvm::TargetLibraryInfoWrapperPass *TLIWrapper;    
     llvm::TargetLibraryInfo *TLI;
     llvm::LLVMContext *Ctx;
     llvm::StringSet<> ExtFuncs;

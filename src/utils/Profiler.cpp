@@ -318,6 +318,7 @@ namespace previrt {
   ProfilerPass::ProfilerPass()
     : ModulePass(ID)
     , DL(nullptr)
+    , TLIWrapper(nullptr)      
     , TLI(nullptr)
     , TotalFuncs("TotalFuncs", "Number of functions")
     , TotalSpecFuncs("TotalSpecFuncs", "Number of specialized functions")
@@ -356,6 +357,7 @@ namespace previrt {
   
   // Collect statistics
   bool ProfilerPass::runOnFunction(Function &F)  {
+    TLI = &(TLIWrapper->getTLI(F));
     visit(F);
     return false;
   }
@@ -363,7 +365,7 @@ namespace previrt {
   bool ProfilerPass::runOnModule(Module &M) {
     
     DL = &M.getDataLayout();
-    TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
+    TLIWrapper = &getAnalysis<TargetLibraryInfoWrapperPass>();
     Ctx = &M.getContext();
     
     if (ShowCallGraphInfo) {
@@ -426,7 +428,7 @@ namespace previrt {
     
     if (OutputFile != "") {
       std::error_code ec;
-      llvm::tool_output_file out(OutputFile.c_str(), ec, sys::fs::F_Text);
+      llvm::ToolOutputFile out(OutputFile.c_str(), ec, sys::fs::F_Text);
       if (ec) {
 	errs() << "ERROR: Cannot open file: " << ec.message() << "\n";
       } else {
