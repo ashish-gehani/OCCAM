@@ -74,7 +74,7 @@ namespace previrt
       
       ArrayRef<Type*> params(argTypes);
       newType = FunctionType::get(target->getReturnType(), params, target->isVarArg());
-      newTarget = cast<Function> (M.getOrInsertFunction(rw->function, newType));
+      newTarget = cast<Function>(M.getOrInsertFunction(rw->function, newType).getCallee());
     }
     assert(newTarget);
     return specializeCallSite(cs.getInstruction(), newTarget, rw->args);
