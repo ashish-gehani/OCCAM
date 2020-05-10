@@ -1,5 +1,6 @@
 #include "analysis/ClassHierarchyAnalysis.hh"
 
+#include "llvm/Pass.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/SmallVector.h"
