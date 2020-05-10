@@ -601,7 +601,7 @@ namespace transforms {
     return;
   }
   
-  void DevirtualizeFunctions::visitCallSite (CallSite &CS) {
+  void DevirtualizeFunctions::visitCallSite (CallSite CS) {
     // -- skip direct calls
     if (!isIndirectCall (CS)) return;
     
