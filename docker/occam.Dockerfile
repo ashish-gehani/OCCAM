@@ -53,4 +53,4 @@ ENV OCCAM_HOME "/occam"
 # Build configuration.
 RUN make
 RUN make install
-#RUN make test
+RUN make test
