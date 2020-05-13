@@ -129,6 +129,25 @@ static bool isDiscardableIfUnusedExternally(GlobalValue::LinkageTypes Linkage) {
 	  Linkage == GlobalValue::CommonLinkage);
 }
 
+// The linkage of GV is set to internal but only if its visibility is
+// default.
+//  
+// If GV's visibility is hidden then making GV's linkage internal
+// would set automatically its visibility to default. This can be a
+// problem for the linker because a symbol that was hidden before it's
+// now exposed. This might create duplicate symbols. The other
+// visibility type is protected. For now, we also give up if
+// visibility is protected.
+static bool setInternalLinkage(GlobalValue &GV) {
+  if (GV.hasDefaultVisibility()) {
+    errs() << "Internalizing '" << GV.getName() << "'\n";  
+    GV.setLinkage(GlobalValue::InternalLinkage);
+    return true;
+  } else {
+    return false;
+  }
+}
+
 /*
  * Remove all code from the given module that is not necessary to
  * implement the given interface.
@@ -202,11 +221,11 @@ bool MinimizeComponent(Module& M, const ComponentInterface& I) {
 	I.references.find(f.getName()) == I.references.end() &&
 	// there is no an alias to f that we want to keep
 	!keepAliasees.count(&f)) {
-      
-      errs() << "Internalizing '" << f.getName() << "'\n";
-      f.setLinkage(GlobalValue::InternalLinkage);
-      internalized_functions++;
-      modified = true;
+
+      if (setInternalLinkage(f)) {
+	internalized_functions++;
+	modified = true;
+      }
     }
   }
   
@@ -240,10 +259,10 @@ bool MinimizeComponent(Module& M, const ComponentInterface& I) {
 	// there is no an alias to f that we want to keep
 	!keepAliasees.count(&gv)) {
       
-      errs() << "Internalizing '" << gv.getName() << "'\n";	
-      gv.setLinkage(GlobalValue::InternalLinkage);
+      if (setInternalLinkage(gv)) {
 	internalized_globals++;
         modified = true;
+      }
     }      
   }
   
