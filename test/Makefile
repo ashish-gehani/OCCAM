@@ -17,7 +17,7 @@ endif
 # Test OCCAM features
 	${LIT} --param=test_dir=simple-c simple -v -o ${OUTPUT_LOG}
 # Test inter-procedural dead store elimination
-	${LIT} --param=test_dir=ipdse ipdse -v -o ${OUTPUT_LOG}
+#	${LIT} --param=test_dir=ipdse ipdse -v -o ${OUTPUT_LOG}
 
 clean:
 	rm -f out.log
