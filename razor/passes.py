@@ -352,17 +352,18 @@ def optimize(input_file, output_file, use_seaopt, extra_opts):
     args = ['-disable-simplify-libcalls']
     ## We disable loop vectorization because some of our analysis
     ## cannot support them.
-    args += ['--disable-loop-vectorization',
-             '--disable-slp-vectorization']
+    ## LLVM 10: --disable-loop-vectorization is gone
+    args += ['--disable-slp-vectorization']
+             
     use_seaopt = use_seaopt and utils.found_seaopt()
     if use_seaopt:
-        args += ['--enable-nondet-init=false']
         # disable sinking instructions to end of basic block
         # this might create unwanted aliasing scenarios (in sea-dsa)
         # for now, there is no option to undo this switch        
         args += ['--simplifycfg-sink-common=false']
         # disable loop rotation because it's pretty bad for crab
-        args += ['--disable-loop-rotate']
+        ## LLVM 10: --disable-loop-rotate is gone.
+        #args += ['--disable-loop-rotate']
         
     args += extra_opts
     args += [input_file, '-o', output_file, '-O3']
