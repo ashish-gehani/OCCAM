@@ -21,6 +21,7 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Transforms/Utils/UnifyFunctionExitNodes.h"
 
+#include "seadsa/InitializePasses.hh"
 #include "seadsa/ShadowMem.hh"
 
 #include <boost/functional/hash.hpp>
@@ -145,7 +146,11 @@ public:
   
   static char ID;
   
-  IPDeadStoreElimination(): ModulePass(ID) {}
+  IPDeadStoreElimination(): ModulePass(ID) {
+    // Initialize sea-dsa pass
+    llvm::PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
+    llvm::initializeShadowMemPassPass(Registry);
+  }
   
   virtual bool runOnModule(Module& M) override {
     if (M.begin () == M.end ()) {
@@ -368,6 +373,7 @@ public:
     // Make sure that we remove all the shadow.mem functions
     errs() << "Removing shadow.mem functions ... \n";
     seadsa::StripShadowMemPass SSMP;
+    errs() << M << "\n";
     SSMP.runOnModule(M);
     
     return false;

@@ -13,6 +13,7 @@
 
 #include "seadsa/Global.hh"
 #include "seadsa/AllocWrapInfo.hh"
+#include "seadsa/InitializePasses.hh"
 #include "seadsa/TopDown.hh"
 
 static llvm::cl::opt<bool>
@@ -424,7 +425,11 @@ namespace previrt {
   };
   
   MemoryMLFeaturesPass::MemoryMLFeaturesPass()
-    : ModulePass(ID), m_impl(nullptr) {}
+    : ModulePass(ID), m_impl(nullptr) {
+    // Initialize sea-dsa pass
+    llvm::PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
+    llvm::initializeAllocWrapInfoPass(Registry);
+  }
   
   bool MemoryMLFeaturesPass::runOnModule(Module &M) {
     auto &dl = M.getDataLayout();
