@@ -14,6 +14,7 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include "seadsa/InitializePasses.hh"
 #include "seadsa/CompleteCallGraph.hh"
 
 static llvm::cl::opt<unsigned>
@@ -64,7 +65,11 @@ namespace transforms {
     static char ID;
     
     DevirtualizeFunctionsDsaPass()
-      : ModulePass(ID) {}
+      : ModulePass(ID) {
+      // Initialize sea-dsa pass
+      llvm::PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
+      llvm::initializeCompleteCallGraphPass(Registry);
+    }
     
     virtual bool runOnModule(Module& M) override {
       // -- Get the call graph
