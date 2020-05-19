@@ -11,6 +11,7 @@
 #include "transforms/DevirtFunctions.hh"
 #include "llvm/Pass.h"
 //#include "llvm/Analysis/CallGraph.h"
+#include "llvm/IR/MDBuilder.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -40,31 +41,19 @@ ResolveIncompleteCalls("Presolve-incomplete-calls",
     llvm::cl::init(false),
     llvm::cl::Hidden);
 
-/**
-* It leaves the original indirect call site in the default case of the
-* switch statement. Enabling this option may be useful to ensure
-* soundness if ResolveIncompleteCalls is enabled.
-**/
-static llvm::cl::opt<bool>
-AllowIndirectCalls("Pallow-indirect-calls",
-    llvm::cl::desc("Allow creation of indirect calls "
-		   "during devirtualization "
-		   "(required for soundness if call cannot be fully resolved)"),   
-    llvm::cl::init(false),
-    llvm::cl::Hidden);
-
 
 namespace previrt {
 namespace transforms {  
 
   using namespace llvm;
-  
-  class DevirtualizeFunctionsDsaPass:  public ModulePass {
+
+  /** Resolve indirect calls by adding bounce (trampoline) functions **/
+  class DevirtualizeFunctionsPass:  public ModulePass {
   public:
     
     static char ID;
     
-    DevirtualizeFunctionsDsaPass()
+    DevirtualizeFunctionsPass()
       : ModulePass(ID) {
       // Initialize sea-dsa pass
       llvm::PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
@@ -76,9 +65,9 @@ namespace transforms {
       //CallGraph* CG = &(getAnalysis<CallGraphWrapperPass> ().getCallGraph ());
       
       bool res = false;
-      
+
       // -- Access to analysis pass which finds targets of indirect function calls
-      DevirtualizeFunctions DF(/*CG*/ nullptr, AllowIndirectCalls);
+      DevirtualizeFunctions DF(/*CG*/ nullptr);
 
       if (ResolveCallsByCHA) {
 	CallSiteResolverByCHA CSResolver(M);
@@ -105,11 +94,81 @@ namespace transforms {
       return "Devirtualize indirect calls";
     }
   };
+
+  // Currently unused but it might be useful in the future.
+  /** Annotate indirect calls with all possible callees.
+   * 
+   *  For a given call site, the metadata, if present, indicates the
+   *  set of functions the call site could possibly target at
+   *  run-time.
+   **/
+  class AnnotateIndirectCalls:  public ModulePass {
+  public:
+    
+    static char ID;
+    
+    AnnotateIndirectCalls()
+      : ModulePass(ID) {
+      // Initialize sea-dsa pass
+      llvm::PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
+      llvm::initializeCompleteCallGraphPass(Registry);
+    }
+    
+    virtual bool runOnModule(Module& M) override {
+      bool change = false;
+
+      CallSiteResolverBySeaDsa CallSiteResolver
+	(M, getAnalysis<seadsa::CompleteCallGraph>(),
+	 ResolveIncompleteCalls, MaxNumTargets);
+      MDBuilder MDB(M.getContext());
+      
+      for (auto &F: M) {
+	for (auto &B: F) {
+	  for (auto &I: B) {
+	    if (isa<CallInst>(I) || isa<InvokeInst>(I)) {
+	      CallSite CS(&I);
+	      if (CS.isIndirectCall()) {
+		const SmallVector<const Function*, 16> *Targets =
+		  CallSiteResolver.getTargets(CS);
+		if (Targets) {
+		  std::vector<Function*> Callees;
+		  // remove constness
+		  for (const Function* CalleeF: *Targets) {
+		    Callees.push_back(const_cast<Function*>(CalleeF));
+		  }
+		  MDNode *MDCallees = MDB.createCallees(Callees);
+		  I.setMetadata(LLVMContext::MD_callees, MDCallees);
+		  change = true;
+		}
+	      }
+	    }
+	  }
+	}
+      }
+      return change;
+    }
+    
+    virtual void getAnalysisUsage(AnalysisUsage &AU) const override {
+      AU.addRequired<seadsa::CompleteCallGraph>();
+      AU.setPreservesAll();
+    }
+    
+    virtual StringRef getPassName() const override {
+      return "Annotate indirect calls with all possible callees";
+    }
+  };
+
+  char DevirtualizeFunctionsPass::ID = 0;  
+  char AnnotateIndirectCalls::ID = 0;
   
-  char DevirtualizeFunctionsDsaPass::ID = 0;
 } // end namespace
 } // end namespace
 
-static llvm::RegisterPass<previrt::transforms::DevirtualizeFunctionsDsaPass>
-X("Pdevirt", "Devirtualize indirect function calls");
+static llvm::RegisterPass<previrt::transforms::DevirtualizeFunctionsPass>
+X("Pdevirt",
+  "Devirtualize indirect function calls by adding bounce functions");
+
+static llvm::RegisterPass<previrt::transforms::AnnotateIndirectCalls>
+Y("Pannotate-indirect-calls",
+  "Annotate indirect calls with metadata listing all possible callees");
 
