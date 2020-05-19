@@ -75,7 +75,11 @@ instructions = """slash has three modes of use:
         --debug                    : Pass the debug flag into all calls to opt (too much information usually)
         --print-after-all          : Pass the print-after-all flag into all calls to opt
         --devirt=<type>            : Devirtualize indirect function calls 
-                                     (<type> should be either none, sea_dsa or cha_dsa)
+                                     (<type> should be either none, sea_dsa, or sea_dsa_with_cha)
+                                     - sea_dsa: uses the sea-dsa pointer analysis to infer all possible callees. 
+                                                It promotes all indirect calls to direct calls by creating bounce (trampoline) functions.
+                                     - sea_dsa_with_cha: perform a specialized promotion of C++ virtual calls to direct calls 
+                                                         before running sea_dsa.
         --intra-spec-policy=<type> : Specialization policy for intramodule calls 
                                      (<type> should be either none, aggressive, nonrec-aggressive, bounded, or onlyonce)
         --inter-spec-policy=<type> : Specialization policy for intermodule calls 
@@ -207,13 +211,13 @@ class Slash(object):
                 return True
 
         def check_devirt_method(method):
-            """ Supported methods: none, sea_dsa, cha_dsa """
+            """ Supported methods: none, sea_dsa, sea_dsa_with_cha"""
 
             if method <> 'none' and \
                method <> 'sea_dsa' and \
-               method <> 'cha_dsa':
+               method <> 'sea_dsa_with_cha':
                 sys.stderr.write('Error: unsupported devirtualization method. ' + \
-                                 'Valid methods: none, sea_dsa, cha_dsa\n')
+                                 'Valid methods: none, sea_dsa, sea_dsa_with_cha\n')
                 return False
             else:
                 return True

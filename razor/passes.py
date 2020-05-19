@@ -110,7 +110,7 @@ def strip(input_file, output_file):
     return driver.run(config.get_llvm_tool('opt'), args)
 
 def devirt(devirt_method, input_file, output_file):
-    """ resolve indirect function calls
+    """ resolve indirect function calls by adding multiple direct calls
     """
     assert(devirt_method <> 'none')
 
@@ -121,12 +121,12 @@ def devirt(devirt_method, input_file, output_file):
             #, '-Pmax-num-targets=15'
     ]
 
-    if devirt_method == 'cha_dsa': 
+    if devirt_method == 'sea_dsa_with_cha': 
         args += ['-Pdevirt-with-cha']
 
     if devirt_method == 'sea_dsa': 
         args += ['-sea-dsa-type-aware=true']
-        
+
     retcode = driver.previrt_progress(input_file, output_file, args)
     if retcode != 0:
         return retcode
@@ -138,6 +138,7 @@ def devirt(devirt_method, input_file, output_file):
         return 3
     else:
         return retcode
+
 
 def profile(input_file, output_file):
     """ count number of instructions, functions, memory accesses, etc.
@@ -224,36 +225,18 @@ def peval(input_file, output_file, \
         if retcode != 0: return retcode
 
     if devirt_method <> 'none':
-        # Create bounce functions to remove indirect calls
-        retcode = devirt(devirt_method, done.name, tmp.name)
-        if retcode != 0:
-            sys.stderr.write("ERROR: resolution of indirect calls failed!\n")
-            shutil.copy(done.name, output_file)
-            return retcode
-        sys.stderr.write("\tresolved indirect calls finished succesfully\n")
-        # Force inlining bounce functions
-        force_inline(tmp.name, done.name, force_inline_bounce, False)
-
-    # # We schedule devirt before opt. 
-    # if devirt_method <> 'none':
-    #     retcode = devirt(devirt_method, input_file, tmp.name)
-    #     if retcode != 0:
-    #         sys.stderr.write("ERROR: resolution of indirect calls failed!\n")
-    #         shutil.copy(input_file, output_file)
-    #         return retcode
-
-    #     sys.stderr.write("\tresolved indirect calls finished succesfully\n")
-        
-    #     retcode = _optimize(tmp.name, done.name, use_ai_dce)
-    #     if retcode != 0:
-    #         sys.stderr.write("ERROR: opt failed!\n")
-    #         shutil.copy(tmp.name, output_file)
-    #         return retcode
-    # else:
-    #     retcode = _optimize(input_file, done.name, use_ai_dce)
-    #     if retcode != 0:
-    #         return retcode
-        
+        if devirt_method == 'sea_dsa' or \
+           devirt_method == 'sea_dsa_with_cha':
+            # Promote indirect calls to direct calls
+            retcode = devirt(devirt_method, done.name, tmp.name)
+            if retcode != 0:
+                sys.stderr.write("ERROR: resolution of indirect calls failed!\n")
+                shutil.copy(done.name, output_file)
+                return retcode
+            sys.stderr.write("\tresolved indirect calls finished succesfully\n")
+            # Force inlining bounce functions (if added)
+            force_inline(tmp.name, done.name, force_inline_bounce, False)
+                    
     if use_ipdse:
         ## 1. lower global initializers to store's in main 
         passes = ['-lower-gv-init']
