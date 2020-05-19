@@ -1,5 +1,6 @@
 #include "analysis/ClassHierarchyAnalysis.hh"
 #include "transforms/DevirtFunctions.hh"
+#include "transforms/utils/CallPromotionUtils.hh"
 
 #include "llvm/Pass.h"
 #include "llvm/Analysis/CallGraph.h"
@@ -14,6 +15,7 @@ using namespace llvm;
 
 #define DEVIRT_LOG(...) __VA_ARGS__
 //#define DEVIRT_LOG(...)
+
 
 namespace previrt {
 namespace transforms {
@@ -151,6 +153,7 @@ namespace transforms {
     return nullptr;
   }
 
+  #ifdef USE_BOUNCE_FUNCTIONS
   Function* CallSiteResolverByTypes::getBounceFunction(CallSite& CS) {
     AliasSetId id = devirt_impl::typeAliasId(CS, false);
     auto it = m_bounce_map.find(id);
@@ -165,6 +168,7 @@ namespace transforms {
     AliasSetId id = devirt_impl::typeAliasId(CS, false);    
     m_bounce_map.insert({id, bounce});
   }
+  #endif
   
   CallSiteResolverBySeaDsa::CallSiteResolverBySeaDsa(Module& M,
 						     seadsa::CompleteCallGraph &cg,
@@ -289,7 +293,8 @@ namespace transforms {
     }
     return nullptr;
   }
-  
+
+  #ifdef USE_BOUNCE_FUNCTIONS
   Function* CallSiteResolverBySeaDsa::getBounceFunction(CallSite&CS) {
     AliasSetId id = devirt_impl::typeAliasId(CS, false);
     auto it = m_bounce_map.find(id);
@@ -313,7 +318,7 @@ namespace transforms {
     }
       
   }
-
+  #endif 
 
   CallSiteResolverByCHA::CallSiteResolverByCHA(Module& M)
     : CallSiteResolverByTypes(M)
@@ -324,10 +329,7 @@ namespace transforms {
 	       m_cha->printStats(errs()););
   }
 
-  CallSiteResolverByCHA::~CallSiteResolverByCHA(){
-    m_targets_map.clear();    
-    m_bounce_map.clear();
-  }
+  CallSiteResolverByCHA::~CallSiteResolverByCHA(){}
   
   const typename CallSiteResolverByCHA::AliasSet*
   CallSiteResolverByCHA::getTargets(CallSite& CS) {
@@ -359,7 +361,8 @@ namespace transforms {
     }
     return nullptr;
   }
-  
+
+  #ifdef USE_BOUNCE_FUNCTIONS
   Function* CallSiteResolverByCHA::getBounceFunction(CallSite&CS) {
     AliasSetId id = devirt_impl::typeAliasId(CS, false);
     auto it = m_bounce_map.find(id);
@@ -383,19 +386,16 @@ namespace transforms {
     }
       
   }
-      
+  #endif     
   
   /***
    * End specific callsites resolver
    ***/
   
 
-  DevirtualizeFunctions::DevirtualizeFunctions(llvm::CallGraph* /*cg*/,
-					       bool allowIndirectCalls)
-    : //m_cg(nullptr) 
-     m_allowIndirectCalls(allowIndirectCalls){ }
+  DevirtualizeFunctions::DevirtualizeFunctions(llvm::CallGraph* /*cg*/) { }
   
-
+  #ifdef USE_BOUNCE_FUNCTIONS
   Function* DevirtualizeFunctions::mkBounceFn(CallSite &CS, CallSiteResolver* CSR) {
     assert (isIndirectCall (CS) && "Not an indirect call");
 
@@ -477,8 +477,14 @@ namespace transforms {
     }
 
     BasicBlock * defaultBB = nullptr;
-    if (m_allowIndirectCalls) {
+    if (false) {
       // Create a default basic block having the original indirect call
+      // 
+      // JN: For now, we never execute this code because leaving the
+      // original indirect call defeats a the purpose of the whole
+      // devirtualization process.  This code be only needed if we
+      // allow incomplete callees to resolve an indirect call.
+      
       defaultBB = BasicBlock::Create (M->getContext(), "default", F);
       if (CS.getType()->isVoidTy()) {
 	ReturnInst::Create (M->getContext(), defaultBB);
@@ -534,9 +540,33 @@ namespace transforms {
     // Return the newly created bounce function.
     return F;
   }
+  #endif 
 
-
+  
   void DevirtualizeFunctions::mkDirectCall(CallSite CS, CallSiteResolver* CSR) {
+  #ifndef USE_BOUNCE_FUNCTIONS
+    const AliasSet* Targets = CSR->getTargets(CS);
+    if (!Targets || Targets->empty()) {
+      // cannot resolve the indirect call
+      return;
+    }
+    
+    DEVIRT_LOG(errs() << "OCCAM -- Resolving indirect call site:\n"
+	              << *CS.getInstruction() << " using:\n";
+      for (auto &f
+           : *Targets) {
+        errs() << "\t" << f->getName() << " :: " << *(f->getType()) << "\n";
+      });
+
+
+    std::vector<Function*> Callees;
+    Callees.resize(Targets->size());
+    std::transform(Targets->begin(), Targets->end(), Callees.begin(),
+		   [](const Function* fn) {
+		     return const_cast<Function*>(fn);
+		   });
+    previrt::transforms::promoteCallWithMultipleCallees(CS, Callees);
+  #else
     const Function *bounceFn = mkBounceFn(CS, CSR);
     // -- something failed
     if (!bounceFn) return;
@@ -598,7 +628,7 @@ namespace transforms {
       CI->replaceAllUsesWith(CN);
       CI->eraseFromParent();
     }
-    return;
+#endif     
   }
   
   void DevirtualizeFunctions::visitCallSite (CallSite CS) {

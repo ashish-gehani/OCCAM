@@ -26,7 +26,9 @@ namespace previrt {
 namespace analysis {
   class ClassHierarchyAnalysis;
 }
-    
+
+//#define USE_BOUNCE_FUNCTIONS
+  
 namespace transforms {
 
 namespace devirt_impl {
@@ -65,9 +67,11 @@ public:
   /* return all possible targets for CS */
   virtual const AliasSet* getTargets(llvm::CallSite &CS) = 0;
 
+  #ifdef USE_BOUNCE_FUNCTIONS
   /* for reusing bounce functions */
   virtual llvm::Function* getBounceFunction(llvm::CallSite &CS) = 0;
   virtual void cacheBounceFunction(llvm::CallSite &CS, llvm::Function* bounce) = 0;
+  #endif 
 };
 
 /*
@@ -85,21 +89,26 @@ public:
 
   const AliasSet* getTargets(llvm::CallSite& CS);
 
+  #ifdef USE_BOUNCE_FUNCTIONS
   llvm::Function* getBounceFunction(llvm::CallSite& CS);
-  
   void cacheBounceFunction(llvm::CallSite& CS, llvm::Function* bounce);
+  #endif 
   
 private:
   /* invariant: the value in TargetsMap's entries is sorted */
   using TargetsMap = llvm::DenseMap<AliasSetId, AliasSet>;
+  #ifdef USE_BOUNCE_FUNCTIONS  
   using BounceMap = llvm::DenseMap<AliasSetId, llvm::Function *>;
+  #endif
   
   // -- the module
   llvm::Module &m_M;
   // -- map from alias-id to the corresponding targets
   TargetsMap m_targets_map;
+  #ifdef USE_BOUNCE_FUNCTIONS
   // -- map alias set id to an existing bounce function
   BounceMap m_bounce_map;
+  #endif 
   
   void populateTypeAliasSets(void);
 };
@@ -122,33 +131,37 @@ public:
   
   CallSiteResolverBySeaDsa(llvm::Module& M,
 			   seadsa::CompleteCallGraph& seadsa_cg,
-			   bool incomplete, unsigned max_num_targets);
+			   bool allow_incomplete, unsigned max_num_targets);
     
   ~CallSiteResolverBySeaDsa() = default;
   
   const AliasSet* getTargets(llvm::CallSite &CS);
 
-  llvm::Function* getBounceFunction(llvm::CallSite& CS);
-  
-  void cacheBounceFunction(llvm::CallSite&CS, llvm::Function* bounceFunction);  
+  #ifdef USE_BOUNCE_FUNCTIONS
+  llvm::Function* getBounceFunction(llvm::CallSite& CS);  
+  void cacheBounceFunction(llvm::CallSite&CS, llvm::Function* bounceFunction);
+  #endif 
 			   
 private:
   /* invariant: the value in TargetsMap's entries is sorted */  
   using TargetsMap = llvm::DenseMap<llvm::Instruction*, AliasSet>;
+  #ifdef USE_BOUNCE_FUNCTIONS
   using BounceMap = std::multimap<AliasSetId, std::pair<const AliasSet*, llvm::Function *>>;
+  #endif 
   // -- the module
   llvm::Module& m_M;
   // -- call graph produced by seadsa
   seadsa::CompleteCallGraph& m_seadsa_cg;
   // -- Resolve incomplete nodes (unsound, in general)
   bool m_allow_incomplete;
-  // -- Maximum number of targets (used to avoid having too large
-  // -- bounce functions). if equal to 0 then unlimited.
+  // -- Maximum number of targets . If equal to 0 then unlimited.
   unsigned m_max_num_targets;
   // -- map from callsite to the corresponding alias set
-  TargetsMap m_targets_map;  
+  TargetsMap m_targets_map;
+  #ifdef USE_BOUNCE_FUNCTIONS
   // -- map from alias set id + dsa targets to an existing bounce function
-  BounceMap m_bounce_map;  
+  BounceMap m_bounce_map;
+  #endif 
 };
 
 
@@ -166,21 +179,26 @@ public:
   
   const AliasSet* getTargets(llvm::CallSite &CS);
 
-  llvm::Function* getBounceFunction(llvm::CallSite& CS);
-  
+  #ifdef USE_BOUNCE_FUNCTIONS
+  llvm::Function* getBounceFunction(llvm::CallSite& CS);  
   void cacheBounceFunction(llvm::CallSite&CS, llvm::Function* bounceFunction);  
-			   
+  #endif
+  
 private:
   /* invariant: the value in TargetsMap's entries is sorted */  
   using TargetsMap = llvm::DenseMap<llvm::Instruction*, AliasSet>;
+  #ifdef USE_BOUNCE_FUNCTIONS  
   using BounceMap = std::multimap<AliasSetId, std::pair<const AliasSet*, llvm::Function *>>;
+  #endif
   
   // -- the CHA 
   std::unique_ptr<analysis::ClassHierarchyAnalysis> m_cha;
   // -- map from callsite to the corresponding alias set
-  TargetsMap m_targets_map;  
+  TargetsMap m_targets_map;
+  #ifdef USE_BOUNCE_FUNCTIONS
   // -- map from alias set id + cha targets to an existing bounce function
-  BounceMap m_bounce_map;  
+  BounceMap m_bounce_map;
+  #endif 
 };
   
 //
@@ -200,22 +218,19 @@ private:
   // Call graph of the program
   //llvm::CallGraph *m_cg;
   
-  // Create an indirect call in the "default" case of the switch.
-  // This is required for soundness in cases whether we don't know for
-  // sure that the indirect call can be fully resolved.
-  bool m_allowIndirectCalls;
-
   // Worklist of call sites to transform
   llvm::SmallVector<llvm::Instruction *, 32> m_worklist;
 
-  /// turn the indirect call-site into a direct one
+  /// turn the indirect call-site into multiple direct one
   void mkDirectCall(llvm::CallSite CS, CallSiteResolver *CSR);
 
+  #ifdef USE_BOUNCE_FUNCTIONS
   /// create a bounce function that calls functions directly
   llvm::Function *mkBounceFn(llvm::CallSite &CS, CallSiteResolver *CSR);
+  #endif 
 
 public:
-  DevirtualizeFunctions(llvm::CallGraph *cg, bool allowIndirectCalls);
+  DevirtualizeFunctions(llvm::CallGraph *cg);
 
   // Resolve all indirect calls in the Module using a particular
   // callsite resolver.
