@@ -15,7 +15,7 @@ LLVM_CFG = $(LLVM_HOME)/bin/$(LLVM_CONFIG)
 
 LLVM_INCLUDE = $(shell ${LLVM_CFG} --includedir)
 
-CXX_FLAGS += $(shell  ${LLVM_CFG} --cxxflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include  -DGOOGLE_PROTOBUF_NO_RTTI -fPIC -g
+CXX_FLAGS += $(shell  ${LLVM_CFG} --cxxflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include  -I../../../include -DGOOGLE_PROTOBUF_NO_RTTI -fPIC -g
 
 CXX_FLAGS += -Ianalysis/sea-dsa/include
 
@@ -48,7 +48,7 @@ OTHERLIBS = -L/usr/local/lib -lpthread -lprotobuf
 else
 # LINUX
 LIBRARY = ${LIBRARYNAME}.so
-LIBFLAGS = -shared -Wl,-soname,${LIBRARY}
+LIBFLAGS = -shared -Wl,-soname,${LIBRARY} 
 OTHERLIBS =  -lpthread -lprotobuf
 CXX_FLAGS += -DHAVE_FFI_H
 endif
@@ -60,6 +60,8 @@ SOURCES = $(wildcard *.cpp)
 SOURCES += $(wildcard analysis/*.cpp)
 
 SOURCES += $(wildcard transforms/*.cpp)
+
+SOURCES += $(wildcard transforms/utils/*.cpp)
 
 SOURCES += $(wildcard interpreter/*.cpp)
 
@@ -87,6 +89,9 @@ analysis/%.o: analysis/%.cpp
 	$(CXX) ${CXX_FLAGS} $< -c -o $@
 
 transforms/%.o: transforms/%.cpp 
+	$(CXX) ${CXX_FLAGS} $< -c -o $@
+
+transforms/utils/%.o: transforms/utils/%.cpp 
 	$(CXX) ${CXX_FLAGS} $< -c -o $@
 
 interpreter/%.o: interpreter/%.cpp 
