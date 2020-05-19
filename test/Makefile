@@ -28,6 +28,15 @@ clean:
 	$(MAKE) -C simple-c/funcs/2 clean
 	$(MAKE) -C simple-c/funcs/3 clean
 	$(MAKE) -C simple-c/funcs/4 clean
+	$(MAKE) -C simple-c/funcs/5 clean
+	$(MAKE) -C simple-c/funcs/6 clean
+	$(MAKE) -C simple-c/funcs/7 clean
+	$(MAKE) -C simple-c/funcs/8 clean
+	$(MAKE) -C simple-c/funcs/9 clean
+	$(MAKE) -C simple-c/funcs/10 clean
+	$(MAKE) -C simple-c/funcs/11 clean
+	$(MAKE) -C simple-c/funcs/12 clean
+	$(MAKE) -C simple-c/funcs/13 clean
 	$(MAKE) -C simple-c/fib clean
 	$(MAKE) -C simple-c/fiblib clean
 	$(MAKE) -C simple-c/bounded-intra clean
