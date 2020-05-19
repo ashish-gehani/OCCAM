@@ -12,6 +12,7 @@
 #include "llvm/Transforms/Utils.h"
 
 #include "interpreter/Interpreter.h"
+#include "transforms/utils/BasicBlockUtils.hh"
 #include "ConfigPrime.h"
 
 using namespace llvm;
@@ -213,31 +214,6 @@ static bool may_dominate(const SmallVector<BasicBlock*, 4>& BBs, Instruction *I,
     });
 }
 
-static void removeBlock(BasicBlock* BB, LLVMContext& ctx) {
-
-  auto *BBTerm = BB->getTerminator();
-  // Loop through all of our successors and make sure they know that one
-  // of their predecessors is going away.
-  for (unsigned i = 0, e = BBTerm->getNumSuccessors(); i != e; ++i) {
-    BBTerm->getSuccessor(i)->removePredecessor(BB);
-  }
-  // Zap all the instructions in the block.
-  while (!BB->empty()) {
-    Instruction &I = BB->back();
-    // If this instruction is used, replace uses with an arbitrary value.
-    // Because control flow can't get here, we don't care what we replace the
-    // value with.  Note that since this block is unreachable, and all values
-    // contained within it must dominate their uses, that all uses will
-    // eventually be removed (they are themselves dead).
-    if (!I.use_empty()) {
-      I.replaceAllUsesWith(UndefValue::get(I.getType()));
-    }
-    BB->getInstList().pop_back();
-  }
-  // Add unreachable terminator
-  BB->getInstList().push_back(new UnreachableInst(ctx));
-}
-
   
 /** End helpers **/
 
@@ -413,7 +389,7 @@ bool ConfigPrime::runOnModule(Module& M) {
     while (!toRemove.empty()) {
       BasicBlock *BB = toRemove.back();
       toRemove.pop_back();
-      removeBlock(BB, M.getContext());
+      previrt::transforms::removeBlock(BB, M.getContext());
     }
 
     // XXX: I think it makes sense to call the destructors and
