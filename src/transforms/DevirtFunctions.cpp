@@ -565,7 +565,7 @@ namespace transforms {
 		   [](const Function* fn) {
 		     return const_cast<Function*>(fn);
 		   });
-    previrt::transforms::promoteCallWithMultipleCallees(CS, Callees);
+    previrt::transforms::promoteIndirectCall(CS, Callees);
   #else
     const Function *bounceFn = mkBounceFn(CS, CSR);
     // -- something failed
