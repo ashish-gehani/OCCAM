@@ -56,6 +56,13 @@ namespace previrt {
 #define EXACT_MATCH  0
 #define LOOSE_MATCH  1
 
+  /* 
+   * An interface for a module M records its external calls.  Each
+   * call argument is annotated with a type.
+   *
+   * This class represents these types and describes operations on
+   * them.
+   */
   class InterfaceType {
   private:
     proto::PrevirtType buffer;
