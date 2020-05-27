@@ -83,11 +83,10 @@ namespace previrt
   // Specialize M's callsites if the callee is external according to T
   bool TransformComponent(Module& M, ComponentInterfaceTransform& T) { 
     bool modified = false;
-    for (ComponentInterfaceTransform::FMap::const_iterator i = T.rewrites.begin(), e = T.rewrites.end();
-	 i != e; ++i) {
 
-      errs() << "Looking for calls to " << i->first << "\n";
-      Function* f = M.getFunction(i->first);
+    for (FunctionHandle FH: T.functions()) {
+      errs() << "Looking for calls to " << FH << "\n";
+      Function* f = M.getFunction(FH);
       if (!f) continue;
 
       // Go over all uses of the function
@@ -103,7 +102,7 @@ namespace previrt
 	  // If we are not the callee we should bail
 	  if(!cs.isCallee(use)){ continue; }
 	  
-	  const CallRewrite* const rw = T.lookupRewrite(i->first, cs.arg_begin(), cs.arg_end());
+	  const CallRewrite* const rw = T.lookupRewrite(FH, cs.arg_begin(), cs.arg_end());
 	  if (!rw){ continue; }
 	  
           #if 0
@@ -180,7 +179,7 @@ namespace previrt
     virtual ~InterRewriterPass() {}
     
     virtual bool runOnModule(Module& M) {
-      if (!transform.interface) {
+      if (!transform.hasInterface()) {
         return false;
       }
       errs() << "InterRewriterPass:runOnModule: " << M.getModuleIdentifier() << "\n";

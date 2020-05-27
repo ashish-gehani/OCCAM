@@ -430,9 +430,8 @@ namespace previrt
     codeInto<proto::ComponentInterface, ComponentInterfaceTransform> (
         const proto::ComponentInterface& buf, ComponentInterfaceTransform& ci)
     {
-      if (ci.interface == NULL) {
-        ci.ownsIface = true;
-        ci.interface = new ComponentInterface();
+      if (!ci.interface) {
+        ci.interface = std::make_unique<ComponentInterface>();
       }
       codeInto<proto::ComponentInterface, ComponentInterface> (buf,
           *ci.interface);
@@ -445,8 +444,7 @@ namespace previrt
         ComponentInterfaceTransform& ci)
     {
       if (ci.interface == NULL) {
-        ci.ownsIface = true;
-        ci.interface = new ComponentInterface();
+        ci.interface = std::make_unique<ComponentInterface>();
       }
       assert (ci.interface != NULL);
 
@@ -465,23 +463,6 @@ namespace previrt
       }
     }
 
-  ComponentInterfaceTransform::ComponentInterfaceTransform() :
-    interface(NULL), ownsIface(true)
-  {
-  }
-
-  ComponentInterfaceTransform::ComponentInterfaceTransform(
-      ComponentInterface* ci) :
-    interface(ci), ownsIface(false)
-  {
-  }
-
-  ComponentInterfaceTransform::~ComponentInterfaceTransform()
-  {
-    if (ownsIface && interface) {
-      delete interface;
-    }
-  }
 
   void
   ComponentInterfaceTransform::rewrite(FunctionHandle hndl,
@@ -519,13 +500,8 @@ namespace previrt
   const ComponentInterface&
   ComponentInterfaceTransform::getInterface() const
   {
-    if (this->interface == NULL) {
-      ComponentInterfaceTransform* non_const =
-          const_cast<ComponentInterfaceTransform*> (this);
-      non_const->interface = new ComponentInterface();
-      non_const->ownsIface = true;
-    }
-    return *this->interface;
+    assert(hasInterface());
+    return *interface;
   }
 
   unsigned

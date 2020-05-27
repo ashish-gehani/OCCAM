@@ -124,7 +124,11 @@ namespace previrt
 				  std::vector<Function*>& to_add) {
     errs() << "SpecializeComponent()\n";
 
-    int rewrite_count = 0;
+    if (!T.hasInterface()) {
+      return false;
+    }
+
+    int rewrite_count = 0;    
     const ComponentInterface& I = T.getInterface();
     // TODO: What needs to be done?
     // - Should try to handle strings & arrays
@@ -249,8 +253,9 @@ namespace previrt {
       }
       
       errs() << "Done reading.\n";
-      if (transform.interface != nullptr) {
-        errs() << transform.interface->calls.size() << " calls\n";
+      if (transform.hasInterface()) {
+	const ComponentInterface& interface = transform.getInterface();
+        errs() << interface.calls.size() << " calls\n";
       } else {
         errs() << "No interfaces read.\n";
       }
@@ -259,7 +264,7 @@ namespace previrt {
     virtual ~InterSpecializerPass() {}
           
     virtual bool runOnModule(Module& M) {    
-      if (!transform.interface) {
+      if (!transform.hasInterface()) {
 	return false;
       }
 

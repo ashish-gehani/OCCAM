@@ -35,22 +35,27 @@
 
 #include "llvm/ADT/StringMap.h"
 #include "llvm/IR/Function.h"
+#include "llvm/ADT/iterator.h"
+#include "llvm/ADT/iterator_range.h"
 
+#include <iterator>
 #include <vector>
 #include <string>
 #include <set>
 #include <map>
+#include <memory>
 
 #include "InterfaceTypes.h"
-
-namespace llvm {
-  //class Value;
-}
 
 namespace previrt
 {
   typedef std::string FunctionHandle;
 
+  /* Class to represent a callsite in the interface.
+   * 
+   * An interface's callsite replaces callsite's arguments with types
+   * (InterfaceType).
+   */
   struct CallInfo
   {
     unsigned count;
@@ -63,6 +68,7 @@ namespace previrt
     FRIEND_SERIALIZERS(CallInfo,proto::CallInfo)
 
   public:
+    // Convert a LLVM CallSite to an Interface callsite
     static CallInfo*
     Create(llvm::User::op_iterator, llvm::User::op_iterator, unsigned count = 0);
     static CallInfo*
@@ -71,10 +77,15 @@ namespace previrt
     Create(const std::vector<InterfaceType>&, unsigned count = 0);
   };
 
+  /*
+   * Class that represents the interface of a module (i.e.,
+   * component).
+   *
+   * An interface records external calls done by the module.
+   */
   class ComponentInterface {
   public:
-    typedef llvm::StringMap<std::vector<CallInfo*> >::const_iterator
-        FunctionIterator;
+    typedef llvm::StringMap<std::vector<CallInfo*>>::const_iterator FunctionIterator;
     typedef std::vector<CallInfo*>::const_iterator CallIterator;
 
   public:
@@ -86,14 +97,19 @@ namespace previrt
     virtual ~ComponentInterface();
 
   public:
-    // add a call to the interface
-    void call(FunctionHandle f, llvm::User::op_iterator args_begin,
+    
+    // Record an external call to the interface. 
+    void call(FunctionHandle f,
+	      llvm::User::op_iterator args_begin,
 	      llvm::User::op_iterator args_end);
 
+    // TODO: add comment
     void callAny(const llvm::Function* f);
 
-    void reference(llvm::StringRef);
+    // Record symbol as external
+    void reference(llvm::StringRef symbol);
 
+    
     CallInfo* getOrCreateCall(FunctionHandle f, const std::vector<InterfaceType>& args);
 
     void dump() const;
@@ -120,11 +136,21 @@ namespace previrt
     FRIEND_SERIALIZERS(ComponentInterface, proto::ComponentInterface)
   };
 
+  /* Mark callsite arguments with some marker.
+   * These markings are used to know which callsite argument will be
+   * specialized (i.e., replaced by constant value) or not.
+   *
+   * Given callsite foo(a,b,c,d,e,f) and b and d are the arguments to
+   * be specialized:
+   * 
+   *   function = "foo"
+   *   args = [1,3]
+   */
   struct CallRewrite {
     FunctionHandle function;
     const std::vector<unsigned> args;
   public:
-    CallRewrite() : args() { }
+    CallRewrite() { }
     CallRewrite(FunctionHandle h, const std::vector<unsigned>& a);
     CallRewrite(const CallRewrite&);
 
@@ -132,31 +158,74 @@ namespace previrt
     FRIEND_SERIALIZERS(CallRewrite, proto::CallRewrite)
   };
 
+  /* 
+   * For a given interface, keep track whether a callsite argument
+   * will be rewritten (specialized) or not.
+   */
   class ComponentInterfaceTransform {
-  public:
-    typedef std::map<const CallInfo* const , const CallRewrite> CMap;
-    typedef std::map<FunctionHandle, CMap> FMap;
+    
+    using CMap = std::map<const CallInfo* const , const CallRewrite>;
+    using FMap = std::map<FunctionHandle, CMap>;
 
-  public:
-    ComponentInterface* interface;
+    class FMapKeyIterator
+      : public llvm::iterator_adaptor_base<FMapKeyIterator,
+					   FMap::const_iterator,
+					   std::forward_iterator_tag,
+					   FunctionHandle> {
+      using base = llvm::iterator_adaptor_base<FMapKeyIterator,
+					       FMap::const_iterator,
+					       std::forward_iterator_tag,
+					       FunctionHandle>;
+    public:
+      FMapKeyIterator() = default;
+      explicit FMapKeyIterator(FMap::const_iterator Iter)
+      : base(std::move(Iter)) {}
+      
+      FunctionHandle &operator*() {
+	Key = this->wrapped()->first;
+	return Key;
+      }
+      
+    private:
+      FunctionHandle Key;
+    };
+
+    
+    std::unique_ptr<ComponentInterface> interface;
     FMap rewrites;
-    bool ownsIface;
-
-  public:
-    ComponentInterfaceTransform();
-    ComponentInterfaceTransform(ComponentInterface*);
-    virtual ~ComponentInterfaceTransform();
     
   public:
+
+    using FunctionIterator = FMapKeyIterator; 
+    using FunctionRange = llvm::iterator_range<FMapKeyIterator>; 
+
+    
+    ComponentInterfaceTransform() = default;
+    virtual ~ComponentInterfaceTransform() = default;
+
+
+    FunctionIterator begin() const {
+      return FMapKeyIterator(rewrites.begin());
+    }
+
+    FunctionIterator end() const {
+      return FMapKeyIterator(rewrites.end());
+    }
+
+    FunctionRange functions() const {
+      return llvm::make_range(begin(), end());
+    }
+    
     void rewrite(FunctionHandle, const CallInfo* const , FunctionHandle,
 		 const std::vector<unsigned>&);
     void rewrite(FunctionHandle, const CallInfo* const , const CallRewrite&);
 
     void dump() const;
 
-  public:
     const ComponentInterface& getInterface() const;
 
+    bool hasInterface() const { return interface != nullptr; }
+    
     unsigned rewriteCount() const;
 
     const CallRewrite* lookupRewrite(FunctionHandle, llvm::User::op_iterator,
@@ -164,11 +233,12 @@ namespace previrt
 
     const CallRewrite* lookupRewrite(FunctionHandle, const CallInfo* const ) const;
 
-  public:
     bool readInterfaceFromFile(const std::string&);
     bool readTransformFromFile(const std::string&);
 
   public:
+
+    /* Allocate interface and populate from a file */
     FRIEND_SERIALIZERS(ComponentInterfaceTransform, proto::ComponentInterfaceTransform)
     friend void
         ::previrt::codeInto<proto::ComponentInterface,
