@@ -38,6 +38,14 @@
 
 
 namespace previrt {
+
+  /* 
+   * Replace the contents of argc and argv in the LLVM bitcode with
+   * those given in the constructor arguments.
+   * 
+   * The transformation assumes that user cannot provide more
+   * arguments at run-time.
+   */
   class SpecializeArguments : public llvm::ModulePass {
   public:
     static char ID;
