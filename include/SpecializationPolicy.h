@@ -43,7 +43,7 @@
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/CallSite.h"
 #include "InterfaceTypes.h"
-#include "PrevirtualizeInterfaces.h"
+#include "Interfaces.h"
 #include <vector>
 
 namespace llvm {

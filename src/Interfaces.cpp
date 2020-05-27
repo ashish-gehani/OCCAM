@@ -39,7 +39,7 @@
  */
 #include "llvm/ADT/StringMap.h"
 
-#include "PrevirtualizeInterfaces.h"
+#include "Interfaces.h"
 
 #include <vector>
 #include <string>

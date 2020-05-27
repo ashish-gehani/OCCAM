@@ -41,7 +41,7 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "PrevirtualizeInterfaces.h"
+#include "Interfaces.h"
 
 #include <vector>
 #include <string>
