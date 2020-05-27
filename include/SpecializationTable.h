@@ -21,7 +21,8 @@
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
 // FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
@@ -40,62 +41,57 @@
 
 #pragma once
 
-#include "llvm/ADT/StringMap.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallBitVector.h"
+#include "llvm/ADT/StringMap.h"
 
 #include <vector>
 
-namespace llvm
-{
-  class Value;
-  class Function;
-  class Module;
+namespace llvm {
+class Value;
+class Function;
+class Module;
 }
 
-namespace previrt
-{
-  class SpecializationTable
-  {
-  public:
-    typedef std::vector<llvm::Value*> SpecScheme;
+namespace previrt {
+class SpecializationTable {
+public:
+  typedef std::vector<llvm::Value *> SpecScheme;
 
-    struct Specialization {
-      llvm::Function* handle;
-      SpecScheme args;
-      const Specialization* parent;
-      std::vector<Specialization*> children;
+  struct Specialization {
+    llvm::Function *handle;
+    SpecScheme args;
+    const Specialization *parent;
+    std::vector<Specialization *> children;
 
-      // Return true if l is more specific than r
-      static bool refines(SpecScheme l, SpecScheme r);
-    };
-
-  private:
-    
-    typedef llvm::DenseMap<llvm::Function*,Specialization*> SpecTable;
-    mutable SpecTable specialized;
-    llvm::Module* module;
-
-  public:
-    
-    SpecializationTable();
-    
-    SpecializationTable(llvm::Module*);
-    
-    virtual ~SpecializationTable();
-      
-    void initialize(llvm::Module*);
-      
-    void getSpecializations(llvm::Function*, SpecScheme,
-			    std::vector<const Specialization*>&) const;
-    
-    bool addSpecialization(llvm::Function*, SpecScheme, llvm::Function*, bool record=true);
-
-    const Specialization* getPrincipalSpecialization(llvm::Function*) const;
-      
-    Specialization* getSpecialization(llvm::Function*) const;
-    
-    const llvm::Function* getPrincipalFunction(const llvm::Function*) const;
-    
+    // Return true if l is more specific than r
+    static bool refines(SpecScheme l, SpecScheme r);
   };
+
+private:
+  typedef llvm::DenseMap<llvm::Function *, Specialization *> SpecTable;
+  mutable SpecTable specialized;
+  llvm::Module *module;
+
+public:
+  SpecializationTable();
+
+  SpecializationTable(llvm::Module *);
+
+  virtual ~SpecializationTable();
+
+  void initialize(llvm::Module *);
+
+  void getSpecializations(llvm::Function *, SpecScheme,
+                          std::vector<const Specialization *> &) const;
+
+  bool addSpecialization(llvm::Function *, SpecScheme, llvm::Function *,
+                         bool record = true);
+
+  const Specialization *getPrincipalSpecialization(llvm::Function *) const;
+
+  Specialization *getSpecialization(llvm::Function *) const;
+
+  const llvm::Function *getPrincipalFunction(const llvm::Function *) const;
+};
 }

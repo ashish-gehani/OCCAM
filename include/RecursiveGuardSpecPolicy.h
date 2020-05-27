@@ -21,7 +21,8 @@
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
 // FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
@@ -38,40 +39,37 @@
 #include "SpecializationPolicy.h"
 
 namespace previrt {
-  /* 
-   * This policy is actually a "functor" policy (i.e., it takes as
-   * argument another policy).
-   *
-   * Allows a new (specialized) copy of a function if it is not
-   * recursive AND p also decides to specialize.
-  */
-  class RecursiveGuardSpecPolicy : public SpecializationPolicy {
-    
-    typedef llvm::SmallSet<llvm::Function*, 32> FunctionSet;
+/*
+ * This policy is actually a "functor" policy (i.e., it takes as
+ * argument another policy).
+ *
+ * Allows a new (specialized) copy of a function if it is not
+ * recursive AND p also decides to specialize.
+*/
+class RecursiveGuardSpecPolicy : public SpecializationPolicy {
 
-    llvm::CallGraph& m_cg;
-    std::unique_ptr<SpecializationPolicy> m_subpolicy;
-    FunctionSet m_rec_functions;
-    
-    void markRecursiveFunctions();
-    bool isRecursive(const llvm::Function& f) const;    
-    bool allowSpecialization(const llvm::Function& f) const;
+  typedef llvm::SmallSet<llvm::Function *, 32> FunctionSet;
 
-  public:
-    
-    RecursiveGuardSpecPolicy(std::unique_ptr<SpecializationPolicy> subpolicy,
-			     llvm::CallGraph& cg);
+  llvm::CallGraph &m_cg;
+  std::unique_ptr<SpecializationPolicy> m_subpolicy;
+  FunctionSet m_rec_functions;
 
-    virtual ~RecursiveGuardSpecPolicy() = default;
-    
-    virtual bool intraSpecializeOn(llvm::CallSite CS,
-				   std::vector<llvm::Value*>& marks) override;
+  void markRecursiveFunctions();
+  bool isRecursive(const llvm::Function &f) const;
+  bool allowSpecialization(const llvm::Function &f) const;
 
-    virtual bool interSpecializeOn(const llvm::Function& F,
-				   const std::vector<InterfaceType>& args,
-				   const ComponentInterface& interface,
-				   llvm::SmallBitVector& marks) override;
+public:
+  RecursiveGuardSpecPolicy(std::unique_ptr<SpecializationPolicy> subpolicy,
+                           llvm::CallGraph &cg);
 
-  };
+  virtual ~RecursiveGuardSpecPolicy() = default;
+
+  virtual bool intraSpecializeOn(llvm::CallSite CS,
+                                 std::vector<llvm::Value *> &marks) override;
+
+  virtual bool interSpecializeOn(const llvm::Function &F,
+                                 const std::vector<InterfaceType> &args,
+                                 const ComponentInterface &interface,
+                                 llvm::SmallBitVector &marks) override;
+};
 } // end namespace previrt
-

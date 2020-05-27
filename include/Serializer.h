@@ -21,7 +21,8 @@
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
 // FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
@@ -37,34 +38,20 @@
  *  Created on: Jul 8, 2011
  *      Author: malecha
  */
-namespace previrt
-{
-  template<class Data, class Target>
-  Target*
-  codeNew(const Data*);
+namespace previrt {
+template <class Data, class Target> Target *codeNew(const Data *);
 
-  template<class Data, class Target>
-  void
-  codeInto(const Data&, Target&);
+template <class Data, class Target> void codeInto(const Data &, Target &);
 
-#define FRIEND_SERIALIZERS(FROM,TO)              \
-friend void                                      \
-::previrt::codeInto<FROM, TO>(const FROM&, TO&); \
-friend void                                      \
-::previrt::codeInto<TO, FROM>(const TO&, FROM&);
+#define FRIEND_SERIALIZERS(FROM, TO)                                           \
+  friend void ::previrt::codeInto<FROM, TO>(const FROM &, TO &);               \
+  friend void ::previrt::codeInto<TO, FROM>(const TO &, FROM &);
 
-#define GEN_SERIALIZERS(CLS)              \
-template<class Target>                    \
-Target*                                   \
-serialize() const                         \
-{                                         \
-  return serialize<CLS, Target>(this);    \
-}                                         \
-template<class Target>                    \
-static CLS*                               \
-deserialize(Target* from)                 \
-{                                         \
-  return deserialize<CLS, Target>(from);  \
-}
-
+#define GEN_SERIALIZERS(CLS)                                                   \
+  template <class Target> Target *serialize() const {                          \
+    return serialize<CLS, Target>(this);                                       \
+  }                                                                            \
+  template <class Target> static CLS *deserialize(Target *from) {              \
+    return deserialize<CLS, Target>(from);                                     \
+  }
 }

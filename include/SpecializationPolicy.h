@@ -21,7 +21,8 @@
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
 // FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
@@ -38,60 +39,58 @@
 
 #pragma once
 
-#include "llvm/IR/Function.h"
-#include "llvm/IR/Value.h"
-#include "llvm/IR/Constants.h"
-#include "llvm/IR/CallSite.h"
 #include "InterfaceTypes.h"
 #include "Interfaces.h"
+#include "llvm/IR/CallSite.h"
+#include "llvm/IR/Constants.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/Value.h"
 #include <vector>
 
 namespace llvm {
-  class SmallBitVector;
+class SmallBitVector;
 }
 
 namespace previrt {
-  
-  /* Here specialization policies */
-  enum class SpecializationPolicyType {
-    NOSPECIALIZE, // never specialize
-    AGGRESSIVE,   // always specialize
-    BOUNDED,      // always specialize up to certain threshold
-    ONLY_ONCE,    // specialize if function called only once
-    NONREC        // always specialize if function is non-recursive
-  };
-  
-  class SpecializationPolicy {
-  protected:
-    
-    SpecializationPolicy(){}
-    
-    static bool isConstantSpecializable(llvm::Constant* cst) {
-      if (!cst) return false;
-      return InterfaceType::abstract(cst).isConcrete();
-    }    
-    
-  public:
-    
-    virtual ~SpecializationPolicy(){}
 
-    // Decide whether a callsite CS should be specialized.
-    //
-    // marks[i] is either null or Constant* containing the value of
-    // i-th actual parameter of the call.
-    virtual bool intraSpecializeOn(llvm::CallSite CS,
-				   std::vector<llvm::Value*>& marks) = 0;
+/* Here specialization policies */
+enum class SpecializationPolicyType {
+  NOSPECIALIZE, // never specialize
+  AGGRESSIVE,   // always specialize
+  BOUNDED,      // always specialize up to certain threshold
+  ONLY_ONCE,    // specialize if function called only once
+  NONREC        // always specialize if function is non-recursive
+};
 
-    // Decide whether we should create a specialized version of
-    // CalleeF by looking at its interface (i.e., how other modules
-    // call CalleeF).
-    // 
-    // marks[i] is true iff i-th parameter of the call can be
-    // specialized.
-    virtual bool interSpecializeOn(const llvm::Function& CalleeF,
-				   const std::vector<InterfaceType>& args,
-				   const ComponentInterface& interface,
-				   llvm::SmallBitVector& marks) = 0;
+class SpecializationPolicy {
+protected:
+  SpecializationPolicy() {}
 
-  };
+  static bool isConstantSpecializable(llvm::Constant *cst) {
+    if (!cst)
+      return false;
+    return InterfaceType::abstract(cst).isConcrete();
+  }
+
+public:
+  virtual ~SpecializationPolicy() {}
+
+  // Decide whether a callsite CS should be specialized.
+  //
+  // marks[i] is either null or Constant* containing the value of
+  // i-th actual parameter of the call.
+  virtual bool intraSpecializeOn(llvm::CallSite CS,
+                                 std::vector<llvm::Value *> &marks) = 0;
+
+  // Decide whether we should create a specialized version of
+  // CalleeF by looking at its interface (i.e., how other modules
+  // call CalleeF).
+  //
+  // marks[i] is true iff i-th parameter of the call can be
+  // specialized.
+  virtual bool interSpecializeOn(const llvm::Function &CalleeF,
+                                 const std::vector<InterfaceType> &args,
+                                 const ComponentInterface &interface,
+                                 llvm::SmallBitVector &marks) = 0;
+};
 } // end namespace

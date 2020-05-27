@@ -13,7 +13,7 @@ class raw_ostream;
 
 namespace previrt {
 namespace analysis {
-  
+
 class ClassHierarchyAnalysis_Impl;
 
 class ClassHierarchyAnalysis {

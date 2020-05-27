@@ -21,7 +21,8 @@
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
 // FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
@@ -33,38 +34,36 @@
 
 #include <vector>
 
-namespace llvm
-{
-  class Function;
-  class Value;
-  class BasicBlock;
-  class GlobalVariable;
+namespace llvm {
+class Function;
+class Value;
+class BasicBlock;
+class GlobalVariable;
 }
 
-namespace previrt
-{
-  /*
-   * Make a copy of f and specialize f wrt to args. args[i] is null if
-   * the argument is not known, otherwise args[i] is a Constant.
-  */
-  llvm::Function* specializeFunction(llvm::Function *f,
-				     const std::vector<llvm::Value*>& args);
+namespace previrt {
+/*
+ * Make a copy of f and specialize f wrt to args. args[i] is null if
+ * the argument is not known, otherwise args[i] is a Constant.
+*/
+llvm::Function *specializeFunction(llvm::Function *f,
+                                   const std::vector<llvm::Value *> &args);
 
-  /*
-   * Specialize a call site and return the new instruction.
-   * Return null if I is not CallInst or InvokeInst.
-   * 
-   * Create a new callsite whose arguments are the actual parameters
-   * {perm[0],...,perm[perm.size()-1]} of the original callsite.
-   */
-  llvm::Instruction* specializeCallSite(llvm::Instruction* cs,
-					llvm::Function*,
-					const std::vector<unsigned>&perm);
+/*
+ * Specialize a call site and return the new instruction.
+ * Return null if I is not CallInst or InvokeInst.
+ *
+ * Create a new callsite whose arguments are the actual parameters
+ * {perm[0],...,perm[perm.size()-1]} of the original callsite.
+ */
+llvm::Instruction *specializeCallSite(llvm::Instruction *cs, llvm::Function *,
+                                      const std::vector<unsigned> &perm);
 
-  /*
-   * Create a LLVM global variable from a string.
-   */
-  llvm::GlobalVariable* materializeStringLiteral(llvm::Module& m, const char* data);
+/*
+ * Create a LLVM global variable from a string.
+ */
+llvm::GlobalVariable *materializeStringLiteral(llvm::Module &m,
+                                               const char *data);
 
-  llvm::Constant* charStarFromStringConstant(llvm::Module& m, llvm::Constant* v);
+llvm::Constant *charStarFromStringConstant(llvm::Module &m, llvm::Constant *v);
 }

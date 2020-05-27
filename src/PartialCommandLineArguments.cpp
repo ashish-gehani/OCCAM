@@ -21,7 +21,8 @@
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
 // FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
@@ -31,51 +32,46 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-#include "llvm/Pass.h"
-#include "llvm/IR/Function.h"
 #include "llvm/IR/Constants.h"
-#include "llvm/IR/Instructions.h"
+#include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/Instructions.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/LinkAllPasses.h" //SROA and Mem2Reg
+#include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "utils/Inliner.h"
 #include "Specializer.h" // materializeStringLiteral
+#include "utils/Inliner.h"
 
-#include <string>      // stoi, strtok, ...
-#include <fstream>     // ifstream
+#include <fstream> // ifstream
+#include <string>  // stoi, strtok, ...
 //#include <stdexcept> // std::invalid_argument
 
-namespace previrt
-{
-  class PartialCommandLineArguments : public llvm::ModulePass
-  {
-  public:
-    static char ID;
+namespace previrt {
+class PartialCommandLineArguments : public llvm::ModulePass {
+public:
+  static char ID;
 
-    PartialCommandLineArguments();
-    virtual ~PartialCommandLineArguments();
-    virtual void getAnalysisUsage (llvm::AnalysisUsage &AU) const {}
-    virtual llvm::StringRef getPassName() const
-    { return "Partial specialization of program arguments"; }
-    virtual bool runOnModule(llvm::Module &M);
-  };
+  PartialCommandLineArguments();
+  virtual ~PartialCommandLineArguments();
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const {}
+  virtual llvm::StringRef getPassName() const {
+    return "Partial specialization of program arguments";
+  }
+  virtual bool runOnModule(llvm::Module &M);
+};
 }
 
 using namespace llvm;
 using namespace previrt;
 
-static cl::opt<std::string> InputFilename
-("Pconstraints-input",
- cl::init(""),
- cl::Hidden,
- cl::desc("Specify the filename with input arguments"));
+static cl::opt<std::string>
+    InputFilename("Pconstraints-input", cl::init(""), cl::Hidden,
+                  cl::desc("Specify the filename with input arguments"));
 
-
-PartialCommandLineArguments::PartialCommandLineArguments()
-  : ModulePass (ID) {}
+PartialCommandLineArguments::PartialCommandLineArguments() : ModulePass(ID) {}
 
 PartialCommandLineArguments::~PartialCommandLineArguments() {}
 
@@ -87,10 +83,10 @@ bool parse_input_line(std::string line, unsigned &index, std::string &s) {
   std::size_t found = line.find_first_of(' ', pos);
   if (found != std::string::npos) {
     tokens.push_back(line.substr(pos, found - pos));
-    pos = found+1;
+    pos = found + 1;
     tokens.push_back(line.substr(pos));
   } else {
-    errs () << "Could not parse " << line << "\n";
+    errs() << "Could not parse " << line << "\n";
     return false;
   }
 
@@ -98,8 +94,8 @@ bool parse_input_line(std::string line, unsigned &index, std::string &s) {
     return false;
   } else {
     // XXX: llvm disables exceptions
-    //try {
-    index = (unsigned) std::stoi(tokens[0]);
+    // try {
+    index = (unsigned)std::stoi(tokens[0]);
     // }
     // catch (const std::invalid_argument &ia) {
     //   return false;
@@ -111,23 +107,24 @@ bool parse_input_line(std::string line, unsigned &index, std::string &s) {
 
 // out contains all argv's parameters defined by the user
 void populate_program_arguments(std::string filename,
-				std::map<unsigned, std::string> &out,
-				int &argc) {
+                                std::map<unsigned, std::string> &out,
+                                int &argc) {
   std::string line;
-  std::ifstream fd (filename);
+  std::ifstream fd(filename);
   if (fd.is_open()) {
     std::string argc_line;
-    getline(fd,argc_line);
+    getline(fd, argc_line);
     argc = std::stoi(argc_line);
-    while (getline(fd,line)) {
-      unsigned i; std::string val;
+    while (getline(fd, line)) {
+      unsigned i;
+      std::string val;
       if (parse_input_line(line, i, val)) {
-	out.insert(std::make_pair(i, val));
+        out.insert(std::make_pair(i, val));
       }
     }
     fd.close();
   } else {
-    errs () << filename << " not found\n";
+    errs() << filename << " not found\n";
   }
 }
 
@@ -154,7 +151,7 @@ bool PartialCommandLineArguments::runOnModule(Module &M) {
 
   if (!main) {
     errs() << "Running on module without 'main' function.\n"
-	   << "Ignoring...\n";
+           << "Ignoring...\n";
     return false;
   }
 
@@ -170,36 +167,39 @@ bool PartialCommandLineArguments::runOnModule(Module &M) {
   populate_program_arguments(InputFilename, argv_map, extra_argc);
 
   if (argv_map.empty()) {
-    errs () << "User did not provide program parameters. Ignoring ...\n";
+    errs() << "User did not provide program parameters. Ignoring ...\n";
     return false;
   }
 
   if (argv_map.find(0) == argv_map.end()) {
-    errs () << "argv[0] does not exist in the manifest. Ignoring ...\n";
+    errs() << "argv[0] does not exist in the manifest. Ignoring ...\n";
     return false;
   }
 
   IRBuilder<> builder(M.getContext());
-  IntegerType* intptrty =
-    cast<IntegerType>(M.getDataLayout().getIntPtrType(M.getContext(), 0));
-  Type* const strty =
-    PointerType::getUnqual(IntegerType::get(M.getContext(),8));
+  IntegerType *intptrty =
+      cast<IntegerType>(M.getDataLayout().getIntPtrType(M.getContext(), 0));
+  Type *const strty =
+      PointerType::getUnqual(IntegerType::get(M.getContext(), 8));
 
   // new_main
-  Function *new_main = Function::Create(main->getFunctionType(),
-   					main->getLinkage(), "", &M);
+  Function *new_main =
+      Function::Create(main->getFunctionType(), main->getLinkage(), "", &M);
   new_main->takeName(main);
   Function::arg_iterator ai = new_main->arg_begin();
-  Value* argc = (Value*) &(*ai);
-  Value* argv = (Value*) &(*(++ai));
+  Value *argc = (Value *)&(*ai);
+  Value *argv = (Value *)&(*(++ai));
 
-  BasicBlock *entry = BasicBlock::Create(M.getContext(),"entry", new_main);
+  BasicBlock *entry = BasicBlock::Create(M.getContext(), "entry", new_main);
   builder.SetInsertPoint(entry);
 
   // Add sanity check: if argc-1 != manifest's first argument then return 1
-  Value* matchArgcCond = builder.CreateICmpEQ(argc, ConstantInt::get(argc->getType(), extra_argc + 1));
-  BasicBlock* entry_cont = BasicBlock::Create(M.getContext(),"entry", new_main);
-  BasicBlock* errorBB = BasicBlock::Create(M.getContext(),"incorrect_argc", new_main);
+  Value *matchArgcCond = builder.CreateICmpEQ(
+      argc, ConstantInt::get(argc->getType(), extra_argc + 1));
+  BasicBlock *entry_cont =
+      BasicBlock::Create(M.getContext(), "entry", new_main);
+  BasicBlock *errorBB =
+      BasicBlock::Create(M.getContext(), "incorrect_argc", new_main);
   // wire up entry with entry_cont and errorBB blocks
   builder.CreateCondBr(matchArgcCond, entry_cont, errorBB);
   builder.SetInsertPoint(errorBB);
@@ -208,38 +208,39 @@ bool PartialCommandLineArguments::runOnModule(Module &M) {
   entry = entry_cont;
   builder.SetInsertPoint(entry);
   // new argc
-  Value* new_argc =
-    builder.CreateAdd(argc,
-		      ConstantInt::get(argc->getType(),
-				       argv_map.size() -1 /*ignore argv[0]*/),
-		      "new_argc");
+  Value *new_argc = builder.CreateAdd(
+      argc,
+      ConstantInt::get(argc->getType(), argv_map.size() - 1 /*ignore argv[0]*/),
+      "new_argc");
 
   if (extra_argc != -1) {
-    builder.CreateAssumption(builder.CreateICmpEQ(argc,
-    						  ConstantInt::get(argc->getType(),
-    								   (extra_argc + 1 /* add argv[0] from command line*/))));
+    builder.CreateAssumption(builder.CreateICmpEQ(
+        argc,
+        ConstantInt::get(argc->getType(),
+                         (extra_argc + 1 /* add argv[0] from command line*/))));
   } else {
-    errs () << "No argc given in the manifest so specialization might not take place\n";
+    errs() << "No argc given in the manifest so specialization might not take "
+              "place\n";
   }
 
   // new argv
-  
+
   // XXX: We cannot store new argv in the stack.
-  // 
+  //
   // If new_argv is passed to another function then the callee won't
   // have access to new_argv since it's in the caller's stack.  This
   // happens with this code:
   //
   // main(...,argv) { foo(...,argv);}
-  // 
+  //
   // Our code will create something like this:
   //
   // main(...,argv) { char*[N] newargv; ... foo(...,newargv);}
   //
   // Value* new_argv = builder.CreateAlloca(strty, new_argc, "new_argv");
 
-  
-  Value *ptrSz = ConstantInt::get(intptrty, M.getDataLayout().getPointerSize(), false);
+  Value *ptrSz =
+      ConstantInt::get(intptrty, M.getDataLayout().getPointerSize(), false);
 
   // Add the following instruction at the back of entry:
   //    strty p = (strty) malloc(sizeof(type) * array_sz)
@@ -248,16 +249,16 @@ bool PartialCommandLineArguments::runOnModule(Module &M) {
   // CreateMalloc returns the BitCast instruction to cast the malloced
   // pointer to its type.  That BitCast instruction is not inserted
   // anywhere.
-  Value* new_argv = CallInst::CreateMalloc(entry,
-					   /*expected type for malloc argument (size_t)*/
-					   intptrty,
-					   /*used only for cast*/
-					   strty,
-					   /*sizeof(type)*/
-					   ptrSz,
-					   /*array_sz*/
-					   builder.CreateSExtOrTrunc(new_argc, intptrty),
-					   (Function*) nullptr);
+  Value *new_argv = CallInst::CreateMalloc(
+      entry,
+      /*expected type for malloc argument (size_t)*/
+      intptrty,
+      /*used only for cast*/
+      strty,
+      /*sizeof(type)*/
+      ptrSz,
+      /*array_sz*/
+      builder.CreateSExtOrTrunc(new_argc, intptrty), (Function *)nullptr);
   entry->getInstList().push_back(cast<Instruction>(new_argv));
 
   /* Prepare the IR builder to insert next time _after_ argv */
@@ -265,19 +266,18 @@ bool PartialCommandLineArguments::runOnModule(Module &M) {
   auto it = builder.GetInsertPoint();
   ++it;
   builder.SetInsertPoint(entry, it);
-  
+
   // copy the manifest into new_argv
-  unsigned i=0;
-  for (auto &kv: argv_map) {
+  unsigned i = 0;
+  for (auto &kv : argv_map) {
     // create a global variable with the argument from the manifest
     GlobalVariable *gv_i = materializeStringLiteral(M, kv.second.c_str());
     gv_i->setName("new_argv");
     // take the address of the global variable
-    Value *gv_i_ref =
-      builder.CreateConstGEP2_32(
-	      cast<PointerType>(gv_i->getType())->getElementType(),gv_i, 0, 0);
+    Value *gv_i_ref = builder.CreateConstGEP2_32(
+        cast<PointerType>(gv_i->getType())->getElementType(), gv_i, 0, 0);
     // store the global variable into new_argv[i]
-    Value *new_argv_i = builder.CreateConstGEP1_32(new_argv,i);
+    Value *new_argv_i = builder.CreateConstGEP1_32(new_argv, i);
     builder.CreateStore(gv_i_ref, new_argv_i);
     i++;
   }
@@ -312,7 +312,8 @@ bool PartialCommandLineArguments::runOnModule(Module &M) {
        ret %r
   */
 
-  BasicBlock *pre_header = BasicBlock::Create(M.getContext(),"pre_header", new_main);
+  BasicBlock *pre_header =
+      BasicBlock::Create(M.getContext(), "pre_header", new_main);
   builder.CreateBr(pre_header);
   builder.SetInsertPoint(pre_header);
   Type *intTy = argc->getType();
@@ -320,33 +321,32 @@ bool PartialCommandLineArguments::runOnModule(Module &M) {
   builder.CreateStore(ConstantInt::get(intTy, 1), j); /*ignore argv[0]*/
 
   // header
-  BasicBlock *header = BasicBlock::Create(M.getContext(),"header", new_main);
+  BasicBlock *header = BasicBlock::Create(M.getContext(), "header", new_main);
   builder.CreateBr(header);
   builder.SetInsertPoint(header);
   LoadInst *t1 = builder.CreateLoad(j);
   Value *cond = builder.CreateICmpSLT(t1, argc);
-  BasicBlock *body = BasicBlock::Create(M.getContext(),"body", new_main);
-  BasicBlock *tail = BasicBlock::Create(M.getContext(),"tail", new_main);
+  BasicBlock *body = BasicBlock::Create(M.getContext(), "body", new_main);
+  BasicBlock *tail = BasicBlock::Create(M.getContext(), "tail", new_main);
   builder.CreateCondBr(cond, body, tail);
   // body
   builder.SetInsertPoint(body);
   Value *o1 = builder.CreateZExtOrTrunc(
-		builder.CreateAdd(ConstantInt::get(intTy, argv_map.size() -1 /*skip argv[0]*/),
-				  t1),
-		intptrty);
+      builder.CreateAdd(
+          ConstantInt::get(intTy, argv_map.size() - 1 /*skip argv[0]*/), t1),
+      intptrty);
   Value *a1 = builder.CreateInBoundsGEP(new_argv, o1);
   Value *o2 = builder.CreateZExtOrTrunc(t1, intptrty);
   Value *a2 = builder.CreateInBoundsGEP(argv, o2);
-  builder.CreateStore(builder.CreateLoad(a2),a1);
-  Value *t2 = builder.CreateAdd(t1, ConstantInt::get(intTy,1));
+  builder.CreateStore(builder.CreateLoad(a2), a1);
+  Value *t2 = builder.CreateAdd(t1, ConstantInt::get(intTy, 1));
   builder.CreateStore(t2, j);
   builder.CreateBr(header);
-  //tail
+  // tail
   builder.SetInsertPoint(tail);
 
-
   // call the code of the original main with new argc and new argv
-  Value* res = builder.CreateCall(main, {new_argc, new_argv});
+  Value *res = builder.CreateCall(main, {new_argc, new_argv});
   builder.CreateRet(res);
 
   legacy::PassManager mgr;
@@ -386,10 +386,7 @@ bool PartialCommandLineArguments::runOnModule(Module &M) {
   return true;
 }
 
-
 char PartialCommandLineArguments::ID = 0;
 
 static RegisterPass<previrt::PartialCommandLineArguments>
-X("Pconstraints",
-  "Partial specialization of main arguments",
-  false, false);
+    X("Pconstraints", "Partial specialization of main arguments", false, false);

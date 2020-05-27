@@ -6,7 +6,7 @@ using namespace llvm;
 
 namespace previrt {
 namespace transforms {
-  
+
 void removeBlock(BasicBlock *BB, LLVMContext &ctx) {
   auto *BBTerm = BB->getTerminator();
   // Loop through all of our successors and make sure they know that one

@@ -43,8 +43,7 @@ namespace transforms {
 ///     %t2 = phi i32 [ %t0, %else_bb ], [ %t1, %then_bb ]
 ///     ...
 ///
-void promoteIndirectCall(CallSite &CS,
-			 const std::vector<Function *> &Callees) {
+void promoteIndirectCall(CallSite &CS, const std::vector<Function *> &Callees) {
   for (unsigned i = 0, numCallees = Callees.size(); i < numCallees; ++i) {
     // The last callee does not create an "else" block
     // If there is only one callee we don't create an "else" block either.
@@ -56,7 +55,5 @@ void promoteIndirectCall(CallSite &CS,
   }
 }
 
-  
 } // end namespace transforms
-} // end namespace previrt 
-  
+} // end namespace previrt

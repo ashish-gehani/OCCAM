@@ -21,7 +21,8 @@
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
 // FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
@@ -31,37 +32,35 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-#include "llvm/IR/Function.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/Function.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
 
-
 namespace previrt {
 
-  /* 
-   * Replace the contents of argc and argv in the LLVM bitcode with
-   * those given in the constructor arguments.
-   * 
-   * The transformation assumes that user cannot provide more
-   * arguments at run-time.
-   */
-  class SpecializeArguments : public llvm::ModulePass {
-  public:
-    static char ID;
+/*
+ * Replace the contents of argc and argv in the LLVM bitcode with
+ * those given in the constructor arguments.
+ *
+ * The transformation assumes that user cannot provide more
+ * arguments at run-time.
+ */
+class SpecializeArguments : public llvm::ModulePass {
+public:
+  static char ID;
 
-  private:
-    int argc;
-    char** argv;
-    const char* progName;
-      
-  public:
-    SpecializeArguments(const char*, const char* name=NULL);
-    SpecializeArguments(int argc, char* argv[], const char* name=NULL);
-    virtual ~SpecializeArguments();
+private:
+  int argc;
+  char **argv;
+  const char *progName;
 
-  public:
-    virtual bool
-    runOnModule(llvm::Module&);
-  };
+public:
+  SpecializeArguments(const char *, const char *name = NULL);
+  SpecializeArguments(int argc, char *argv[], const char *name = NULL);
+  virtual ~SpecializeArguments();
+
+public:
+  virtual bool runOnModule(llvm::Module &);
+};
 }

@@ -1,6 +1,5 @@
 #include "analysis/ClassHierarchyAnalysis.hh"
 
-#include "llvm/Pass.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/SmallVector.h"
@@ -8,6 +7,7 @@
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Value.h"
+#include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include <boost/algorithm/string/find.hpp>
@@ -186,7 +186,7 @@
       return callees;
  */
 namespace previrt {
-namespace analysis {  
+namespace analysis {
 
 using namespace llvm;
 
@@ -491,8 +491,10 @@ void ClassHierarchyAnalysis_Impl::buildVtables(void) {
 
                     if (old_class_typeinfo && class_typeinfo &&
                         old_class_typeinfo != class_typeinfo) {
-                      errs() << "ERROR: Found a vtable with two different typeinfo: "
-			     << *old_class_typeinfo << " and " << *class_typeinfo;
+                      errs() << "ERROR: Found a vtable with two different "
+                                "typeinfo: "
+                             << *old_class_typeinfo << " and "
+                             << *class_typeinfo;
                       llvm_unreachable(nullptr);
                     } else {
                       if (old_class_typeinfo && !class_typeinfo) {
@@ -519,8 +521,9 @@ void ClassHierarchyAnalysis_Impl::buildVtables(void) {
           m_vtables.insert({class_typeinfo, vtable});
           m_num_vtables++;
         } else {
-          errs() << "WARNING We found something that looks a vtable but we couldn't find "
-	         << "typeinfo: " << *CA;
+          errs() << "WARNING We found something that looks a vtable but we "
+                    "couldn't find "
+                 << "typeinfo: " << *CA;
         }
       }
     }
@@ -567,7 +570,7 @@ void ClassHierarchyAnalysis_Impl::addCandidateFunction(
           out.insert(callees[vtable_index]);
         } else {
           errs() << "ERROR: did not match " << *callsite_type << " and "
-              << *(callee->getFunctionType());
+                 << *(callee->getFunctionType());
         }
       }
     } else {
@@ -636,7 +639,7 @@ bool ClassHierarchyAnalysis_Impl::resolveVirtualCall(
       int vtable_index = getVtableIndex(CS);
       if (vtable_index < 0) {
         errs() << "WARNING:Cannot find vtable index for indirect call:\n "
-	       << "\t" << *(CS.getInstruction());
+               << "\t" << *(CS.getInstruction());
         return false;
       }
 
@@ -810,7 +813,7 @@ private:
 
 char ClassHierarchyAnalysisPass::ID = 0;
 
-} // end namespace 
+} // end namespace
 }
 
 static llvm::RegisterPass<previrt::analysis::ClassHierarchyAnalysisPass>

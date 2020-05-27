@@ -21,7 +21,8 @@
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
 // FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
@@ -41,46 +42,46 @@ using namespace llvm;
 //#define ASP_LOG(...)
 
 namespace previrt {
-  
-  bool AggressiveSpecPolicy::intraSpecializeOn(CallSite CS, std::vector<Value*>& marks) {
-    const Function *calleeF = CS.getCalledFunction();
-    if (!calleeF) {
-      return false;
-    }
 
-    ASP_LOG(errs() << "[ASP] Checking if " << *CS.getInstruction()
-	    << " can be specialized ... ";);
-    bool specialize = false;
-    marks.reserve(CS.arg_size());
-    for (unsigned i=0, e = CS.arg_size(); i<e; ++i) {
-      Constant* cst = dyn_cast<Constant> (CS.getArgument(i));
-      // XXX: cst can be nullptr
-      if (SpecializationPolicy::isConstantSpecializable(cst)) {
-	marks.push_back(cst);
-	specialize=true;
-      } else {
-	marks.push_back(nullptr);
-      } 
-    }
-    ASP_LOG(errs() << (specialize ? "yes\n" : "no\n"));
-    return specialize;
+bool AggressiveSpecPolicy::intraSpecializeOn(CallSite CS,
+                                             std::vector<Value *> &marks) {
+  const Function *calleeF = CS.getCalledFunction();
+  if (!calleeF) {
+    return false;
   }
 
-  bool AggressiveSpecPolicy::interSpecializeOn(const Function& CalleeF /*unused*/,
-					       const std::vector<InterfaceType>& args,
-					       const ComponentInterface& interface /*unused*/,
-					       SmallBitVector& marks) {
-    bool specialize = false;
-    ASP_LOG(errs() << "[ASP] Checking if call to " << CalleeF.getName()
-	    << " can be specialized ... ";);
-    for (unsigned int i = 0, sz = args.size(); i<sz; ++i) {
-      if (args[i].isConcrete()) {
-        specialize = true;
-        marks.set(i);
-      }
+  ASP_LOG(errs() << "[ASP] Checking if " << *CS.getInstruction()
+                 << " can be specialized ... ";);
+  bool specialize = false;
+  marks.reserve(CS.arg_size());
+  for (unsigned i = 0, e = CS.arg_size(); i < e; ++i) {
+    Constant *cst = dyn_cast<Constant>(CS.getArgument(i));
+    // XXX: cst can be nullptr
+    if (SpecializationPolicy::isConstantSpecializable(cst)) {
+      marks.push_back(cst);
+      specialize = true;
+    } else {
+      marks.push_back(nullptr);
     }
-    ASP_LOG(errs() << (specialize ? "yes\n" : "no\n"));    
-    return specialize;
   }
-  
+  ASP_LOG(errs() << (specialize ? "yes\n" : "no\n"));
+  return specialize;
+}
+
+bool AggressiveSpecPolicy::interSpecializeOn(
+    const Function &CalleeF /*unused*/, const std::vector<InterfaceType> &args,
+    const ComponentInterface &interface /*unused*/, SmallBitVector &marks) {
+  bool specialize = false;
+  ASP_LOG(errs() << "[ASP] Checking if call to " << CalleeF.getName()
+                 << " can be specialized ... ";);
+  for (unsigned int i = 0, sz = args.size(); i < sz; ++i) {
+    if (args[i].isConcrete()) {
+      specialize = true;
+      marks.set(i);
+    }
+  }
+  ASP_LOG(errs() << (specialize ? "yes\n" : "no\n"));
+  return specialize;
+}
+
 } // end namespace

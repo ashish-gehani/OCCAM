@@ -21,7 +21,8 @@
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
 // FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
@@ -38,7 +39,7 @@
  *      Author: malecha
  */
 
-#pragma once 
+#pragma once
 
 #include "Serializer.h"
 #include "proto/Previrt.pb.h"
@@ -46,54 +47,53 @@
 #include <map>
 
 namespace llvm {
-  class Value;
-  class Type;
-  class LLVMContext;
+class Value;
+class Function;
+class Module;
+class Type;
+class LLVMContext;
 }
 
 namespace previrt {
-#define NO_MATCH    (-1)
-#define EXACT_MATCH  0
-#define LOOSE_MATCH  1
+#define NO_MATCH (-1)
+#define EXACT_MATCH 0
+#define LOOSE_MATCH 1
 
-  /* 
-   * An interface for a module M records its external calls.  Each
-   * call argument is annotated with a type.
-   *
-   * This class represents these types and describes operations on
-   * them.
-   */
-  class InterfaceType {
-  private:
-    proto::PrevirtType buffer;
-    typedef std::map<llvm::Type*, llvm::Function*> EqCache;
-    static EqCache cacheEq;
-  public:
-    InterfaceType();
-    InterfaceType(const proto::PrevirtType&);
-    static InterfaceType
-    abstract(const llvm::Value* const);
-    static InterfaceType
-    unknown();
+/*
+ * An interface for a module M records its external calls.  Each
+ * call argument is annotated with a type.
+ *
+ * This class represents these types and describes operations on
+ * them.
+ */
+class InterfaceType {
+private:
+  proto::PrevirtType buffer;
+  typedef std::map<llvm::Type *, llvm::Function *> EqCache;
+  static EqCache cacheEq;
 
-  public:
-    InterfaceType& operator=(const InterfaceType&);
-    bool operator!=(const InterfaceType&) const;
-    bool operator==(const InterfaceType&) const;
+public:
+  InterfaceType();
+  InterfaceType(const proto::PrevirtType &);
+  static InterfaceType abstract(const llvm::Value *const);
+  static InterfaceType unknown();
 
-  public:
-    int refines(const llvm::Value* const) const;
-    llvm::Value* concretize(llvm::Module&, llvm::Type*) const;
-    bool isConcrete() const;
-    bool isUnknown() const;
-    std::string to_string() const;
+public:
+  InterfaceType &operator=(const InterfaceType &);
+  bool operator!=(const InterfaceType &) const;
+  bool operator==(const InterfaceType &) const;
 
-  public:
-    llvm::Function*
-    getEqualityFunction(llvm::Module*) const;
+public:
+  int refines(const llvm::Value *const) const;
+  llvm::Value *concretize(llvm::Module &, llvm::Type *) const;
+  bool isConcrete() const;
+  bool isUnknown() const;
+  std::string to_string() const;
 
-  public:
-    FRIEND_SERIALIZERS(InterfaceType, proto::PrevirtType)
-  };
+public:
+  llvm::Function *getEqualityFunction(llvm::Module *) const;
+
+public:
+  FRIEND_SERIALIZERS(InterfaceType, proto::PrevirtType)
+};
 }
-
