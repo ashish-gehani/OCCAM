@@ -83,11 +83,10 @@ public:
  */
 class ComponentInterface {
 public:
-  typedef llvm::StringMap<std::vector<CallInfo *>>::const_iterator
-      FunctionIterator;
-  typedef std::vector<CallInfo *>::const_iterator CallIterator;
+  using FunctionIterator = llvm::StringMapKeyIterator<std::vector<CallInfo *>>;
+  using CallIterator = std::vector<CallInfo *>::const_iterator;
 
-public:
+private:
   llvm::StringMap<std::vector<CallInfo *>> calls;
   std::set<std::string> references;
 
@@ -95,7 +94,6 @@ public:
   ComponentInterface();
   virtual ~ComponentInterface();
 
-public:
   // Record an external call to the interface.
   void call(FunctionHandle f, llvm::User::op_iterator args_begin,
             llvm::User::op_iterator args_end);
@@ -111,25 +109,22 @@ public:
 
   void dump() const;
 
-public:
   // iteration over the functions
   FunctionIterator begin() const;
   FunctionIterator end() const;
 
   // Find function
-  FunctionIterator find(llvm::StringRef) const;
+  //FunctionIterator find(llvm::StringRef) const;
 
   // iteration over the calls to a function
   CallIterator call_begin(llvm::StringRef) const;
   CallIterator call_end(llvm::StringRef) const;
 
-  CallIterator call_begin(FunctionIterator) const;
-  CallIterator call_end(FunctionIterator) const;
+  // CallIterator call_begin(FunctionIterator) const;
+  // CallIterator call_end(FunctionIterator) const;
 
-public:
   bool readFromFile(const std::string &filename);
 
-public:
   FRIEND_SERIALIZERS(ComponentInterface, proto::ComponentInterface)
 };
 

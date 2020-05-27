@@ -80,10 +80,8 @@ template <>
 void codeInto<CallInfo, proto::CallInfo>(const CallInfo &ci,
                                          proto::CallInfo &buf) {
   buf.set_count(ci.count);
-  for (std::vector<InterfaceType>::const_iterator i = ci.args.begin(),
-                                                  e = ci.args.end();
-       i != e; ++i) {
-    codeInto<InterfaceType, proto::PrevirtType>(*i, *buf.add_args());
+  for (auto ty: llvm::make_range(ci.args.begin(), ci.args.end())) {
+    codeInto<InterfaceType, proto::PrevirtType>(ty, *buf.add_args());
   }
 }
 
@@ -92,7 +90,7 @@ void codeInto<proto::CallInfo, CallInfo>(const proto::CallInfo &buf,
                                          CallInfo &ci) {
   ci.args.clear();
   ci.args.reserve(buf.args_size());
-  for (int i = 0; i < buf.args_size(); i++) {
+  for (unsigned i = 0, sz= buf.args_size(); i<sz; i++) {
     InterfaceType info;
     codeInto<proto::PrevirtType, InterfaceType>(buf.args(i), info);
     ci.args.push_back(info);
@@ -204,16 +202,16 @@ void ComponentInterface::reference(StringRef n) { this->references.insert(n); }
 CallInfo *
 ComponentInterface::getOrCreateCall(FunctionHandle f,
                                     const std::vector<InterfaceType> &args) {
-  FunctionIterator itr = calls.find(f);
+  auto it = calls.find(f);
   CallInfo *result;
-  if (itr == calls.end()) {
+  if (it == calls.end()) {
     std::vector<CallInfo *> infos;
     result = CallInfo::Create(args, 0);
     infos.push_back(result);
     calls[f] = infos;
     return result;
   } else {
-    for (CallIterator c = itr->second.begin(), e = itr->second.end(); c != e;
+    for (CallIterator c = it->second.begin(), e = it->second.end(); c != e;
          ++c) {
       if (args.size() != (*c)->args.size())
         continue;
@@ -235,75 +233,64 @@ ComponentInterface::getOrCreateCall(FunctionHandle f,
 }
 
 void ComponentInterface::dump() const {
-  for (FunctionIterator i = this->begin(), e = this->end(); i != e; ++i) {
-    for (CallIterator ci = this->call_begin(i), ce = this->call_end(i);
-         ci != ce; ++ci) {
-      errs() << "call '" << i->first() << "'\n";
-    }
+  for (auto &kv: calls) {
+    errs() << "external call to '" << kv.getKey() << "' " << kv.getValue().size() << " times\n";    
   }
 
-  for (std::set<std::string>::const_iterator i = this->references.begin(),
-                                             e = this->references.end();
-       i != e; ++i) {
-    errs() << "ref '" << *i << "'\n";
+  for (auto ref: references) {
+    errs() << "referefence to external symbol '" << ref << "'\n";
   }
 }
 
 ComponentInterface::FunctionIterator ComponentInterface::begin() const {
-  return this->calls.begin();
+  return FunctionIterator(calls.begin());
 }
 ComponentInterface::FunctionIterator ComponentInterface::end() const {
-  return this->calls.end();
+  return FunctionIterator(calls.end());
 }
 
-ComponentInterface::FunctionIterator
-ComponentInterface::find(StringRef key) const {
-  return this->calls.find(key);
-}
+// ComponentInterface::FunctionIterator
+// ComponentInterface::find(StringRef key) const {
+//   return this->calls.find(key);
+// }
 
 ComponentInterface::CallIterator
 ComponentInterface::call_begin(StringRef n) const {
-  FunctionIterator i = this->calls.find(n);
-  assert(i != this->calls.end());
-  return i->second.begin();
+  
+  auto it = this->calls.find(n);
+  assert(it != this->calls.end());
+  return it->second.begin();
 }
 
 ComponentInterface::CallIterator
 ComponentInterface::call_end(StringRef n) const {
-  FunctionIterator i = this->calls.find(n);
-  assert(i != this->calls.end());
-  return i->second.end();
+  auto it = this->calls.find(n);
+  assert(it != this->calls.end());
+  return it->second.end();
 }
 
-ComponentInterface::CallIterator
-ComponentInterface::call_begin(FunctionIterator i) const {
-  return i->second.begin();
-}
-ComponentInterface::CallIterator
-ComponentInterface::call_end(FunctionIterator i) const {
-  return i->second.end();
-}
+// ComponentInterface::CallIterator
+// ComponentInterface::call_begin(FunctionIterator i) const {
+//   return i->second.begin();
+// }
+// ComponentInterface::CallIterator
+// ComponentInterface::call_end(FunctionIterator i) const {
+//   return i->second.end();
+// }
 
 template <>
 void codeInto<ComponentInterface, proto::ComponentInterface>(
     const ComponentInterface &ci, proto::ComponentInterface &buf) {
-  for (ComponentInterface::FunctionIterator f = ci.calls.begin(),
-                                            fe = ci.calls.end();
-       f != fe; ++f) {
-    for (ComponentInterface::CallIterator c = f->second.begin(),
-                                          ce = f->second.end();
-         c != ce; ++c) {
-
+  for (auto &kv: ci.calls) {
+    for (auto c: kv.second) {
       proto::CallInfo *info = buf.add_calls();
-      info->set_name(f->first());
-      codeInto<CallInfo, proto::CallInfo>(**c, *info);
+      info->set_name(kv.first());
+      codeInto<CallInfo, proto::CallInfo>(*c, *info);
     }
   }
   buf.mutable_references()->Reserve(ci.references.size());
-  for (std::set<std::string>::const_iterator i = ci.references.begin(),
-                                             e = ci.references.end();
-       i != e; ++i) {
-    buf.add_references(*i);
+  for (auto ref: ci.references) {
+    buf.add_references(ref);
   }
 }
 
@@ -315,14 +302,14 @@ void codeInto<proto::ComponentInterface, ComponentInterface>(
     StringRef name = info.name();
     CallInfo *res = new CallInfo();
     codeInto(info, *res);
-    llvm::StringMap<std::vector<CallInfo *>>::iterator itr =
+    llvm::StringMap<std::vector<CallInfo *>>::iterator it =
         ci.calls.find(name);
-    if (itr == ci.calls.end()) {
+    if (it == ci.calls.end()) {
       std::vector<CallInfo *> infos;
       infos.push_back(res);
       ci.calls[name] = infos;
     } else {
-      itr->second.push_back(res);
+      it->second.push_back(res);
     }
   }
   for (google::protobuf::RepeatedPtrField<std::string>::const_iterator
@@ -382,18 +369,15 @@ template <>
 void codeInto<ComponentInterfaceTransform, proto::ComponentInterfaceTransform>(
     const ComponentInterfaceTransform &ci,
     proto::ComponentInterfaceTransform &buf) {
-  for (ComponentInterface::FunctionIterator fi = ci.interface->begin(),
-                                            fe = ci.interface->end();
-       fi != fe; ++fi) {
-    for (ComponentInterface::CallIterator c = ci.interface->call_begin(fi),
-                                          e = ci.interface->call_end(fi);
-         c != e; ++c) {
-      const CallRewrite *rw = ci.lookupRewrite(fi->first(), *c);
-      if (rw != NULL) {
+  for (auto fi: llvm::make_range(ci.interface->begin(), ci.interface->end())) {
+    for (auto c: llvm::make_range(ci.interface->call_begin(fi),
+				  ci.interface->call_end(fi))) {
+      const CallRewrite *rw = ci.lookupRewrite(fi, c);
+      if (rw != nullptr) {
         proto::CallRewrite *nrw = buf.add_calls();
         codeInto<CallRewrite, proto::CallRewrite>(*rw, *nrw);
-        nrw->mutable_call()->set_name(fi->first());
-        codeInto<CallInfo, proto::CallInfo>(**c, *nrw->mutable_call());
+        nrw->mutable_call()->set_name(fi);
+        codeInto<CallInfo, proto::CallInfo>(*c, *nrw->mutable_call());
       }
     }
   }
@@ -412,10 +396,10 @@ template <>
 void codeInto<proto::ComponentInterfaceTransform, ComponentInterfaceTransform>(
     const proto::ComponentInterfaceTransform &buf,
     ComponentInterfaceTransform &ci) {
-  if (ci.interface == NULL) {
+  if (ci.interface == nullptr) {
     ci.interface = std::make_unique<ComponentInterface>();
   }
-  assert(ci.interface != NULL);
+  assert(ci.interface != nullptr);
 
   for (int i = 0; i < buf.calls_size(); i++) {
     const proto::CallRewrite &rw = buf.calls(i);
@@ -477,44 +461,36 @@ unsigned ComponentInterfaceTransform::rewriteCount() const {
 CallRewrite const *ComponentInterfaceTransform::lookupRewrite(
     FunctionHandle name, llvm::User::op_iterator op_begin,
     llvm::User::op_iterator op_end) const {
-  assert(interface != NULL);
-  const CallInfo *search = NULL;
+  
+  assert(interface);
+  const CallInfo *search = nullptr;
   int score = -1;
 
-  ComponentInterface::FunctionIterator itr =
-      this->interface->calls.find(name.c_str());
-  if (itr == this->interface->calls.end()) {
-    return NULL;
-  }
 
-  for (ComponentInterface::CallIterator
-           begin = this->interface->call_begin(itr),
-           end = this->interface->call_end(itr);
-       begin != end; ++begin) {
-    int tscore = (*begin)->refines(op_begin, op_end);
+  for (CallInfo *CI: llvm::make_range(interface->call_begin(name.c_str()),
+				     interface->call_end(name.c_str()))) {
+    int tscore = CI->refines(op_begin, op_end);
     if (tscore > score) {
       score = tscore;
-      search = *begin;
+      search = CI;
     }
   }
-
-  if (search != NULL)
-    return this->lookupRewrite(name, search);
-  return NULL;
+    
+  return (search ? this->lookupRewrite(name, search): nullptr);
 }
 
 const CallRewrite *
 ComponentInterfaceTransform::lookupRewrite(FunctionHandle name,
                                            const CallInfo *const key) const {
-  assert(key != NULL);
-  assert(interface != NULL);
+  assert(key != nullptr);
+  assert(interface != nullptr);
   FMap::iterator f = const_cast<FMap &>(this->rewrites).find(name);
   if (f == this->rewrites.end()) {
-    return NULL;
+    return nullptr;
   }
   CMap::const_iterator c = f->second.find(key);
   if (c == f->second.end())
-    return NULL;
+    return nullptr;
 
   return &(c->second);
 }
