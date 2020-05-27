@@ -58,7 +58,7 @@ namespace previrt
   {
     int matched = 0;
 
-    std::vector<PrevirtType>::const_iterator from = this->args.begin(), to =
+    std::vector<InterfaceType>::const_iterator from = this->args.begin(), to =
         this->args.end();
     for (; begin != end; ++begin, ++from) {
       if (from == to)
@@ -83,9 +83,9 @@ namespace previrt
         proto::CallInfo& buf)
     {
       buf.set_count(ci.count);
-      for (std::vector<PrevirtType>::const_iterator i = ci.args.begin(), e =
+      for (std::vector<InterfaceType>::const_iterator i = ci.args.begin(), e =
           ci.args.end(); i != e; ++i) {
-        codeInto<PrevirtType, proto::PrevirtType> (*i, *buf.add_args());
+        codeInto<InterfaceType, proto::PrevirtType> (*i, *buf.add_args());
       }
     }
 
@@ -97,8 +97,8 @@ namespace previrt
       ci.args.clear();
       ci.args.reserve(buf.args_size());
       for (int i = 0; i < buf.args_size(); i++) {
-        PrevirtType info;
-        codeInto<proto::PrevirtType, PrevirtType> (buf.args(i), info);
+        InterfaceType info;
+        codeInto<proto::PrevirtType, InterfaceType> (buf.args(i), info);
         ci.args.push_back(info);
       }
     }
@@ -111,7 +111,7 @@ namespace previrt
     result->count = count;
 
     for (int i = 0; args_begin != args_end; i++, args_begin++) {
-      PrevirtType tmp = PrevirtType::abstract(*args_begin);
+      InterfaceType tmp = InterfaceType::abstract(*args_begin);
       result->args.push_back(tmp);
     }
     return result;
@@ -126,7 +126,7 @@ namespace previrt
   }
 
   CallInfo*
-  CallInfo::Create(const std::vector<PrevirtType>& args, unsigned count)
+  CallInfo::Create(const std::vector<InterfaceType>& args, unsigned count)
   {
     CallInfo* result = new CallInfo();
     result->count = count;
@@ -163,7 +163,7 @@ namespace previrt
       for (std::vector<CallInfo*>::const_iterator begin = calls.begin(), end =
           calls.end(); begin != end; ++begin) {
         User::op_iterator cur = args_begin;
-        for (std::vector<PrevirtType>::const_iterator i =
+        for (std::vector<InterfaceType>::const_iterator i =
             (*begin)->args.begin(), e = (*begin)->args.end(); i != e; ++i) {
           if (i->refines(cur->get()) == NO_MATCH)
             goto no;
@@ -184,14 +184,14 @@ namespace previrt
     if (this->calls.find(fname) == this->calls.end()) {
       std::vector<CallInfo*> calls;
       CallInfo* ci = CallInfo::Create(f->arg_size(), 1);
-      ci->args.resize(f->arg_size(), PrevirtType::unknown());
+      ci->args.resize(f->arg_size(), InterfaceType::unknown());
       calls.push_back(ci);
       this->calls[fname] = calls;
     } else {
       std::vector<CallInfo*>& calls = this->calls[fname];
       for (std::vector<CallInfo*>::const_iterator begin = calls.begin(), end =
           calls.end(); begin != end; ++begin) {
-        for (std::vector<PrevirtType>::const_iterator i =
+        for (std::vector<InterfaceType>::const_iterator i =
             (*begin)->args.begin(), e = (*begin)->args.end(); i != e; ++i) {
           if (!i->isUnknown())
             goto no;
@@ -201,7 +201,7 @@ namespace previrt
         no: continue;
       }
       CallInfo* ci = CallInfo::Create(f->arg_size(), 1);
-      ci->args.resize(f->arg_size(), PrevirtType::unknown());
+      ci->args.resize(f->arg_size(), InterfaceType::unknown());
       this->calls[fname].push_back(ci);
     }
   }
@@ -214,7 +214,7 @@ namespace previrt
 
   CallInfo*
   ComponentInterface::getOrCreateCall(FunctionHandle f, const std::vector<
-      PrevirtType>& args)
+      InterfaceType>& args)
   {
     FunctionIterator itr = calls.find(f);
     CallInfo* result;
@@ -228,8 +228,8 @@ namespace previrt
       for (CallIterator c = itr->second.begin(), e = itr->second.end(); c != e; ++c) {
         if (args.size() != (*c)->args.size())
           continue;
-        std::vector<PrevirtType>::const_iterator x = args.begin();
-        for (std::vector<PrevirtType>::const_iterator y = (*c)->args.begin(),
+        std::vector<InterfaceType>::const_iterator x = args.begin();
+        for (std::vector<InterfaceType>::const_iterator y = (*c)->args.begin(),
             z = args.end(); x != z; ++x, ++y) {
           if (*x != *y)
             break;

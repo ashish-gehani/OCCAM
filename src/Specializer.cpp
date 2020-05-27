@@ -46,7 +46,7 @@
 
 #include "llvm/ADT/ArrayRef.h"
 
-#include "PrevirtTypes.h"
+#include "InterfaceTypes.h"
 #include "Specializer.h"
 
 #include <fstream>
@@ -126,7 +126,7 @@ namespace previrt
 	       && "Specializing argument with concrete value of wrong type!");
 
         vmap.insert(typename ValueToValueMapTy::value_type (arg, args[i]));
-        PrevirtType pt = PrevirtType::abstract(args[i]);
+        InterfaceType pt = InterfaceType::abstract(args[i]);
         argNames[j] = pt.to_string();
       }
       j++;

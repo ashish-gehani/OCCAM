@@ -67,7 +67,7 @@ namespace previrt {
   }
 
   bool AggressiveSpecPolicy::interSpecializeOn(const Function& CalleeF /*unused*/,
-					       const std::vector<PrevirtType>& args,
+					       const std::vector<InterfaceType>& args,
 					       const ComponentInterface& interface /*unused*/,
 					       SmallBitVector& marks) {
     bool specialize = false;

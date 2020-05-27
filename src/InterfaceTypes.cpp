@@ -32,7 +32,7 @@
 //
 
 /*
- * PrevirtTypes.cpp
+ * InterfaceTypes.cpp
  *
  *  Created on: Jul 8, 2011
  *      Author: malecha
@@ -53,7 +53,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "PrevirtTypes.h"
+#include "InterfaceTypes.h"
 #include "proto/Previrt.pb.h"
 #include "Specializer.h"
 
@@ -61,39 +61,39 @@ using namespace llvm;
 
 namespace previrt
 {
-  PrevirtType::EqCache PrevirtType::cacheEq;
+  InterfaceType::EqCache InterfaceType::cacheEq;
 
-  PrevirtType::PrevirtType()
+  InterfaceType::InterfaceType()
   {
     buffer.set_type(proto::U);
   }
 
-  PrevirtType::PrevirtType(const proto::PrevirtType& pt)
+  InterfaceType::InterfaceType(const proto::PrevirtType& pt)
   {
     buffer.CopyFrom(pt);
   }
 
-  PrevirtType&
-  PrevirtType::operator=(const PrevirtType& from)
+  InterfaceType&
+  InterfaceType::operator=(const InterfaceType& from)
   {
     this->buffer.CopyFrom(from.buffer);
     return *this;
   }
 
   bool
-  PrevirtType::operator!=(const PrevirtType& other) const
+  InterfaceType::operator!=(const InterfaceType& other) const
   {
     return !(*this == other);
   }
 
   bool
-  PrevirtType::operator==(const PrevirtType& other) const
+  InterfaceType::operator==(const InterfaceType& other) const
   {
     if (buffer.type() != other.buffer.type())
       return false;
     switch (buffer.type()) {
     default:
-      assert(false && "missing case in PrevirtType::operator==");
+      assert(false && "missing case in InterfaceType::operator==");
     case proto::U:
     case proto::N:
       return true;
@@ -115,18 +115,18 @@ namespace previrt
     return getConstantStringInfo(val, out, 0, false);
   }
 
-  PrevirtType
-  PrevirtType::unknown()
+  InterfaceType
+  InterfaceType::unknown()
   {
-    PrevirtType t;
+    InterfaceType t;
     t.buffer.set_type(proto::U);
     return t;
   }
 
-  PrevirtType
-  PrevirtType::abstract(const llvm::Value* const val)
+  InterfaceType
+  InterfaceType::abstract(const llvm::Value* const val)
   {
-    PrevirtType result;
+    InterfaceType result;
     result.buffer.set_type(proto::U);
     const Constant* cnst = dyn_cast<const Constant>(val);
     if (cnst == NULL) {
@@ -269,7 +269,7 @@ namespace previrt
   }
 
   int
-  PrevirtType::refines(const llvm::Value* const val) const
+  InterfaceType::refines(const llvm::Value* const val) const
   {
     assert(val != NULL);
     const Constant* cnst = dyn_cast<const Constant>(val);
@@ -342,7 +342,7 @@ namespace previrt
   }
 
   llvm::Value*
-  PrevirtType::concretize(Module& M, Type* type) const
+  InterfaceType::concretize(Module& M, Type* type) const
   {
       llvm::Value *concreteValue = NULL;
       switch (buffer.type()) {
@@ -404,7 +404,7 @@ namespace previrt
   }
 
   bool
-  PrevirtType::isConcrete() const
+  InterfaceType::isConcrete() const
   {
     // TODO: check which of these work
 
@@ -416,7 +416,7 @@ namespace previrt
   }
 
   bool
-  PrevirtType::isUnknown() const
+  InterfaceType::isUnknown() const
   {
     return buffer.type() == proto::U;
   }
@@ -435,7 +435,7 @@ namespace previrt
   }
   
   std::string
-  PrevirtType::to_string() const
+  InterfaceType::to_string() const
   {
     switch (buffer.type()) {
     default:
@@ -548,7 +548,7 @@ namespace previrt
   }
 
   Function*
-  PrevirtType::getEqualityFunction(Module* M) const
+  InterfaceType::getEqualityFunction(Module* M) const
   {
     switch (buffer.type()) {
     default:
@@ -559,26 +559,26 @@ namespace previrt
     case proto::I: {
       assert(buffer.int_().IsInitialized());
       IntegerType* typ = Type::getIntNTy(M->getContext(), buffer.int_().bits());
-      EqCache::iterator i = PrevirtType::cacheEq.find(typ);
-      if (i != PrevirtType::cacheEq.end()) {
+      EqCache::iterator i = InterfaceType::cacheEq.find(typ);
+      if (i != InterfaceType::cacheEq.end()) {
         return i->second;
       }
       Function* f = buildIntEquality(typ, M->getContext());
 
-      PrevirtType::cacheEq.insert(std::make_pair(typ, f));
+      InterfaceType::cacheEq.insert(std::make_pair(typ, f));
       M->getFunctionList().push_back(f);
       return f;
     }
     case proto::S: {
       assert(buffer.str().IsInitialized());
       PointerType* typ = Type::getInt8PtrTy(M->getContext());
-      EqCache::iterator i = PrevirtType::cacheEq.find(typ);
-      if (i != PrevirtType::cacheEq.end()) {
+      EqCache::iterator i = InterfaceType::cacheEq.find(typ);
+      if (i != InterfaceType::cacheEq.end()) {
         return i->second;
       }
       Function* f = buildStringEquality(typ, *M);
 
-      PrevirtType::cacheEq.insert(std::make_pair(typ, f));
+      InterfaceType::cacheEq.insert(std::make_pair(typ, f));
       M->getFunctionList().push_back(f);
       return f;
     }
@@ -589,8 +589,8 @@ namespace previrt
 
   template<>
     void
-    codeInto<previrt::proto::PrevirtType, PrevirtType>(
-        const previrt::proto::PrevirtType& buf, PrevirtType& result)
+    codeInto<previrt::proto::PrevirtType, InterfaceType>(
+        const previrt::proto::PrevirtType& buf, InterfaceType& result)
     {
       assert(buf.IsInitialized());
       result.buffer.CopyFrom(buf);
@@ -598,7 +598,7 @@ namespace previrt
 
   template<>
     void
-    codeInto<PrevirtType, proto::PrevirtType>(const PrevirtType& typ,
+    codeInto<InterfaceType, proto::PrevirtType>(const InterfaceType& typ,
         proto::PrevirtType& buf)
     {
       assert(typ.buffer.IsInitialized());

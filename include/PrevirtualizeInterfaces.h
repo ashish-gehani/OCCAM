@@ -41,7 +41,7 @@
 #include <set>
 #include <map>
 
-#include "PrevirtTypes.h"
+#include "InterfaceTypes.h"
 
 namespace llvm {
   //class Value;
@@ -54,7 +54,7 @@ namespace previrt
   struct CallInfo
   {
     unsigned count;
-    std::vector<PrevirtType> args;
+    std::vector<InterfaceType> args;
   public:
     int
     refines(llvm::User::op_iterator begin, llvm::User::op_iterator end);
@@ -68,7 +68,7 @@ namespace previrt
     static CallInfo*
     Create(unsigned len, unsigned count = 0);
     static CallInfo*
-    Create(const std::vector<PrevirtType>&, unsigned count = 0);
+    Create(const std::vector<InterfaceType>&, unsigned count = 0);
   };
 
   class ComponentInterface {
@@ -94,7 +94,7 @@ namespace previrt
 
     void reference(llvm::StringRef);
 
-    CallInfo* getOrCreateCall(FunctionHandle f, const std::vector<PrevirtType>& args);
+    CallInfo* getOrCreateCall(FunctionHandle f, const std::vector<InterfaceType>& args);
 
     void dump() const;
     

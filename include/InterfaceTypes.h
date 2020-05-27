@@ -56,23 +56,23 @@ namespace previrt {
 #define EXACT_MATCH  0
 #define LOOSE_MATCH  1
 
-  class PrevirtType {
+  class InterfaceType {
   private:
     proto::PrevirtType buffer;
     typedef std::map<llvm::Type*, llvm::Function*> EqCache;
     static EqCache cacheEq;
   public:
-    PrevirtType();
-    PrevirtType(const proto::PrevirtType&);
-    static PrevirtType
+    InterfaceType();
+    InterfaceType(const proto::PrevirtType&);
+    static InterfaceType
     abstract(const llvm::Value* const);
-    static PrevirtType
+    static InterfaceType
     unknown();
 
   public:
-    PrevirtType& operator=(const PrevirtType&);
-    bool operator!=(const PrevirtType&) const;
-    bool operator==(const PrevirtType&) const;
+    InterfaceType& operator=(const InterfaceType&);
+    bool operator!=(const InterfaceType&) const;
+    bool operator==(const InterfaceType&) const;
 
   public:
     int refines(const llvm::Value* const) const;
@@ -86,7 +86,7 @@ namespace previrt {
     getEqualityFunction(llvm::Module*) const;
 
   public:
-    FRIEND_SERIALIZERS(PrevirtType, proto::PrevirtType)
+    FRIEND_SERIALIZERS(InterfaceType, proto::PrevirtType)
   };
 }
 

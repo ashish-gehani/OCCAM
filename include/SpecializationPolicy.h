@@ -42,7 +42,7 @@
 #include "llvm/IR/Value.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/CallSite.h"
-#include "PrevirtTypes.h"
+#include "InterfaceTypes.h"
 #include "PrevirtualizeInterfaces.h"
 #include <vector>
 
@@ -68,7 +68,7 @@ namespace previrt {
     
     static bool isConstantSpecializable(llvm::Constant* cst) {
       if (!cst) return false;
-      return PrevirtType::abstract(cst).isConcrete();
+      return InterfaceType::abstract(cst).isConcrete();
     }    
     
   public:
@@ -89,7 +89,7 @@ namespace previrt {
     // marks[i] is true iff i-th parameter of the call can be
     // specialized.
     virtual bool interSpecializeOn(const llvm::Function& CalleeF,
-				   const std::vector<PrevirtType>& args,
+				   const std::vector<InterfaceType>& args,
 				   const ComponentInterface& interface,
 				   llvm::SmallBitVector& marks) = 0;
 

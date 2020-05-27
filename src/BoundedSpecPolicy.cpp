@@ -116,7 +116,7 @@ namespace previrt {
   }
   
   bool BoundedSpecPolicy::interSpecializeOn(const Function& calleeF,
-					    const std::vector<PrevirtType>& args,
+					    const std::vector<InterfaceType>& args,
 					    const ComponentInterface& interface,
 					    SmallBitVector& marks)  {
 

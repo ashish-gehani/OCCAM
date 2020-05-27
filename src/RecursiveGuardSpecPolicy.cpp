@@ -97,7 +97,7 @@ namespace previrt {
   }
 
   bool RecursiveGuardSpecPolicy::interSpecializeOn(const Function& CalleeF,
-						   const std::vector<PrevirtType>& args,
+						   const std::vector<InterfaceType>& args,
 						   const ComponentInterface& interface,
 						   SmallBitVector& marks)  {
     if (allowSpecialization(CalleeF)) {

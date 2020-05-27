@@ -68,7 +68,7 @@ namespace previrt {
 				   std::vector<llvm::Value*>& marks) override;
 
     virtual bool interSpecializeOn(const llvm::Function& F,
-				   const std::vector<PrevirtType>& args,
+				   const std::vector<InterfaceType>& args,
 				   const ComponentInterface& interface,
 				   llvm::SmallBitVector& marks) override;
 
