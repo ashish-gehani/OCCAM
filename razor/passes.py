@@ -352,7 +352,7 @@ def optimize(input_file, output_file, use_seaopt, extra_opts):
     args += [input_file, '-o', output_file, '-O3']
     return driver.run(utils.get_opt(use_seaopt), args)
 
-def constrain_program_args(input_file, output_file, cnstrs, filename=None):
+def partial_specialize_program_args(input_file, output_file, cnstrs, filename=None):
     """ constrain the program arguments.
     """
     if filename is None:
@@ -370,13 +370,13 @@ def constrain_program_args(input_file, output_file, cnstrs, filename=None):
         index += 1
     f.close()
 
-    args = ['-Pconstraints', '-Pconstraints-input', cnstr_file]
+    args = ['-Ppartial-cmdline-spec', '-Ppartial-cmdline-spec-input', cnstr_file]
     driver.previrt(input_file, output_file, args)
 
     if filename is None:
         os.unlink(cnstr_file)
 
-def specialize_program_args(input_file, output_file, args, filename=None, name=None):
+def full_specialize_program_args(input_file, output_file, args, filename=None, name=None):
     """ fix the program arguments.
     """
     if filename is None:
@@ -392,8 +392,8 @@ def specialize_program_args(input_file, output_file, args, filename=None, name=N
 
     extra_args = []
     if not name is None:
-        extra_args = ['-Parguments-name', name]
-    args = ['-Parguments', '-Parguments-input', arg_file] + extra_args
+        extra_args = ['-Pfull-cmdline-spec-name', name]
+    args = ['-Pfull-cmdline-spec', '-Pfull-cmdline-spec-input', arg_file] + extra_args
     driver.previrt(input_file, output_file, args)
 
     if filename is None:

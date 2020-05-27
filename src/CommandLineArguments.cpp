@@ -46,91 +46,86 @@
 #include <string>
 #include <vector>
 
-#include "CommandLineArguments.h"
 #include "Specializer.h"
 #include "utils/Inliner.h"
 
 using namespace llvm;
 
 static cl::opt<std::string>
-    ArgumentsFileName("Parguments-input", cl::init(""), cl::Hidden,
-                      cl::desc("specifies the input file for the arguments"));
+    ArgumentsFileName("Pfull-cmdline-spec-input", cl::init("arguments"), cl::Hidden,
+      cl::desc("file that contains the field args from the manifest"));
 
 static cl::opt<std::string>
-    SpecializeProgName("Parguments-name", cl::init(""), cl::Hidden,
-                       cl::desc("specifies the program name"));
+    SpecializeProgName("Pfull-cmdline-spec-name", cl::init(""), cl::Hidden,
+      cl::desc("file that contains the field name from the manifest"));
 
 namespace previrt {
 
-char SpecializeArguments::ID;
+class FullCommandLineArguments : public llvm::ModulePass {
+public:
+  static char ID;
 
-SpecializeArguments::SpecializeArguments(const char *filename, const char *name)
-    : ModulePass(SpecializeArguments::ID) {
-
+  FullCommandLineArguments();
+  virtual ~FullCommandLineArguments();
+  virtual bool runOnModule(llvm::Module &);
+  virtual llvm::StringRef getPassName() const {
+    return "Full specialization of program arguments based on manifest";
+  }
+  
+private:
+  std::vector<char *>m_argv;
+};
+  
+FullCommandLineArguments::FullCommandLineArguments()
+  : ModulePass(FullCommandLineArguments::ID) {
+  
   char str[1024];
-  FILE *f = fopen(filename, "r");
+  FILE *f = fopen(ArgumentsFileName.c_str(), "r");
 
   if (f == NULL) {
-    errs() << "SpecializeArguments(): Failed to open file '" << filename
+    errs() << "FullCommandLineArguments(): Failed to open file '" << ArgumentsFileName
            << "'\n";
-    this->argc = -1;
-    this->argv = NULL;
     return;
   }
 
-  std::vector<char *> args;
   while (fgets(str, 1024, f) != NULL) {
     int len = strlen(str);
     while (len > 0 && (str[len - 1] == '\n' || str[len - 1] == '\r'))
       str[--len] = '\0';
     char *buf = new char[len + 1];
     strcpy(buf, str);
-    args.push_back(buf);
+    m_argv.push_back(buf);
   }
-
-  this->argc = args.size();
-  this->argv = new char *[this->argc];
-  int i = 0;
-
-  errs() << "Read " << this->argc << " command line arguments:\n";
-
-  for (std::vector<char *>::iterator itr = args.begin(), end = args.end();
-       itr != end; ++itr, ++i) {
-    this->argv[i] = *itr;
-    errs() << "\t" << this->argv[i] << "\n";
-  }
-
-  this->progName = name;
 
   fclose(f);
+
+  errs() << "Read " <<  m_argv.size() << " command line arguments:\n";
+  for (unsigned i=0, sz=m_argv.size(); i<sz; ++i) {
+    errs() << "\t" <<  m_argv[i] << "\n";
+  }
+
 }
 
-SpecializeArguments::SpecializeArguments(int _argc, char *_argv[],
-                                         const char *name)
-    : ModulePass(SpecializeArguments::ID), argc(_argc), argv(_argv),
-      progName(name) {}
-
-SpecializeArguments::~SpecializeArguments() {
-  if (argv != NULL) {
-    for (int i = 0; i < argc; i++) {
-      delete[] argv[i];
+FullCommandLineArguments::~FullCommandLineArguments() {
+  if (!m_argv.empty()) {
+    for (unsigned i = 0, sz = m_argv.size(); i < sz; i++) {
+      delete[] m_argv[i];
     }
-    delete[] argv;
   }
 }
 
-bool SpecializeArguments::runOnModule(Module &M) {
+bool FullCommandLineArguments::runOnModule(Module &M) {
   Function *f = M.getFunction("main");
 
-  if (f == NULL) {
-    errs() << "SpecializeArguments::runOnModule: running on module without "
+  if (!f) {
+    errs() << "FullCommandLineArguments::runOnModule: running on module without "
               "'main' function.\n"
            << "Ignoring...\n";
     return false;
   }
 
   if (f->arg_size() != 2) {
-    errs() << "SpecializeArguments::runOnModule: main module has incorrect "
+    errs() << "FullCommandLineArguments::runOnModule: main module has incorrect "
               "signature\n"
            << f->getFunctionType();
     return false;
@@ -157,12 +152,9 @@ bool SpecializeArguments::runOnModule(Module &M) {
   std::vector<Value *> cargs;
   std::vector<Constant *> init;
 
-  if (this->progName) {
-    // llvm::errs() << "Here: " << this->progName << "\n";
-    GlobalVariable *gv = materializeStringLiteral(M, this->progName);
-    // llvm::errs() << "gc: " << gv << "\n";
+  if (SpecializeProgName != "") {
+    GlobalVariable *gv = materializeStringLiteral(M, SpecializeProgName.c_str());
     auto *gvT = gv->getType();
-    // auto* sty = cast<SequentialType>(gvT);
     auto *sty = cast<PointerType>(gvT);
     cargs.push_back(irb.CreateConstGEP2_32(sty->getElementType(), gv, 0, 0));
   } else {
@@ -170,8 +162,8 @@ bool SpecializeArguments::runOnModule(Module &M) {
     cargs.push_back(progName);
   }
 
-  for (int i = 0; i < this->argc; ++i) {
-    GlobalVariable *gv = materializeStringLiteral(M, this->argv[i]);
+  for (unsigned i = 0, sz = m_argv.size(); i < sz; ++i) {
+    GlobalVariable *gv = materializeStringLiteral(M,  m_argv[i]);
     auto *gvT = gv->getType();
     // auto* sty = cast<SequentialType>(gvT);
     auto *sty = cast<PointerType>(gvT);
@@ -243,20 +235,12 @@ bool SpecializeArguments::runOnModule(Module &M) {
   return true;
 }
 
-class RegisterArguments : public SpecializeArguments {
-public:
-  RegisterArguments()
-      : SpecializeArguments(ArgumentsFileName == ""
-                                ? "arguments"
-                                : ArgumentsFileName.getValue().c_str(),
-                            SpecializeProgName.getValue() == ""
-                                ? nullptr
-                                : SpecializeProgName.getValue().c_str()) {}
-  virtual ~RegisterArguments() {}
-};
-
-static RegisterPass<RegisterArguments>
-    X("Parguments",
-      "Specialize main() function arguments from file 'arguments'", false,
+char FullCommandLineArguments::ID;
+  
+static RegisterPass<FullCommandLineArguments>
+    X("Pfull-cmdline-spec",
+      "Full specialization of main() arguments based on manifest",
+      false,
       false);
-}
+  
+} //end namespace previrt

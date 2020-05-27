@@ -359,17 +359,17 @@ class Slash(object):
 
         ### 0. Lift deployment information into main's module
         if args is not None:
-            sys.stderr.write('Input-user specialization using fix parameters: {0}\n'.format(args))            
+            sys.stderr.write('Full input-user specialization using fix parameters: {0}\n'.format(args))            
             main = files[module]
             pre = main.get()
             post = main.new('a')
-            passes.specialize_program_args(pre, post, args, 'arguments', name=name)
+            passes.full_specialize_program_args(pre, post, args, 'arguments', name=name)
         elif constraints:
-            sys.stderr.write('Input-user specialization using the constraints: {0}\n'.format(constraints))
+            sys.stderr.write('Partial input-user specialization using the constraints: {0}\n'.format(constraints))
             main = files[module]
             pre = main.get()
             post = main.new('a')
-            passes.constrain_program_args(pre, post, constraints, 'constraints')
+            passes.partial_specialize_program_args(pre, post, constraints, 'constraints')
 
         if use_config_prime:
             ## NEW: apply configuration prime in main

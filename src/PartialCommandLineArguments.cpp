@@ -58,7 +58,7 @@ public:
   virtual ~PartialCommandLineArguments();
   virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const {}
   virtual llvm::StringRef getPassName() const {
-    return "Partial specialization of program arguments";
+    return "Partial specialization of program arguments based on manifest";
   }
   virtual bool runOnModule(llvm::Module &M);
 };
@@ -68,7 +68,7 @@ using namespace llvm;
 using namespace previrt;
 
 static cl::opt<std::string>
-    InputFilename("Pconstraints-input", cl::init(""), cl::Hidden,
+    InputFilename("Ppartial-cmdline-spec-input", cl::init(""), cl::Hidden,
                   cl::desc("Specify the filename with input arguments"));
 
 PartialCommandLineArguments::PartialCommandLineArguments() : ModulePass(ID) {}
@@ -389,4 +389,6 @@ bool PartialCommandLineArguments::runOnModule(Module &M) {
 char PartialCommandLineArguments::ID = 0;
 
 static RegisterPass<previrt::PartialCommandLineArguments>
-    X("Pconstraints", "Partial specialization of main arguments", false, false);
+    X("Ppartial-cmdline-spec",
+      "Partial specialization of main arguments based on manifest",
+      false, false);
