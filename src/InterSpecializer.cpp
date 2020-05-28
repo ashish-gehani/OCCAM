@@ -141,7 +141,7 @@ static bool SpecializeComponent(Module &M, ComponentInterfaceTransform &T,
     for (const CallInfo* call: llvm::make_range(I.call_begin(fName),
 						I.call_end(fName))) {
       
-      const unsigned arg_count = call->args.size();
+      const unsigned arg_count = call->num_args();
       if (func->isVarArg()) {
         continue;
       }
@@ -159,7 +159,7 @@ static bool SpecializeComponent(Module &M, ComponentInterfaceTransform &T,
        */
       SmallBitVector marks(arg_count);
       bool shouldSpecialize =
-          policy.interSpecializeOn(*func, call->args, I, marks);
+	policy.interSpecializeOn(*func, call->get_args(), I, marks);
 
       if (!shouldSpecialize)
         continue;
@@ -171,7 +171,7 @@ static bool SpecializeComponent(Module &M, ComponentInterfaceTransform &T,
       for (unsigned i = 0; i < arg_count; i++) {
         if (marks.test(i)) {
           Type *paramType = func->getFunctionType()->getParamType(i);
-          Value *concreteArg = call->args[i].concretize(M, paramType);
+          Value *concreteArg = call->get_args()[i].concretize(M, paramType);
           args.push_back(concreteArg);
           assert(concreteArg->getType() == paramType &&
                  "Specializing function with concrete argument of wrong type!");

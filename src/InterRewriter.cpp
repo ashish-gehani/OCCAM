@@ -61,25 +61,23 @@ static Instruction *applyRewriteToCall(Module &M, const CallRewrite *const rw,
   Function *target = cs.getCalledFunction();
   assert(target);
 
-  Function *newTarget = M.getFunction(rw->function);
+  Function *newTarget = M.getFunction(rw->get_function());
   if (!newTarget) {
     // There isn't a function, we need to construct it
     FunctionType *newType = target->getFunctionType();
     std::vector<Type *> argTypes;
-    for (std::vector<unsigned>::const_iterator i = rw->args.begin(),
-                                               e = rw->args.end();
-         i != e; ++i) {
-      argTypes.push_back(newType->getParamType(*i));
+    for (unsigned i: rw->get_args()) {
+      argTypes.push_back(newType->getParamType(i));
     }
 
     ArrayRef<Type *> params(argTypes);
     newType =
         FunctionType::get(target->getReturnType(), params, target->isVarArg());
     newTarget = cast<Function>(
-        M.getOrInsertFunction(rw->function, newType).getCallee());
+			       M.getOrInsertFunction(rw->get_function(), newType).getCallee());
   }
   assert(newTarget);
-  return specializeCallSite(cs.getInstruction(), newTarget, rw->args);
+  return specializeCallSite(cs.getInstruction(), newTarget, rw->get_args());
 }
 
 // Specialize M's callsites if the callee is external according to T
@@ -120,7 +118,7 @@ bool TransformComponent(Module &M, ComponentInterfaceTransform &T) {
 		 << "' in function '" << (owner == NULL ? "??" : owner->getParent()->getName())
 		 << "' on arguments [";
 	  for (unsigned int i = 0, cnt = 0; i < cs.arg_size(); ++i) {
-	    if (std::find(rw->args.begin(), rw->args.end(), i) == rw->args.end()) {
+	    if (std::find(rw->get_args().begin(), rw->get_args().end(), i) == rw->get_args().end()) {
 	      if (cnt++ != 0)
 		errs() << ",";
 	      if (Function* funptr = dyn_cast<Function> (cs.getArgument(i)))
@@ -135,8 +133,8 @@ bool TransformComponent(Module &M, ComponentInterfaceTransform &T) {
         if (cs.getCalledFunction() &&
             cs.getCalledFunction()->hasExternalLinkage()) {
           for (unsigned int i = 0; i < cs.arg_size(); ++i) {
-            if (std::find(rw->args.begin(), rw->args.end(), i) ==
-                rw->args.end()) {
+            if (std::find(rw->get_args().begin(), rw->get_args().end(), i) ==
+                rw->get_args().end()) {
               if (Function *funptr = dyn_cast<Function>(cs.getArgument(i))) {
                 // XXX: we are specializing a callsite that has an
                 // argument with the address of a function
