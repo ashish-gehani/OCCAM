@@ -65,6 +65,35 @@ namespace previrt {
  *
  * This class represents these types and describes operations on
  * them.
+ *
+ * Some LLVM values can be abstracted by its "interface type".
+ *
+ * The set of interface types T consists of:
+ * 
+ * {U, StrCst(V), IntCst(V), FPCst(V), GV(V)}
+ *
+ * Note that U is a single element but the rest represent actually
+ * the sets of string constants, integer constants, floating point
+ * constants, and global values, respectively.
+ * 
+ * T is equipped with an ordering "<=" between elements in the set,
+ * where U is greatest element of the partial order.
+ * 
+ *    That is, \forall e \in T:: e <= U.
+ * 
+ * StrCst(_) is incomparable with IntCst(_), FPCst(_), and GV(_)
+ * IntCst(_) is incomparable with StrCst(_), FPCst(_), and GV(_)
+ * FPCst(_) is incomparable with StrCst(_), IntCst(_), and GV(_)
+ * GV(_) is incomparable with StrCst(_), IntCst(_), and FPCst(_)  
+ *
+ * StrCst(V1) <= StrCst(V2) iff V1 == V2
+ * IntCst(V1) <= IntCst(V2) iff V1 == V2
+ * FPCst(V1)  <= FPCst(V2)  iff V1 == V2
+ * GVCst(V1)  <= GVCst(V2)  iff V1 == V2  
+ *
+ * So the "interface type" abstraction is pretty similar to constant
+ * propagation, but constant are split into groups (integer, fp, etc).
+ *
  */
 class InterfaceType {
 private:
@@ -75,25 +104,28 @@ private:
 public:
   InterfaceType();
   InterfaceType(const proto::PrevirtType &);
-  static InterfaceType abstract(const llvm::Value *const);
-  static InterfaceType unknown();
-
-public:
   InterfaceType &operator=(const InterfaceType &);
   bool operator!=(const InterfaceType &) const;
   bool operator==(const InterfaceType &) const;
 
-public:
-  int refines(const llvm::Value *const) const;
+  // Return 0 or 1 if abstract(V) <= "this". Otherwise, it returns -1.
+  // 
+  // 0 : indicates EXACT_MATCH (i.e., "this" is not U)
+  // 1 : indicates LOOSE_MATCH (i.e., "this" is U)
+  // -1: indicates NO_MATCH
+  //
+  int refines(const llvm::Value *const V) const;
+  // Abstract a LLVM value to an interface type
+  static InterfaceType abstract(const llvm::Value *const);
+  // Return U
+  static InterfaceType unknown();
   llvm::Value *concretize(llvm::Module &, llvm::Type *) const;
   bool isConcrete() const;
   bool isUnknown() const;
   std::string to_string() const;
 
-public:
   llvm::Function *getEqualityFunction(llvm::Module *) const;
 
-public:
   FRIEND_SERIALIZERS(InterfaceType, proto::PrevirtType)
 };
 }
