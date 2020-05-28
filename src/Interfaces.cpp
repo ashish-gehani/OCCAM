@@ -52,7 +52,8 @@
 using namespace llvm;
 
 namespace previrt {
-// CallInfo
+
+  
 int CallInfo::refines(llvm::User::op_iterator begin,
                       llvm::User::op_iterator end) {
   int matched = 0;
@@ -102,12 +103,13 @@ CallInfo *CallInfo::Create(User::op_iterator args_begin,
   CallInfo *result = new CallInfo();
   result->count = count;
 
-  for (int i = 0; args_begin != args_end; i++, args_begin++) {
-    InterfaceType tmp = InterfaceType::abstract(*args_begin);
-    result->args.push_back(tmp);
+  for (auto &A: llvm::make_range(args_begin, args_end)) {
+    result->args.push_back(InterfaceType::abstract(A));
   }
+  
   return result;
 }
+  
 CallInfo *CallInfo::Create(unsigned len, unsigned count) {
   CallInfo *result = new CallInfo();
   result->count = count;
@@ -124,16 +126,11 @@ CallInfo *CallInfo::Create(const std::vector<InterfaceType> &args,
 }
 
 // ComponentInterface
-ComponentInterface::ComponentInterface() {}
-
 ComponentInterface::~ComponentInterface() {
-  const StringMap<std::vector<CallInfo *>>::iterator e = this->calls.end();
-  for (StringMap<std::vector<CallInfo *>>::iterator b = this->calls.begin();
-       b != e; ++b) {
-    for (std::vector<CallInfo *>::iterator cb = b->second.begin(),
-                                           ce = b->second.end();
-         cb != ce; ++cb)
-      delete *cb;
+  for (auto &kv: calls) {
+    for (CallInfo *CI: kv.second) {
+      delete CI;
+    }
   }
 }
 
@@ -145,18 +142,13 @@ void ComponentInterface::call(FunctionHandle f, User::op_iterator args_begin,
     this->calls[f] = calls;
   } else {
     std::vector<CallInfo *> &calls = this->calls[f];
-    for (std::vector<CallInfo *>::const_iterator begin = calls.begin(),
-                                                 end = calls.end();
-         begin != end; ++begin) {
+    for (CallInfo *CI: calls) {
       User::op_iterator cur = args_begin;
-      for (std::vector<InterfaceType>::const_iterator
-               i = (*begin)->args.begin(),
-               e = (*begin)->args.end();
-           i != e; ++i) {
-        if (i->refines(cur->get()) == NO_MATCH)
+      for (auto ty: llvm::make_range(CI->args.begin(), CI->args.end())) {
+        if (ty.refines(cur->get()) == NO_MATCH)
           goto no;
       }
-      (*begin)->count++;
+      CI->count++;
       return;
     no:
       continue;

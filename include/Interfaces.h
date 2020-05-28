@@ -91,7 +91,9 @@ private:
   std::set<std::string> references;
 
 public:
-  ComponentInterface();
+
+  ComponentInterface() = default;
+  
   virtual ~ComponentInterface();
 
   // Record an external call to the interface.
