@@ -150,8 +150,17 @@ static bool setInternalLinkage(GlobalValue &GV) {
 }
 
 /*
- * Remove all code from the given module that is not necessary to
- * implement the given interface.
+ * The goal is to remove all code that is unused within the module and
+ * it is not necessary to implement the given interface.
+ * 
+ * IMPORTANT: the caller must ensure that the ComponentInterface I
+ * contains the whole environment under M can be called
+ * 
+ * We do it in two steps:
+ *
+ * 1) Make internal any function or global that cannot be accessed
+ *    outside the module.
+ * 2) Run LLVM dead code elimination. 
  */
 bool MinimizeComponent(Module &M, const ComponentInterface &I) {
 
@@ -217,8 +226,9 @@ bool MinimizeComponent(Module &M, const ComponentInterface &I) {
         !f.isDeclaration() &&
         // f is discardable if unused in other compilation units
         isDiscardableIfUnusedExternally(f.getLinkage()) &&
-        // unused in other compilation units
+        // No other compilation unit calls f
         !I.hasCall(f.getName()) &&
+	// No other compilation unit mentions f
         !I.hasReference(f.getName()) &&
         // there is no an alias to f that we want to keep
         !keepAliasees.count(&f)) {
@@ -254,7 +264,7 @@ bool MinimizeComponent(Module &M, const ComponentInterface &I) {
     // }
 
     if (gv.hasInitializer() &&
-        // global is unused
+        // global is unused 
         !I.hasReference(gv.getName()) &&
         isDiscardableIfUnusedExternally(gv.getLinkage()) &&
         // there is no an alias to f that we want to keep
