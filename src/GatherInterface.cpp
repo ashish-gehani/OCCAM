@@ -44,6 +44,9 @@
 
 #include "Interfaces.h"
 
+#include "seadsa/InitializePasses.hh"
+#include "seadsa/CompleteCallGraph.hh"
+
 #include <fstream>
 #include <set>
 #include <string>
@@ -60,6 +63,14 @@ static cl::opt<std::string> GatherInterfaceOutput(
 static cl::list<std::string> GatherInterfaceEntry(
     "Pinterface-entry", cl::Hidden,
     cl::desc("specifies the interface that is used (only function names)"));
+
+// We should use always seadsa callgraph because it will be more
+// precise. However, it might be slower to compute so that's why by
+// default we use LLVM callgraph.
+static cl::opt<bool> UseSeaDsa(
+    "Pinterface-with-seadsa", 
+    cl::desc("Use the callgraph computed by seadsa"),
+    cl::init(false));
 
 namespace previrt {
 
@@ -99,24 +110,43 @@ public:
   static char ID;
 
 public:
-  GatherInterfacePass() : ModulePass(ID) {}
+  GatherInterfacePass() : ModulePass(ID) {
+    if (UseSeaDsa) {
+      // Initialize sea-dsa pass
+      llvm::PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
+      llvm::initializeCompleteCallGraphPass(Registry);
+    }
+  }
 
   virtual ~GatherInterfacePass() {}
 
   virtual void getAnalysisUsage(AnalysisUsage &AU) const {
-    AU.addRequired<CallGraphWrapperPass>();
+    if (UseSeaDsa) {
+      AU.addRequired<seadsa::CompleteCallGraph>();
+    } else {
+      AU.addRequired<CallGraphWrapperPass>();
+    }
     AU.setPreservesAll();
   }
 
   virtual bool runOnModule(Module &M) {
-    // TODO: use SeaDsaCompleteCallGraph
-    CallGraphWrapperPass &cg = getAnalysis<CallGraphWrapperPass>();
+    CallGraph *cg = nullptr;
+    if (UseSeaDsa) {
+      cg = &getAnalysis<seadsa::CompleteCallGraph>().getCompleteCallGraph();      
+    } else {
+      cg = &getAnalysis<CallGraphWrapperPass>().getCallGraph();
+    }
 
-    errs() << "GatherInterfacePass::runOnModule: " << M.getModuleIdentifier()
+    errs() << "GatherInterfacePass::runOnModule: "
+	   << M.getModuleIdentifier()
            << "\n";
 
-    // errs() << "#=========== CallGraph=========#\n";
-    // cg.dump();
+    if (UseSeaDsa) {
+      errs() << "#=========== SeaDsa CallGraph =========#\n";      
+    } else {
+      errs() << "#=========== LLVM CallGraph =========#\n";
+    }
+    cg->print(llvm::errs());
 
     // Add all nodes in llvm.compiler.used and llvm.used
     // *** This is very important for correctly compiling libc
@@ -168,14 +198,14 @@ public:
       for (auto FH: llvm::make_range(ci.begin(), ci.end())) {
         if (Function *f = M.getFunction(FH)) {
           // errs() << "\tAdded " << f->getName() << "into the queue.\n";
-          queue.push_back(cg.getOrInsertFunction(f));
+          queue.push_back(cg->getOrInsertFunction(f));
         }
       }
     } else {
       // errs() << "Searching for external symbols starting from non-internal
       // and "
       //       << "address-taken functions:\n";
-      queue.push_back(cg.getExternalCallingNode());
+      queue.push_back(cg->getExternalCallingNode());
     }
 
     std::set<CallGraphNode *> visited;
@@ -188,7 +218,7 @@ public:
         continue;
       }
 
-      if (cgn == cg.getCallsExternalNode()) {
+      if (cgn == cg->getCallsExternalNode()) {
         // In this case, we're here from a call that we can't resolve,
         // so we need to be conservative.
         // Everything that could have made it into this set is in the
@@ -196,7 +226,7 @@ public:
         // - stored in a variable or externally visible
         // NOTE: for this to be useful, we're going to need to minimize
         // the size of the "externally visible" set.
-        cgn = cg.getExternalCallingNode();
+        cgn = cg->getExternalCallingNode();
         if (visited.find(cgn) != visited.end()) {
           continue;
         }
@@ -206,9 +236,9 @@ public:
         Value *calledV = stripBitCast(callRecord.first);
         if (!calledV) {
           /////
-          // JN: I think we are here if cgn is cg.getExternalCallingNode()
+          // JN: I think we are here if cgn is cg->getExternalCallingNode()
           //////
-          assert(cgn == cg.getExternalCallingNode());
+          assert(cgn == cg->getExternalCallingNode());
           assert(callRecord.second->getFunction());
           interface.callAny(callRecord.second->getFunction());
         } else {
