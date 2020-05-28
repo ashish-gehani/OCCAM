@@ -134,8 +134,30 @@ ComponentInterface::~ComponentInterface() {
   }
 }
 
+// Add a call f(abstract(args_begin), ..., abstract(args_end)) in the
+// interface if there is no already an entry that subsumes it.
 void ComponentInterface::call(FunctionHandle f, User::op_iterator args_begin,
                               User::op_iterator args_end) {
+  //
+  // Each argument in CI.args.begin() ... CI.args.end() contains a
+  // type (see InterfaceTypes.h comments for more details)
+  // 
+  // refines lifts InterfaceTypes::refine to a sequence of arguments.
+  //
+  auto refines = [&args_begin, &args_end](CallInfo &CI) {
+    if (std::distance(args_begin, args_end) != CI.num_args()) {
+      // This is possible for variadic functions
+      return false;
+    }
+    auto cur = args_begin;
+    for (auto ty: llvm::make_range(CI.args.begin(), CI.args.end())) {
+      if (ty.refines(cur->get()) == NO_MATCH)
+	return false;
+      ++cur;
+    }
+    return true;
+  };
+
   if (this->calls.find(f) == this->calls.end()) {
     std::vector<CallInfo *> calls;
     calls.push_back(CallInfo::Create(args_begin, args_end, 1));
@@ -143,21 +165,18 @@ void ComponentInterface::call(FunctionHandle f, User::op_iterator args_begin,
   } else {
     std::vector<CallInfo *> &calls = this->calls[f];
     for (CallInfo *CI: calls) {
-      User::op_iterator cur = args_begin;
-      for (auto ty: llvm::make_range(CI->args.begin(), CI->args.end())) {
-        if (ty.refines(cur->get()) == NO_MATCH)
-          goto no;
-      }
-      CI->count++;
-      return;
-    no:
-      continue;
+      if (refines(*CI)) {
+	// CI already subsumes the one we want to add.
+	CI->count++;
+	return;
+      } 
     }
-
     this->calls[f].push_back(CallInfo::Create(args_begin, args_end, 1));
   }
 }
-
+  
+// Add an entry f(unknown,...,unknown) in the interface if there is no
+// one.
 void ComponentInterface::callAny(const Function *f) {
   FunctionHandle fname = f->getName();
   if (this->calls.find(fname) == this->calls.end()) {
@@ -168,21 +187,17 @@ void ComponentInterface::callAny(const Function *f) {
     this->calls[fname] = calls;
   } else {
     std::vector<CallInfo *> &calls = this->calls[fname];
-    for (std::vector<CallInfo *>::const_iterator begin = calls.begin(),
-                                                 end = calls.end();
-         begin != end; ++begin) {
-      for (std::vector<InterfaceType>::const_iterator
-               i = (*begin)->args.begin(),
-               e = (*begin)->args.end();
-           i != e; ++i) {
-        if (!i->isUnknown())
-          goto no;
+    for (CallInfo *CI: calls) {
+      if (CI->num_args() == f_arg_size() && 
+	  std::all_of(CI->args.begin(), CI->args.end(),
+		      [](const InterfaceType & ty) {
+			return ty.isUnknown();
+		      })) {
+	CI->count++;
+	return;
       }
-      (*begin)->count++;
-      return;
-    no:
-      continue;
     }
+    
     CallInfo *ci = CallInfo::Create(f->arg_size(), 1);
     ci->args.resize(f->arg_size(), InterfaceType::unknown());
     this->calls[fname].push_back(ci);
