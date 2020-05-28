@@ -80,8 +80,8 @@ int CallInfo::refines(llvm::User::op_iterator begin,
 template <>
 void codeInto<CallInfo, proto::CallInfo>(const CallInfo &ci,
                                          proto::CallInfo &buf) {
-  buf.set_count(ci.count);
-  for (auto ty: llvm::make_range(ci.args.begin(), ci.args.end())) {
+  buf.set_count(ci.get_count());
+  for (auto ty: llvm::make_range(ci.args_begin(), ci.args_end())) {
     codeInto<InterfaceType, proto::PrevirtType>(ty, *buf.add_args());
   }
 }
@@ -150,7 +150,7 @@ void ComponentInterface::call(FunctionHandle f, User::op_iterator args_begin,
       return false;
     }
     auto cur = args_begin;
-    for (auto ty: llvm::make_range(CI.args.begin(), CI.args.end())) {
+    for (auto ty: llvm::make_range(CI.args_begin(), CI.args_end())) {
       if (ty.refines(cur->get()) == NO_MATCH)
 	return false;
       ++cur;
@@ -167,7 +167,7 @@ void ComponentInterface::call(FunctionHandle f, User::op_iterator args_begin,
     for (CallInfo *CI: calls) {
       if (refines(*CI)) {
 	// CI already subsumes the one we want to add.
-	CI->count++;
+	CI->get_count()++;
 	return;
       } 
     }
@@ -181,26 +181,26 @@ void ComponentInterface::callAny(const Function *f) {
   FunctionHandle fname = f->getName();
   if (this->calls.find(fname) == this->calls.end()) {
     std::vector<CallInfo *> calls;
-    CallInfo *ci = CallInfo::Create(f->arg_size(), 1);
-    ci->args.resize(f->arg_size(), InterfaceType::unknown());
-    calls.push_back(ci);
+    CallInfo *CI = CallInfo::Create(f->arg_size(), 1);
+    CI->args.resize(f->arg_size(), InterfaceType::unknown());
+    calls.push_back(CI);
     this->calls[fname] = calls;
   } else {
     std::vector<CallInfo *> &calls = this->calls[fname];
     for (CallInfo *CI: calls) {
-      if (CI->num_args() == f_arg_size() && 
-	  std::all_of(CI->args.begin(), CI->args.end(),
+      if (CI->num_args() == f->arg_size() && 
+	  std::all_of(CI->args_begin(), CI->args_end(),
 		      [](const InterfaceType & ty) {
 			return ty.isUnknown();
 		      })) {
-	CI->count++;
+	CI->get_count()++;
 	return;
       }
     }
     
-    CallInfo *ci = CallInfo::Create(f->arg_size(), 1);
-    ci->args.resize(f->arg_size(), InterfaceType::unknown());
-    this->calls[fname].push_back(ci);
+    CallInfo *CI = CallInfo::Create(f->arg_size(), 1);
+    CI->args.resize(f->arg_size(), InterfaceType::unknown());
+    this->calls[fname].push_back(CI);
   }
 }
 
@@ -337,23 +337,21 @@ CallRewrite::CallRewrite(const CallRewrite &x)
 
 template <>
 void codeInto<proto::CallRewrite, CallRewrite>(const proto::CallRewrite &buf,
-                                               CallRewrite &ci) {
-  ci.function = StringRef(buf.new_function());
+                                               CallRewrite &CR) {
+  CR.function = StringRef(buf.new_function());
   std::vector<unsigned> *non_const =
-      const_cast<std::vector<unsigned> *>(&ci.args);
+      const_cast<std::vector<unsigned> *>(&CR.args);
   non_const->reserve((unsigned)buf.args_size());
   non_const->assign(buf.args().begin(), buf.args().end());
 }
 
 template <>
-void codeInto<CallRewrite, proto::CallRewrite>(const CallRewrite &ci,
+void codeInto<CallRewrite, proto::CallRewrite>(const CallRewrite &CR,
                                                proto::CallRewrite &buf) {
-  buf.set_new_function(ci.function);
-  buf.mutable_args()->Reserve(ci.args.size());
-  for (std::vector<unsigned>::const_iterator i = ci.args.begin(),
-                                             e = ci.args.end();
-       i != e; ++i) {
-    buf.mutable_args()->AddAlreadyReserved(*i);
+  buf.set_new_function(CR.function);
+  buf.mutable_args()->Reserve(CR.args.size());
+  for (unsigned i: CR.args) {
+    buf.mutable_args()->AddAlreadyReserved(i);
   }
 }
 
@@ -400,8 +398,8 @@ void codeInto<proto::ComponentInterfaceTransform, ComponentInterfaceTransform>(
     StringRef name = info.name();
     CallInfo res;
     codeInto<proto::CallInfo, CallInfo>(info, res);
-    CallInfo *result = ci.interface->getOrCreateCall(name, res.args);
-    result->count += info.count();
+    CallInfo *result = ci.interface->getOrCreateCall(name, res.get_args());
+    result->get_count() += info.count();
 
     CallRewrite rewrite;
     codeInto<proto::CallRewrite, CallRewrite>(rw, rewrite);

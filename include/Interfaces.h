@@ -49,30 +49,49 @@
 #include "InterfaceTypes.h"
 
 namespace previrt {
+
+// FIXME: it should be a StringRef
 typedef std::string FunctionHandle;
 
+class ComponentInterface;
+ 
 /* Class to represent a callsite in the interface.
  *
  * An interface's callsite replaces callsite's arguments with types
  * (InterfaceType).
  */
-struct CallInfo {
+class CallInfo {
   unsigned count;
   std::vector<InterfaceType> args;
 
 public:
+
+  using const_iterator = std::vector<InterfaceType>::const_iterator;
+  
+  unsigned num_args() const { return args.size(); }
+
+  const_iterator args_begin() const { return args.begin();}
+
+  const_iterator args_end() const { return args.end();}  
+
+  const std::vector<InterfaceType>& get_args() const { return args;}
+  
+  unsigned &get_count() { return count;}
+
+  unsigned get_count() const { return count;}  
+  
   int refines(llvm::User::op_iterator begin, llvm::User::op_iterator end);
 
-public:
   FRIEND_SERIALIZERS(CallInfo, proto::CallInfo)
 
-public:
   // Convert a LLVM CallSite to an Interface callsite
   static CallInfo *Create(llvm::User::op_iterator, llvm::User::op_iterator,
                           unsigned count = 0);
   static CallInfo *Create(unsigned len, unsigned count = 0);
   static CallInfo *Create(const std::vector<InterfaceType> &,
                           unsigned count = 0);
+
+  friend class ComponentInterface;
 };
 
 /*
@@ -138,16 +157,19 @@ public:
  *   function = "foo"
  *   args = [1,3]
  */
-struct CallRewrite {
+class CallRewrite {
   FunctionHandle function;
-  const std::vector<unsigned> args;
+  std::vector<unsigned> args;
 
 public:
   CallRewrite() {}
   CallRewrite(FunctionHandle h, const std::vector<unsigned> &a);
   CallRewrite(const CallRewrite &);
 
-public:
+  const std::vector<unsigned>& get_args() const { return args;}
+  
+  const FunctionHandle& get_function() const { return function;}
+  
   FRIEND_SERIALIZERS(CallRewrite, proto::CallRewrite)
 };
 
