@@ -190,7 +190,7 @@ bool MinimizeComponent(Module &M, const ComponentInterface &I) {
       continue;
     }
 
-    if (I.hasReference(alias.getName()) && alias.use_empty()) {
+    if (!I.hasReference(alias.getName()) && alias.use_empty()) {
       errs() << "Remove unused alias " << alias.getName() << "\n";
       unusedAliases.push_back(&alias);
     } else {
@@ -218,8 +218,8 @@ bool MinimizeComponent(Module &M, const ComponentInterface &I) {
         // f is discardable if unused in other compilation units
         isDiscardableIfUnusedExternally(f.getLinkage()) &&
         // unused in other compilation units
-        I.hasCall(f.getName()) &&
-        I.hasReference(f.getName()) &&
+        !I.hasCall(f.getName()) &&
+        !I.hasReference(f.getName()) &&
         // there is no an alias to f that we want to keep
         !keepAliasees.count(&f)) {
 
@@ -255,7 +255,7 @@ bool MinimizeComponent(Module &M, const ComponentInterface &I) {
 
     if (gv.hasInitializer() &&
         // global is unused
-        I.hasReference(gv.getName()) &&
+        !I.hasReference(gv.getName()) &&
         isDiscardableIfUnusedExternally(gv.getLinkage()) &&
         // there is no an alias to f that we want to keep
         !keepAliasees.count(&gv)) {
