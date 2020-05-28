@@ -249,11 +249,6 @@ ComponentInterface::FunctionIterator ComponentInterface::end() const {
   return FunctionIterator(calls.end());
 }
 
-// ComponentInterface::FunctionIterator
-// ComponentInterface::find(StringRef key) const {
-//   return this->calls.find(key);
-// }
-
 ComponentInterface::CallIterator
 ComponentInterface::call_begin(StringRef n) const {
   
@@ -268,15 +263,6 @@ ComponentInterface::call_end(StringRef n) const {
   assert(it != this->calls.end());
   return it->second.end();
 }
-
-// ComponentInterface::CallIterator
-// ComponentInterface::call_begin(FunctionIterator i) const {
-//   return i->second.begin();
-// }
-// ComponentInterface::CallIterator
-// ComponentInterface::call_end(FunctionIterator i) const {
-//   return i->second.end();
-// }
 
 template <>
 void codeInto<ComponentInterface, proto::ComponentInterface>(

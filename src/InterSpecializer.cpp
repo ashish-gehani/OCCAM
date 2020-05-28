@@ -131,20 +131,16 @@ static bool SpecializeComponent(Module &M, ComponentInterfaceTransform &T,
   // TODO: What needs to be done?
   // - Should try to handle strings & arrays
   // Iterate through all functions in the interface of T
-  for (ComponentInterface::FunctionIterator ff = I.begin(), fe = I.end();
-       ff != fe; ++ff) {
-    StringRef name = ff->first();
-    Function *func = resolveFunction(M, name);
-
+  for (auto fName: llvm::make_range(I.begin(), I.end())) {
+    Function *func = resolveFunction(M, fName);
     if (!func || func->isDeclaration()) {
       continue;
     }
 
     // Now iterate through all calls to func in the interface of T
-    for (ComponentInterface::CallIterator cc = I.call_begin(name),
-                                          ce = I.call_end(name);
-         cc != ce; ++cc) {
-      const CallInfo *const call = *cc;
+    for (const CallInfo* call: llvm::make_range(I.call_begin(fName),
+						I.call_end(fName))) {
+      
       const unsigned arg_count = call->args.size();
       if (func->isVarArg()) {
         continue;
@@ -202,9 +198,9 @@ static bool SpecializeComponent(Module &M, ComponentInterfaceTransform &T,
       }
       specialized_func->setLinkage(GlobalValue::ExternalLinkage);
       FunctionHandle rewriteTo = specialized_func->getName();
-      T.rewrite(name, call, rewriteTo, argPerm);
+      T.rewrite(fName, call, rewriteTo, argPerm);
       to_add.push_back(specialized_func);
-      errs() << "Specialized  " << name << " to " << rewriteTo << "\n";
+      errs() << "Specialized  " << fName << " to " << rewriteTo << "\n";
 
 #if 0
 	for (unsigned i = 0; i < arg_count; i++) {
@@ -239,11 +235,9 @@ public:
   InterSpecializerPass() : ModulePass(ID) {
 
     errs() << "InterSpecializerPass():\n";
-    for (cl::list<std::string>::const_iterator b = SpecCompIn.begin(),
-                                               e = SpecCompIn.end();
-         b != e; ++b) {
-      errs() << "Reading file '" << *b << "'...";
-      if (transform.readInterfaceFromFile(*b)) {
+    for (auto fileName: SpecCompIn) {
+      errs() << "Reading file '" << fileName << "'...";
+      if (transform.readInterfaceFromFile(fileName)) {
         errs() << "success\n";
       } else {
         errs() << "failed\n";
@@ -253,7 +247,7 @@ public:
     errs() << "Done reading.\n";
     if (transform.hasInterface()) {
       const ComponentInterface &interface = transform.getInterface();
-      errs() << interface.calls.size() << " calls\n";
+      errs() << std::distance(interface.begin(), interface.end());
     } else {
       errs() << "No interfaces read.\n";
     }

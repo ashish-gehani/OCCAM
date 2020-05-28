@@ -113,16 +113,14 @@ public:
   FunctionIterator begin() const;
   FunctionIterator end() const;
 
-  // Find function
-  //FunctionIterator find(llvm::StringRef) const;
-
   // iteration over the calls to a function
   CallIterator call_begin(llvm::StringRef) const;
   CallIterator call_end(llvm::StringRef) const;
 
-  // CallIterator call_begin(FunctionIterator) const;
-  // CallIterator call_end(FunctionIterator) const;
-
+  bool hasReference(llvm::StringRef ref) const { return references.count(ref) > 0;}
+  
+  bool hasCall(llvm::StringRef ref) const { return calls.find(ref) != calls.end();}
+  
   bool readFromFile(const std::string &filename);
 
   FRIEND_SERIALIZERS(ComponentInterface, proto::ComponentInterface)

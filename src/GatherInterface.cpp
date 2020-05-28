@@ -155,12 +155,9 @@ public:
 
     if (!GatherInterfaceEntry.empty()) {
       ComponentInterface ci;
-      for (cl::list<std::string>::const_iterator
-               i = GatherInterfaceEntry.begin(),
-               e = GatherInterfaceEntry.end();
-           i != e; ++i) {
-        errs() << "Reading interface from '" << *i << "'...";
-        if (ci.readFromFile(*i)) {
+      for (auto interfaceName: GatherInterfaceEntry) {
+        errs() << "Reading interface from '" << interfaceName << "'...";
+        if (ci.readFromFile(interfaceName)) {
           errs() << "success\n";
         } else {
           errs() << "failed\n";
@@ -168,9 +165,8 @@ public:
       }
       // errs() << "Searching for external symbols starting from "
       //       << "entries given by the interfaces of other modules:\n";
-      for (ComponentInterface::FunctionIterator i = ci.begin(), e = ci.end();
-           i != e; ++i) {
-        if (Function *f = M.getFunction(i->first())) {
+      for (auto FH: llvm::make_range(ci.begin(), ci.end())) {
+        if (Function *f = M.getFunction(FH)) {
           // errs() << "\tAdded " << f->getName() << "into the queue.\n";
           queue.push_back(cg.getOrInsertFunction(f));
         }
