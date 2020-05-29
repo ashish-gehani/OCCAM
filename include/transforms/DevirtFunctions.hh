@@ -140,6 +140,10 @@ public:
 #endif
 
 private:
+  
+  bool enforceWellTyping(llvm::CallSite &CS, const AliasSet &dsa_targets,
+			 AliasSet &out);
+  
   /* invariant: the value in TargetsMap's entries is sorted */
   using TargetsMap = llvm::DenseMap<llvm::Instruction *, AliasSet>;
 #ifdef USE_BOUNCE_FUNCTIONS
