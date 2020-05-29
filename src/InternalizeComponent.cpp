@@ -192,7 +192,8 @@ public:
  * We do it in two steps:
  *
  * 1) Make internal any function or global if no direct call or
- * reference to them from other modules.
+ * reference to them from other modules **and** its address hasn't
+ * been taken (this last part take care of indirect calls).
  * 
  * 2) Leverage LLVM dead code elimination.
  */
@@ -262,6 +263,8 @@ bool InternalizePass::MinimizeComponent(Module &M) {
         isDiscardableIfUnusedExternally(f.getLinkage()) &&
         // No other compilation unit calls f
         !m_interfaces.hasCall(f.getName()) &&
+	// The address of f has not been taken
+	!f.hasAddressTaken() &&
 	// No other compilation unit mentions f
         !m_interfaces.hasReference(f.getName()) &&
         // there is no an alias to f that we want to keep
