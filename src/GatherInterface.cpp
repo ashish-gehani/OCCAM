@@ -130,6 +130,24 @@ public:
   }
 
   virtual bool runOnModule(Module &M) {
+    /*
+     * Compute an interface from M's call graph.
+     * 
+     * Keep in mind the following facts from a LLVM CallGraph:
+     *
+     * - Nodes in a CallGraph are functions plus two special nodes:
+     *   CallGraph::getCallsExternalNode() and
+     *   CallGraph::getExternalCallingNode. An edge from F1 to F2 if
+     *   there is a **direct** callsite in F1 that calls F2.
+     *
+     * - If function F is not internal and its address can be taken
+     *   then there is an edge from CallGraph::getExternalCallingNode
+     *   to F
+     * 
+     * - If function F has an indirect call or external call then
+     *   there is an edge from F to CallGraph::getCallsExternalNode()
+     */
+    
     CallGraph *cg = nullptr;
     if (UseSeaDsa) {
       cg = &getAnalysis<seadsa::CompleteCallGraph>().getCompleteCallGraph();      
@@ -180,9 +198,10 @@ public:
       }
     }
 
-    // Traverse the call graph
-    std::vector<CallGraphNode *> queue;
+    // Process the call graph
+    std::vector<CallGraphNode *> worklist;
 
+    // -- Initialize worklist with entry points of the current module
     if (!GatherInterfaceEntry.empty()) {
       ComponentInterface ci;
       for (auto interfaceName: GatherInterfaceEntry) {
@@ -193,72 +212,74 @@ public:
           errs() << "failed\n";
         }
       }
-      // errs() << "Searching for external symbols starting from "
-      //       << "entries given by the interfaces of other modules:\n";
       for (auto FH: llvm::make_range(ci.begin(), ci.end())) {
         if (Function *f = M.getFunction(FH)) {
-          // errs() << "\tAdded " << f->getName() << "into the queue.\n";
-          queue.push_back(cg->getOrInsertFunction(f));
+          worklist.push_back(cg->getOrInsertFunction(f));
         }
       }
     } else {
-      // errs() << "Searching for external symbols starting from non-internal
-      // and "
-      //       << "address-taken functions:\n";
-      queue.push_back(cg->getExternalCallingNode());
+      worklist.push_back(cg->getExternalCallingNode());
     }
 
-    std::set<CallGraphNode *> visited;
-    while (!queue.empty()) {
-      CallGraphNode *cgn = queue.back();
-      queue.pop_back();
+    std::set<CallGraphNode*> visited; // break cycles
+    while (!worklist.empty()) {
+      CallGraphNode *cgn = worklist.back();
+      worklist.pop_back();
 
       if (cgn->getFunction() && !isInternal(cgn->getFunction())) {
         // this is a declaration and doesn't have any calls
         continue;
       }
 
-      if (cgn == cg->getCallsExternalNode()) {
-        // In this case, we're here from a call that we can't resolve,
-        // so we need to be conservative.
-        // Everything that could have made it into this set is in the
-        // "External Calling" node, i.e. can be called externally
-        // - stored in a variable or externally visible
-        // NOTE: for this to be useful, we're going to need to minimize
-        // the size of the "externally visible" set.
-        cgn = cg->getExternalCallingNode();
-        if (visited.find(cgn) != visited.end()) {
-          continue;
-        }
-      }
+      // if (cgn == cg->getCallsExternalNode()) {
+      // 	// If we are here is because an external or indirect call
+      // 	// call. Add all the entries of the call graph
+      // 	// (CallGraph::getExternalCallingNode) in the worklist.
+	
+      //   cgn = cg->getExternalCallingNode();
+      //   if (visited.find(cgn) != visited.end()) {
+      //     continue;
+      //   }
+      // }
 
+      // -- Process edges in the callgraph.
+      // 
+      // A callRecord is a pair of a (callsite, CallGraphNode). The
+      // first element of the pair can be null when the source node is
+      // getExternalCallingNode()
       for (auto &callRecord : *cgn) {
         Value *calledV = stripBitCast(callRecord.first);
         if (!calledV) {
-          /////
-          // JN: I think we are here if cgn is cg->getExternalCallingNode()
-          //////
           assert(cgn == cg->getExternalCallingNode());
-          assert(callRecord.second->getFunction());
-          interface.callAny(callRecord.second->getFunction());
+	  if (isInternal(callRecord.second->getFunction())) {
+	    // Entry point of the module
+	    interface.callFrom(callRecord.second->getFunction());
+	  }
         } else {
           CallSite CS(calledV);
           const Function *callee = callRecord.second->getFunction();
-          if (callee && !isInternal(callee)) {
-            errs() << "External call to "
-                   << callRecord.second->getFunction()->getName() << "\n";
-            // record in the interface a known external call
-            interface.call(callee->getName(), CS.arg_begin(), CS.arg_end());
-            continue;
-          }
+	  if (callee) {
+	    // -- Direct call
+	    if (!isInternal(callee)) {
+	      errs() << "External call to "
+		     << callRecord.second->getFunction()->getName() << "\n";
+	      // Record a known external call
+	      interface.callTo(callee->getName(), CS.arg_begin(), CS.arg_end());
+	      continue;
+	    }
+	  } else {
+	    // -- Indirect call: we don't know the callee
+	  }
         }
 
         if (visited.insert(cgn).second) {
-          queue.push_back(callRecord.second);
+          worklist.push_back(callRecord.second);
         }
       }
     }
 
+    // -- Record all external symbols of the current module
+    
     // functions
     for (Function &F : llvm::make_range(M.begin(), M.end())) {
       if (F.isDeclaration() && !F.isIntrinsic()) {
@@ -283,6 +304,9 @@ public:
       }
     }
 
+    errs() << "Generated interface for " << M.getModuleIdentifier() << "\n";
+    errs() << interface << "\n";
+    
     if (GatherInterfaceOutput != "") {
       proto::ComponentInterface ci;
       codeInto<ComponentInterface, proto::ComponentInterface>(interface, ci);
@@ -304,5 +328,7 @@ char GatherInterfacePass::ID;
 } // end namespace previrt
 
 static RegisterPass<previrt::GatherInterfacePass>
-    X("Pinterface", "compute the external dependencies of the module", false,
+    X("Pinterface",
+      "Compute the interface for a LLVM module",
+      false,
       false);
