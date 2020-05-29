@@ -127,7 +127,7 @@ CallInfo *CallInfo::Create(const std::vector<InterfaceType> &args,
 
 // ComponentInterface
 ComponentInterface::~ComponentInterface() {
-  for (auto &kv: calls) {
+  for (auto &kv: m_calls) {
     for (CallInfo *CI: kv.second) {
       delete CI;
     }
@@ -136,8 +136,8 @@ ComponentInterface::~ComponentInterface() {
 
 // Add a call f(abstract(args_begin), ..., abstract(args_end)) in the
 // interface if there is no already an entry that subsumes it.
-void ComponentInterface::call(FunctionHandle f, User::op_iterator args_begin,
-                              User::op_iterator args_end) {
+void ComponentInterface::callTo(FunctionHandle f, User::op_iterator args_begin,
+				User::op_iterator args_end) {
   //
   // Each argument in CI.args.begin() ... CI.args.end() contains a
   // type (see InterfaceTypes.h comments for more details)
@@ -158,12 +158,12 @@ void ComponentInterface::call(FunctionHandle f, User::op_iterator args_begin,
     return true;
   };
 
-  if (this->calls.find(f) == this->calls.end()) {
+  if (m_calls.find(f) == m_calls.end()) {
     std::vector<CallInfo *> calls;
     calls.push_back(CallInfo::Create(args_begin, args_end, 1));
-    this->calls[f] = calls;
+    m_calls[f] = calls;
   } else {
-    std::vector<CallInfo *> &calls = this->calls[f];
+    std::vector<CallInfo *> &calls = m_calls[f];
     for (CallInfo *CI: calls) {
       if (refines(*CI)) {
 	// CI already subsumes the one we want to add.
@@ -171,12 +171,10 @@ void ComponentInterface::call(FunctionHandle f, User::op_iterator args_begin,
 	return;
       } 
     }
-    this->calls[f].push_back(CallInfo::Create(args_begin, args_end, 1));
+    m_calls[f].push_back(CallInfo::Create(args_begin, args_end, 1));
   }
 }
   
-// Add an entry f(unknown,...,unknown) in the interface if there is no
-// one.
 void ComponentInterface::callAny(const Function *f) {
   FunctionHandle fname = f->getName();
   if (this->calls.find(fname) == this->calls.end()) {
@@ -189,33 +187,35 @@ void ComponentInterface::callAny(const Function *f) {
     std::vector<CallInfo *> &calls = this->calls[fname];
     for (CallInfo *CI: calls) {
       if (CI->num_args() == f->arg_size() && 
-	  std::all_of(CI->args_begin(), CI->args_end(),
-		      [](const InterfaceType & ty) {
-			return ty.isUnknown();
-		      })) {
-	CI->get_count()++;
-	return;
+  	  std::all_of(CI->args_begin(), CI->args_end(),
+  		      [](const InterfaceType & ty) {
+  			return ty.isUnknown();
+  		      })) {
+  	CI->get_count()++;
+  	return;
       }
     }
-    
+  
     CallInfo *CI = CallInfo::Create(f->arg_size(), 1);
     CI->args.resize(f->arg_size(), InterfaceType::unknown());
     this->calls[fname].push_back(CI);
   }
 }
 
-void ComponentInterface::reference(StringRef n) { this->references.insert(n); }
+void ComponentInterface::reference(StringRef n) {
+  m_references.insert(n);
+}
 
 CallInfo *
 ComponentInterface::getOrCreateCall(FunctionHandle f,
                                     const std::vector<InterfaceType> &args) {
-  auto it = calls.find(f);
+  auto it = m_calls.find(f);
   CallInfo *result;
-  if (it == calls.end()) {
+  if (it == m_calls.end()) {
     std::vector<CallInfo *> infos;
     result = CallInfo::Create(args, 0);
     infos.push_back(result);
-    calls[f] = infos;
+    m_calls[f] = infos;
     return result;
   } else {
     for (CallIterator c = it->second.begin(), e = it->second.end(); c != e;
@@ -234,55 +234,50 @@ ComponentInterface::getOrCreateCall(FunctionHandle f,
       }
     }
     result = CallInfo::Create(args, 0);
-    calls[f].push_back(result);
+    m_calls[f].push_back(result);
     return result;
   }
 }
 
 void ComponentInterface::dump() const {
-  for (auto &kv: calls) {
-    errs() << "external call to '" << kv.getKey() << "' " << kv.getValue().size() << " times\n";    
-  }
-
-  for (auto ref: references) {
-    errs() << "referefence to external symbol '" << ref << "'\n";
-  }
+  write(llvm::errs());
 }
 
 ComponentInterface::FunctionIterator ComponentInterface::begin() const {
-  return FunctionIterator(calls.begin());
+  return FunctionIterator(m_calls.begin());
 }
 ComponentInterface::FunctionIterator ComponentInterface::end() const {
-  return FunctionIterator(calls.end());
+  return FunctionIterator(m_calls.end());
 }
 
 ComponentInterface::CallIterator
 ComponentInterface::call_begin(StringRef n) const {
   
-  auto it = this->calls.find(n);
-  assert(it != this->calls.end());
+  auto it = m_calls.find(n);
+  assert(it != m_calls.end());
   return it->second.begin();
 }
 
 ComponentInterface::CallIterator
 ComponentInterface::call_end(StringRef n) const {
-  auto it = this->calls.find(n);
-  assert(it != this->calls.end());
+  auto it = m_calls.find(n);
+  assert(it != m_calls.end());
   return it->second.end();
 }
 
 template <>
 void codeInto<ComponentInterface, proto::ComponentInterface>(
     const ComponentInterface &ci, proto::ComponentInterface &buf) {
-  for (auto &kv: ci.calls) {
+  for (auto &kv: ci.m_calls) {
     for (auto c: kv.second) {
       proto::CallInfo *info = buf.add_calls();
       info->set_name(kv.first());
       codeInto<CallInfo, proto::CallInfo>(*c, *info);
     }
   }
-  buf.mutable_references()->Reserve(ci.references.size());
-  for (auto ref: ci.references) {
+  
+  buf.mutable_references()->Reserve(ci.m_references.size());
+  for (auto ref: ci.m_references) {
     buf.add_references(ref);
   }
 }
@@ -296,20 +291,17 @@ void codeInto<proto::ComponentInterface, ComponentInterface>(
     CallInfo *res = new CallInfo();
     codeInto(info, *res);
     llvm::StringMap<std::vector<CallInfo *>>::iterator it =
-        ci.calls.find(name);
-    if (it == ci.calls.end()) {
+        ci.m_calls.find(name);
+    if (it == ci.m_calls.end()) {
       std::vector<CallInfo *> infos;
       infos.push_back(res);
-      ci.calls[name] = infos;
+      ci.m_calls[name] = infos;
     } else {
       it->second.push_back(res);
     }
   }
-  for (google::protobuf::RepeatedPtrField<std::string>::const_iterator
-           i = buf.references().begin(),
-           e = buf.references().end();
-       i != e; ++i) {
-    ci.references.insert(*i);
+  for (std::string ref: buf.references()) {
+    ci.m_references.insert(ref);
   }
 }
 
@@ -329,6 +321,30 @@ bool ComponentInterface::readFromFile(const std::string &filename) {
   return true;
 }
 
+
+void ComponentInterface::write(raw_ostream &o) const {
+  o << "## External calls:\n";
+  for (auto &kv: m_calls) {
+    for (CallInfo *CI: kv.getValue()) {
+      o << "\t" << kv.first() << "(";
+      auto const& args = CI->get_args();
+      for (unsigned i=0, sz=args.size(); i<sz; ) {
+	o << args[i].to_string();
+	++i;
+	if (i < sz) {
+	  o << ",";
+	}
+      }
+      o << ")\n";
+    }
+  }
+  o << "## External symbols:\n";
+  for (const std::string &s: m_references) {
+    o << "\t" << s << "\n";
+  }
+}
+
+  
 // CallRewrite
 CallRewrite::CallRewrite(FunctionHandle h, const std::vector<unsigned> &a)
     : function(h), args(a) {}
@@ -425,12 +441,10 @@ void ComponentInterfaceTransform::rewrite(FunctionHandle hndl,
 }
 
 void ComponentInterfaceTransform::dump() const {
-  for (FMap::const_iterator i = this->rewrites.begin(),
-                            e = this->rewrites.end();
-       i != e; ++i) {
-    for (CMap::const_iterator ii = i->second.begin(), ee = i->second.end();
-         ii != ee; ++ii) {
-      errs() << "'" << i->first << "' -> '" << ii->second.function << "'\n";
+  for (auto &kv_fmap: rewrites) {
+    for (auto &kv_cmap: kv_fmap.second) {
+      errs() << "'" << kv_fmap.first << "' -> '" << kv_cmap.second.get_function()
+	     << "'\n";      
     }
   }
 }

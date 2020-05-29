@@ -48,6 +48,9 @@
 
 #include "InterfaceTypes.h"
 
+namespace llvm {
+  class raw_ostream;
+}
 namespace previrt {
 
 // FIXME: it should be a StringRef
@@ -95,10 +98,11 @@ public:
 };
 
 /*
- * Class that represents the interface of a module (i.e.,
- * component).
+ * Class that represents the interface of a module or set of modules
+ * (i.e., component).
  *
- * An interface records external calls done by the module.
+ * An interface for M records both external calls done by M and calls
+ * to M's functions from other modules.
  */
 class ComponentInterface {
 public:
@@ -106,8 +110,11 @@ public:
   using CallIterator = std::vector<CallInfo *>::const_iterator;
 
 private:
-  llvm::StringMap<std::vector<CallInfo *>> calls;
-  std::set<std::string> references;
+
+  // to record direct calls to functions defined in other modules
+  llvm::StringMap<std::vector<CallInfo *>> m_calls;
+  // to record any external symbol used in the current module.
+  std::set<std::string> m_references;
 
 public:
 
@@ -115,9 +122,9 @@ public:
   
   virtual ~ComponentInterface();
 
-  // Record an external call to the interface.
-  void call(FunctionHandle f, llvm::User::op_iterator args_begin,
-            llvm::User::op_iterator args_end);
+  // Record current module makes an external call
+  void callTo(FunctionHandle f, llvm::User::op_iterator args_begin,
+	      llvm::User::op_iterator args_end);
 
   // TODO: add comment
   void callAny(const llvm::Function *f);
@@ -128,8 +135,6 @@ public:
   CallInfo *getOrCreateCall(FunctionHandle f,
                             const std::vector<InterfaceType> &args);
 
-  void dump() const;
-
   // iteration over the functions
   FunctionIterator begin() const;
   FunctionIterator end() const;
@@ -138,12 +143,24 @@ public:
   CallIterator call_begin(llvm::StringRef) const;
   CallIterator call_end(llvm::StringRef) const;
 
-  bool hasReference(llvm::StringRef ref) const { return references.count(ref) > 0;}
+  bool hasReference(llvm::StringRef ref) const {
+    return m_references.count(ref) > 0;}
   
-  bool hasCall(llvm::StringRef ref) const { return calls.find(ref) != calls.end();}
-  
+  bool hasCall(llvm::StringRef ref) const {
+    return m_calls.find(ref) != m_calls.end();
+  }
+
   bool readFromFile(const std::string &filename);
 
+  void write(llvm::raw_ostream &o) const;
+
+  void dump() const;
+  
+  friend llvm::raw_ostream &operator<<(llvm::raw_ostream &o, const ComponentInterface &I) {
+    I.write(o);
+    return o;
+  }
+  
   FRIEND_SERIALIZERS(ComponentInterface, proto::ComponentInterface)
 };
 
