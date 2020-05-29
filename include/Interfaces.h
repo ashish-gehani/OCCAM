@@ -126,8 +126,8 @@ public:
   void callTo(FunctionHandle f, llvm::User::op_iterator args_begin,
 	      llvm::User::op_iterator args_end);
 
-  // TODO: add comment
-  void callAny(const llvm::Function *f);
+  // Record that Module's function f may be called from other modules
+  void callFrom(const llvm::Function *f);
 
   // Record symbol as external
   void reference(llvm::StringRef symbol);

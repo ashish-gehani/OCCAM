@@ -175,31 +175,31 @@ void ComponentInterface::callTo(FunctionHandle f, User::op_iterator args_begin,
   }
 }
   
-void ComponentInterface::callAny(const Function *f) {
-  FunctionHandle fname = f->getName();
-  if (this->calls.find(fname) == this->calls.end()) {
-    std::vector<CallInfo *> calls;
-    CallInfo *CI = CallInfo::Create(f->arg_size(), 1);
-    CI->args.resize(f->arg_size(), InterfaceType::unknown());
-    calls.push_back(CI);
-    this->calls[fname] = calls;
-  } else {
-    std::vector<CallInfo *> &calls = this->calls[fname];
-    for (CallInfo *CI: calls) {
-      if (CI->num_args() == f->arg_size() && 
-  	  std::all_of(CI->args_begin(), CI->args_end(),
-  		      [](const InterfaceType & ty) {
-  			return ty.isUnknown();
-  		      })) {
-  	CI->get_count()++;
-  	return;
-      }
-    }
+void ComponentInterface::callFrom(const Function *f) {
+  // FunctionHandle fname = f->getName();
+  // if (this->calls.find(fname) == this->calls.end()) {
+  //   std::vector<CallInfo *> calls;
+  //   CallInfo *CI = CallInfo::Create(f->arg_size(), 1);
+  //   CI->args.resize(f->arg_size(), InterfaceType::unknown());
+  //   calls.push_back(CI);
+  //   this->calls[fname] = calls;
+  // } else {
+  //   std::vector<CallInfo *> &calls = this->calls[fname];
+  //   for (CallInfo *CI: calls) {
+  //     if (CI->num_args() == f->arg_size() && 
+  // 	  std::all_of(CI->args_begin(), CI->args_end(),
+  // 		      [](const InterfaceType & ty) {
+  // 			return ty.isUnknown();
+  // 		      })) {
+  // 	CI->get_count()++;
+  // 	return;
+  //     }
+  //   }
   
-    CallInfo *CI = CallInfo::Create(f->arg_size(), 1);
-    CI->args.resize(f->arg_size(), InterfaceType::unknown());
-    this->calls[fname].push_back(CI);
-  }
+  //   CallInfo *CI = CallInfo::Create(f->arg_size(), 1);
+  //   CI->args.resize(f->arg_size(), InterfaceType::unknown());
+  //   this->calls[fname].push_back(CI);
+  // }
 }
 
 void ComponentInterface::reference(StringRef n) {
