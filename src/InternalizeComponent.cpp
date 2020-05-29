@@ -50,8 +50,8 @@
 
 using namespace llvm;
 
-static cl::list<std::string> InterfaceInput(
-    "Pinternalize-input", cl::NotHidden,
+static cl::list<std::string> Interfaces(
+    "Pinternalize-wrt-interfaces", cl::NotHidden,
     cl::desc("specifies the interface to internalize with respect to"));
 
 static cl::opt<std::string> KeepExternalFile(
@@ -149,20 +149,54 @@ static bool setInternalLinkage(GlobalValue &GV) {
   }
 }
 
+class InternalizePass: public ModulePass {
+public:
+  // The current module is internalized with respect to m_interfaces
+  ComponentInterface m_interfaces;
+  
+  static char ID;
+
+  bool MinimizeComponent(Module &M);
+  
+public:
+  
+  InternalizePass() : ModulePass(ID) {}
+  virtual ~InternalizePass() = default;
+
+  virtual bool runOnModule(Module &M) {
+    
+    errs() << "InternalizePass\n";
+    for (std::string input : Interfaces) {
+      errs() << "Reading file '" << input << "'...";
+      if (m_interfaces.readFromFile(input)) {
+        errs() << "success\n";
+      } else {
+        errs() << "failed\n";
+      }
+    }
+    errs() << "Done reading.\n";
+    
+    return MinimizeComponent(M);
+  }
+
+  virtual void getAnalysisUsage(AnalysisUsage &AU) const {}
+};
+  
 /*
- * The goal is to remove all code that is unused within the module and
- * it is not necessary to implement the given interface.
+ * Remove unused code after considering dependencies with other
+ * modules.
  * 
- * IMPORTANT: the caller must ensure that the ComponentInterface I
- * contains the whole environment under M can be called
- * 
+ * IMPORTANT: the caller must ensure that the m_interfaces reflects
+ * all possible direct calls to M's functions.
+ *
  * We do it in two steps:
  *
- * 1) Make internal any function or global that cannot be accessed
- *    outside the module.
- * 2) Run LLVM dead code elimination. 
+ * 1) Make internal any function or global if no direct call or
+ * reference to them from other modules.
+ * 
+ * 2) Leverage LLVM dead code elimination.
  */
-bool MinimizeComponent(Module &M, const ComponentInterface &I) {
+bool InternalizePass::MinimizeComponent(Module &M) {
 
   errs() << "InternalizePass::runOnModule: " << M.getModuleIdentifier() << "\n";
 
@@ -199,7 +233,7 @@ bool MinimizeComponent(Module &M, const ComponentInterface &I) {
       continue;
     }
 
-    if (!I.hasReference(alias.getName()) && alias.use_empty()) {
+    if (!m_interfaces.hasReference(alias.getName()) && alias.use_empty()) {
       errs() << "Remove unused alias " << alias.getName() << "\n";
       unusedAliases.push_back(&alias);
     } else {
@@ -227,9 +261,9 @@ bool MinimizeComponent(Module &M, const ComponentInterface &I) {
         // f is discardable if unused in other compilation units
         isDiscardableIfUnusedExternally(f.getLinkage()) &&
         // No other compilation unit calls f
-        !I.hasCall(f.getName()) &&
+        !m_interfaces.hasCall(f.getName()) &&
 	// No other compilation unit mentions f
-        !I.hasReference(f.getName()) &&
+        !m_interfaces.hasReference(f.getName()) &&
         // there is no an alias to f that we want to keep
         !keepAliasees.count(&f)) {
 
@@ -256,7 +290,7 @@ bool MinimizeComponent(Module &M, const ComponentInterface &I) {
     //
     // if ((gv.hasExternalLinkage() || gv.hasCommonLinkage()) &&
     // 	  gv.hasInitializer() &&
-    //     I.references.find(gv.getName()) == I.references.end()) {
+    //     m_interfaces.references.find(gv.getName()) == m_interfaces.references.end()) {
     // 	errs() << "Internalizing '" << gv.getName() << "'\n";
     //   gv.setLinkage(localizeLinkage(gv.getLinkage()));
     // 	internalized_globals++;
@@ -265,7 +299,7 @@ bool MinimizeComponent(Module &M, const ComponentInterface &I) {
 
     if (gv.hasInitializer() &&
         // global is unused 
-        !I.hasReference(gv.getName()) &&
+        !m_interfaces.hasReference(gv.getName()) &&
         isDiscardableIfUnusedExternally(gv.getLinkage()) &&
         // there is no an alias to f that we want to keep
         !keepAliasees.count(&gv)) {
@@ -325,31 +359,6 @@ bool MinimizeComponent(Module &M, const ComponentInterface &I) {
   return true;
 }
 
-class InternalizePass : public ModulePass {
-public:
-  ComponentInterface interface;
-  static char ID;
-
-public:
-  InternalizePass() : ModulePass(ID) {
-    errs() << "InternalizePass()\n";
-    for (std::string input : InterfaceInput) {
-      errs() << "Reading file '" << input << "'...";
-      if (interface.readFromFile(input)) {
-        errs() << "success\n";
-      } else {
-        errs() << "failed\n";
-      }
-    }
-    errs() << "Done reading.\n";
-  }
-
-  virtual ~InternalizePass() {}
-
-  virtual bool runOnModule(Module &M) {
-    return MinimizeComponent(M, interface);
-  }
-};
 
 char InternalizePass::ID;
 } // end namespace previrt

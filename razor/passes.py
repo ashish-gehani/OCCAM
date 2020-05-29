@@ -97,7 +97,9 @@ def force_inline(input_file, output_file, inline_bounce, inline_specialized, out
 def internalize(input_file, output_file, interfaces, whitelist):
     """ marks unused symbols as internal/hidden
     """
-    args = ['-Pinternalize'] + driver.all_args('-Pinternalize-input', interfaces)
+    args = ['-Pinternalize'] + \
+           driver.all_args('-Pinternalize-wrt-interfaces', interfaces)
+                           
     if whitelist is not None:
         args = args + ['-Pkeep-external', whitelist]
     return driver.previrt_progress(input_file, output_file, args)
