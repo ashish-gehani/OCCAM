@@ -46,7 +46,10 @@ namespace transforms {
 
 using namespace llvm;
 
-/** Resolve indirect calls by adding bounce (trampoline) functions **/
+/** 
+ ** Resolve indirect calls by one direct call for possible callee
+ ** function 
+ **/
 class DevirtualizeFunctionsPass : public ModulePass {
 public:
   static char ID;
