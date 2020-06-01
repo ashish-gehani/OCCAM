@@ -13,5 +13,8 @@ namespace transforms {
 void promoteIndirectCall(llvm::CallSite &CS,
                          const std::vector<llvm::Function *> &Callees);
 
-} // end transforms
-} // end previrt
+void specializeCallFunctionPtrArg(llvm::CallSite &CS, unsigned ArgNo,
+                                  const std::vector<llvm::Function *> &Callees);
+
+} // namespace transforms
+} // namespace previrt
