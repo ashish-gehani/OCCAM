@@ -3,6 +3,7 @@
 #include "transforms/utils/CallPromotionUtils.hh"
 
 #include "llvm/Analysis/CallGraph.h"
+#include "llvm/IR/InstIterator.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -245,49 +246,47 @@ CallSiteResolverBySeaDsa::CallSiteResolverBySeaDsa(
   unsigned num_indirect_calls = 0;
   unsigned num_complete_calls = 0;
   unsigned num_resolved_calls = 0;
-  for (auto &F : m_M) {
-    for (auto &BB : F) {
-      for (auto &I : BB) {
-        CallSite CS(&I);
-        if (CS.getInstruction() && isIndirectCall(CS)) {
-          num_indirect_calls++;
-          if (m_allow_incomplete || m_seadsa_cg.isComplete(CS)) {
-            num_complete_calls++;
-            AliasSet dsa_targets;
-            dsa_targets.append(m_seadsa_cg.begin(CS), m_seadsa_cg.end(CS));
-            if (dsa_targets.empty()) {
-              errs() << "WARNING Devirt (dsa): does not have any target for "
-                     << *(CS.getInstruction()) << "\n";
-              continue;
-            }
-            std::sort(dsa_targets.begin(), dsa_targets.end());
-            DEVIRT_LOG(errs() << "\nDsa-based targets: \n";
-                       for (auto F: dsa_targets) {
-                         errs() << "\t" << F->getName()
-                                << "::" << *(F->getType()) << "\n";
-                       });
-	    
-	    AliasSet refined_dsa_targets;	    
-	    if (enforceWellTyping(CS, dsa_targets, refined_dsa_targets)) {
-	      m_targets_map.insert({CS.getInstruction(), refined_dsa_targets});
-	      num_resolved_calls++;
+  for (auto &F: M) {
+    for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I) {
+      CallSite CS(&*I);
+      if (CS.getInstruction() && isIndirectCall(CS)) {
+	num_indirect_calls++;
+	if (m_allow_incomplete || m_seadsa_cg.isComplete(CS)) {
+	  num_complete_calls++;
+	  AliasSet dsa_targets;
+	  dsa_targets.append(m_seadsa_cg.begin(CS), m_seadsa_cg.end(CS));
+	  if (dsa_targets.empty()) {
+	    errs() << "WARNING Devirt (dsa): does not have any target for "
+		 << *(CS.getInstruction()) << "\n";
+	    continue;
+	  }
+	  std::sort(dsa_targets.begin(), dsa_targets.end());
+	  DEVIRT_LOG(errs() << "\nDsa-based targets: \n";
+		     for (auto F: dsa_targets) {
+		     errs() << "\t" << F->getName()
+			    << "::" << *(F->getType()) << "\n";
+		     });
+	  
+	  AliasSet refined_dsa_targets;	    
+	  if (enforceWellTyping(CS, dsa_targets, refined_dsa_targets)) {
+	    m_targets_map.insert({CS.getInstruction(), refined_dsa_targets});
+	    num_resolved_calls++;
+	  }
+	  
+	} else {
+	  errs() << "WARNING Devirt (dsa): cannot resolve "
+		 << *(CS.getInstruction())
+		 << " because the corresponding dsa node is not complete\n";
+	  DEVIRT_LOG(errs() << "Dsa-based targets: \n";
+		     for (auto F: llvm::make_range(m_seadsa_cg.begin(CS),
+						   m_seadsa_cg.end(CS))) { 
+		       errs() << "\t" << F->getName()
+			      << "::" << *(F->getType()) << "\n";
+		     };)
 	    }
-	    
-	  } else {
-            errs() << "WARNING Devirt (dsa): cannot resolve "
-                   << *(CS.getInstruction())
-                   << " because the corresponding dsa node is not complete\n";
-            DEVIRT_LOG(errs() << "Dsa-based targets: \n";
-		       for (auto F: llvm::make_range(m_seadsa_cg.begin(CS),
-						     m_seadsa_cg.end(CS))) { 
-                         errs() << "\t" << F->getName()
-                                << "::" << *(F->getType()) << "\n";
-                       };)
-	    }
-        }
-      } // end instructions
-    }   // end blocks
-  }     // end functions
+      }
+    }
+  }
   errs() << "=== DEVIRT (Dsa+types) stats===\n";
   errs() << "BRUNCH_STAT INDIRECT CALLS " << num_indirect_calls << "\n";
   errs() << "BRUNCH_STAT COMPLETE CALLS " << num_complete_calls << "\n";
