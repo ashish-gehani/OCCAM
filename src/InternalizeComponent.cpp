@@ -129,16 +129,17 @@ static bool isDiscardableIfUnusedExternally(GlobalValue::LinkageTypes Linkage) {
 	  Linkage == GlobalValue::CommonLinkage);
 }
 
-// The linkage of GV is set to internal but only if its visibility is
-// default.
-//  
-// If GV's visibility is hidden then making GV's linkage internal
-// would set automatically its visibility to default. This can be a
-// problem for the linker because a symbol that was hidden before it's
-// now exposed. This might create duplicate symbols. The other
-// visibility type is protected. For now, we also give up if
-// visibility is protected.
 static bool setInternalLinkage(GlobalValue &GV) {
+  if (isa<Function>(GV)) {
+    // If GV is a function then we are here only if GV's address
+    // cannot be taken so we should be able to internalize the
+    // function even its visibility is hidden or protected.
+    errs() << "Internalizing '" << GV.getName() << "'\n";  
+    GV.setLinkage(GlobalValue::InternalLinkage);
+    return true;
+  }
+
+  // For other globals, we take into account visibility
   if (GV.hasDefaultVisibility()) {
     errs() << "Internalizing '" << GV.getName() << "'\n";  
     GV.setLinkage(GlobalValue::InternalLinkage);
