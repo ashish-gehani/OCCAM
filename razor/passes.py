@@ -112,13 +112,11 @@ def strip(input_file, output_file):
     return driver.run(config.get_llvm_tool('opt'), args)
 
 def devirt(devirt_method, input_file, output_file):
-    """ resolve indirect function calls by adding multiple direct calls
+    """use seadsa to resolve indirect function calls by adding multiple
+    direct calls
     """
     assert(devirt_method <> 'none')
-
-    args = []
-
-    args += [ '-Pdevirt'
+    args = [ '-Pdevirt'
             #, '-Presolve-incomplete-calls=true'
             #, '-Pmax-num-targets=15'
     ]
@@ -242,7 +240,6 @@ def peval(input_file, output_file, \
     if use_ipdse:
         ## 1. lower global initializers to store's in main 
         passes = ['-lower-gv-init']
-        
         ## 2. dead store elimination based on sea-dsa (improve
         ##    precision of sccp)
         passes += [
@@ -250,7 +247,6 @@ def peval(input_file, output_file, \
                    '-sea-dsa=ci', '-horn-sea-dsa-local-mod',
                    ##Inter-procedural dead store elimination
                    '-ip-dse', '-ip-dse-max-def-use=25']
-        
         ## 3. perform IPSCCP
         passes += ['-Pipsccp']
         ## 4. cleanup after IPSCCP
