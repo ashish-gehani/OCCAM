@@ -167,6 +167,7 @@ SpecializeCallFunctionPtrArgPass::SpecializeCallFunctionPtrArgPass()
     : ModulePass(ID) {
   auto &Registry = *llvm::PassRegistry::getPassRegistry();
   llvm::initializeDsaAnalysisPass(Registry);
+  llvm::initializeCompleteCallGraphPass(Registry);  
 }
 
 char SpecializeCallFunctionPtrArgPass::ID = 0;
@@ -190,6 +191,7 @@ SpecializeExternCallFunctionPtrArgPass::SpecializeExternCallFunctionPtrArgPass()
     : ModulePass(ID) {
   auto &Registry = *llvm::PassRegistry::getPassRegistry();
   llvm::initializeDsaAnalysisPass(Registry);
+  llvm::initializeCompleteCallGraphPass(Registry);
 }
 
 char SpecializeExternCallFunctionPtrArgPass::ID = 0;
