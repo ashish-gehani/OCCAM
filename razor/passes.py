@@ -282,31 +282,42 @@ def peval(input_file, output_file, \
                 # if retcode != 0:
                 #     return retcode
             shutil.copy(tmp.name, done.name)
-            
+
     if policy <> 'none':
         out = ['']
         iteration = 0
         while True:
+            ## done.name is the current filename
+            
             iteration += 1
-            if iteration > 1 or \
-               use_ipdse:
+            if iteration > 1 or use_ipdse:
                 # optimize using standard llvm transformations
-                retcode = _optimize(done.name, opt.name, use_ai_dce or use_ipdse)
+                use_seaopt = use_ai_dce or use_ipdse
+                retcode = _optimize(done.name, opt.name, use_seaopt)
                 if retcode != 0:
                     break;
             else:
                 shutil.copy(done.name, opt.name)
 
-            # perform specialization using policies
-            pass_args = ['-Ppeval', '-Ppeval-policy={0}'.format(policy), '-Ppeval-opt']
+            ### always specialize external calls with function pointer parameters
+            ### This pass relies on seadsa so we pass also some sea-dsa options.
+            pass_args = [ '-Pspecialize-extern-call-function-ptr-arg',
+                          # improve precision of sea-dsa by considering types
+                          '-sea-dsa-type-aware']
+            if devirt_method == 'none':
+                ## If devirt is not run we tell sea-dsa to
+                ## use its call graph 
+                pass_args += ['-sea-dsa-devirt']
+                
+            ### perform specialization using policies
+            pass_args += ['-Ppeval', '-Ppeval-policy={0}'.format(policy), '-Ppeval-opt']
             if policy == 'bounded':
                 pass_args += ['-Ppeval-max-bounded={0}'.format(max_bounded)]
-                
+
             progress = driver.previrt_progress(opt.name, tmp.name, pass_args, output=out)
             sys.stderr.write("\tintra-module specialization finished\n")
             # forcing inlining of specialized functions if option is enabled
             force_inline(tmp.name, done.name, False, force_inline_spec)
-            
             if progress:
                 if log is not None:
                     log.write(out[0])
