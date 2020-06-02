@@ -52,7 +52,8 @@ from . import utils
 def interface(input_file, output_file, wrt):
     """ computing the interfaces.
     """
-    args = ['-Pinterface', '-Pinterface-output', output_file]
+    args = ['-Pinterface','-Pinterface-with-seadsa']
+    args += ['-Pinterface-output', output_file]
     args += driver.all_args('-Pinterface-entry', wrt)
     return driver.previrt(input_file, '/dev/null', args)
 
