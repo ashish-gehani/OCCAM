@@ -21,7 +21,6 @@ bool inlineOnly(Module &M, const SmallPtrSet<Function *, 8> &inline_functions) {
   for (auto &F : M) {
     if ((inline_functions.count(&F) > 0) && !F.isDeclaration()) {
       change = true;
-      F.setLinkage(GlobalValue::PrivateLinkage);
       F.removeFnAttr(Attribute::NoInline);
       F.removeFnAttr(Attribute::OptimizeNone);
       F.addFnAttr(Attribute::AlwaysInline);
