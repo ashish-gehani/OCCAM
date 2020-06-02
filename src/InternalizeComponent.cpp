@@ -219,6 +219,8 @@ bool MinimizeComponent(Module& M, const ComponentInterface& I) {
 	// unused in other compilation units
 	I.calls.find(f.getName()) == I.calls.end() &&
 	I.references.find(f.getName()) == I.references.end() &&
+	// The address of f has not been taken
+	!f.hasAddressTaken() &&	
 	// there is no an alias to f that we want to keep
 	!keepAliasees.count(&f)) {
 
