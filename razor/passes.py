@@ -311,7 +311,6 @@ def peval(input_file, output_file, \
                 if log is not None:
                     log.write(out[0])
             else:
-                shutil.copy(opt.name, done.name)
                 break
     else:
         print "\tskipped intra-module specialization"
