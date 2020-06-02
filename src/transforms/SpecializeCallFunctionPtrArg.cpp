@@ -103,9 +103,15 @@ bool SpecializeCallFunctionPtrArg::runOnModule(Module &M) {
 
         for (unsigned i = 0, num_args = CS.arg_size(); i < num_args; ++i) {
           if (isFunctionPtrType(CS.getArgument(i)->getType())) {
-            errs() << "[SpecializeCallFunctionPtrArg] Added "
-                   << *CS.getInstruction() << " to the worklist\n";
-            worklist.push_back({CS.getInstruction(), i});
+	    if (!isa<Function>(CS.getArgument(i))) {
+	      // if already a known function we skip it.
+	      errs() << "[SpecializeCallFunctionPtrArg] Added "
+		     << *CS.getInstruction() << " to the worklist\n";
+	      worklist.push_back({CS.getInstruction(), i});
+	    } else {
+	      errs() << " [SpecializeCallFunctionPtrArg] argument " << i << " of "
+		     << *CS.getInstruction() << " already known\n";
+	    }
           }
         }
       }
