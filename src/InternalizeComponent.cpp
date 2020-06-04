@@ -129,6 +129,26 @@ static bool isDiscardableIfUnusedExternally(GlobalValue::LinkageTypes Linkage) {
 	  Linkage == GlobalValue::CommonLinkage);
 }
 
+static bool setInternalLinkage(GlobalValue &GV) {
+  if (isa<Function>(GV)) {
+    // If GV is a function then we are here only if GV's address
+    // cannot be taken so we should be able to internalize the
+    // function even its visibility is hidden or protected.
+    errs() << "Internalizing '" << GV.getName() << "'\n";  
+    GV.setLinkage(GlobalValue::InternalLinkage);
+    return true;
+  }
+
+  // For other globals, we take into account visibility
+  if (GV.hasDefaultVisibility()) {
+    errs() << "Internalizing '" << GV.getName() << "'\n";  
+    GV.setLinkage(GlobalValue::InternalLinkage);
+    return true;
+  } else {
+    return false;
+  }
+}
+
 /*
  * Remove all code from the given module that is not necessary to
  * implement the given interface.
@@ -200,13 +220,15 @@ bool MinimizeComponent(Module& M, const ComponentInterface& I) {
 	// unused in other compilation units
 	I.calls.find(f.getName()) == I.calls.end() &&
 	I.references.find(f.getName()) == I.references.end() &&
+	// The address of f has not been taken
+	!f.hasAddressTaken() &&	
 	// there is no an alias to f that we want to keep
 	!keepAliasees.count(&f)) {
-      
-      errs() << "Internalizing '" << f.getName() << "'\n";
-      f.setLinkage(GlobalValue::InternalLinkage);
-      internalized_functions++;
-      modified = true;
+
+      if (setInternalLinkage(f)) {
+	internalized_functions++;
+	modified = true;
+      }
     }
   }
   
@@ -240,10 +262,10 @@ bool MinimizeComponent(Module& M, const ComponentInterface& I) {
 	// there is no an alias to f that we want to keep
 	!keepAliasees.count(&gv)) {
       
-      errs() << "Internalizing '" << gv.getName() << "'\n";	
-      gv.setLinkage(GlobalValue::InternalLinkage);
+      if (setInternalLinkage(gv)) {
 	internalized_globals++;
         modified = true;
+      }
     }      
   }
   
