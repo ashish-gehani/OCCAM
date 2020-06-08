@@ -76,69 +76,32 @@ static Value *stripBitCastCE(Constant *C) {
   return C;
 }
 
-// static GlobalValue::LinkageTypes
-// localizeLinkage(GlobalValue::LinkageTypes l) {
-//   switch (l) {
-//   case GlobalValue::ExternalLinkage:
-//     return GlobalValue::InternalLinkage;
-//   case GlobalValue::ExternalWeakLinkage:
-//     return GlobalValue::WeakODRLinkage;
-//   case GlobalValue::AppendingLinkage:
-//     return GlobalValue::AppendingLinkage;
-//   case GlobalValue::CommonLinkage:
-//     // CommonLinkage is most similar to weak linkage
-//     // However, we mark it as internal linkage so that other
-//     // optimizations are applicable.
-//     //return GlobalValue::WeakODRLinkage;
-//     return GlobalValue::InternalLinkage;
-//     // XXX: not sure if all external definitions have an
-//   // appropriate internal counterpart
-//   default:
-//     errs() << "Got other linkage! " << l << "\n";
-//     return l;
-//   }
-// }
-
 // Whether the definition of a symbol can be discarded if it is not
 // used in *other* compilation units.
-static bool isDiscardableIfUnusedExternally(GlobalValue::LinkageTypes Linkage) {
-  ////
-  // LinkageTypes are defined in IR/GlobalValue.h
-  ////
-  // If Linkage is one of this {LinkOnceAnyLinkage,
-  // LinkOnceODRLinkage, InternalLinkage, PrivateLinkage,
-  // AvailableExternallyLinkage} then GlobalDCE will remove the
-  // global value if unused in its compilation unit. Thus, we don't
-  // need to consider those linkage types here.
-  //
-  // WeakAnyLinkage, WeakODRLinkage, and CommonLinkage are variants
-  // of a weak semantics.
-  //
-  // AppendingLinkage applies only to global variables of pointer to
-  // array type: when two global variables are linked together, the
-  // two global arrays are appended together (e.g., @llvm.used)
-  //
-  return (Linkage == GlobalValue::ExternalLinkage ||
-          // All of these linkage types are variants of the weak
-          // semantics.
-          //
-          // JORGE: We assume that if the symbol is dead then we can
-          // discard it regardless of its complex weak semantics.
-          Linkage == GlobalValue::ExternalWeakLinkage ||
-          Linkage == GlobalValue::WeakAnyLinkage ||
-          Linkage == GlobalValue::WeakODRLinkage ||
-          Linkage == GlobalValue::CommonLinkage);
+static bool isDiscardableIfUnusedExternally(GlobalValue &GV) {
+  GlobalValue::LinkageTypes Linkage = GV.getLinkage();
+  return (// Ignore local linkages since the linker does not resolve them
+	  !(GlobalValue::isLocalLinkage(Linkage)) && 
+	  // Ignore appending linkage values since the linker
+	  // doesn't resolve them.	  
+	  Linkage != GlobalValue::AppendingLinkage &&
+	  // We can't internalize available_externally globals because this
+	  // can break function pointer equality.
+	  Linkage != GlobalValue::AvailableExternallyLinkage &&
+	  // We don't internalize if the global can be replaced with
+	  // something non-equivalent
+	  !GlobalValue::isInterposableLinkage(Linkage));
+
+  // FIXME: There is an extra condition that we are not currently
+  // checking but LTO.cpp does:
+  // 
+  // Functions and read-only variables with linkonce_odr and
+  // weak_odr linkage can be internalized. We can't internalize
+  // linkonce_odr and weak_odr variables which are both modified
+  // and read somewhere in the program because reads and writes
+  // will become inconsistent.
 }
 
-// The linkage of GV is set to internal but only if its visibility is
-// default.
-//
-// If GV's visibility is hidden then making GV's linkage internal
-// would set automatically its visibility to default. This can be a
-// problem for the linker because a symbol that was hidden before it's
-// now exposed. This might create duplicate symbols. The other
-// visibility type is protected. For now, we also give up if
-// visibility is protected.
 static bool setInternalLinkage(GlobalValue &GV) {
   
   auto printLinkage = [](GlobalValue &V, llvm::raw_ostream &o) {
@@ -180,18 +143,14 @@ static bool setInternalLinkage(GlobalValue &GV) {
     default: ;;
     }
   };
-  
-  if (GV.hasDefaultVisibility()) {
-    errs() << "Internalizing '" << GV.getName() << "' ";
-    printLinkage(GV, llvm::errs());
-    errs() << " ";
-    printVisibility(GV, llvm::errs());
-    errs() << "\n";    
-    GV.setLinkage(GlobalValue::InternalLinkage);
-    return true;
-  } else {
-    return false;
-  }
+
+  errs() << "Internalizing '" << GV.getName() << "' ";
+  printLinkage(GV, llvm::errs());
+  errs() << " ";
+  printVisibility(GV, llvm::errs());
+  errs() << "\n";    
+  GV.setLinkage(GlobalValue::InternalLinkage);
+  return true;
 }
 
 class InternalizePass: public ModulePass {
@@ -305,7 +264,7 @@ bool InternalizePass::MinimizeComponent(Module &M) {
     if ( // f has a body
         !f.isDeclaration() &&
         // f is discardable if unused in other compilation units
-        isDiscardableIfUnusedExternally(f.getLinkage()) &&
+        isDiscardableIfUnusedExternally(f) &&
         // No other compilation unit calls f
         !m_interfaces.hasCall(f.getName()) &&
 	// The address of f has not been taken
@@ -331,25 +290,12 @@ bool InternalizePass::MinimizeComponent(Module &M) {
       continue;
     }
 
-    // JORGE: This was the original code. Not clear why it needs to
-    // call localizeLinkage instead of just making the global
-    // internal. Also, only external and common linkage were
-    // covered. Not clear why only those two types.
-    //
-    // if ((gv.hasExternalLinkage() || gv.hasCommonLinkage()) &&
-    // 	  gv.hasInitializer() &&
-    //     m_interfaces.references.find(gv.getName()) == m_interfaces.references.end()) {
-    // 	errs() << "Internalizing '" << gv.getName() << "'\n";
-    //   gv.setLinkage(localizeLinkage(gv.getLinkage()));
-    // 	internalized_globals++;
-    //   modified = true;
-    // }
-
     if (gv.hasInitializer() &&
         // global is unused 
         !m_interfaces.hasReference(gv.getName()) &&
-        isDiscardableIfUnusedExternally(gv.getLinkage()) &&
-        // there is no an alias to f that we want to keep
+	// global can be removed if unused
+        isDiscardableIfUnusedExternally(gv) &&
+        // there is no an alias to the global that we want to keep
         !keepAliasees.count(&gv)) {
 
       if (setInternalLinkage(gv)) {
