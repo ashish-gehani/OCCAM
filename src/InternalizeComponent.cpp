@@ -140,8 +140,53 @@ static bool isDiscardableIfUnusedExternally(GlobalValue::LinkageTypes Linkage) {
 // visibility type is protected. For now, we also give up if
 // visibility is protected.
 static bool setInternalLinkage(GlobalValue &GV) {
+  
+  auto printLinkage = [](GlobalValue &V, llvm::raw_ostream &o) {
+    switch(V.getLinkage()) {
+    case GlobalValue::ExternalLinkage:
+    o << "ExternalLinkage"; break;
+    case GlobalValue::AvailableExternallyLinkage:
+    o << "AvailableExternallyLinkage"; break;    
+    case GlobalValue::LinkOnceAnyLinkage:
+    o << "LinkOnceAnyLinkage"; break;
+    case GlobalValue::LinkOnceODRLinkage:
+    o << "LinkOnceODRLinkage"; break;
+    case GlobalValue::WeakAnyLinkage:
+    o << "WeakAnyLinkage"; break;
+    case GlobalValue::WeakODRLinkage:
+    o << "WeakODRLinkage"; break;
+    case GlobalValue::AppendingLinkage:
+    o << "AppendingLinkage"; break;
+    case GlobalValue::InternalLinkage:
+    o << "InternalLinkage"; break;
+    case GlobalValue::PrivateLinkage:
+    o << "PrivateLinkage"; break;
+    case GlobalValue::ExternalWeakLinkage:
+    o << "ExternalWeakLinkage"; break;
+    case GlobalValue::CommonLinkage:
+    o << "CommonLinkage"; break;
+    default: ;;
+    }
+  };
+
+  auto printVisibility = [](GlobalValue &V, llvm::raw_ostream &o) {
+    switch(V.getVisibility()) {
+    case GlobalValue::DefaultVisibility:
+    o << "DefaultVisibility"; break;
+    case GlobalValue::HiddenVisibility:
+    o << "HiddenVisibility"; break;    
+    case GlobalValue::ProtectedVisibility:
+    o << "ProtectedVisibility"; break;
+    default: ;;
+    }
+  };
+  
   if (GV.hasDefaultVisibility()) {
-    errs() << "Internalizing '" << GV.getName() << "'\n";
+    errs() << "Internalizing '" << GV.getName() << "' ";
+    printLinkage(GV, llvm::errs());
+    errs() << " ";
+    printVisibility(GV, llvm::errs());
+    errs() << "\n";    
     GV.setLinkage(GlobalValue::InternalLinkage);
     return true;
   } else {
