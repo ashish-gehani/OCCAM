@@ -159,13 +159,15 @@ public:
 	   << M.getModuleIdentifier()
            << "\n";
 
+    #if 0
     if (UseSeaDsa) {
       errs() << "#=========== SeaDsa CallGraph =========#\n";      
     } else {
       errs() << "#=========== LLVM CallGraph =========#\n";
     }
     cg->print(llvm::errs());
-
+    #endif
+    
     // Add all nodes in llvm.compiler.used and llvm.used
     // *** This is very important for correctly compiling libc
     static const char *used_vars[2] = {"llvm.compiler.used", "llvm.used"};
