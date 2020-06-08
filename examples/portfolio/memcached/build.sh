@@ -5,13 +5,13 @@ set -e
 
 function usage() {
     echo "Usage: $0 [--with-musllvm] [--disable-inlining] [--ipdse] [--ai-dce] [--devirt VAL1] [--inter-spec VAL2] [--intra-spec VAL2] [--help]"
-    echo "       VAL1=none|sea_dsa (default)|cha_dsa"    
-    echo "       VAL2=none (default)|aggressive|nonrec-aggressive"
+    echo "       VAL1=none|sea_dsa (default)"    
+    echo "       VAL2=none|aggressive|nonrec-aggressive|onlyonce (default)"
 }
 
 #default values
-INTER_SPEC="none"
-INTRA_SPEC="none"
+INTER_SPEC="onlyonce"
+INTRA_SPEC="onlyonce"
 DEVIRT="sea_dsa"
 OPT_OPTIONS=""
 USE_MUSLLVM="false"

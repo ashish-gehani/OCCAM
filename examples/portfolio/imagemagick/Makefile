@@ -11,9 +11,9 @@ LLVMGET=get-bc
 
 PREFIX ?= install
 
-IMG_MAGICK_VERSION=7.0.8-66
+IMG_MAGICK_VERSION=7.0.8-68
 IMG_MAGICK=ImageMagick-${IMG_MAGICK_VERSION}
-IMG_MAGICK_TARBALL=${IMG_MAGICK}.tar.gz
+IMG_MAGICK_TARBALL=${IMG_MAGICK}.tar.xz
 IMG_MAGICK_URL=https://imagemagick.org/download/releases/${IMG_MAGICK_TARBALL}
 IMG_MAGICK_INSTALL=${IMGDIR}/${PREFIX}
 
@@ -34,7 +34,7 @@ ${IMG_MAGICK_TARBALL}:
 	wget ${IMG_MAGICK_URL}
 
 ${IMG_MAGICK_INSTALL}/bin/convert: ${IMG_MAGICK_TARBALL}
-	tar -xvzf ${IMG_MAGICK}.tar.gz
+	tar -xvf ${IMG_MAGICK_TARBALL}
 	cd ${IMG_MAGICK}; ./buildconf; CC=${LLVMCC} CXX=${LLVMCXX} ./configure --enable-static --prefix=${IMG_MAGICK_INSTALL}/; make -j4; make install
 
 
@@ -44,10 +44,10 @@ bitcode: ${IMG_MAGICK_INSTALL}/bin/convert
 	cp ./magick.bc ${IMGDIR}
 
 	cd ${IMG_MAGICK_INSTALL}/lib 	&& \
-	${LLVMGET} libMagickCore-7.Q16HDRI.6.${LIBEXT} && \
-	${LLVMGET} libMagickWand-7.Q16HDRI.6.${LIBEXT} && \
-	cp libMagickCore-7.Q16HDRI.6.${LIBEXT}.bc ${IMGDIR}/libMagickCore.bc &&  \
-	cp libMagickWand-7.Q16HDRI.6.${LIBEXT}.bc ${IMGDIR}/libMagickWand.bc
+	${LLVMGET} libMagickCore-7.Q16HDRI.${LIBEXT}.6.0.0 && \
+	${LLVMGET} libMagickWand-7.Q16HDRI.${LIBEXT}.6.0.0 && \
+	cp libMagickCore-7.Q16HDRI.${LIBEXT}.6.0.0.bc ${IMGDIR}/libMagickCore.bc &&  \
+	cp libMagickWand-7.Q16HDRI.${LIBEXT}.6.0.0.bc ${IMGDIR}/libMagickWand.bc
 
 clean:
 	rm -rf ${IMG_MAGICK}

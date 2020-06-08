@@ -7,16 +7,16 @@ set -e
 #make
 function usage() {
     echo "Usage: $0 [--disable-inlining] [--ipdse] [--ai-dce] [--devirt VAL1] [--inter-spec VAL2] [--intra-spec VAL2] [--link dynamic|static] [--help]"
-    echo "       VAL1=none|dsa|cha_dsa"    
-    echo "       VAL2=none|aggressive|nonrec-aggressive"
+    echo "       VAL1=none|sea_dsa"    
+    echo "       VAL2=none|aggressive|nonrec-aggressive|onlyonce"
 }
 
 
 #default values
 LINK="dynamic"
-INTER_SPEC="none"
-INTRA_SPEC="none"
-DEVIRT="dsa"
+INTER_SPEC="onlyonce"
+INTRA_SPEC="onlyonce"
+DEVIRT="sea_dsa"
 OPT_OPTIONS=""
 
 POSITIONAL=()
