@@ -133,24 +133,30 @@ bool SpecializeCallFunctionPtrArg::runOnModule(Module &M) {
       seadsa::Graph &G = m_seadsa.getGraph(FParent);
       if (G.hasCell(*ArgV)) {
         const seadsa::Cell &C = G.getCell(*ArgV);
-        std::vector<Function *> Callees;
-        for (const Value *AS : C.getNode()->getAllocSites()) {
-          if (const Function *F = dyn_cast<const Function>(AS)) {
-            // XXX: remove constness
-            Callees.push_back(const_cast<Function *>(F));
-          }
-        }
-
-        errs() << "[SpecializeCallFunctionPtrArg] Callsite= "
-               << *(CS.getInstruction()) << " Argument=" << p.second
-               << "\n Possible values=\n";
-        for (Function *callee : Callees) {
-          errs() << "\t" << callee->getName();
-        }
-        errs() << "\n";
-
-        specializeCallFunctionPtrArg(CS, p.second, Callees);
-        Change = true;
+	if (!C.getNode()->isExternal()) {
+	  std::vector<Function*> Callees;
+	  for (const Value *AS : C.getNode()->getAllocSites()) {
+	    if (const Function *F = dyn_cast<const Function>(AS)) {
+	      // XXX: remove constness
+	      Callees.push_back(const_cast<Function *>(F));
+	    }
+	  }
+	  
+	  errs() << "[SpecializeCallFunctionPtrArg] Callsite= "
+		 << *(CS.getInstruction()) << ". Replaced argument=" << p.second
+		 << " with values={";
+	  for (unsigned i=0, sz=Callees.size(); i<sz;) {
+	    errs() << Callees[i]->getName();
+	    ++i;
+	    if (i < sz) {
+	      errs() << ",";
+	    }
+	  }
+	  errs() << "}\n";
+	  
+	  specializeCallFunctionPtrArg(CS, p.second, Callees);
+	  Change = true;
+	}
       }
     }
   }
