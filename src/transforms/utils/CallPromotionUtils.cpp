@@ -104,7 +104,7 @@ static void specializeCallFunctionPtrArg(CallSite &CS, unsigned ArgNo,
                                          Value *Callee) {
   auto *Arg = CS.getArgument(ArgNo);
   if (Arg->getType() != Callee->getType()) {
-    Callee = CastInst::CreateBitOrPointerCast(Arg, Callee->getType(), "",
+    Callee = CastInst::CreateBitOrPointerCast(Callee, Arg->getType(), "",
                                               CS.getInstruction());
   }
   CS.setArgument(ArgNo, Callee);
