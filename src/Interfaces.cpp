@@ -139,29 +139,67 @@ ComponentInterface::~ComponentInterface() {
 }
 
 // Add a call f(abstract(args_begin), ..., abstract(args_end)) in the
-// interface if there is no already an entry that subsumes it.
+// interface if there is no already an entry that it's not equal to.
 void ComponentInterface::callTo(FunctionHandle f, User::op_iterator args_begin,
 				User::op_iterator args_end) {
   //
   // Each argument in CI.args.begin() ... CI.args.end() contains a
   // type (see InterfaceTypes.h comments for more details)
-  // 
-  // refines lifts InterfaceTypes::refine to a sequence of arguments.
   //
-  auto refines = [&args_begin, &args_end](CallInfo &CI) {
-    if (std::distance(args_begin, args_end) != CI.num_args()) {
-      // This is possible for variadic functions
+
+
+  
+  // Return true if types of arguments of f(args_begin,...,args_end)
+  // are consistent with types of argument of CI **and** there exists
+  // one f's argument "x" for which "x" has a more precise type than
+  // its corresponding argument in CI.
+  // auto refines = [&args_begin, &args_end](CallInfo &CI) {
+  //   if (std::distance(args_begin, args_end) != CI.num_args()) {
+  //     // This is possible for variadic functions
+  //     return false;
+  //   }
+  //   auto cur = args_begin;
+  //   bool is_refined = false;
+  //   for (auto ty: llvm::make_range(CI.args_begin(), CI.args_end())) {
+  //     // ask if type of f's argument  refines type of entry's argument
+  //     TypeRefinementKind res = ty.refines(cur->get());
+  //     if (res == TypeRefinementKind::NO_MATCH) {
+  // 	// inconsistent types
+  // 	return false;
+  //     } else if (res == TypeRefinementKind::LOOSE_MATCH) {
+  // 	// found f's argument which a more precise type than CI's argument
+  // 	is_refined = true;
+  //     } else {
+  // 	// same type: do nothing
+  //     }
+  //     ++cur;
+  //   }
+  //   return is_refined;
+  // };
+
+
+  // Return true if types of arguments of f(args_begin,...,args_end)
+  // are exactly the same than the types of argument of CI.
+  auto is_equal = [](User::op_iterator fargs_begin,
+		     User::op_iterator fargs_end,
+		     CallInfo &CI) {
+    if (std::distance(fargs_begin, fargs_end) != CI.num_args()) {
       return false;
     }
-    auto cur = args_begin;
+    auto cur = fargs_begin;
     for (auto ty: llvm::make_range(CI.args_begin(), CI.args_end())) {
-      if (ty.refines(cur->get()) == TypeRefinementKind::NO_MATCH)
-	return false;
+      // ask if type of f's argument  refines type of entry's argument
+      TypeRefinementKind res = ty.refines(cur->get());
+      if (res == TypeRefinementKind::NO_MATCH ||
+	  res == TypeRefinementKind::LOOSE_MATCH) {
+  	return false;
+      } 
       ++cur;
     }
-    return true;
+    return false;
   };
-
+    
+  
   if (m_calls.find(f) == m_calls.end()) {
     std::vector<CallInfo *> calls;
     calls.push_back(CallInfo::Create(args_begin, args_end, 1));
@@ -169,8 +207,13 @@ void ComponentInterface::callTo(FunctionHandle f, User::op_iterator args_begin,
   } else {
     std::vector<CallInfo *> &calls = m_calls[f];
     for (CallInfo *CI: calls) {
-      if (refines(*CI)) {
-    	// CI already subsumes the one we want to add.
+      // if (refines(*CI)) {
+      // 	// CI already subsumes the one we want to add.
+      // 	CI->get_count()++;
+      // 	return;
+      // }
+      if (is_equal(args_begin, args_end, *CI)) { 
+    	// The function f(args_begin,...,args_end) is already  in m_calls
     	CI->get_count()++;
     	return;
       } 
