@@ -15,15 +15,20 @@ LLVM_CFG = $(LLVM_HOME)/bin/$(LLVM_CONFIG)
 
 LLVM_INCLUDE = $(shell ${LLVM_CFG} --includedir)
 
-CXX_FLAGS += $(shell  ${LLVM_CFG} --cxxflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include  -I../../../include -DGOOGLE_PROTOBUF_NO_RTTI -fPIC -g
+CXX_FLAGS += $(shell  ${LLVM_CFG} --cxxflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include  -I../../../include -DGOOGLE_PROTOBUF_NO_RTTI
 
 CXX_FLAGS += -Ianalysis/sea-dsa/include
 
-C_FLAGS = $(shell  ${LLVM_CFG} --cflags)
+CXX_FLAGS += -fPIC 
 
-CPP_FLAGS += $(shell  ${LLVM_CFG} --cppflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include
-
-
+############################################
+## Choose one of these three build types:
+############################################
+CXX_RELEASE_FLAGS += -O3 -DNDEBUG
+CXX_RELWITHDEBINFO_FLAGS += -O2 -g -DNDEBUG
+CXX_DEBUG_FLAGS += -g
+############################################
+CXX_FLAGS += ${CXX_RELEASE_FLAGS}
 
 CONFIG_PRIME_LIBDIR = $(shell ${LLVM_CFG} --libdir)
 CONFIG_PRIME_LIBS += -L${CONFIG_PRIME_LIBDIR} -lLLVMExecutionEngine -lffi
