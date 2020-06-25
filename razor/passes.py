@@ -52,7 +52,9 @@ from . import utils
 def interface(input_file, output_file, wrt):
     """ computing the interfaces.
     """
-    args = ['-Pinterface','-Pinterface-with-seadsa']
+    args = ['-Pinterface','-Pinterface-with-seadsa',
+            # improve precision of sea-dsa by considering types            
+            '--sea-dsa-type-aware=true']
     args += ['-Pinterface-output', output_file]
     args += driver.all_args('-Pinterface-entry', wrt)
     return driver.previrt(input_file, '/dev/null', args)
