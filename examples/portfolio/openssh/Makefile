@@ -69,7 +69,7 @@ ${OPENSSH}: ${OPENSSH_TARBALL}
 
 ${OPENSSH}/Makefile:  ${ZLIB_INSTALL} ${OPENSSL_INSTALL} ${OPENSSH}
 	cd ${OPENSSH}; autoconf
-	cd ${OPENSSH}; CC=${LLVMCC} LDFLAGS=${LDFLAGS} CFLAGS=${CFLAGS} ./configure  --disable-strip --prefix=${OPENSSH_INSTALL}  --with-openssl-dir=${OPENSSL_INSTALL}
+	cd ${OPENSSH}; CC=${LLVMCC} LDFLAGS=${LDFLAGS} CFLAGS=${CFLAGS} ./configure  --disable-strip --prefix=${OPENSSH_INSTALL}  --with-openssl-dir=${OPENSSL_INSTALL} --with-privsep-path=${OPENSSL_INSTALL}
 
 ${OPENSSH_INSTALL}/bin/ssh: ${OPENSSH}/Makefile
 	cd ${OPENSSH}; CC=${LLVMCC} make && make install
