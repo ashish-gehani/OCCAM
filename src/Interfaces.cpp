@@ -53,28 +53,32 @@ using namespace llvm;
 
 namespace previrt {
 
-  
-int CallInfo::refines(llvm::User::op_iterator begin,
-                      llvm::User::op_iterator end) {
-  int matched = 0;
 
+/* 
+   Return -1 if exits one argument for which there is no an abstract
+   or exact match. Otherwise, it return a non-negative number that
+   indicates the number of abstract matches. If it returns 0 then
+   arguments are equal in terms of types.
+ */  
+  int CallInfo::refines(llvm::User::op_iterator begin,
+			llvm::User::op_iterator end) {
   std::vector<InterfaceType>::const_iterator from = this->args.begin(),
                                              to = this->args.end();
-  for (; begin != end; ++begin, ++from) {
-    if (from == to)
-      return NO_MATCH;
-
-    int r = from->refines(begin->get());
-
-    if (r == NO_MATCH)
-      return NO_MATCH;
-
-    matched += r;
+  if (std::distance(begin, end) != std::distance(from, to)) {
+    return -1;
   }
-  if (from != to)
-    return NO_MATCH;
-
-  return matched;
+  int loose_matched = 0;
+  for (; begin != end; ++begin, ++from) {
+    TypeRefinementKind r = from->refines(begin->get());
+    if (r == TypeRefinementKind::NO_MATCH) {
+      return -1;
+    } else if (r == TypeRefinementKind::LOOSE_MATCH) {
+      loose_matched++;
+    } else {
+      // if exact match then do not increment counter.
+    }
+  }
+  return loose_matched;
 }
 
 template <>
@@ -151,7 +155,7 @@ void ComponentInterface::callTo(FunctionHandle f, User::op_iterator args_begin,
     }
     auto cur = args_begin;
     for (auto ty: llvm::make_range(CI.args_begin(), CI.args_end())) {
-      if (ty.refines(cur->get()) == NO_MATCH)
+      if (ty.refines(cur->get()) == TypeRefinementKind::NO_MATCH)
 	return false;
       ++cur;
     }
@@ -166,9 +170,9 @@ void ComponentInterface::callTo(FunctionHandle f, User::op_iterator args_begin,
     std::vector<CallInfo *> &calls = m_calls[f];
     for (CallInfo *CI: calls) {
       if (refines(*CI)) {
-	// CI already subsumes the one we want to add.
-	CI->get_count()++;
-	return;
+    	// CI already subsumes the one we want to add.
+    	CI->get_count()++;
+    	return;
       } 
     }
     m_calls[f].push_back(CallInfo::Create(args_begin, args_end, 1));

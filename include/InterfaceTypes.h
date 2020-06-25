@@ -55,10 +55,13 @@ class LLVMContext;
 }
 
 namespace previrt {
-#define NO_MATCH (-1)
-#define EXACT_MATCH 0
-#define LOOSE_MATCH 1
 
+enum class TypeRefinementKind: int {
+    NO_MATCH = -1,
+    EXACT_MATCH = 0,
+    LOOSE_MATCH = 1
+};
+ 
 /*
  * An interface for a module M records its external calls.  Each
  * call argument is annotated with a type.
@@ -114,7 +117,7 @@ public:
   // 1 : indicates LOOSE_MATCH (i.e., "this" is U)
   // -1: indicates NO_MATCH
   //
-  int refines(const llvm::Value *const V) const;
+  TypeRefinementKind refines(const llvm::Value *const V) const;
   // Abstract a LLVM value to an interface type
   static InterfaceType abstract(const llvm::Value *const);
   // Return U

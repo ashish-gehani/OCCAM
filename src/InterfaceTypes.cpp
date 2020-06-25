@@ -250,45 +250,45 @@ InterfaceType InterfaceType::abstract(const llvm::Value *const val) {
   return result;
 }
 
-int InterfaceType::refines(const llvm::Value *const val) const {
+TypeRefinementKind InterfaceType::refines(const llvm::Value *const val) const {
   assert(val != NULL);
   const Constant *cnst = dyn_cast<const Constant>(val);
   // TODO: Why did I start needing this?
   if (cnst == NULL) {
     if (this->buffer.type() == proto::U)
-      return LOOSE_MATCH;
+      return TypeRefinementKind::LOOSE_MATCH;
     else
-      return NO_MATCH;
+      return TypeRefinementKind::NO_MATCH;
   }
   switch (buffer.type()) {
   default:
     assert(false);
     break;
   case proto::U:
-    return LOOSE_MATCH;
+    return TypeRefinementKind::LOOSE_MATCH;
   case proto::N: {
     if (cnst->isNullValue())
-      return EXACT_MATCH;
+      return TypeRefinementKind::EXACT_MATCH;
     else
-      return NO_MATCH;
+      return TypeRefinementKind::NO_MATCH;
   }
   case proto::S: {
     StringRef out;
     if (StringFromValue(val, out)) {
       if (out == buffer.str().data())
-        return EXACT_MATCH;
+        return TypeRefinementKind::EXACT_MATCH;
       else
-        return NO_MATCH;
+        return TypeRefinementKind::NO_MATCH;
     }
-    return NO_MATCH;
+    return TypeRefinementKind::NO_MATCH;
   }
   case proto::I:
     if (const ConstantInt *va = dyn_cast<const ConstantInt>(val)) {
       if (buffer.int_().bits() == va->getBitWidth() &&
           buffer.int_().value() == va->getValue().toString(16, true))
-        return EXACT_MATCH;
+        return TypeRefinementKind::EXACT_MATCH;
     }
-    return NO_MATCH;
+    return TypeRefinementKind::NO_MATCH;
   case proto::F:
     if (const ConstantFP *va = dyn_cast<const ConstantFP>(val)) {
       const fltSemantics *sem = NULL;
@@ -296,7 +296,7 @@ int InterfaceType::refines(const llvm::Value *const val) const {
 #define CASE(x)                                                                \
   case proto::x: {                                                             \
     if (&va->getValueAPF().getSemantics() != &APFloat::x())                    \
-      return NO_MATCH;                                                         \
+      return TypeRefinementKind::NO_MATCH;				\
     sem = &APFloat::x();                                                       \
     break;                                                                     \
   }
@@ -311,21 +311,21 @@ int InterfaceType::refines(const llvm::Value *const val) const {
       }
       APFloat apf(*sem, buffer.float_().data());
       if (apf.bitwiseIsEqual(va->getValueAPF())) {
-        return EXACT_MATCH;
+        return TypeRefinementKind::EXACT_MATCH;
       }
     }
-    return NO_MATCH;
+    return TypeRefinementKind::NO_MATCH;
   case proto::G:
     if (const GlobalValue *gv =
             dyn_cast<const GlobalValue>(val->stripPointerCasts())) {
       if (gv->getName() == buffer.global().name()) {
-        return EXACT_MATCH;
+        return TypeRefinementKind::EXACT_MATCH;
       }
     }
-    return NO_MATCH;
+    return TypeRefinementKind::NO_MATCH;
   }
 
-  return NO_MATCH;
+  return TypeRefinementKind::NO_MATCH;
 }
 
 llvm::Value *InterfaceType::concretize(Module &M, Type *type) const {
