@@ -88,18 +88,18 @@ make -f Makefile develop
 This may require sudo priviliges. Either way you can now use `slash`:
 
 ```
-slash [--work-dir=<dir>]  [--force] [--no-strip] [--intra-spec-policy=<type>] [--inter-spec-policy=<type>] <manifest>
+slash [--work-dir=<dir>]  [--force] [--no-strip] [--intra-spec-policy=<type>] [--inter-spec-policy=<type>] [--use-pointer-analysis] [--enable-config-prime] <manifest>
 ```
 
 where 
 
 ```
-type=none|aggressive|nonrec-aggressive
+type=none|aggressive|nonrec-aggressive|bounded|onlyonce
 ```
 
-The value `none` will prevent any inter or intra-module specialization. The value `aggressive` specializes a call if any parameter is a constant. The value `nonrec-aggressive` specializes a call if the function is non-recursive and any parameter is a constant.
+The value `none` will prevent any inter or intra-module specialization. The value `aggressive` specializes a call if any parameter is a constant. The value `nonrec-aggressive` specializes a call if the function is non-recursive and any parameter is a constant. The value `bounded` makes at most `k` copies where `k` can be chosen by option `--max-bounded-spec`. The value `onlyonce` makes a copy of a function only if the function is called exactly once.
 
-To function correctly `slash` calls LLVM tools such as `opt` and `clang++`. These should be available in your `PATH`, and be the currently supported version (5.0). Like `wllvm`, `slash`, will pay attention to the environment variables `LLVM_OPT_NAME` and `LLVM_CXX_NAME` if your version of these tools is adorned with suffixes.
+To function correctly `slash` calls LLVM tools such as `opt` and `clang++`. These should be available in your `PATH`, and be the currently supported version (10.0). Like `wllvm`, `slash`, will pay attention to the environment variables `LLVM_OPT_NAME` and `LLVM_CXX_NAME` if your version of these tools is adorned with suffixes.
 
 The Manifest(o)
 ===============
