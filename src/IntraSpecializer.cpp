@@ -231,7 +231,7 @@ public:
 };
 
 bool SpecializerPass::runOnModule(Module &M) {
-
+  errs() << "=== Begin intra-module specialization ===\n";
   // -- Create the specialization policy. Bail out if no policy.
   std::unique_ptr<SpecializationPolicy> policy;
   switch (SpecPolicy) {
@@ -284,15 +284,17 @@ bool SpecializerPass::runOnModule(Module &M) {
     // builder.populateFunctionPassManager(*optimizer);
   }
 
+  unsigned specialized_functions = 0;
   while (!to_add.empty()) {
     Function *f = to_add.back();
     to_add.pop_back();
     if (f->getParent() == &M || f->isDeclaration()) {
-      // The function was already in the module or
-      // has already been added in this round of
-      // specialization, no need to add it twice
+      // The function was already in the module, external call or has
+      // already been added in this round of specialization, no need
+      // to add it twice
       continue;
     }
+    specialized_functions++;
     if (optimizer) {
       optimizer->run(*f);
     }
@@ -300,11 +302,16 @@ bool SpecializerPass::runOnModule(Module &M) {
   }
 
   if (modified) {
+    /// HACK: do not remove this line. The python code searches for it ...
     errs() << "...progress...\n";
+    errs() << "Specialized " << specialized_functions << " functions.\n";
   } else {
-    errs() << "...no progress...\n";
+    /// HACK: do not remove this line. The python code searches for it ...    
+    errs() << "...no progress...\n";    
+    errs() << "No specialization took place\n";
   }
 
+  errs() << " === End intra-module specialization ===\n";  
   return modified;
 }
 
@@ -315,7 +322,6 @@ void SpecializerPass::getAnalysisUsage(AnalysisUsage &AU) const {
 
 SpecializerPass::SpecializerPass(bool opt)
     : ModulePass(SpecializerPass::ID), optimize(opt) {
-  errs() << "SpecializerPass(" << optimize << ")\n";
 }
 
 SpecializerPass::~SpecializerPass() {}

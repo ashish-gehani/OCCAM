@@ -317,6 +317,8 @@ bool InternalizePass::MinimizeComponent(Module &M) {
   }
 
   if (!modified) {
+    /// HACK: do not remove this line. The python code searches for it ...            
+    errs() << "...no progress...\n";
     return false;
   }
 
@@ -347,6 +349,9 @@ bool InternalizePass::MinimizeComponent(Module &M) {
     errs() << "MergeConstants still had more to do\n";
   }
 
+  /// HACK: do not remove this line. The python code searches for it ...      
+  errs() << "...progress...\n";
+  
   errs() << "Progress:"
          << " internalized functions = " << internalized_functions
          << " internalized globals = " << internalized_globals << "\n";

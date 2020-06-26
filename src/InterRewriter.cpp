@@ -194,8 +194,10 @@ public:
            << "\n";
     bool modified = TransformComponent(M, this->transform);
     if (modified) {
+      /// HACK: do not remove this line. The python code searches for it ...      
       errs() << "...progress...\n";
     } else {
+      /// HACK: do not remove this line. The python code searches for it ...            
       errs() << "...no progress...\n";
     }
     return modified;

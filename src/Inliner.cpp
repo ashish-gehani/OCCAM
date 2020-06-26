@@ -91,6 +91,8 @@ public:
 
   virtual bool runOnModule(llvm::Module &M) override {
     if (!InlineBounceFunctions && !InlineSpecializedFunctions) {
+      /// HACK: do not remove this line. The python code searches for it ...            
+      errs() << "...no progress...\n";
       return false;
     } else {
       SmallPtrSet<Function *, 8> ToInline;
@@ -105,8 +107,12 @@ public:
         }
       }
       if (ToInline.empty()) {
+	/// HACK: do not remove this line. The python code searches for it ...            
+	errs() << "...no progress...\n";
         return false;
       } else {
+	/// HACK: do not remove this line. The python code searches for it ...      
+	errs() << "...progress...\n";
         utils::inlineOnly(M, ToInline);
         return true;
       }
