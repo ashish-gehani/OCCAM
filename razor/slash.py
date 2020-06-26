@@ -397,21 +397,21 @@ class Slash(object):
                                             'iface')
         refs = dict([(k, mkvf(k)) for (k, _) in vals])
 
-        def _references((m, f)):
-            "Computing references"
+        def compute_interfaces((m, f)):
+            "Computing interfaces"
             nm = refs[m].new()
             passes.interface(f.get(), nm, [])
 
-        pool.InParallel(_references, vals, self.pool)
+        pool.InParallel(compute_interfaces, vals, self.pool)
         ### 2. And internalize everything that we can
-        def _internalize((m, i)):
-            "Internalizing from interfaces"
+        def internalize((m, i)):
+            "Internalizing wrt interfaces"
             pre = i.get()
             post = i.new('i')
             ifaces = [refs[f].get() for f in refs.keys() if f != m] + ['main.iface']
             passes.internalize(pre, post, ifaces, self.whitelist)
 
-        pool.InParallel(_internalize, vals, self.pool)
+        pool.InParallel(internalize, vals, self.pool)
 
         # Begin main loop
         iface_before_file = provenance.VersionedFile('interface_before', 'iface')
@@ -463,7 +463,7 @@ class Slash(object):
             pool.InParallel(intra, files.values(), self.pool)
 
             ### 4. Gather Inter-module interfaces
-            iface = passes.deep([x.get() for x in files.values()],
+            iface = passes.propagate_interfaces([x.get() for x in files.values()],
                                 ['main.iface'])
             interface.writeInterface(iface, iface_before_file.new())
 
@@ -508,13 +508,15 @@ class Slash(object):
                 print "Skipped inter-module specialization"
 
             # Aggressive internalization
-            pool.InParallel(_references, vals, self.pool)
-            pool.InParallel(_internalize, vals, self.pool)
+            ## XXX: not sure why this is needed but it makes some difference.
+            pool.InParallel(compute_interfaces, vals, self.pool)
+            pool.InParallel(internalize, vals, self.pool)
 
             ### 6. Sealing
             
             # Compute the interfaces again after new specialized functions
-            iface = passes.deep([x.get() for x in files.values()], ['main.iface'])
+            iface = passes.propagate_interfaces([x.get() for x in files.values()],
+                                                ['main.iface'])
             interface.writeInterface(iface, iface_after_file.new())
 
             # internalize 

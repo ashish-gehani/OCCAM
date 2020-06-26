@@ -49,15 +49,42 @@ from . import pool
 from . import utils  
 
 
-def interface(input_file, output_file, wrt):
-    """ computing the interfaces.
+def interface(input_file, output_file, wrt, use_seadsa=True):
+    """ compute the interface for a single module.
     """
-    args = ['-Pinterface','-Pinterface-with-seadsa',
-            # improve precision of sea-dsa by considering types            
-            '--sea-dsa-type-aware=true']
+    args = ['-Pinterface']
+    if use_seadsa:
+        args += ['-Pinterface-with-seadsa',
+                 # improve precision of sea-dsa by considering types            
+                 '--sea-dsa-type-aware=true']
     args += ['-Pinterface-output', output_file]
     args += driver.all_args('-Pinterface-entry', wrt)
     return driver.previrt(input_file, '/dev/null', args)
+
+def propagate_interfaces(libs, ifaces):
+    """ compute interfaces for all modules and perform global refinement
+    until stabilization.
+    """
+    tf = tempfile.NamedTemporaryFile(suffix='.iface', delete=False)
+    tf.close()
+    iface = inter.parseInterface(ifaces[0])
+    for i in ifaces[1:]:
+        inter.joinInterfaces(iface, inter.parseInterface(i))
+
+    inter.writeInterface(iface, tf.name)
+
+    use_seadsa = True
+    progress = True
+    while progress:
+        progress = False
+        for l in libs:
+            interface(l, tf.name, [tf.name], use_seadsa)
+            x = inter.parseInterface(tf.name)
+            progress = inter.joinInterfaces(iface, x) or progress
+            inter.writeInterface(iface, tf.name)
+
+    os.unlink(tf.name)
+    return iface
 
 def specialize(input_file, output_file, rewrite_file, interfaces, \
                policy, max_bounded):
@@ -429,27 +456,5 @@ def config_prime(input_file, output_file, known_args, num_unknown_args):
     args.append('-Pconfig-prime-unknown-args={0}'.format(num_unknown_args))
     driver.previrt(input_file, output_file, args)
     
-def deep(libs, ifaces):
-    """ compute interfaces across modules.
-    """
-    tf = tempfile.NamedTemporaryFile(suffix='.iface', delete=False)
-    tf.close()
-    iface = inter.parseInterface(ifaces[0])
-    for i in ifaces[1:]:
-        inter.joinInterfaces(iface, inter.parseInterface(i))
-
-    inter.writeInterface(iface, tf.name)
-
-    progress = True
-    while progress:
-        progress = False
-        for l in libs:
-            interface(l, tf.name, [tf.name])
-            x = inter.parseInterface(tf.name)
-            progress = inter.joinInterfaces(iface, x) or progress
-            inter.writeInterface(iface, tf.name)
-
-    os.unlink(tf.name)
-    return iface
 
 
