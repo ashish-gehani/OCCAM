@@ -37,6 +37,7 @@ clean:
 	$(MAKE) -C simple-c/funcs/11 clean
 	$(MAKE) -C simple-c/funcs/12 clean
 	$(MAKE) -C simple-c/funcs/13 clean
+	$(MAKE) -C simple-c/funcs/14 clean
 	$(MAKE) -C simple-c/fib clean
 	$(MAKE) -C simple-c/fiblib clean
 	$(MAKE) -C simple-c/bounded-intra clean
