@@ -23,14 +23,14 @@ libbz2.a.bc:
 
 # groked this list from the manifests
 modules: bzip2/bzip2
-	cp ./bzip2/.bzip2.o.bc      bzip2.o.bc
-	cp ./bzip2/.blocksort.o.bc  blocksort.o.bc
-	cp ./bzip2/.huffman.o.bc    huffman.o.bc
-	cp ./bzip2/.crctable.o.bc   crctable.o.bc
-	cp ./bzip2/.randtable.o.bc  randtable.o.bc
-	cp ./bzip2/.compress.o.bc   compress.o.bc
-	cp ./bzip2/.decompress.o.bc decompress.o.bc
-	cp ./bzip2/.bzlib.o.bc      bzlib.o.bc
+	cp ./bzip2/.bzip2.c.o.bc      bzip2.o.bc
+	cp ./bzip2/.blocksort.c.o.bc  blocksort.o.bc
+	cp ./bzip2/.huffman.c.o.bc    huffman.o.bc
+	cp ./bzip2/.crctable.c.o.bc   crctable.o.bc
+	cp ./bzip2/.randtable.c.o.bc  randtable.o.bc
+	cp ./bzip2/.compress.c.o.bc   compress.o.bc
+	cp ./bzip2/.decompress.c.o.bc decompress.o.bc
+	cp ./bzip2/.bzlib.c.o.bc      bzlib.o.bc
 
 
 # the override flag is necessary and is there to prevent any complaints about multiple definitions.

@@ -75,6 +75,17 @@ do
     fi
 done
 
+cat > bzip2.manifest <<EOF
+{ "main" : "bzip2.bc"
+, "binary"  : "bzip2"
+, "modules"    : [ "compress.o.bc", "decompress.o.bc", "huffman.o.bc", "bzlib.o.bc", "blocksort.o.bc", "crctable.o.bc", "randtable.o.bc"]
+, "native_libs" : [ ]
+, "ldflags" : [ ]
+, "name"    : "bzip2_slashed"
+, "constraints" : [1, "-z"]
+}
+EOF
+
 SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC} --devirt=${DEVIRT} --stats $OPT_OPTIONS"
 
 # OCCAM with program and libraries dynamically linked
@@ -91,7 +102,7 @@ function dynamic_link() {
     echo "============================================================"
     slash ${SLASH_OPTS} --work-dir=slash_specialized \
 	  --amalgamate=slash_specialized/amalgamation.bc \
-	  bzip2.json
+	   bzip2.manifest
     status=$?
     if [ $status -ne 0 ]
     then

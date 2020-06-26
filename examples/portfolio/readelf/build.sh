@@ -4,7 +4,7 @@
 set -e
 
 function usage() {
-    echo "Usage: $0 [--disable-inlining] [--ipdse] [--ai-dce] [--devirt VAL1] [--inter-spec VAL2] [--intra-spec VAL2] [--help]"
+    echo "Usage: $0 [--with-musllvm] [--disable-inlining] [--ipdse] [--ai-dce] [--devirt VAL1] [--inter-spec VAL2] [--intra-spec VAL2] [--enable-config-prime] [--help]"
     echo "       VAL1=none|sea_dsa"    
     echo "       VAL2=none|aggressive|nonrec-aggressive|onlyonce"
 }
@@ -14,6 +14,7 @@ INTER_SPEC="onlyonce"
 INTRA_SPEC="onlyonce"
 DEVIRT="sea_dsa"
 OPT_OPTIONS=""
+USE_MUSLLVM="false"
 
 POSITIONAL=()
 while [[ $# -gt 0 ]]
@@ -34,6 +35,14 @@ case $key in
 	OPT_OPTIONS="${OPT_OPTIONS} --disable-inlining"
 	shift # past argument
 	;;
+    -enable-config-prime|--enable-config-prime)
+	OPT_OPTIONS="${OPT_OPTIONS} --enable-config-prime"
+	shift # past argument
+	;;
+    -with-musllvm|--with-musllvm)
+	USE_MUSLLVM="true" 
+	shift # past argument
+	;;        
     -ipdse|--ipdse)
 	OPT_OPTIONS="${OPT_OPTIONS} --ipdse"
 	shift # past argument
@@ -60,7 +69,12 @@ done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
 #check that the require dependencies are built
-declare -a bitcode=("readelf.bc")
+if [ $USE_MUSLLVM == "true" ];
+then
+    declare -a bitcode=("readelf.bc" "libc.a.bc" "libc.a")
+else
+    declare -a bitcode=("readelf.bc")
+fi    
 
 for bc in "${bitcode[@]}"
 do
@@ -68,13 +82,43 @@ do
     then
         echo "Found $bc"
     else
-        echo "Error: $bc not found. Try \"make\"."
+	if [ "$bc" == "libc.a.bc" ];
+	then
+	    echo "Error: $bc not found. You need to compile musllvm and copy $bc to ${PWD}."
+	else
+            echo "Error: $bc not found. Try \"make\"."
+	fi
         exit 1
     fi
 done
 
+
 MANIFEST=readelf.manifest
 
+if [ $USE_MUSLLVM == "true" ];
+then
+    cat > ${MANIFEST} <<EOF    
+{ "main" : "readelf.bc"
+, "binary"  : "readelf"
+, "modules"    : ["libc.a.bc"]
+, "native_libs" : [ "/usr/lib/libiconv.dylib", "libc.a" ]
+, "ldflags" : [ "-O2" ]
+, "name"    : "readelf"
+, "constraints" : [1, "readelf", "-s"]
+}
+EOF    
+else
+    cat > ${MANIFEST} <<EOF    
+{ "main" : "readelf.bc"
+, "binary"  : "readelf"
+, "modules"    : []
+, "native_libs" : [ "/usr/lib/libiconv.dylib" ]
+, "ldflags" : [ "-O2" ]
+, "name"    : "readelf"
+, "constraints" : [1, "readelf", "-s"]
+}
+EOF
+fi    
 export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
 

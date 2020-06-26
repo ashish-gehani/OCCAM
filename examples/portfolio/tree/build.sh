@@ -4,7 +4,7 @@
 set -e
 
 function usage() {
-    echo "Usage: $0 [--disable-inlining] [--ipdse] [--ai-dce] [--devirt VAL1] [--inter-spec VAL2] [--intra-spec VAL2] [--enable-config-prime] [--help]"
+    echo "Usage: $0 [--with-musllvm] [--disable-inlining] [--ipdse] [--ai-dce] [--devirt VAL1] [--inter-spec VAL2] [--intra-spec VAL2] [--enable-config-prime] [--help]"
     echo "       VAL1=none|sea_dsa"    
     echo "       VAL2=none|aggressive|nonrec-aggressive|onlyonce"
 }
@@ -13,6 +13,7 @@ function usage() {
 INTER_SPEC="onlyonce"
 INTRA_SPEC="onlyonce"
 DEVIRT="sea_dsa"
+USE_MUSLLVM="false"
 OPT_OPTIONS=""
 
 POSITIONAL=()
@@ -38,6 +39,10 @@ case $key in
 	OPT_OPTIONS="${OPT_OPTIONS} --enable-config-prime"
 	shift # past argument
 	;;
+    -with-musllvm|--with-musllvm)
+	USE_MUSLLVM="true" 
+	shift # past argument
+	;;            
     -ipdse|--ipdse)
 	OPT_OPTIONS="${OPT_OPTIONS} --ipdse"
 	shift # past argument
@@ -64,7 +69,12 @@ done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
 #check that the require dependencies are built
-declare -a bitcode=("tree.bc")
+if [ $USE_MUSLLVM == "true" ];
+then
+    declare -a bitcode=("tree.bc" "libc.a.bc" "libc.a")
+else
+    declare -a bitcode=("tree.bc")
+fi    
 
 for bc in "${bitcode[@]}"
 do
@@ -72,11 +82,46 @@ do
     then
         echo "Found $bc"
     else
-        echo "Error: $bc not found. Try \"make\"."
+	if [ "$bc" == "libc.a.bc" ];
+	then
+	    echo "Error: $bc not found. You need to compile musllvm and copy $bc to ${PWD}."
+	else
+            echo "Error: $bc not found. Try \"make\"."
+	fi
         exit 1
     fi
 done
 
+
+MANIFEST=readelf.manifest.constraints
+
+if [ $USE_MUSLLVM == "true" ];
+then
+    cat > ${MANIFEST} <<EOF    
+{ "main" : "tree.bc"
+, "binary"  : "tree"
+, "modules"    : ["libc.a.bc"]
+, "native_libs" : ["libc.a"]
+, "ldflags" : [ "-O2" ]
+, "name"    : "tree"
+, "constraints" : ["1", "tree", "-J", "-h"]
+}
+
+EOF
+else
+    cat > ${MANIFEST} <<EOF    
+{ "main" : "tree.bc"
+, "binary"  : "tree"
+, "modules"    : []
+, "native_libs" : []
+, "ldflags" : [ "-O2" ]
+, "name"    : "tree"
+, "constraints" : ["1", "tree", "-J", "-h"]
+}
+EOF
+
+fi
+    
 echo "Linking tree_from_bc"
 clang++ tree.bc -o tree_from_bc
 
@@ -90,7 +135,7 @@ SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC} 
 echo "============================================================"
 echo "Running with options ${SLASH_OPTS}"
 echo "============================================================"
-slash ${SLASH_OPTS} --work-dir=slash tree.manifest.constraints
+slash ${SLASH_OPTS} --work-dir=slash ${MANIFEST}
 
 status=$?
 if [ $status -eq 0 ]

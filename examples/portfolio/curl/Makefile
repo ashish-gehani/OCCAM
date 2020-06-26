@@ -41,7 +41,7 @@ curl.bc: install/bin/curl
 
 ${CURLLIBBC}: install/bin/curl
 	${LLVMGET} install/lib/${CURLLIB}
-	mv install/lib/*.${LIBEXT}.bc   ./${CURLLIBBC}
+	mv install/lib/*.${LIBEXT}.*.bc   ./${CURLLIBBC}
 
 clean:
 	rm -rf install
