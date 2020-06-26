@@ -165,7 +165,7 @@ char AnnotateIndirectCalls::ID = 0;
 
 static llvm::RegisterPass<previrt::transforms::DevirtualizeFunctionsPass>
     X("Pdevirt",
-      "Devirtualize indirect function calls by adding bounce functions");
+      "Devirtualize indirect function calls by adding multiple direct calls");
 
 static llvm::RegisterPass<previrt::transforms::AnnotateIndirectCalls>
     Y("Pannotate-indirect-calls",
