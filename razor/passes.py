@@ -49,7 +49,7 @@ from . import pool
 from . import utils  
 
 
-def interface(input_file, output_file, wrt, use_seadsa=True):
+def interface(input_file, output_file, wrt, use_seadsa=False):
     """ compute the interface for a single module.
     """
     args = ['-Pinterface']
