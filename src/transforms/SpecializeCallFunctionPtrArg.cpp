@@ -17,6 +17,9 @@
 #include <memory>
 #include <vector>
 
+//#define SCFPA_LOG(...) __VA_ARGS__
+#define SCFPA_LOG(...)
+
 namespace previrt {
 namespace transforms {
 
@@ -84,6 +87,7 @@ bool SpecializeCallFunctionPtrArg::runOnModule(Module &M) {
     return false;
   }
 
+  errs() << "=== Begin SpecializeCallFunctionPtrArg === \n";
   std::vector<std::pair<llvm::Instruction *, unsigned>> worklist;
 
   // Add in the worklist any callsite whose parameter is a function
@@ -104,13 +108,13 @@ bool SpecializeCallFunctionPtrArg::runOnModule(Module &M) {
         for (unsigned i = 0, num_args = CS.arg_size(); i < num_args; ++i) {
           if (isFunctionPtrType(CS.getArgument(i)->getType())) {
 	    if (!isa<Function>(CS.getArgument(i))) {
-	      // if already a known function we skip it.
-	      errs() << "[SpecializeCallFunctionPtrArg] Added "
-		     << *CS.getInstruction() << " to the worklist\n";
+	      SCFPA_LOG(errs() << "[SpecializeCallFunctionPtrArg] Added "
+			<< *CS.getInstruction() << " to the worklist\n";);
 	      worklist.push_back({CS.getInstruction(), i});
 	    } else {
-	      errs() << " [SpecializeCallFunctionPtrArg] argument " << i << " of "
-		     << *CS.getInstruction() << " already known\n";
+	      // if already a known function we skip it.	      
+	      SCFPA_LOG(errs() << " [SpecializeCallFunctionPtrArg] argument " << i << " of "
+			<< *CS.getInstruction() << " already known\n";);
 	    }
           }
         }
@@ -118,6 +122,8 @@ bool SpecializeCallFunctionPtrArg::runOnModule(Module &M) {
     }
   }
 
+  unsigned num_candidates = worklist.size();
+  unsigned num_specialized = 0;
   // Process the worklist
   bool Change = false;
   while (!worklist.empty()) {
@@ -141,25 +147,30 @@ bool SpecializeCallFunctionPtrArg::runOnModule(Module &M) {
 	      Callees.push_back(const_cast<Function *>(F));
 	    }
 	  }
-	  
-	  errs() << "[SpecializeCallFunctionPtrArg] Callsite= "
-		 << *(CS.getInstruction()) << ". Replaced argument=" << p.second
-		 << " with values={";
-	  for (unsigned i=0, sz=Callees.size(); i<sz;) {
-	    errs() << Callees[i]->getName();
-	    ++i;
-	    if (i < sz) {
-	      errs() << ",";
-	    }
-	  }
-	  errs() << "}\n";
-	  
+	  SCFPA_LOG(errs() << "[SpecializeCallFunctionPtrArg] Callsite= "
+		    << *(CS.getInstruction()) << ". Replaced argument=" << p.second
+		    << " with values={";
+		    for (unsigned i=0, sz=Callees.size(); i<sz;) {
+		      errs() << Callees[i]->getName();
+		      ++i;
+		      if (i < sz) {
+			errs() << ",";
+		      }
+		    }
+		    errs() << "}\n";);
 	  specializeCallFunctionPtrArg(CS, p.second, Callees);
+	  num_specialized++;
 	  Change = true;
 	}
       }
     }
   }
+
+  errs() << "Number of calls with function pointer parameters: "
+	 << num_candidates << "\n";
+  errs() << "Number of *specialized* calls with function pointer parameters: "
+	 << num_specialized << "\n";  
+  errs() << "=== End SpecializeCallFunctionPtrArg === \n";  
   return Change;
 }
 

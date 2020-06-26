@@ -233,8 +233,6 @@ public:
 
 public:
   InterSpecializerPass() : ModulePass(ID) {
-
-    errs() << "InterSpecializerPass():\n";
     for (auto fileName: SpecCompIn) {
       errs() << "Reading file '" << fileName << "'...";
       if (transform.readInterfaceFromFile(fileName)) {
@@ -243,23 +241,22 @@ public:
         errs() << "failed\n";
       }
     }
-
-    errs() << "Done reading.\n";
-    if (transform.hasInterface()) {
-      const ComponentInterface &interface = transform.getInterface();
-      errs() << std::distance(interface.begin(), interface.end());
-    } else {
-      errs() << "No interfaces read.\n";
-    }
   }
 
   virtual ~InterSpecializerPass() {}
 
   virtual bool runOnModule(Module &M) {
     if (!transform.hasInterface()) {
+      errs() << "No interfaces read.\n";      
       return false;
     }
-
+    
+    errs() << " === Begin inter-module specialization ===\n";      
+    const ComponentInterface &interface = transform.getInterface();
+    errs() << "Read " 
+	   << std::distance(interface.begin(), interface.end())
+	   << "interface entries.\n";
+    
     // -- Create the specialization policy. Bail out if no policy.
     std::unique_ptr<SpecializationPolicy> policy;
     switch (SpecPolicy) {
@@ -293,8 +290,6 @@ public:
       return false;
     }
 
-    errs() << "InterSpecializerPass::runOnModule(): " << M.getModuleIdentifier()
-           << "\n";
     std::vector<Function *> to_add;
     bool modified = SpecializeComponent(M, transform, *policy, to_add);
 
@@ -302,6 +297,7 @@ public:
        adding the "new" specialized definitions (in to_add) to M;
        opt will write out M to the -o argument to the "python call"
     */
+    unsigned specialized_functions = 0;
     Module::FunctionListType &functionList = M.getFunctionList();
     while (!to_add.empty()) {
       Function *add = to_add.back();
@@ -312,6 +308,7 @@ public:
       } else {
         errs() << "Adding \"" << add->getName() << "\" to the module.\n";
         functionList.push_back(add);
+	specialized_functions++;
       }
     }
 
@@ -328,6 +325,13 @@ public:
       }
       output.close();
     }
+
+    if (modified) {
+      errs() << "Specialized " << specialized_functions << "\n";
+    } else {
+      errs() << "No specialization took place\n";
+    }    
+    errs() << " === End inter-module specialization ===\n";      
 
     return modified;
   }

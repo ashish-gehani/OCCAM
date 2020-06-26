@@ -41,14 +41,15 @@
 
 using namespace llvm;
 
-#define OSP_LOG(...) __VA_ARGS__
-//#define OSP_LOG(...)
+//#define OSP_LOG(...) __VA_ARGS__
+#define OSP_LOG(...)
 
 namespace previrt {
 
 static StringRef OccamSpecStr = "__occam_spec.";
 
 OnlyOnceSpecPolicy::OnlyOnceSpecPolicy(Module &M) {
+  errs() << "## Running only-once specialization policy\n";
   // Precompute some information used by intra specialization
   DenseSet<const Function *> calledS;
   for (auto &F : M) {
@@ -65,14 +66,18 @@ OnlyOnceSpecPolicy::OnlyOnceSpecPolicy(Module &M) {
             continue;
           if (!calledS.insert(calleeF).second) {
             // calleeF was already in calledS so it was not inserted
-            OSP_LOG(errs() << calleeF->getName()
-                           << " called more than once\n";);
+            OSP_LOG(errs() << "[OnlyOneSpecPolicy] "
+		    <<  calleeF->getName()
+		    << " called more than once\n";);
             m_blacklist.insert(calleeF);
           }
         }
       }
     }
   }
+  errs() << "There are " << m_blacklist.size() 
+	 << " functions that are called more than once and "
+	 << M.size() << " functions called only once.\n";
 }
 
 bool OnlyOnceSpecPolicy::intraSpecializeOn(CallSite CS,

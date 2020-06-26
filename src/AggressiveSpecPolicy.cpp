@@ -38,8 +38,8 @@
 
 using namespace llvm;
 
-#define ASP_LOG(...) __VA_ARGS__
-//#define ASP_LOG(...)
+//#define ASP_LOG(...) __VA_ARGS__
+#define ASP_LOG(...)
 
 namespace previrt {
 
@@ -50,7 +50,7 @@ bool AggressiveSpecPolicy::intraSpecializeOn(CallSite CS,
     return false;
   }
 
-  ASP_LOG(errs() << "[ASP] Checking if " << *CS.getInstruction()
+  ASP_LOG(errs() << "[AlwaysSpecPolicy] Checking if " << *CS.getInstruction()
                  << " can be specialized ... ";);
   bool specialize = false;
   marks.reserve(CS.arg_size());
@@ -72,7 +72,7 @@ bool AggressiveSpecPolicy::interSpecializeOn(
     const Function &CalleeF /*unused*/, const std::vector<InterfaceType> &args,
     const ComponentInterface &interface /*unused*/, SmallBitVector &marks) {
   bool specialize = false;
-  ASP_LOG(errs() << "[ASP] Checking if call to " << CalleeF.getName()
+  ASP_LOG(errs() << "[AlwaysSpecPolicy] Checking if call to " << CalleeF.getName()
                  << " can be specialized ... ";);
   for (unsigned int i = 0, sz = args.size(); i < sz; ++i) {
     if (args[i].isConcrete()) {

@@ -104,10 +104,10 @@ bool BoundedSpecPolicy::intraSpecializeOn(CallSite CS,
     unsigned num_copies = addCounter(*calleeF);
     bool res = (num_copies <= m_threshold);
     if (res) {
-      BSP_LOG(errs() << "[BSP] " << calleeF->getName() << " has been copied "
+      BSP_LOG(errs() << "[BoundedSpecPolicy] " << calleeF->getName() << " has been copied "
                      << num_copies << "\n";);
     } else {
-      BSP_LOG(errs() << "[BSP] " << calleeF->getName()
+      BSP_LOG(errs() << "[BoundedSpecPolicy] " << calleeF->getName()
                      << " cannot be copied anymore\n";);
     }
     return res;
@@ -129,11 +129,11 @@ bool BoundedSpecPolicy::interSpecializeOn(
     unsigned num_copies = addCounter(calleeF);
     bool res = (num_copies <= m_threshold);
     if (res) {
-      BSP_LOG(errs() << "[BSP] " << calleeF.getName() << " in library "
+      BSP_LOG(errs() << "[BoundedSpecPolicy] " << calleeF.getName() << " in library "
                      << calleeF.getParent()->getName() << " has been copied "
                      << num_copies << "\n";);
     } else {
-      BSP_LOG(errs() << "[BSP] " << calleeF.getName()
+      BSP_LOG(errs() << "[BoundedSpecPolicy] " << calleeF.getName()
                      << " cannot be copied anymore\n";);
     }
     return res;
