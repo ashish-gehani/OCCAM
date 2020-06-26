@@ -33,7 +33,7 @@ cat > multiple.manifest <<EOF
 }
 EOF
 
-slash --devirt=sea_dsa --work-dir=slash multiple.manifest --inter-spec-policy=nonrec-aggressive --intra-spec-policy=nonrec-aggressive --no-strip
+slash --use-pointer-analysis --work-dir=slash multiple.manifest --inter-spec-policy=nonrec-aggressive --intra-spec-policy=nonrec-aggressive --no-strip
 cp slash/main main_slash
 
 ### NO LIBRARY
@@ -53,7 +53,7 @@ EOF
 
 
 
-slash --devirt=sea_dsa --work-dir=slash multiple.manifest --no-strip
+slash --use-pointer-analysis --work-dir=slash multiple.manifest --no-strip
 cp slash/main main_static_slash
 
 #debugging stuff below:

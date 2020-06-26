@@ -4,16 +4,14 @@
 set -e
 
 function usage() {
-    echo "Usage: $0 [--disable-inlining] [--ipdse] [--ai-dce] [--devirt VAL1] [--inter-spec VAL2] [--intra-spec VAL2] [--enable-config-prime] [--link dynamic|static] [--help]"
-    echo "       VAL1=none|sea_dsa"    
-    echo "       VAL2=none|aggressive|nonrec-aggressive|onlyonce"
+    echo "Usage: $0 [--disable-inlining] [--ipdse] [--ai-dce] [--use-pointer-analysis] [--inter-spec VAL] [--intra-spec VAL] [--enable-config-prime] [--link dynamic|static] [--help]"
+    echo "       VAL=none|aggressive|nonrec-aggressive|onlyonce"
 }
 
 #default values
 LINK="dynamic"
 INTER_SPEC="onlyonce"
 INTRA_SPEC="onlyonce"
-DEVIRT="sea_dsa"
 OPT_OPTIONS=""
 
 POSITIONAL=()
@@ -51,11 +49,10 @@ case $key in
     -ai-dce|--ai-dce)
 	OPT_OPTIONS="${OPT_OPTIONS} --ai-dce"
 	shift # past argument
-	;;                
-    -devirt|--devirt)
-	DEVIRT="$2"
+	;;    
+    -use-pointer-analysis|--use-pointer-analysis)
+	OPT_OPTIONS="${OPT_OPTIONS} --use-pointer-analysis"	
 	shift # past argument
-	shift # past value
 	;;        
     -help|--help)
 	usage
@@ -98,7 +95,7 @@ done
 
 # additional debug flags:
 #  --debug-pass=sroa --verbose --debug-manager=Structure
-SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC} --devirt=${DEVIRT} --stats $OPT_OPTIONS"
+SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC} --stats $OPT_OPTIONS"
 
 # OCCAM with program and libraries dynamically linked
 function dynamic_link() {

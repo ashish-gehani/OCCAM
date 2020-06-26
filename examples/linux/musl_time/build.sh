@@ -63,7 +63,7 @@ fi
 
 # Previrtualize: can do eitther of these:
 #slash --no-strip --work-dir=slash --keep-external=untouchables.funs.txt ${MANIFEST}
-slash --no-strip --stats --devirt=sea_dsa \
+slash --no-strip --stats --use-pointer-analysis \
       --disable-inlining --inter-spec-policy=nonrec-aggressive \
       --work-dir=slash --keep-external=untouchables.vars.txt ${MANIFEST}
       

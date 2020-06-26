@@ -49,7 +49,7 @@ from . import pool
 from . import utils  
 
 
-def interface(input_file, output_file, wrt, use_seadsa=False):
+def interface(input_file, output_file, wrt, use_seadsa):
     """ compute the interface for a single module.
     """
     args = ['-Pinterface']
@@ -61,7 +61,7 @@ def interface(input_file, output_file, wrt, use_seadsa=False):
     args += driver.all_args('-Pinterface-entry', wrt)
     return driver.previrt(input_file, '/dev/null', args)
 
-def propagate_interfaces(libs, ifaces):
+def propagate_interfaces(libs, ifaces, use_seadsa):
     """ compute interfaces for all modules and perform global refinement
     until stabilization.
     """
@@ -73,7 +73,6 @@ def propagate_interfaces(libs, ifaces):
 
     inter.writeInterface(iface, tf.name)
 
-    use_seadsa = True
     progress = True
     while progress:
         progress = False
@@ -143,26 +142,29 @@ def strip(input_file, output_file):
 
 def devirt(devirt_method, input_file, output_file):
     """use seadsa to resolve indirect function calls by adding multiple
-    direct calls
+    direct calls. devirt_method = sea_dsa | sea_dsa_with_cha
     """
     assert(devirt_method <> 'none')
-    args = [ '-Pdevirt'
-            #, '-Presolve-incomplete-calls=true'
-            #, '-Pmax-num-targets=15'
+    args = [ '-Pdevirt',
+             ## Run always sea-dsa with types for more precision
+             '-sea-dsa-type-aware=true'
+             #, '-Presolve-incomplete-calls=true'
+             #, '-Pmax-num-targets=15'
     ]
 
+    ## It tries to resolve C++ virtual calls prior to runnnig sea-dsa.
+    ## sea-dsa can reason about C++ virtual calls but the option
+    ## sea_dsa_with_cha runs some adhoc analysis that understands how
+    ## vtables look like in LLVM bitcode.
     if devirt_method == 'sea_dsa_with_cha': 
         args += ['-Pdevirt-with-cha']
-
-    if devirt_method == 'sea_dsa': 
-        args += ['-sea-dsa-type-aware=true']
 
     retcode = driver.previrt_progress(input_file, output_file, args)
     if retcode != 0:
         return retcode
 
-    #FIXME: previrt_progress returns 0 in cases where --Pdevirt may crash.
-    #Here we check that the output_file exists
+    # FIXME: previrt_progress returns 0 in cases where --Pdevirt may crash.
+    # Here we check that the output_file exists
     if not os.path.isfile(output_file):
         #Some return code different from zero
         return 3
@@ -222,8 +224,8 @@ def clam(cmd, input_file, output_file):
 def peval(input_file, output_file, \
           opt_options, \
           policy, max_bounded, \
-          devirt_method, \
-          force_inline_bounce, force_inline_spec, \
+          use_seadsa, 
+          force_inline_spec, \
           use_ipdse, use_ai_dce, log=None):
     """ intra module specialization/optimization
     """
@@ -254,19 +256,18 @@ def peval(input_file, output_file, \
         retcode = _optimize(input_file, done.name, use_ai_dce or use_ipdse)
         if retcode != 0: return retcode
 
-    if devirt_method <> 'none':
-        if devirt_method == 'sea_dsa' or \
-           devirt_method == 'sea_dsa_with_cha':
-            # Promote indirect calls to direct calls
-            retcode = devirt(devirt_method, done.name, tmp.name)
-            if retcode != 0:
-                sys.stderr.write("ERROR: resolution of indirect calls failed!\n")
-                shutil.copy(done.name, output_file)
-                return retcode
-            sys.stderr.write("\tresolved indirect calls finished succesfully\n")
-            # Force inlining bounce functions (if added)
-            force_inline(tmp.name, done.name, force_inline_bounce, False)
-                    
+    if use_seadsa: 
+        #devirt_method = 'sea_dsa'
+        devirt_method = 'sea_dsa_with_cha'
+        ### Promote indirect calls to direct calls
+        retcode = devirt(devirt_method, done.name, tmp.name)
+        if retcode != 0:
+            sys.stderr.write("ERROR: resolution of indirect calls failed!\n")
+            shutil.copy(done.name, output_file)
+            return retcode
+        sys.stderr.write("\tresolved indirect calls finished succesfully\n")
+        shutil.copy(tmp.name, done.name)
+        
     if use_ipdse:
         ## 1. lower global initializers to store's in main 
         passes = ['-lower-gv-init']
@@ -329,15 +330,16 @@ def peval(input_file, output_file, \
             else:
                 shutil.copy(done.name, opt.name)
 
-            ### always specialize external calls with function pointer parameters
-            ### This pass relies on seadsa so we pass also some sea-dsa options.
-            pass_args = [ '-Pspecialize-extern-call-function-ptr-arg',
-                          # improve precision of sea-dsa by considering types
-                          '-sea-dsa-type-aware']
-            if devirt_method == 'none':
+            pass_args = []                
+            if use_seadsa:
+                ### always specialize external calls with function pointer parameters
+                ### This pass relies on seadsa so we pass also some sea-dsa options.
+                pass_args += [ '-Pspecialize-extern-call-function-ptr-arg',
+                               # improve precision of sea-dsa by considering types
+                               '-sea-dsa-type-aware']
                 ## If devirt is not run we tell sea-dsa to
                 ## use its call graph 
-                pass_args += ['-sea-dsa-devirt']
+                ## pass_args += ['-sea-dsa-devirt']
                 
             ### perform specialization using policies
             pass_args += ['-Ppeval', '-Ppeval-policy={0}'.format(policy), '-Ppeval-opt']

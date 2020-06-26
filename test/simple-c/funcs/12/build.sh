@@ -19,7 +19,7 @@ cat > multiple.manifest <<EOF
 }
 EOF
 
-slash --no-strip --devirt=sea_dsa --force-inline-bounce --inter-spec-policy=nonrec-aggressive --intra-spec-policy=nonrec-aggressive --work-dir=slash multiple.manifest 
+slash --no-strip --use-pointer-analysis --inter-spec-policy=nonrec-aggressive --intra-spec-policy=nonrec-aggressive --work-dir=slash multiple.manifest 
 
 #debugging stuff below:
 for bitcode in slash/*.bc; do
