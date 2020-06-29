@@ -34,6 +34,6 @@ EOF
 
 
 # Run OCCAM
-slash --stats --devirt --work-dir=slash sphinx3.manifest
+slash --stats --use-pointer-analysis --work-dir=slash sphinx3.manifest
 
 cp ./slash/sphinx3_slashed .
