@@ -107,6 +107,11 @@ bool OnlyOnceSpecPolicy::interSpecializeOn(
     return false;
   }
 
+  // The function is not in the interface
+  if (!interface.hasCall(calleeF.getName())) {
+    return false;
+  }
+  
   // interface contains all possible calls to calleeF from *all* the
   // other modules.
   if (std::distance(interface.call_begin(calleeF.getName()),
