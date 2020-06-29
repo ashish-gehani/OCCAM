@@ -25,8 +25,8 @@ execute_call(FUN_PTR, int)
 int incr(int) {..} 
 int decr(int) {..}
 
-int incr_5 { return 6; }
-int decr_5 { return 4; }
+int incr_5() { return 6; }
+int decr_5() { return 4; }
 
 main() {
   FUN_PTR *f = choose_nd(incr, decr, ...)
@@ -43,7 +43,6 @@ main() {
 int execute_call_incr_5() {
   return incr_5();
 }
-
 int execute_call_decr_5() {
   return decr_5();
 }
@@ -53,10 +52,16 @@ int nd_int(){
   return rand() ;
 }
 
+
+// LIMITATIONS: We cannot remove this function even if it's dead after
+// we make a specialized copy.  There are two reasons: (1) we use
+// &incr in the code that lower a function pointer parameter and (2)
+// there is a store of &incr int *fun1.
 int incr(int x) {
   return x+1;
 }
 
+// LIMITATIONS: same problems as incr.
 int decr(int x) {
   return x-1;
 }
