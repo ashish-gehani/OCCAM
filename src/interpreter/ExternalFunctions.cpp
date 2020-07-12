@@ -223,8 +223,10 @@ static bool ffiInvoke(RawFunc Fn, Function *F, ArrayRef<GenericValue> ArgVals,
   // TODO: We don't have type information about the remaining arguments, because
   // this information is never passed into ExecutionEngine::runFunction().
   if (ArgVals.size() > NumArgs && F->isVarArg()) {
-    report_fatal_error("Calling external var arg function '" + F->getName()
-                      + "' is not supported by the Interpreter.");
+    errs() << "Calling external var arg function '"
+	   << F->getName()
+	   << "' is not supported by the Interpreter.\n";
+    return false;
   }
 
   unsigned ArgBytes = 0;
