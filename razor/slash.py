@@ -336,6 +336,15 @@ class Slash(object):
             print_profile_maps()
             return
 
+        def function_remover_slash(m):
+            "Remove functions specified by user"
+            pre = m.get()
+            pre_base = os.path.basename(pre)
+            post = m.new('lo')
+            post_base = os.path.basename(post)
+            print "\tNo entry point for function remover as of now"
+            passes.lib_occamize(pre,post)
+
         ### 0. Lift deployment information into main's module
         if args is not None:
             sys.stderr.write('Full input-user specialization using fix parameters: {0}\n'.format(args))            
