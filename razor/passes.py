@@ -171,6 +171,18 @@ def devirt(devirt_method, input_file, output_file):
     else:
         return retcode
 
+def function_remover(input_file, output_file):
+    """
+    Remove the functions that are provided by user. 
+    Currently user does not have the option to provide name of functions. 
+    one vector in RemoveFunctions pass already has names of functions to be removed
+    """
+
+    print("function remover called!")
+
+    args = ['-RemoveFunctions']
+
+    return driver.previrt(input_file,output_file, args)
 
 def profile(input_file, output_file):
     """ count number of instructions, functions, memory accesses, etc.
