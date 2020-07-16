@@ -345,6 +345,7 @@ class Slash(object):
             print "\tNo entry point for function remover as of now"
             passes.lib_occamize(pre,post)
 
+        pool.InParallel(function_remover_slash, files.values(), self.pool)
         ### 0. Lift deployment information into main's module
         if args is not None:
             sys.stderr.write('Full input-user specialization using fix parameters: {0}\n'.format(args))            
