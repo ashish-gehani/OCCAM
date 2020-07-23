@@ -30,7 +30,7 @@
 #include <string.h>
 #include <fstream>
 
-static llvm::cl::opt<std::string> filePath("filePath", llvm::cl::init(""));
+static llvm::cl::opt<std::string> filePath("functions_to_remove", llvm::cl::init(""));
 
 namespace previrt {
 namespace transforms {
@@ -66,10 +66,16 @@ struct RemoveFunctions : public FunctionPass {
 		vector<string> removeFunctions{"func1","func2","func3","func4","add"};
     
 		// Declare printf function
-		Type *intType = Type::getInt32Ty(module->getContext());
-		std::vector<Type *> printfArgsTypes({Type::getInt8PtrTy(module->getContext())});
-		FunctionType *printfType = FunctionType::get(intType, printfArgsTypes, true);
-		Function *printfFunc = dyn_cast<Function>(module->getOrInsertFunction("printf", printfType).getCallee()); 
+//		Type *intType = Type::getInt32Ty(module->getContext());
+//		std::vector<Type *> printfArgsTypes({Type::getInt8PtrTy(module->getContext())});
+//		FunctionType *printfType = FunctionType::get(intType, printfArgsTypes, true);
+//		auto *printfFunc = dyn_cast<Function>(module->getOrInsertFunction("printf", printfType).getCallee()); 
+		Type* charType = Type::getInt8PtrTy(module->getContext());
+                FunctionType *printf_type = FunctionType::get(charType,true);
+                auto *printfFunc = cast<Function>(module->getOrInsertFunction("printf", printf_type).getCallee());
+
+		assert(printfFunc && "printf not found in module");
+
 		// Declare exit function
 		Type *voidType = Type::getVoidTy(module->getContext());
 		vector<Type *> exitArgsTypes;
@@ -78,8 +84,10 @@ struct RemoveFunctions : public FunctionPass {
 		Function *exitFunc = dyn_cast<Function>(module->getOrInsertFunction("exit", exitType).getCallee());
 
 		string functionName = F.getName().str();
+		errs()<<"\nRemoveFunctions pass: Function being analysed : "<<functionName<<"\n";
 	
 	       	if( find(removeFunctions.begin(), removeFunctions.end(), functionName) != removeFunctions.end()  ){
+			errs()<<"\nRemoveFunctions: User asked this function("<<functionName<<") to be removed\n";
 	
 			BasicBlock * entryBB = &F.getEntryBlock();
 			BasicBlock *emptyBB = BasicBlock::Create(module->getContext(), "empty");
