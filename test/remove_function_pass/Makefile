@@ -1,5 +1,5 @@
 clean:
-	rm *.bc 
-	rm -r slash/
-	rm manifest
-	rm testlib
+	rm -rf *.bc 
+	rm -rf slash/
+	rm -rf manifest
+	rm -rf main

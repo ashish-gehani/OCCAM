@@ -19,7 +19,7 @@ $BC_EXTRACT main
 export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
 
-slash --no-strip --intra-spec-policy=aggressive --work-dir=slash --remove-functions=fun,sun,done manifest
+slash --no-strip --intra-spec-policy=aggressive --work-dir=slash --remove-functions=add,sub,done manifest
 
 #debugging stuff below:
 for bitcode in slash/*.bc; do
