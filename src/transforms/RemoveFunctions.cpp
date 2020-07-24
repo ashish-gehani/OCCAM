@@ -29,8 +29,10 @@
 
 #include <string.h>
 #include <fstream>
+#include <sstream>
+#include <iostream>
 
-static llvm::cl::opt<std::string> filePath("functions_to_remove", llvm::cl::init(""));
+static llvm::cl::opt<std::string> function_list("functions_to_remove", llvm::cl::init(""));
 
 namespace previrt {
 namespace transforms {
@@ -44,26 +46,20 @@ struct RemoveFunctions : public FunctionPass {
 	RemoveFunctions() : FunctionPass(ID) {}
         
 	bool runOnFunction(Function &F) override {
+		errs()<<"\nLOOK functions_to_remove : "<<function_list<<"\n";
 
-/***
-*   This is one option of getting input. 
-*   User can provide names of functions to be removed in a file as a commandline argument (-filePath=removeFunctions.txt)
-*   currently names of functions to be removed are specified in a vector (removeFunctions) below.
-*
-*	ifstream f;
-*	vector<string> removeFunctions_copy;
-*   string str;
-*	if(filePath.size())
-*		f.open(filePath);
-*
-*	if(filePath.size()){
-*
-*       while(getline(f, str))
-*		removeFunctions_copy.push_back(str);
-*	}
-***/
 		Module* module = F.getParent();
-		vector<string> removeFunctions{"func1","func2","func3","func4","add"};
+		vector<string> removeFunctions;
+		stringstream string_to_stream(function_list);
+
+		while (string_to_stream.good()) {
+			string substr;
+        		getline(string_to_stream, substr, ',');
+        		removeFunctions.push_back(substr);
+			errs()<<"\nChunk : "<<substr<<"\n";
+    		}
+
+//		vector<string> removeFunctions{"func1","func2","func3","func4","add"};
     
 		// Declare printf function
 //		Type *intType = Type::getInt32Ty(module->getContext());
