@@ -1,0 +1,9 @@
+{ "main" : "main.bc"
+, "binary"  : "main"
+, "modules"    : []
+, "native_libs" : []
+, "ldflags" : [ "-O2" ]
+, "name"    : "main"
+, "args"    : []
+}
+
