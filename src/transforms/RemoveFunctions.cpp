@@ -46,7 +46,6 @@ struct RemoveFunctions : public FunctionPass {
 	RemoveFunctions() : FunctionPass(ID) {}
         
 	bool runOnFunction(Function &F) override {
-		errs()<<"\nLOOK functions_to_remove : "<<function_list<<"\n";
 
 		Module* module = F.getParent();
 		vector<string> removeFunctions;
@@ -56,7 +55,6 @@ struct RemoveFunctions : public FunctionPass {
 			string substr;
         		getline(string_to_stream, substr, ',');
         		removeFunctions.push_back(substr);
-			errs()<<"\nChunk : "<<substr<<"\n";
     		}
 
 //		vector<string> removeFunctions{"func1","func2","func3","func4","add"};
