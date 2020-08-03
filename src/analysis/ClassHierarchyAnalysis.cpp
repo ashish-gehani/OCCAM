@@ -628,6 +628,11 @@ bool ClassHierarchyAnalysis_Impl::resolveVirtualCall(
   if (!CS_type) {
     return false;
   }
+
+  if (CS.arg_size() == 0) {
+    return false;
+  }
+  
   // Assume the first argument of CS is this, otherwise we bail out ...
   const Value *this_ = CS.getArgOperand(0);
   if (this_->getType()->isPointerTy()) {
