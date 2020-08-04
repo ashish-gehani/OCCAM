@@ -100,6 +100,13 @@ std::string specializeName(Function *f, std::vector<std::string> &args) {
   }
 }
 
+/*
+ * f is the original function
+ * 
+ * args is vector of NULL's elements or some LLVM constants. If
+ * args[i] is not null then the i-th argument of the new function
+ * will be replaced with args[i].
+*/  
 Function *specializeFunction(Function *f, const std::vector<Value *> &args) {
   assert(!f->isDeclaration());
 
@@ -115,23 +122,21 @@ Function *specializeFunction(Function *f, const std::vector<Value *> &args) {
   unsigned int j = 0;
   std::vector<std::string> argNames;
   std::string baseName = specializeName(f, argNames);
-  for (Function::arg_iterator itr = f->arg_begin(); itr != f->arg_end();
-       itr++, i++) {
+  for (Function::arg_iterator it = f->arg_begin(); it != f->arg_end();
+       it++, i++) {
     while (argNames[j] != "?") {
       j++;
       if (j >= argNames.size()) {
-	// FIXME: running out-of-bounds is possible here. Not sure if
+	// HOTFIX: running out-of-bounds is possible here. Not sure if
 	// we can do something better than giving up.
 	return nullptr;
       }
     }
 
-    if (args[i] != nullptr) {
-      Value *arg = (Value *)&(*itr);
-
+    if (args[i]) {
+      Value *arg = (Value *)&(*it);
       assert(arg->getType() == args[i]->getType() &&
              "Specializing argument with concrete value of wrong type!");
-
       vmap.insert(typename ValueToValueMapTy::value_type(arg, args[i]));
       InterfaceType pt = InterfaceType::abstract(args[i]);
       argNames[j] = pt.to_string();
@@ -141,25 +146,42 @@ Function *specializeFunction(Function *f, const std::vector<Value *> &args) {
   assert(i == f->arg_size());
 
   baseName += "(";
-  for (std::vector<std::string>::const_iterator it = argNames.begin(),
-                                                be = argNames.begin(),
-                                                en = argNames.end();
-       it != en; ++it) {
-    if (it != be)
-      baseName += ",";
+  for (auto it=argNames.begin(), et=argNames.end();it!=et;) {
     baseName += *it;
+    ++it;
+    if (it!=et) {
+      baseName += ",";
+    }
   }
   baseName += ")";
 
+  
   Function *result = f->getParent()->getFunction(baseName);
-  // If specialized function already exists, no reason
-  // to create another one. In fact, can cause the process
-  // to diverge.
   if (!result) {
     ClonedCodeInfo info;
     result = llvm::CloneFunction(f, vmap, &info);
     result->setName(baseName);
+  } else {
+    // If specialized function already exists, no reason
+    // to create another one. In fact, can cause the process
+    // to diverge.
+
+    //// 
+    // Sanity check
+    ////
+    unsigned num_args_specialized_function = 0;
+    for(unsigned i=0; i < args.size(); ++i) {
+      if (!args[i]) num_args_specialized_function++;
+    }
+    if (result->arg_size() != num_args_specialized_function) {
+      // HOTFIX: we found another function with the same name but
+      // different number of arguments. This shouldn't happen because
+      // the name of the specialized function has encoded the number
+      // of unspecialized functions (by having ? symbols)
+      return nullptr;
+    }
   }
+  
   return result;
 }
 
