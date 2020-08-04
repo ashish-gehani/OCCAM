@@ -114,13 +114,18 @@ Function *specializeFunction(Function *f, const std::vector<Value *> &args) {
   unsigned int i = 0;
   unsigned int j = 0;
   std::vector<std::string> argNames;
-
   std::string baseName = specializeName(f, argNames);
-
   for (Function::arg_iterator itr = f->arg_begin(); itr != f->arg_end();
        itr++, i++) {
-    while (argNames[j] != "?")
+    while (argNames[j] != "?") {
       j++;
+      if (j >= argNames.size()) {
+	// FIXME: running out-of-bounds is possible here. Not sure if
+	// we can do something better than giving up.
+	return nullptr;
+      }
+    }
+
     if (args[i] != nullptr) {
       Value *arg = (Value *)&(*itr);
 
