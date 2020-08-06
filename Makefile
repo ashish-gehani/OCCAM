@@ -128,8 +128,7 @@ endif
 # otherwise the server will give you an error.
 
 publish:
-	python -m twine upload dist/*
-
+	python -m twine upload --repository pypi dist/*
 lint:
 ifeq ($(PYLINT),)
 	$(error lint target requires pylint)
