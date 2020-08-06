@@ -33,7 +33,7 @@ setup(
         ],
     },
 
-    license='MIT',
+    license='BSD-3-Clause',
 
     install_requires=[
         "protobuf >= 3.5.1"
