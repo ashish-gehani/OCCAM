@@ -48,8 +48,8 @@ Version History:
 
 1.1.0    - 4/30/2019  Large leap in development. Lots of new command line arguments.
 
-
+1.1.1    - 8/06/2020  Fix license and drop python 2.7
 """
 
 
-razor_version = '1.1.0'
+razor_version = '1.1.1'

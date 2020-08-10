@@ -33,7 +33,7 @@ setup(
         ],
     },
 
-    license='MIT',
+    license='BSD-3-Clause',
 
     install_requires=[
         "protobuf >= 3.5.1"
@@ -47,10 +47,6 @@ setup(
         'Topic :: System :: Distributed Computing',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-
     ],
 )
