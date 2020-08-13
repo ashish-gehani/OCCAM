@@ -383,6 +383,8 @@ bool ConfigPrime::runOnModule(Module &M) {
     for (auto &F : M) {
       for (auto &BB : F) {
         if (!Interp->isExecuted(BB)) {
+	  errs() << "ConfigPrime: removing unreachable block "
+		 << BB.getName() << "\n";
           toRemove.push_back(&BB);
         }
       }

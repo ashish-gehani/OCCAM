@@ -286,6 +286,7 @@ callExternalFunction(Function *F, ArrayRef<AbsGenericValue> AArgVals) {
   
   // XXX: we don't want to call exit inside OCCAM (i.e. opt).
   if (F->getName().equals("exit")) {
+    errs() << "ConfigPrime: ignore \"exit\" otherwise it will break OCCAM pipeline\n";
     return llvm::None;
   }
   
