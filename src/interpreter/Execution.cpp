@@ -1360,7 +1360,12 @@ void Interpreter::visitReturnInst(ReturnInst &I) {
 }
 
 void Interpreter::visitUnreachableInst(UnreachableInst &I) {
-  report_fatal_error("Program executed an 'unreachable' instruction!");
+  llvm::errs() << "ConfigPrime: modeling an 'unreachable' instruction "
+	       << " as a return instruction with an unknown value.\n";
+
+  Type *RetTy = I.getParent()->getParent()->getReturnType();
+  AbsGenericValue Result;
+  popStackAndReturnValueToCaller(RetTy, Result);
 }
 
 void Interpreter::visitBranchInst(BranchInst &I) {
@@ -2808,7 +2813,7 @@ void Interpreter::callFunction(Function *F, ArrayRef<AbsGenericValue> ArgVals) {
   // Special handling for external functions.
   if (F->isDeclaration()) {
     AbsGenericValue Result = callExternalFunction (F, ArgVals);
-    if (!Result.hasValue()) {
+    if (!F->getReturnType()->isVoidTy() && !Result.hasValue()) {
       /// XXX: right now if Result is undefined is because one of the
       /// arguments in ArgVals is unknown.
       LOG << "cannot execute external call to " << F->getName()
