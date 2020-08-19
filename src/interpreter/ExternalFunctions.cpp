@@ -284,12 +284,14 @@ static bool ffiInvoke(RawFunc Fn, Function *F, ArrayRef<GenericValue> ArgVals,
 previrt::AbsGenericValue previrt::Interpreter::
 callExternalFunction(Function *F, ArrayRef<AbsGenericValue> AArgVals) {
   
-  // XXX: we don't want to call exit inside OCCAM (i.e. opt).
-  if (F->getName().equals("exit")) {
-    errs() << "ConfigPrime: ignore \"exit\" otherwise it will break OCCAM pipeline\n";
+  // XXX: Here functions that we don't want to call inside OCCAM
+  // (i.e. opt).
+  if (F->getName().equals("exit") ||
+      F->getName().startswith("pthread_")) {
+    errs() << "ConfigPrime: ignoring \"" << F->getName() << "\"\n";
     return llvm::None;
   }
-  
+
   TheInterpreter = this;
 
   std::vector<GenericValue> ArgVals;
