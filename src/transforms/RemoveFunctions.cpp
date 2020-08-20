@@ -42,79 +42,80 @@ using namespace std;
 
 struct RemoveFunctions : public FunctionPass {
 	
+	Function* makePrintf (Module* module){
+
+		Type* charType = Type::getInt8PtrTy(module->getContext());
+                FunctionType *printf_type = FunctionType::get(charType,true);
+                Function *printf = cast<Function>(module->getOrInsertFunction("printf", printf_type).getCallee());
+		assert(printf && "printf not found in module");
+
+		return printf;
+	}
+
+	Function* makeExit (Module* module){
+		
+		Type *voidType = Type::getVoidTy(module->getContext());
+		vector<Type *> exitArgsTypes;
+		exitArgsTypes.push_back(Type::getInt32Ty(module->getContext()));
+		FunctionType *exitType = FunctionType::get(voidType, exitArgsTypes, false);
+		Function *exit = dyn_cast<Function>(module->getOrInsertFunction("exit", exitType).getCallee());
+		assert(exit && "exitFunc not found in module");
+
+		return exit;
+	}
+
+
 	static char ID;
 	RemoveFunctions() : FunctionPass(ID) {}
         
 	bool runOnFunction(Function &F) override {
 
 		Module* module = F.getParent();
-//		vector<string> removeFunctions;
-//		stringstream string_to_stream(function_list);
-
-//		while (string_to_stream.good()) {
-//			string substr;
-  //      		getline(string_to_stream, substr, ',');
-    //    		removeFunctions.push_back(substr);
-    //		}
-
-//		vector<string> removeFunctions{"func1","func2","func3","func4","add"};
-    
-		// Declare printf function
-//		Type *intType = Type::getInt32Ty(module->getContext());
-//		std::vector<Type *> printfArgsTypes({Type::getInt8PtrTy(module->getContext())});
-//		FunctionType *printfType = FunctionType::get(intType, printfArgsTypes, true);
-//		auto *printfFunc = dyn_cast<Function>(module->getOrInsertFunction("printf", printfType).getCallee()); 
-		Type* charType = Type::getInt8PtrTy(module->getContext());
-                FunctionType *printf_type = FunctionType::get(charType,true);
-                auto *printfFunc = cast<Function>(module->getOrInsertFunction("printf", printf_type).getCallee());
-
-		assert(printfFunc && "printf not found in module");
-
-		// Declare exit function
-		Type *voidType = Type::getVoidTy(module->getContext());
-		vector<Type *> exitArgsTypes;
-		exitArgsTypes.push_back(Type::getInt32Ty(module->getContext()));
-		FunctionType *exitType = FunctionType::get(voidType, exitArgsTypes, false);
-		Function *exitFunc = dyn_cast<Function>(module->getOrInsertFunction("exit", exitType).getCallee());
-
-		string functionName = F.getName().str();
-		errs()<<"\nRemoveFunctions pass: Function being analysed : "<<functionName<<"\n";
-        errs()<<"\nSAD SAD SAD\n";
-        for(int i=0;i<function_list.size();i++){
-             errs()<<"\nName of function is "<<function_list[i]<<"\n";
-        }
-	
+		StringRef functionName = F.getName();
+		errs()<<"\nRemoveFunctions pass. Function being analysed : "<<functionName<<"\n";
+              	
 	       	if( find(function_list.begin(), function_list.end(), functionName) != function_list.end()  ){
-			errs()<<"\nRemoveFunctions: User asked this function("<<functionName<<") to be removed\n";
+
+			errs()<<"\nUser asked to remove "<<functionName<<"\n";
+
+			/*
+			 *  We will remove function by inserting an empty basic block in 
+			 *  the function specified by user. That basic block will have a 
+			 *  call to printf to print that the function is unreabable and then exit
+			 *  will be called to terminate program execution. After the call to exit,
+			 *  we add an unreachable instruction. In the final step, we remove all the 
+			 *  basic blocks from the functions except the empty basic block that we 
+			 *  added.
+			 */ 
 	
 			BasicBlock * entryBB = &F.getEntryBlock();
 			BasicBlock *emptyBB = BasicBlock::Create(module->getContext(), "empty");
         	    	emptyBB->insertInto(&F,entryBB);
 			IRBuilder<> Builder(emptyBB);
+
 			//Add printf call in empty BB
             		Value *str = Builder.CreateGlobalStringPtr("You asked to remove this function. Program terminating!\n", "str");
             		std::vector<Value *> removeMessage({str});
+			Function* printfFunc = makePrintf(module);
             		Builder.CreateCall(printfFunc, removeMessage, "unreahcable");
+
            		//Add exit call in empty BB
             		Value *status = ConstantInt::get(Type::getInt32Ty(module->getContext()),(-10));
+			Function* exitFunc = makeExit(module);
             		Builder.CreateCall(exitFunc, status, "");
             		Type* returnType = F.getReturnType();
+
             		//Add terminator instruction
-                   // UnreachableInst ureachableInstruction(module->getContext(), emptyBB);
-                    Builder.CreateUnreachable();
-            //		ReturnInst::Create(module->getContext(), UndefValue::get(returnType), emptyBB);
+			Builder.CreateUnreachable();
 
-                    for (Function::iterator b = F.begin(), be = F.end(); b != be;) {
-                        BasicBlock* BB = &*b;
-                        ++b;
-                        if(BB!=emptyBB){
-                            errs()<<*BB<<"\n\n"<<F<<"\n\n";
-                            BB->eraseFromParent();
+			// Removing the Basic blocks
+			for (Function::iterator b = F.begin(), be = F.end(); b != be;) {
+                        	BasicBlock* BB = &*b;
+                        	++b;
 
-
-                        }
-
-                    }
+                        	if(BB!=emptyBB)
+                            		BB->eraseFromParent();
+			}
 
 
         	}
