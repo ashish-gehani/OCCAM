@@ -32,7 +32,7 @@
 #include <sstream>
 #include <iostream>
 
-static llvm::cl::opt<std::string> function_list("functions_to_remove", llvm::cl::init(""));
+static llvm::cl::list<std::string> function_list("functions_to_remove", llvm::cl::desc ("entry point for function removing pass"),llvm::cl::ZeroOrMore);
 
 namespace previrt {
 namespace transforms {
@@ -48,14 +48,14 @@ struct RemoveFunctions : public FunctionPass {
 	bool runOnFunction(Function &F) override {
 
 		Module* module = F.getParent();
-		vector<string> removeFunctions;
-		stringstream string_to_stream(function_list);
+//		vector<string> removeFunctions;
+//		stringstream string_to_stream(function_list);
 
-		while (string_to_stream.good()) {
-			string substr;
-        		getline(string_to_stream, substr, ',');
-        		removeFunctions.push_back(substr);
-    		}
+//		while (string_to_stream.good()) {
+//			string substr;
+  //      		getline(string_to_stream, substr, ',');
+    //    		removeFunctions.push_back(substr);
+    //		}
 
 //		vector<string> removeFunctions{"func1","func2","func3","func4","add"};
     
@@ -79,8 +79,12 @@ struct RemoveFunctions : public FunctionPass {
 
 		string functionName = F.getName().str();
 		errs()<<"\nRemoveFunctions pass: Function being analysed : "<<functionName<<"\n";
+        errs()<<"\nSAD SAD SAD\n";
+        for(int i=0;i<function_list.size();i++){
+             errs()<<"\nName of function is "<<function_list[i]<<"\n";
+        }
 	
-	       	if( find(removeFunctions.begin(), removeFunctions.end(), functionName) != removeFunctions.end()  ){
+	       	if( find(function_list.begin(), function_list.end(), functionName) != function_list.end()  ){
 			errs()<<"\nRemoveFunctions: User asked this function("<<functionName<<") to be removed\n";
 	
 			BasicBlock * entryBB = &F.getEntryBlock();
@@ -96,7 +100,22 @@ struct RemoveFunctions : public FunctionPass {
             		Builder.CreateCall(exitFunc, status, "");
             		Type* returnType = F.getReturnType();
             		//Add terminator instruction
-            		ReturnInst::Create(module->getContext(), UndefValue::get(returnType), emptyBB);
+                   // UnreachableInst ureachableInstruction(module->getContext(), emptyBB);
+                    Builder.CreateUnreachable();
+            //		ReturnInst::Create(module->getContext(), UndefValue::get(returnType), emptyBB);
+
+                    for (Function::iterator b = F.begin(), be = F.end(); b != be;) {
+                        BasicBlock* BB = &*b;
+                        ++b;
+                        if(BB!=emptyBB){
+                            errs()<<*BB<<"\n\n"<<F<<"\n\n";
+                            BB->eraseFromParent();
+
+
+                        }
+
+                    }
+
 
         	}
         

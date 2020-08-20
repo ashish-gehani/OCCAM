@@ -119,7 +119,10 @@ def remove_functions_passes(input_file, output_file, functions):
 
     print("Remove functions invoked with:"+functions)
 
-    args = ['-RemoveFunctions','-functions_to_remove={}'.format(functions)]
+    args = ['-RemoveFunctions']
+    comma_separated_functions = functions.split(",")
+    for function in comma_separated_functions:
+        args += ['-functions_to_remove={}'.format(function)]
 
     return driver.previrt(input_file,output_file, args)
 
