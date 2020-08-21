@@ -9,7 +9,7 @@ Description
 OCCAM architecture
 ==================
 
-![OCCAM architecture](https://github.com/SRI-CSL/OCCAM/blob/master/OCCAM-arch.jpg?raw=true "OCCAM architecture")
+![OCCAM architecture](https://github.com/SRI-CSL/OCCAM/blob/llvm10/OCCAM-arch.jpg?raw=true "OCCAM architecture")
 
 Docker
 ======
