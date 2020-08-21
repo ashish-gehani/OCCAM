@@ -3,6 +3,6 @@
 , "modules"    : []
 , "native_libs" : ["extern-test.o"]
 , "ldflags" : []
-, "args"    : []
+, "static_args"    : []
 , "name"    : "extern-var"
 }

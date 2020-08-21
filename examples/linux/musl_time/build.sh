@@ -18,7 +18,7 @@ function create_dynamic_manifest() {
 , "modules"    : ["libc.a.bc"]
 , "native_libs" : ["crt1.o", "libc.a", "/usr/lib/gcc/x86_64-linux-gnu/7/libgcc.a"]
 , "ldflags" : ["-static", "-nostdlib", "-g"]
-, "args"    : []
+, "static_args"    : []
 , "name"    : "main"
 }
 EOF
@@ -32,7 +32,7 @@ function create_static_manifest() {
 , "modules"    : []
 , "native_libs" : ["crt1.o", "libc.a", "/usr/lib/gcc/x86_64-linux-gnu/7/libgcc.a"]
 , "ldflags" : ["-static", "-nostdlib", "-g"]
-, "args"    : []
+, "static_args"    : []
 , "name"    : "main"
 }
 EOF

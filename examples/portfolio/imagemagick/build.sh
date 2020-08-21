@@ -79,7 +79,8 @@ cat > ${MANIFEST} <<EOF
 , "ldflags" : [ "-O2", "-static", "-nostdlib"]
 
 , "name"    : "magick"
-, "constraints" : ["4", "magick", "convert"]
+, "static_args" : ["convert"]
+, "dynamic_args" : "4"
 }
 EOF
 

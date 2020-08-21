@@ -107,6 +107,7 @@
 	  "objdump_modules/xstrerror.o.bc"
   ]
   , "native_libs" : []
-  , "constraints"    : ["1", "-D", "-t", "-s", "-w"]
+  , "static_args"    : ["-D", "-t", "-s", "-w"]
+  , "dynamic_args"    : "1"
   , "name"    : "objdump"
 }

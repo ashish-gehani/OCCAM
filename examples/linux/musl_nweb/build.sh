@@ -13,7 +13,7 @@ cat > nweb.razor.manifest <<EOF
 , "modules"    : ["libc.a.bc"]
 , "native_libs" : ["crt1.o", "libc.a"]
 , "ldflags" : ["-static", "-nostdlib"]
-, "args"    : ["8181", "${ROOT}"]
+, "static_args"    : ["8181", "${ROOT}"]
 , "name"    : "nweb"
 }
 EOF

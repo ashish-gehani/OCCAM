@@ -74,12 +74,13 @@ done
 
 cat > bzip2.manifest <<EOF
 { "main" : "bzip2.bc"
-, "binary"  : "bzip2"
+, "binary"  : "bzip2_slashed"
 , "modules"    : [ "compress.o.bc", "decompress.o.bc", "huffman.o.bc", "bzlib.o.bc", "blocksort.o.bc", "crctable.o.bc", "randtable.o.bc"]
 , "native_libs" : [ ]
 , "ldflags" : [ ]
-, "name"    : "bzip2_slashed"
-, "constraints" : [1, "-z"]
+, "name"    : "bzip2"
+, "static_args" : ["-z"]
+, "dynamic_args" : "1"
 }
 EOF
 

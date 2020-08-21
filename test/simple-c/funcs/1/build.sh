@@ -7,7 +7,7 @@ cat > funcs.manifest <<EOF
 , "modules"    : ["call.o.bc"]
 , "native_libs" : []
 , "ldflags"  : []
-, "args"    : ["argv1"]
+, "static_args"    : ["argv1"]
 , "name"    : "main"
 }
 EOF

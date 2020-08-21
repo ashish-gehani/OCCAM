@@ -105,11 +105,11 @@ def make_work_dir(d):
 def sanity_check_manifest(manifest):
     """ Nurse maid the users.
     """
-    manifest_keys = ['ldflags', 'args', 'name', 'native_libs', 'binary', 'modules']
+    manifest_keys = ['ldflags', 'static_args', 'name', 'native_libs', 'binary', 'modules']
 
     old_manifest_keys = ['modules', 'libs', 'search', 'shared']
 
-    new_manifest_keys = ['main', 'binary', 'constraints']
+    new_manifest_keys = ['main', 'binary', 'dynamic_args']
 
     dodo_manifest_keys = ['watch']
 
@@ -154,6 +154,18 @@ def sanity_check_manifest(manifest):
 
     return True
 
+def get_int(n):
+    if n is None:
+        return 0
+    elif isinstance(n, int) or isinstance(n, unicode):
+        return n
+    elif isinstance(n, str):
+        try:
+            return int(n)
+        except ValueError:
+            pass
+    return None
+    
 def check_manifest(manifest):
 
     ok = sanity_check_manifest(manifest)
@@ -184,21 +196,22 @@ def check_manifest(manifest):
     if ldflags is None:
         ldflags = []
 
-    args = manifest.get('args')
+    static_args = manifest.get('static_args')
 
-    constraints = manifest.get('constraints')
-    if constraints is None:
-        constraints = ('-1', [])
-    else:
-        constraints = (constraints[0], constraints[1:])
+    dynamic_args = manifest.get('dynamic_args')
 
-
+    
+    dynamic_args = get_int(dynamic_args)
+    if dynamic_args is None:
+        sys.stderr.write('Field dynamic_args in manifest must be a int or string representing a int\n')
+        return (False, )
+    
     name = manifest.get('name')
     if name is None:
         sys.stderr.write('No name in manifest\n')
         return (False, )
 
-    return (True, main, binary, modules, native_libs, ldflags, args, name, constraints)
+    return (True, main, binary, modules, native_libs, ldflags, static_args, name, dynamic_args)
 
 
 #iam: used to be just os.path.basename; but now when we are processing trees

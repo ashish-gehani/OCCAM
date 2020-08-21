@@ -9,7 +9,7 @@ cat > multiple.manifest <<EOF
 , "native_libs" : []
 , "ldflags" : [ "-O2" ]
 , "name"    : "wc"
-, "args"    : ["-c"]
+, "static_args"    : ["-c"]
 }
 EOF
 

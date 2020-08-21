@@ -28,7 +28,7 @@ cat > multiple.manifest <<EOF
 , "binary"  : "main"
 , "modules"    : ["${LIBRARY}.bc"]
 , "native_libs" : []
-, "args"    : ["one"]
+, "static_args"    : ["one"]
 , "name"    : "main"
 }
 EOF
@@ -46,7 +46,7 @@ cat > multiple.manifest <<EOF
 , "binary"  : "main_static"
 , "modules"    : []
 , "native_libs" : []
-, "args"    : ["one"]
+, "static_args"    : ["one"]
 , "name"    : "main_static"
 }
 EOF

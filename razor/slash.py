@@ -213,7 +213,7 @@ class Slash(object):
         if not valid:
             return 1
 
-        (valid, module, binary, libs, native_libs, ldflags, args, name, constraints) = parsed
+        (valid, module, binary, libs, native_libs, ldflags, static_args, name, dynamic_args) = parsed
 
 
         if not self.driver_config():
@@ -337,32 +337,18 @@ class Slash(object):
             return
 
         ### 0. Lift deployment information into main's module
-        if args is not None:
-            sys.stderr.write('Full input-user specialization using fix parameters: {0}\n'.format(args))            
-            main = files[module]
-            pre = main.get()
-            post = main.new('a')
-            passes.full_specialize_program_args(pre, post, args, 'arguments', name=name)
-        elif constraints:
-            sys.stderr.write('Partial input-user specialization using the constraints: {0}\n'.format(constraints))
-            main = files[module]
-            pre = main.get()
-            post = main.new('a')
-            passes.partial_specialize_program_args(pre, post, constraints, 'constraints')
-
+        main = files[module]
+        pre = main.get()
+        post = main.new('a')
+        passes.specialize_program_args(pre, post, name, static_args, dynamic_args, \
+                                       'arguments')
+                                            
         if use_config_prime:
-            ## NEW: apply configuration prime in main
-            if args is not None:
-                pre = main.get()
-                post = main.new('cp')
-                # args are already lowered in the bitcode
-                passes.config_prime(pre, post, list(), 0)
-            elif constraints:
-                (num_unknown_args, known_args) = constraints
-                pre = main.get()
-                post = main.new('cp')
-                # known_args are already lowered in the bitcode
-                passes.config_prime(pre, post, list(), num_unknown_args)
+            ## Apply configuration prime in main
+            pre = main.get()
+            post = main.new('cp')
+            # static_args are already lowered in the bitcode
+            passes.config_prime(pre, post, list(), dynamic_args)
             
         # Create interface for main. We can never internalize main
         interface.writeInterface(interface.mainInterface(), 'main.iface')

@@ -19,7 +19,7 @@ cat > simple.manifest <<EOF
 , "binary"  : "main"
 , "modules"    : ["${LIBRARY}.bc",  "module.o.bc"]
 , "native_libs" : []
-, "args"    : ["8181"]
+, "static_args"    : ["8181"]
 , "name"    : "main"
 }
 EOF

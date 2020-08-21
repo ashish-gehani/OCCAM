@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 
-
-# Build the manifest file
-cat > multiple.manifest <<EOF
+cat > simple.manifest <<EOF
 { "main" : "main.bc"
 , "binary"  : "main"
 , "modules"    : []
 , "native_libs" : []
-, "static_args"    : ["8181"]
 , "name"    : "main"
+, "static_args" : ["hello world"]
+, "dynamic_args": 1
 }
 EOF
 
@@ -19,11 +18,10 @@ get-bc main
 
 export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
-export PATH=${LLVM_HOME}/bin:${PATH}
 
-slash --intra-spec-policy=none \
-      --no-strip \
-      --work-dir=slash multiple.manifest
+
+slash --intra-spec-policy=none --inter-spec-policy=none \
+      --work-dir=slash simple.manifest
 
 cp slash/main main_slash
 

@@ -34,7 +34,7 @@ cd ${WORKING_DIR}
  cat > lhttpd.manifest <<EOF
 { "main" : "lighttpd.bc"
 , "binary"  : "lighthttpd"
-, "args"    : ["-D", "-m", "/", "-f", "myconf.conf"]
+, "static_args" : ["-D", "-m", "/", "-f", "myconf.conf"]
 , "name"    : "lighttpd"
 , "modules" : []
 , "ldflags" : ["-flat_namespace", "-undefined", "suppress", "-ldl"] 

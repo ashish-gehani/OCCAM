@@ -101,7 +101,8 @@ then
 , "native_libs" : ["libc.a"]
 , "ldflags" : [ "-O2" ]
 , "name"    : "tree"
-, "constraints" : ["1", "tree", "-J", "-h"]
+, "static_args" : ["-J", "-h"]
+, "dynamic_args" : "1"
 }
 
 EOF
@@ -113,7 +114,8 @@ else
 , "native_libs" : []
 , "ldflags" : [ "-O2" ]
 , "name"    : "tree"
-, "constraints" : ["1", "tree", "-J", "-h"]
+, "static_args" : ["-J", "-h"]
+, "dynamic_args" : "1"
 }
 EOF
 

@@ -112,7 +112,8 @@ function dynamic_link() {
 , "modules"    : ["libcrypto.a.bc", "libz.a.bc"]
 , "native_libs" : ["-ldl", "-lresolv"]
 , "name"    : "ssh"
-, "constraints" : ["1", "-Y", "-4"]
+, "static_args" : ["-Y", "-4"]
+, "dynamic_args" : "1"
 }
 EOF
 
@@ -140,7 +141,8 @@ function static_link() {
 , "modules"    : []
 , "native_libs" : ["-ldl", "-lresolv"]
 , "name"    : "ssh"
-, "constraints" : ["1", "-Y", "-4"]
+, "static_args" : ["-Y", "-4"]
+, "dynamic_args" : "1"
 }
 EOF
 
