@@ -100,7 +100,7 @@ then
 , "native_libs" : ["libc.a"]
 , "ldflags" : [ "-O2", "-lpthread"]
 , "name"    : "memcached"
-, "args" : ["-m", "1024", "-I", "1k", "-l", "127.0.0.1:11211"]
+, "static_args" : ["-m", "1024", "-I", "1k", "-l", "127.0.0.1:11211"]
 }
 EOF
 else 
@@ -111,7 +111,7 @@ else
 , "native_libs" : ["-lpthread"  ]
 , "ldflags" : [ "-O2" ]
 , "name"    : "memcached"
-, "args" : ["-m", "1024", "-I", "1k", "-l", "127.0.0.1:11211"]
+, "static_args" : ["-m", "1024", "-I", "1k", "-l", "127.0.0.1:11211"]
 }
 EOF
 fi

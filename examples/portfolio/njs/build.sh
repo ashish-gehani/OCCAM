@@ -99,7 +99,7 @@ function dynamic_link() {
 , "binary"  : "njs_slashed"
 , "modules"    : ["libnjs.a.bc"]
 , "native_libs" : ["-lpcre", "-lreadline"]
-, "args"    : ["-d", "hello_world.njs"]
+, "static_args"    : ["-d", "hello_world.njs"]
 , "name"    : "njs"
 }
 EOF
@@ -129,7 +129,7 @@ function static_link() {
 , "binary"  : "njs_static_linked_slashed"
 , "modules"    : []
 , "native_libs" : ["-lpcre", "-lreadline"]
-, "args"    : ["-d", "hello_world.njs"]
+, "static_args"    : ["-d", "hello_world.njs"]
 , "name"    : "njs_linked"
 }
 EOF

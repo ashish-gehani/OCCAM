@@ -8,7 +8,8 @@ cat > multiple.manifest <<EOF
 , "modules"    : []
 , "native_libs" : []
 , "name"    : "main"
-, "constraints" : ["1", "main", "-b"]
+, "static_args"  : ["-b"]
+, "dynamic_args" : "1"
 }
 EOF
 

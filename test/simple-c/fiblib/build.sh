@@ -10,7 +10,7 @@ cat > manifest <<EOF
 , "binary"  : "main"
 , "modules"    : ["${LIBRARY}.bc"]
 , "native_libs" : []
-, "args"    : ["15"]
+, "static_args"    : ["15"]
 , "name"    : "main"
 }
 EOF

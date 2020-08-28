@@ -12,8 +12,8 @@
 #include "llvm/Support/CommandLine.h"
 
 #include "seadsa/AllocWrapInfo.hh"
+#include "seadsa/DsaLibFuncInfo.hh"
 #include "seadsa/Global.hh"
-#include "seadsa/InitializePasses.hh"
 #include "seadsa/TopDown.hh"
 
 static llvm::cl::opt<bool>
@@ -99,6 +99,7 @@ class MemoryMLFeaturesPassImpl {
   TargetLibraryInfo *m_tli;
   LLVMContext &m_ctx;
   const AllocWrapInfo &m_allocInfo;
+  const DsaLibFuncInfo &m_dsaLibFuncInfo;
   CallGraph &m_cg;
 
   // Bottom-up graph of the module
@@ -257,14 +258,17 @@ public:
   MemoryMLFeaturesPassImpl(const DataLayout &dl,
                            TargetLibraryInfoWrapperPass &tliWrapper,
                            LLVMContext &ctx, const AllocWrapInfo &allocInfo,
+			   const DsaLibFuncInfo &dsaLibFuncInfo,
                            CallGraph &cg)
       : m_dl(dl), m_tliWrapper(tliWrapper), m_tli(nullptr), m_ctx(ctx),
-        m_allocInfo(allocInfo), m_cg(cg), m_bu_graphs(nullptr) {}
+        m_allocInfo(allocInfo), m_dsaLibFuncInfo(dsaLibFuncInfo),
+	m_cg(cg), m_bu_graphs(nullptr) {}
 
   /* Compute summary graphs for each function */
   void computeSummaryGraphs(Module &M) {
     m_bu_graphs.reset(new BottomUpGlobalAnalysis(m_dl, m_tliWrapper,
-                                                 m_allocInfo, m_cg, m_sf));
+                                                 m_allocInfo, m_dsaLibFuncInfo,
+						 m_cg, m_sf));
     m_bu_graphs->runOnModule(M);
   }
 
@@ -398,16 +402,14 @@ public:
   }
 };
 
-MemoryMLFeaturesPass::MemoryMLFeaturesPass() : ModulePass(ID), m_impl(nullptr) {
-  // Initialize sea-dsa pass
-  llvm::PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
-  llvm::initializeAllocWrapInfoPass(Registry);
-}
+MemoryMLFeaturesPass::MemoryMLFeaturesPass()
+  : ModulePass(ID), m_impl(nullptr) {}
 
 bool MemoryMLFeaturesPass::runOnModule(Module &M) {
   auto &dl = M.getDataLayout();
   auto &tliWrapper = getAnalysis<TargetLibraryInfoWrapperPass>();
   auto &allocInfo = getAnalysis<AllocWrapInfo>();
+  auto &dsaLibFuncInfo = getAnalysis<DsaLibFuncInfo>();  
   CallGraph *cg = nullptr;
   // if (UseDsaCallGraph) {
   // cg = &getAnalysis<CompleteCallGraph>().getCompleteCallGraph();
@@ -415,8 +417,11 @@ bool MemoryMLFeaturesPass::runOnModule(Module &M) {
   cg = &getAnalysis<CallGraphWrapperPass>().getCallGraph();
   //}
 
+  allocInfo.initialize(M, this);
+  dsaLibFuncInfo.initialize(M);
+    
   m_impl.reset(new MemoryMLFeaturesPassImpl(dl, tliWrapper, M.getContext(),
-                                            allocInfo, *cg));
+                                            allocInfo, dsaLibFuncInfo, *cg));
   m_impl->computeSummaryGraphs(M);
 
 #if 1
@@ -449,6 +454,7 @@ void MemoryMLFeaturesPass::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<CallGraphWrapperPass>();
   //}
   AU.addRequired<AllocWrapInfo>();
+  AU.addRequired<DsaLibFuncInfo>();
 }
 
 char MemoryMLFeaturesPass::ID;

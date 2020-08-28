@@ -1,40 +1,12 @@
-# Ian's Makefile -- point to the llvm-config of the version you want
-# to build against (using the LLVM_CONFIG environment variable) and
-# type make.
-#
-# Simple!
-#
-# but set the default if there is no environment version there...
-ifeq ($(LLVM_CONFIG),)
-	LLVM_CONFIG=llvm-config
-endif
+include Makefile.config
 
-# BD: made all things dependent on LLVM_HOME
-
-LLVM_CFG = $(LLVM_HOME)/bin/$(LLVM_CONFIG)
-
-LLVM_INCLUDE = $(shell ${LLVM_CFG} --includedir)
-
-CXX_FLAGS += $(shell  ${LLVM_CFG} --cxxflags) -I${LLVM_INCLUDE} -I../include -I/usr/local/include  -I../../../include -DGOOGLE_PROTOBUF_NO_RTTI
-
-CXX_FLAGS += -Ianalysis/sea-dsa/include
-
+CXX_FLAGS += -I../include -I/usr/local/include  -I../../../include
+CXX_FLAGS += -DGOOGLE_PROTOBUF_NO_RTTI
 CXX_FLAGS += -fPIC 
-
-############################################
-## Choose one of these three build types:
-############################################
-CXX_RELEASE_FLAGS += -O3 -DNDEBUG
-CXX_RELWITHDEBINFO_FLAGS += -O2 -g -DNDEBUG
-CXX_DEBUG_FLAGS += -g
-############################################
-CXX_FLAGS += ${CXX_RELEASE_FLAGS}
+CXX_FLAGS += -Ianalysis/sea-dsa/include
 
 CONFIG_PRIME_LIBDIR = $(shell ${LLVM_CFG} --libdir)
 CONFIG_PRIME_LIBS += -L${CONFIG_PRIME_LIBDIR} -lLLVMExecutionEngine -lffi
-
-#iam: producing the library varies from OS to OS
-OS   =  $(shell uname)
 
 LIBRARYNAME=libprevirt
 

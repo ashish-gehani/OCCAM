@@ -44,4 +44,5 @@ clean:
 	$(MAKE) -C simple-c/bounded-inter clean
 	$(MAKE) -C simple-c/onlyonce-intra clean
 	$(MAKE) -C simple-c/onlyonce-inter clean
+	$(MAKE) -C simple-c/pe clean
 	$(MAKE) -C ipdse clean

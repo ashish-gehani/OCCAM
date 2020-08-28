@@ -105,7 +105,7 @@ function dynamic_link() {
 , "binary"  : "httpd_slashed"
 , "modules"    : ["libapr-1.shared.bc", "libaprutil-1.shared.bc", "libpcre.shared.bc","libexpat.shared.bc"]
 , "native_libs" : ["-liconv", "-ldl", "-lpthread"]
-, "args"    : ["-d", "/vagrant/www"]
+, "static_args"    : ["-d", "/vagrant/www"]
 , "name"    : "httpd"
 }
 EOF
@@ -139,7 +139,7 @@ function static_link() {
 , "binary"  : "httpd_static_combined_slashed"
 , "modules"    : []
 , "native_libs" : ["-liconv", "-ldl", "-lpthread"]
-, "args"    : ["-d", "/vagrant/www"]
+, "static_args"    : ["-d", "/vagrant/www"]
 , "name"    : "httpd_combined"
 }
 EOF

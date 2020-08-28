@@ -9,7 +9,7 @@ Description
 OCCAM architecture
 ==================
 
-![OCCAM architecture](https://github.com/SRI-CSL/OCCAM/blob/master/OCCAM-arch.jpg?raw=true "OCCAM architecture")
+![OCCAM architecture](https://github.com/SRI-CSL/OCCAM/blob/llvm10/OCCAM-arch.jpg?raw=true "OCCAM architecture")
 
 Docker
 ======
@@ -116,39 +116,38 @@ The manifest for `slash` should be valid JSON. The following keys have meaning:
 
 + `ldflags`: a list of linker flags such as `--static`, `--nostdlib`
 
-+ `args` : the list of arguments you wish to specialize in the _main()_ of `main`.
++ `name`: the program name 
 
-+ `constraints` : a list consisting of a positive integer, followed by some number of strings. The
-number indicates the expected number of arguments the specialized program will receive, and the
-remaing strings are the specialized arguments to the original program.
++ `static_args` : the list of static arguments you wish to specialize in the _main()_ of `main`.
 
-Note that `args` and `constraints` are mutually exclusive. If you use one you should not use the other.
++ `dynamic_args` : a number that indicates the arguments the specialized program will receive at runtime. If this key is omitted then the default value is 0 which means that the specialized program does not expect any parameter. 
 
 As an example, (see `examples/linux/apache`), to previrtualize apache:
 
 ```
 { "main" : "httpd.bc"
-, "binary"  : "httpd_slashed"
-, "modules"    : ["libapr-1.so.bc", "libaprutil-1.so.bc", "libpcre.so.bc"]
+, "binary" : "httpd_slashed"
+, "modules" : ["libapr-1.so.bc", "libaprutil-1.so.bc", "libpcre.so.bc"]
 , "native_libs" : ["-lcrypt", "-ldl", "-lpthread"]
-, "args"    : ["-d", "/var/www"]
 , "name"    : "httpd"
+, "static_args" : ["-d", "/var/www"]
 }
 ```
 
 Another example, (see `examples/linux/musl_nweb`), specializes `nweb` with `musl libc.c`:
 ```
 { "main" :  "nweb.o.bc"
-, "binary"  : "nweb_razor"
-, "modules"    : ["libc.a.bc"]
+, "binary" : "nweb_razor"
+, "modules" : ["libc.a.bc"]
 , "native_libs" : ["crt1.o", "libc.a"]
 , "ldflags" : ["-static", "-nostdlib"]
-, "args"    : ["8181", "./root"]
-, "name"    : "nweb"
+, "name" : "nweb"
+, "static_args" : ["8181", "./root"]
+, "dynamic_args" : "0"
 }
 ```
 
-A third example, (see `examples/portfolio/tree`),  illustrates the use of the `constraints` field to partially specialize the arguments to the `tree` utility.
+A third example, (see `examples/portfolio/tree`),  illustrates the use of the `dynamic_args` field to partially specialize the arguments to the `tree` utility.
 ```
 { "main" : "tree.bc"
 , "binary"  : "tree"
@@ -156,7 +155,8 @@ A third example, (see `examples/portfolio/tree`),  illustrates the use of the `c
 , "native_libs" : []
 , "ldflags" : [ "-O2" ]
 , "name"    : "tree"
-, "constraints" : ["1", "tree", "-J", "-h"]
+, "static_args" : ["-J", "-h"]
+, "dynamic_args" : "1"
 }
 ```
 

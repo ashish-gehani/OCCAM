@@ -10,7 +10,7 @@ cat > nweb.manifest <<EOF
 , "binary"  : "nweb"
 , "modules"    : []
 , "native_libs" : ["-lc", "-lpthread"]
-, "args"    : ["8181", "${ROOT}"]
+, "static_args"    : ["8181", "${ROOT}"]
 , "name"    : "nweb"
 }
 EOF

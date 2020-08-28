@@ -101,7 +101,8 @@ then
 , "native_libs" : [ "/usr/lib/libiconv.dylib", "libc.a" ]
 , "ldflags" : [ "-O2" ]
 , "name"    : "readelf"
-, "constraints" : [1, "readelf", "-s"]
+, "static_args" : ["-s"]
+, "dynamic_args" : "1"
 }
 EOF    
 else
@@ -112,7 +113,8 @@ else
 , "native_libs" : [ "/usr/lib/libiconv.dylib" ]
 , "ldflags" : [ "-O2" ]
 , "name"    : "readelf"
-, "constraints" : [1, "readelf", "-s"]
+, "static_args" : ["-s"]
+, "dynamic_args" : "1"
 }
 EOF
 fi    

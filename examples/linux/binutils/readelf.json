@@ -21,6 +21,7 @@
 	"readelf_modules/libz_a-crc32.o.bc",
 	"readelf_modules/libz_a-inffast.o.bc"]
   , "native_libs" : []
-  , "constraints"    : ["1", "-h", "-l", "-S", "-s", "-r", "-d"]
+  , "static_args"    : ["-h", "-l", "-S", "-s", "-r", "-d"]
+  , "dynamic_args"    : "1"
   , "name"    : "readelf"
 }

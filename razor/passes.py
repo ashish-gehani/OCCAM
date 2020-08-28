@@ -420,31 +420,9 @@ def optimize(input_file, output_file, use_seaopt, extra_opts):
     args += [input_file, '-o', output_file, '-O3']
     return driver.run(utils.get_opt(use_seaopt), args)
 
-def partial_specialize_program_args(input_file, output_file, cnstrs, filename=None):
-    """ constrain the program arguments.
-    """
-    if filename is None:
-        cnstr_file = tempfile.NamedTemporaryFile(delete=False)
-        cnstr_file.close()
-        cnstr_file = cnstr_file.name
-    else:
-        cnstr_file = filename
-    f = open(cnstr_file, 'w')
-    (argc, argv) = cnstrs
-    f.write('{0}\n'.format(argc))
-    index = 0
-    for x in argv:
-        f.write('{0} {1}\n'.format(index, x))
-        index += 1
-    f.close()
-
-    args = ['-Ppartial-cmdline-spec', '-Ppartial-cmdline-spec-input', cnstr_file]
-    driver.previrt(input_file, output_file, args)
-
-    if filename is None:
-        os.unlink(cnstr_file)
-
-def full_specialize_program_args(input_file, output_file, args, filename=None, name=None):
+def specialize_program_args(input_file, output_file, \
+                            program_name, static_args, num_dynamic_args, \
+                            filename=None):
     """ fix the program arguments.
     """
     if filename is None:
@@ -453,25 +431,41 @@ def full_specialize_program_args(input_file, output_file, args, filename=None, n
         arg_file = arg_file.name
     else:
         arg_file = filename
+        
     f = open(arg_file, 'w')
-    for x in args:
-        f.write(x + '\n')
+    if num_dynamic_args == 0:
+        # each static parameter per line (don't include the program name)
+        for x in static_args:
+            f.write(x + '\n')
+    else:
+        # first line the number of dynamic args
+        # second line 0 name
+        # the rest is one line per parameter 
+        f.write('{0}\n'.format(num_dynamic_args))
+        f.write('0 {0}\n'.format(program_name))
+        index = 1
+        for x in static_args:
+            f.write('{0} {1}\n'.format(index, x))
+            index += 1
     f.close()
 
-    extra_args = []
-    if not name is None:
-        extra_args = ['-Pfull-cmdline-spec-name', name]
-    args = ['-Pfull-cmdline-spec', '-Pfull-cmdline-spec-input', arg_file] + extra_args
+    if num_dynamic_args == 0:
+        args = ['-Pfull-cmdline-spec', '-Pfull-cmdline-spec-input', arg_file]
+        args += ['-Pfull-cmdline-spec-name', program_name]
+    else:
+        args = ['-Ppartial-cmdline-spec', '-Ppartial-cmdline-spec-input', arg_file]
+            
     driver.previrt(input_file, output_file, args)
-
     if filename is None:
         os.unlink(arg_file)
 
-def config_prime(input_file, output_file, known_args, num_unknown_args):
-    """
+
+        
+def config_prime(input_file, output_file, known_args, num_dynamic_args):
+    """ 
     Execute the program until a branch condition is unknown.
     known_args is a list of strings
-    num_unknown_args is a non-negative number.
+    num_dynamic_args is a non-negative number.
     """
     ## TODOX: find subset of -O1 that simplify loops for dominance queries
     args = ['-O1'] # '-loop-simplify', '-simplifycfg'
@@ -483,7 +477,7 @@ def config_prime(input_file, output_file, known_args, num_unknown_args):
         else:
             args.append('-Pconfig-prime-input-arg=\"{0}\"'.format(x))
         index += 1
-    args.append('-Pconfig-prime-unknown-args={0}'.format(num_unknown_args))
+    args.append('-Pconfig-prime-unknown-args={0}'.format(num_dynamic_args))
     driver.previrt(input_file, output_file, args)
 
 

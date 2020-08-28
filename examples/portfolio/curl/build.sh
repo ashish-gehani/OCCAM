@@ -102,7 +102,8 @@ function dynamic_link() {
 , "native_libs" : [ ]
 , "ldflags" : [ "-O2", "-lpthread", "-lz", "-lcrypto", "-lssl" ]
 , "name"    : "curl"
-, "constraints" : [1, "curl", "--compressed", "--http1.1", "--ipv4"]
+, "static_args" : ["--compressed", "--http1.1", "--ipv4"]
+, "dynamic_args" : "1"
 }
 EOF
 
