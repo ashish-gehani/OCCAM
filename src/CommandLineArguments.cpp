@@ -183,7 +183,8 @@ bool FullCommandLineArguments::runOnModule(Module &M) {
   // main(...,argv) { char*[N] newargv; ... foo(...,newargv);}
   //
 
-  Value *numArgs = ConstantInt::get(intptrTy, cargs.size(), false);
+  unsigned new_argc = cargs.size();
+  Value *numArgsPlusOne = ConstantInt::get(intptrTy, new_argc + 1, false);
   /// XXX: We cannot do stack allocation
   // Value* argv = irb.CreateAlloca(stringTy, numArgs);
 
@@ -198,34 +199,40 @@ bool FullCommandLineArguments::runOnModule(Module &M) {
   // still empty.  CreateMalloc returns the BitCast instruction to
   // cast the malloced pointer to its type.  That BitCast
   // instruction is not inserted anywhere.
-  Value *argv = CallInst::CreateMalloc(
+  Value *new_argv = CallInst::CreateMalloc(
       bb,
       /*expected type for malloc argument (size_t)*/
       intptrTy, stringTy /*used only for cast*/, ptrSz /*sizeof(type)*/,
-      numArgs /*array_sz*/, (Function *)nullptr, "new_argv");
-  bb->getInstList().push_back(cast<Instruction>(argv));
+      numArgsPlusOne /*array_sz*/, (Function *)nullptr, "new_argv");
+  bb->getInstList().push_back(cast<Instruction>(new_argv));
 
-  /* Prepare the IR builder to insert next time _after_ argv */
-  irb.SetInsertPoint(cast<Instruction>(argv));
+  /* Prepare the IR builder to insert next time _after_ new_argv */
+  irb.SetInsertPoint(cast<Instruction>(new_argv));
   auto it = irb.GetInsertPoint();
   ++it;
   irb.SetInsertPoint(bb, it);
 
+  // --- This is ensured by the C standard and getopt relies on this
+  // new_argv[new_argc] = NULL
+  irb.CreateStore(Constant::getNullValue(
+			 cast<PointerType>(new_argv->getType())->getElementType()),
+		  irb.CreateConstGEP1_32(new_argv, new_argc));
+  
   int idx = 0;
   for (std::vector<Value *>::iterator i = cargs.begin(), e = cargs.end();
        i != e; ++i, ++idx) {
-    Value *argptr = irb.CreateConstGEP1_32(argv, idx);
+    Value *argptr = irb.CreateConstGEP1_32(new_argv, idx);
     irb.CreateStore(*i, argptr);
   }
 
   std::vector<Value *> calleeVargs;
   calleeVargs.push_back(ConstantInt::getSigned(
-      IntegerType::get(M.getContext(), 32), cargs.size()));
-  calleeVargs.push_back(argv);
+      IntegerType::get(M.getContext(), 32), new_argc));
+  calleeVargs.push_back(new_argv);
   ArrayRef<Value *> calleeArgs(calleeVargs);
   Value *res = irb.CreateCall(f, calleeArgs);
   //    Value* res = irb.CreateCall2(f, ConstantInt::getSigned(IntegerType::get(
-  //        M.getContext(), 32), cargs.size()), argv);
+  //        M.getContext(), 32), new_argc), new_argv);
   irb.CreateRet(res);
 
   // f is the old main which is now called inside new_main and
