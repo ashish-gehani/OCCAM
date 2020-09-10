@@ -1,7 +1,7 @@
 //
 // OCCAM
 //
-// Copyright (c) 2011-2012, SRI International
+// Copyright (c) 2011-2018, SRI International
 //
 //  All rights reserved.
 //
@@ -32,149 +32,211 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-#include "llvm/Support/CommandLine.h"
-#include "llvm/IR/Attributes.h"
+
+/**
+ * Specialize all the main's argv parameters wrt the values given by
+ * the manifest. The manifest can provide all argv values or some.
+ **/
+
 #include "llvm/IR/Constants.h"
-#include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instructions.h"
-#include "llvm/IR/Module.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/LinkAllPasses.h" //SROA and Mem2Reg
 #include "llvm/Pass.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include <string>
-#include <vector>
-
-#include "Specializer.h"
+#include "Specializer.h" // materializeStringLiteral
 #include "utils/Inliner.h"
 
-using namespace llvm;
-
-static cl::opt<std::string>
-    ArgumentsFileName("Pfull-cmdline-spec-input", cl::init("arguments"), cl::Hidden,
-      cl::desc("file that contains the field args from the manifest"));
-
-static cl::opt<std::string>
-    SpecializeProgName("Pfull-cmdline-spec-name", cl::init(""), cl::Hidden,
-      cl::desc("file that contains the field name from the manifest"));
+#include <fstream> // ifstream
+#include <string>  // stoi, strtok, ...
+//#include <stdexcept> // std::invalid_argument
 
 namespace previrt {
-
-class FullCommandLineArguments : public llvm::ModulePass {
+class CommandLineArguments : public llvm::ModulePass {
 public:
   static char ID;
 
-  FullCommandLineArguments();
-  virtual ~FullCommandLineArguments();
-  virtual bool runOnModule(llvm::Module &);
+  CommandLineArguments();
+  virtual ~CommandLineArguments();
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const {}
   virtual llvm::StringRef getPassName() const {
-    return "Full specialization of program arguments based on manifest";
+    return "Specialization of program arguments (argv) based on manifest";
   }
-  
-private:
-  std::vector<char *>m_argv;
+  virtual bool runOnModule(llvm::Module &M);
 };
-  
-FullCommandLineArguments::FullCommandLineArguments()
-  : ModulePass(FullCommandLineArguments::ID) {
-  
-  char str[1024];
-  FILE *f = fopen(ArgumentsFileName.c_str(), "r");
-
-  if (f == NULL) {
-    errs() << "FullCommandLineArguments(): Failed to open file '" << ArgumentsFileName
-           << "'\n";
-    return;
-  }
-
-  while (fgets(str, 1024, f) != NULL) {
-    int len = strlen(str);
-    while (len > 0 && (str[len - 1] == '\n' || str[len - 1] == '\r'))
-      str[--len] = '\0';
-    char *buf = new char[len + 1];
-    strcpy(buf, str);
-    m_argv.push_back(buf);
-  }
-
-  fclose(f);
-
-  errs() << "Read " <<  m_argv.size() << " command line arguments:\n";
-  for (unsigned i=0, sz=m_argv.size(); i<sz; ++i) {
-    errs() << "\t" <<  m_argv[i] << "\n";
-  }
-
 }
 
-FullCommandLineArguments::~FullCommandLineArguments() {
-  if (!m_argv.empty()) {
-    for (unsigned i = 0, sz = m_argv.size(); i < sz; i++) {
-      delete[] m_argv[i];
+using namespace llvm;
+using namespace previrt;
+
+static cl::opt<std::string>
+    InputFilename("Pcmdline-spec-input", cl::init(""), cl::Hidden,
+                  cl::desc("Specify the filename with input arguments"));
+
+CommandLineArguments::CommandLineArguments() : ModulePass(ID) {}
+
+CommandLineArguments::~CommandLineArguments() {}
+
+// line is "N S" where N is any non-negative number and S is a string
+// between double quotes
+bool parse_input_line(std::string line, unsigned &index, std::string &s) {
+  std::vector<std::string> tokens;
+  std::size_t pos = 0;
+  std::size_t found = line.find_first_of(' ', pos);
+  if (found != std::string::npos) {
+    tokens.push_back(line.substr(pos, found - pos));
+    pos = found + 1;
+    tokens.push_back(line.substr(pos));
+  } else {
+    errs() << "Could not parse " << line << "\n";
+    return false;
+  }
+
+  if (tokens.size() != 2) {
+    return false;
+  } else {
+    // XXX: llvm disables exceptions
+    // try {
+    index = (unsigned)std::stoi(tokens[0]);
+    // }
+    // catch (const std::invalid_argument &ia) {
+    //   return false;
+    // }
+    s = tokens[1];
+    return true;
+  }
+}
+
+// out contains all argv's parameters defined by the user
+void populate_program_arguments(std::string filename,
+                                std::map<unsigned, std::string> &out,
+                                int &argc) {
+  std::string line;
+  std::ifstream fd(filename);
+  if (fd.is_open()) {
+    std::string argc_line;
+    getline(fd, argc_line);
+    argc = std::stoi(argc_line);
+    while (getline(fd, line)) {
+      unsigned i;
+      std::string val;
+      if (parse_input_line(line, i, val)) {
+        out.insert(std::make_pair(i, val));
+      }
     }
+    fd.close();
+  } else {
+    errs() << filename << " not found\n";
   }
 }
 
-bool FullCommandLineArguments::runOnModule(Module &M) {
-  Function *f = M.getFunction("main");
+bool CommandLineArguments::runOnModule(Module &M) {
+  /*
+    Given argv[0], argv[1], ... argv[argc-1] and k extra arguments
+    from the manifest x1, ..., xk it builds a new argv array,
+    new_argv, such that
 
-  if (!f) {
-    errs() << "FullCommandLineArguments::runOnModule: running on module without "
-              "'main' function.\n"
+    new_argv[0]       = x1,
+    new_argv[1]       = x2,
+    ...
+    new_argv[k]       = xk,
+    new_argv[k+1]     = argv[1],
+    new_argv[k+2]     = argv[2],
+    ...
+    new_argv[k+argc-1]= argv[argc-1]
+
+    XXX: note that we ignore argv[0] because we assume that it is
+    always given by the manifest (x1).
+   */
+
+  Function *main = M.getFunction("main");
+
+  if (!main) {
+    errs() << "Running on module without 'main' function.\n"
            << "Ignoring...\n";
     return false;
   }
 
-  if (f->arg_size() != 2) {
-    errs() << "FullCommandLineArguments::runOnModule: main module has incorrect "
-              "signature\n"
-           << f->getFunctionType();
+  if (main->arg_size() != 2) {
+    errs() << "main function has incorrect signature\n"
+           << *(main->getFunctionType()) << "Ignoring...\n";
     return false;
   }
 
-  // Build the array constant
+  // Create partial map from indexes to strings
+  std::map<unsigned, std::string> argv_map;
+  int extra_argc = -1;
+  populate_program_arguments(InputFilename, argv_map, extra_argc);
 
-  // typicaly whether i32 or i64
-  Type *intptrTy = M.getDataLayout().getIntPtrType(M.getContext(), 0);
-  // stringTy = i8*
-  Type *const stringTy =
-      PointerType::get(IntegerType::get(M.getContext(), 8), 0 /*AddressSpace*/);
+  if (argv_map.empty()) {
+    errs() << "User did not provide program parameters. Ignoring ...\n";
+    return false;
+  }
 
+  if (argv_map.find(0) == argv_map.end()) {
+    errs() << "argv[0] does not exist in the manifest. Ignoring ...\n";
+    return false;
+  }
+
+  IRBuilder<> builder(M.getContext());
+  IntegerType *intptrty =
+      cast<IntegerType>(M.getDataLayout().getIntPtrType(M.getContext(), 0));
+  Type *const strty =
+      PointerType::getUnqual(IntegerType::get(M.getContext(), 8));
+
+  // new_main
   Function *new_main =
-      Function::Create(f->getFunctionType(), f->getLinkage(), "", &M);
-  new_main->takeName(f);
+      Function::Create(main->getFunctionType(), main->getLinkage(), "", &M);
+  new_main->takeName(main);
   Function::arg_iterator ai = new_main->arg_begin();
-  ai++;
-  Value *argvArg = (Value *)&(*ai);
+  Value *argc = (Value *)&(*ai);
+  Value *argv = (Value *)&(*(++ai));
 
-  BasicBlock *bb = BasicBlock::Create(M.getContext());
-  new_main->getBasicBlockList().push_front(bb);
-  IRBuilder<> irb(bb);
-  std::vector<Value *> cargs;
-  std::vector<Constant *> init;
+  BasicBlock *entry = BasicBlock::Create(M.getContext(), "entry", new_main);
+  builder.SetInsertPoint(entry);
 
-  if (SpecializeProgName != "") {
-    GlobalVariable *gv = materializeStringLiteral(M, SpecializeProgName.c_str());
-    auto *gvT = gv->getType();
-    auto *sty = cast<PointerType>(gvT);
-    cargs.push_back(irb.CreateConstGEP2_32(sty->getElementType(), gv, 0, 0));
+  // Add sanity check: if argc-1 != manifest's first argument then return 1
+  Value *matchArgcCond = builder.CreateICmpEQ(
+      argc, ConstantInt::get(argc->getType(), extra_argc + 1));
+  BasicBlock *entry_cont =
+      BasicBlock::Create(M.getContext(), "entry", new_main);
+  BasicBlock *errorBB =
+      BasicBlock::Create(M.getContext(), "incorrect_argc", new_main);
+  // wire up entry with entry_cont and errorBB blocks
+  builder.CreateCondBr(matchArgcCond, entry_cont, errorBB);
+  builder.SetInsertPoint(errorBB);
+  builder.CreateRet(ConstantInt::get(new_main->getReturnType(), 1));
+
+  entry = entry_cont;
+  builder.SetInsertPoint(entry);
+  // new argc
+  Value *new_argc = builder.CreateAdd(
+      argc,
+      ConstantInt::get(argc->getType(), argv_map.size() - 1 /*ignore argv[0]*/),
+      "new_argc");
+
+  if (extra_argc != -1) {
+    builder.CreateAssumption(builder.CreateICmpEQ(
+        argc,
+        ConstantInt::get(argc->getType(),
+                         (extra_argc + 1 /* add argv[0] from command line*/))));
   } else {
-    Value *progName = irb.CreateLoad(argvArg, false);
-    cargs.push_back(progName);
+    errs() << "No argc given in the manifest so specialization might not take "
+              "place\n";
   }
+  
 
-  for (unsigned i = 0, sz = m_argv.size(); i < sz; ++i) {
-    GlobalVariable *gv = materializeStringLiteral(M,  m_argv[i]);
-    auto *gvT = gv->getType();
-    // auto* sty = cast<SequentialType>(gvT);
-    auto *sty = cast<PointerType>(gvT);
-    cargs.push_back(irb.CreateConstGEP2_32(sty->getElementType(), gv, 0, 0));
-  }
+  // new argv
 
-  // XXX: We cannot store the new argv in the stack.
+  // XXX: We cannot store new argv in the stack.
   //
-  // If the new argv is passed to another function then the callee
-  // won't have access to new_argv since it's in the caller's stack.
-  // This happens with this code:
+  // If new_argv is passed to another function then the callee won't
+  // have access to new_argv since it's in the caller's stack.  This
+  // happens with this code:
   //
   // main(...,argv) { foo(...,argv);}
   //
@@ -182,72 +244,146 @@ bool FullCommandLineArguments::runOnModule(Module &M) {
   //
   // main(...,argv) { char*[N] newargv; ... foo(...,newargv);}
   //
+  // Value* new_argv = builder.CreateAlloca(strty, new_argc, "new_argv");
 
-  unsigned new_argc = cargs.size();
-  Value *numArgsPlusOne = ConstantInt::get(intptrTy, new_argc + 1, false);
-  /// XXX: We cannot do stack allocation
-  // Value* argv = irb.CreateAlloca(stringTy, numArgs);
-
-  // Add the following instruction:
-  //
-  // stringTy p = (stringTy) malloc(sizeof(type) * array_sz)
-  //
   Value *ptrSz =
-      ConstantInt::get(intptrTy, M.getDataLayout().getPointerSize(), false);
+      ConstantInt::get(intptrty, M.getDataLayout().getPointerSize(), false);
 
-  // Insert the malloc call at the end of bb which at this point is
-  // still empty.  CreateMalloc returns the BitCast instruction to
-  // cast the malloced pointer to its type.  That BitCast
-  // instruction is not inserted anywhere.
+  Value *new_argc_plus_one =
+    builder.CreateAdd(new_argc, ConstantInt::get(new_argc->getType(), 1));
+  
+  // Add the following instruction at the back of entry:
+  //    strty p = (strty) malloc(sizeof(type) * array_sz)
+  //
+  // CreateMalloc: insert the malloc call at the end of entry.
+  // CreateMalloc returns the BitCast instruction to cast the malloced
+  // pointer to its type.  That BitCast instruction is not inserted
+  // anywhere.
   Value *new_argv = CallInst::CreateMalloc(
-      bb,
+      entry,
       /*expected type for malloc argument (size_t)*/
-      intptrTy, stringTy /*used only for cast*/, ptrSz /*sizeof(type)*/,
-      numArgsPlusOne /*array_sz*/, (Function *)nullptr, "new_argv");
-  bb->getInstList().push_back(cast<Instruction>(new_argv));
+      intptrty,
+      /*used only for cast*/
+      strty,
+      /*sizeof(type)*/
+      ptrSz,
+      /*array_sz*/
+      builder.CreateSExtOrTrunc(new_argc_plus_one,intptrty),
+      (Function *)nullptr);
+  entry->getInstList().push_back(cast<Instruction>(new_argv));
 
-  /* Prepare the IR builder to insert next time _after_ new_argv */
-  irb.SetInsertPoint(cast<Instruction>(new_argv));
-  auto it = irb.GetInsertPoint();
+  /* Prepare the IR builder to insert next time _after_ argv */
+  builder.SetInsertPoint(cast<Instruction>(new_argv));
+  auto it = builder.GetInsertPoint();
   ++it;
-  irb.SetInsertPoint(bb, it);
+  builder.SetInsertPoint(entry, it);
+
+  // copy the manifest into new_argv  
+  unsigned i = 0;
+  for (auto &kv : argv_map) {
+    // create a global variable with the argument from the manifest
+    GlobalVariable *gv_i = materializeStringLiteral(M, kv.second.c_str());
+    gv_i->setName("new_argv");
+    // take the address of the global variable
+    Value *gv_i_ref = builder.CreateConstGEP2_32(
+        cast<PointerType>(gv_i->getType())->getElementType(), gv_i, 0, 0);
+    // store the global variable into new_argv[i]
+    Value *new_argv_i = builder.CreateConstGEP1_32(new_argv, i);
+    builder.CreateStore(gv_i_ref, new_argv_i);
+    i++;
+  }
 
   // --- This is ensured by the C standard and getopt relies on this
   // new_argv[new_argc] = NULL
-  irb.CreateStore(Constant::getNullValue(
+  builder.CreateStore(Constant::getNullValue(
 			 cast<PointerType>(new_argv->getType())->getElementType()),
-		  irb.CreateConstGEP1_32(new_argv, new_argc));
-  
-  int idx = 0;
-  for (std::vector<Value *>::iterator i = cargs.begin(), e = cargs.end();
-       i != e; ++i, ++idx) {
-    Value *argptr = irb.CreateConstGEP1_32(new_argv, idx);
-    irb.CreateStore(*i, argptr);
-  }
+		      builder.CreateInBoundsGEP(new_argv, new_argc));
+		      
+  /* Loop that copies argv into new_argv starting at index k
 
-  std::vector<Value *> calleeVargs;
-  calleeVargs.push_back(ConstantInt::getSigned(
-      IntegerType::get(M.getContext(), 32), new_argc));
-  calleeVargs.push_back(new_argv);
-  ArrayRef<Value *> calleeArgs(calleeVargs);
-  Value *res = irb.CreateCall(f, calleeArgs);
-  //    Value* res = irb.CreateCall2(f, ConstantInt::getSigned(IntegerType::get(
-  //        M.getContext(), 32), new_argc), new_argv);
-  irb.CreateRet(res);
+    Before
+     Entry
 
-  // f is the old main which is now called inside new_main and
-  // we would like to inline old main into new_main.
-  utils::inlineOnly(M, {f});
+   After
+     Entry:
+       ...
+       goto PreHeader
+     PreHeader:
+       %j = alloca i32
+       store 0 %j
+       goto Header
+     Header:
+       %t1 = load %j
+       %f = icmp slt %t1, %argc
+       br %f, Body, Tail
+     Body:
+       %o1 = add %t1, %k
+       %a1 = gep %new_argv, %o1
+       %a2 = gep %argv, %t1
+       store (load %a2), %a1
+       %t2 = add %t1, 1
+       store %t2, %j
+       goto Header
+     Tail:
+       %r = call main(%newargc, %new_argv);
+       ret %r
+  */
+
+  BasicBlock *pre_header =
+      BasicBlock::Create(M.getContext(), "pre_header", new_main);
+  builder.CreateBr(pre_header);
+  builder.SetInsertPoint(pre_header);
+  Type *intTy = argc->getType();
+  AllocaInst *j = builder.CreateAlloca(intTy);
+  builder.CreateStore(ConstantInt::get(intTy, 1), j); /*ignore argv[0]*/
+
+  // header
+  BasicBlock *header = BasicBlock::Create(M.getContext(), "header", new_main);
+  builder.CreateBr(header);
+  builder.SetInsertPoint(header);
+  LoadInst *t1 = builder.CreateLoad(j);
+  Value *cond = builder.CreateICmpSLT(t1, argc);
+  BasicBlock *body = BasicBlock::Create(M.getContext(), "body", new_main);
+  BasicBlock *tail = BasicBlock::Create(M.getContext(), "tail", new_main);
+  builder.CreateCondBr(cond, body, tail);
+  // body
+  builder.SetInsertPoint(body);
+  Value *o1 = builder.CreateZExtOrTrunc(
+      builder.CreateAdd(
+          ConstantInt::get(intTy, argv_map.size() - 1 /*skip argv[0]*/), t1),
+      intptrty);
+  Value *a1 = builder.CreateInBoundsGEP(new_argv, o1);
+  Value *o2 = builder.CreateZExtOrTrunc(t1, intptrty);
+  Value *a2 = builder.CreateInBoundsGEP(argv, o2);
+  builder.CreateStore(builder.CreateLoad(a2), a1);
+  Value *t2 = builder.CreateAdd(t1, ConstantInt::get(intTy, 1));
+  builder.CreateStore(t2, j);
+  builder.CreateBr(header);
+  // tail
+  builder.SetInsertPoint(tail);
+
+  // call the code of the original main with new argc and new argv
+  Value *res = builder.CreateCall(main, {new_argc, new_argv});
+  builder.CreateRet(res);
+
+  legacy::PassManager mgr;
+  // remove alloca's
+  // TODO: call mem2reg incrementally only on new allocas
+  mgr.add(createPromoteMemoryToRegisterPass());
+  // break alloca's of aggregates into multiple allocas if possible
+  // it also performs mem2reg to remove alloca's at the same time
+  mgr.add(createSROAPass());
+  mgr.run(M);
+
+  // inline original main into the new main
+  utils::inlineOnly(M, {main});
 
   return true;
 }
 
-char FullCommandLineArguments::ID;
-  
-static RegisterPass<FullCommandLineArguments>
-    X("Pfull-cmdline-spec",
-      "Full specialization of main() arguments based on manifest",
-      false,
-      false);
-  
-} //end namespace previrt
+char CommandLineArguments::ID = 0;
+
+static RegisterPass<previrt::CommandLineArguments>
+    X("Pcmdline-spec",
+      "Specialization of main arguments (argv) based on manifest",
+      false, false);

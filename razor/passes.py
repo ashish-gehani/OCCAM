@@ -405,27 +405,18 @@ def specialize_program_args(input_file, output_file, \
         arg_file = filename
         
     f = open(arg_file, 'w')
-    if num_dynamic_args == 0:
-        # each static parameter per line (don't include the program name)
-        for x in static_args:
-            f.write(x + '\n')
-    else:
-        # first line the number of dynamic args
-        # second line 0 name
-        # the rest is one line per parameter 
-        f.write('{0}\n'.format(num_dynamic_args))
-        f.write('0 {0}\n'.format(program_name))
-        index = 1
-        for x in static_args:
-            f.write('{0} {1}\n'.format(index, x))
-            index += 1
+    # first line the number of dynamic args
+    # second line 0 name
+    # the rest is one line per parameter 
+    f.write('{0}\n'.format(num_dynamic_args))
+    f.write('0 {0}\n'.format(program_name))
+    index = 1
+    for x in static_args:
+        f.write('{0} {1}\n'.format(index, x))
+        index += 1
     f.close()
 
-    if num_dynamic_args == 0:
-        args = ['-Pfull-cmdline-spec', '-Pfull-cmdline-spec-input', arg_file]
-        args += ['-Pfull-cmdline-spec-name', program_name]
-    else:
-        args = ['-Ppartial-cmdline-spec', '-Ppartial-cmdline-spec-input', arg_file]
+    args = ['-Pcmdline-spec', '-Pcmdline-spec-input', arg_file]
             
     driver.previrt(input_file, output_file, args)
     if filename is None:
