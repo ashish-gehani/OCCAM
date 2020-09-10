@@ -103,8 +103,9 @@ Interpreter::Interpreter(std::unique_ptr<Module> M)
   emitGlobals();
 
   llvm::errs() << "ConfigPrime: collecting all addresses from global initializers.\n";  
-  /// XXX: we record all the addresses taken by the global
-  /// initializers
+  /// OCCAM: we record all the addresses taken by the global
+  /// initializers All the memory allocation happened already in
+  /// emitGlobals.
   for (unsigned m = 0, e = Modules.size(); m != e; ++m) {
     Module &M = *Modules[m];
     for (auto &GV : M.globals()) {
