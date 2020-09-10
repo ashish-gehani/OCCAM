@@ -149,7 +149,11 @@ void Interpreter::initMemory(const Constant *Init, void *Addr) {
   llvm_unreachable("Unknown constant type to initialize memory with!");
 }
 
-
+/*** 
+* This method keeps track of the range of addresses allocated for
+* GV. The GV has been already allocated in memory before calling
+* this method
+**/
 void Interpreter::initializeGlobalVariable(GlobalVariable &GV) {
   LOG << "Collecting addresses from global initializer for " << GV.getName() << ".\n";
   if (void *GA = getPointerToGlobalIfAvailable(&GV)) {
@@ -2910,12 +2914,13 @@ static AbsGenericValue dereferencePointerIfBasicElementType(AbsGenericValue Val,
   if (!Val.hasValue() || !Ty->isPointerTy()) {
     return llvm::None;
   }
-  
+
   if (Type* ElementType = Ty->getPointerElementType()) {
     if (ElementType->getTypeID() == Type::IntegerTyID ||
 	ElementType->getTypeID() == Type::FloatTyID ||
 	ElementType->getTypeID() == Type::DoubleTyID) {
       if (void * addr = Val.getValue().PointerVal) {
+	// asssert(isAllocatedMemory(addr))
 	GenericValue Res;
 	switch(ElementType->getTypeID()) {
 	case Type::IntegerTyID: {
@@ -2965,6 +2970,13 @@ BasicBlock* Interpreter::inspectStackAndGlobalState(
       Value *V = kv.first;
       AbsGenericValue RawVal = kv.second;
       if (!RawVal.hasValue()) continue;
+      
+      if (void *addr = RawVal.getValue().PointerVal) {
+	if (!isAllocatedMemory(addr)) {
+	  continue;
+	}
+      }
+      
       auto DerefVal = dereferencePointerIfBasicElementType
 	(RawVal, V->getType(), getDataLayout());
       RawAndDerefValue RDV(RawVal.getValue(), DerefVal);
