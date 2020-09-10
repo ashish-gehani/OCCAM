@@ -362,6 +362,7 @@ bool PartialCommandLineArguments::runOnModule(Module &M) {
 
   legacy::PassManager mgr;
   // remove alloca's
+  // TODO: call mem2reg incrementally only on new allocas
   mgr.add(createPromoteMemoryToRegisterPass());
   // break alloca's of aggregates into multiple allocas if possible
   // it also performs mem2reg to remove alloca's at the same time
@@ -370,29 +371,6 @@ bool PartialCommandLineArguments::runOnModule(Module &M) {
 
   // inline original main into the new main
   utils::inlineOnly(M, {main});
-
-  /* Old code that overrides argv with the arguments from the
-     manifest */
-  // Function::arg_iterator ai = main->arg_begin();
-  // Value* argv = (Value*) &(*(++ai));
-
-  // for (auto &kv: argv_map) {
-  //   // create a global variable with the content of argv[i]
-  //   GlobalVariable* gv_i = materializeStringLiteral(M, kv.second.c_str());
-  //   // take the address of the global variable
-  //   Value *gv_i_ref =
-  //     builder.CreateConstGEP2_32(cast<PointerType>(gv_i->getType())->getElementType(),
-  // 				 gv_i, 0, 0);
-  //   // compute a gep instruction that access to argv[i]
-  //   Value* argv_i = builder.CreateConstGEP1_32(argv, kv.first);
-  //   // store the global variable into argv[i]
-  //   builder.CreateStore(gv_i_ref, argv_i);
-  // }
-
-  // legacy::PassManager mgr;
-  // mgr.add(createGlobalOptimizerPass());
-  // mgr.add(createGlobalDCEPass());
-  // mgr.run(M);
 
   return true;
 }
