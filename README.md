@@ -122,6 +122,10 @@ The manifest for `slash` should be valid JSON. The following keys have meaning:
 
 + `dynamic_args` : a number that indicates the arguments the specialized program will receive at runtime. If this key is omitted then the default value is 0 which means that the specialized program does not expect any parameter. 
 
++ `lib_spec`: list of library bitcode you wish to specialize with respect to `main` or a list of `main` functions given by `main_spec`. 
+
++ `main_spec`:  list of bitcode modules each containing a `main` function used by `lib_spec`. 
+
 As an example, (see `examples/linux/apache`), to previrtualize apache:
 
 ```

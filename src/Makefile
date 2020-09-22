@@ -6,7 +6,9 @@ CXX_FLAGS += -fPIC
 CXX_FLAGS += -Ianalysis/sea-dsa/include
 
 CONFIG_PRIME_LIBDIR = $(shell ${LLVM_CFG} --libdir)
-CONFIG_PRIME_LIBS += -L${CONFIG_PRIME_LIBDIR} -lLLVMExecutionEngine -lffi
+CONFIG_PRIME_LIBS += -L${CONFIG_PRIME_LIBDIR} -lLLVMExecutionEngine -lffi 
+
+DEMANGLE_LIB += -lLLVMDemangle
 
 LIBRARYNAME=libprevirt
 
@@ -60,7 +62,7 @@ ${LIBRARY}: libSeaDsa ${SOURCES}
 
 lib: ${OBJECTS} 
 	$(CXX) ${OBJECTS} ${LIBFLAGS} -o ${LIBRARY} ${CXX_FLAGS} ${LD_FLAGS} \
-	${OTHERLIBS} ${CONFIG_PRIME_LIBS}
+	${OTHERLIBS} ${CONFIG_PRIME_LIBS} ${DEMANGLE_LIB}
 
 analysis/%.o: analysis/%.cpp 
 	$(CXX) ${CXX_FLAGS} $< -c -o $@

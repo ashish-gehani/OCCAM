@@ -109,7 +109,7 @@ def sanity_check_manifest(manifest):
 
     old_manifest_keys = ['modules', 'libs', 'search', 'shared']
 
-    new_manifest_keys = ['main', 'binary', 'dynamic_args']
+    new_manifest_keys = ['main', 'binary', 'dynamic_args', 'lib_spec', 'main_spec']
 
     dodo_manifest_keys = ['watch']
 
@@ -199,8 +199,6 @@ def check_manifest(manifest):
     static_args = manifest.get('static_args')
 
     dynamic_args = manifest.get('dynamic_args')
-
-    
     dynamic_args = get_int(dynamic_args)
     if dynamic_args is None:
         sys.stderr.write('Field dynamic_args in manifest must be a int or string representing a int\n')
@@ -211,7 +209,17 @@ def check_manifest(manifest):
         sys.stderr.write('No name in manifest\n')
         return (False, )
 
-    return (True, main, binary, modules, native_libs, ldflags, static_args, name, dynamic_args)
+    lib_spec = manifest.get('lib_spec')
+    if lib_spec is None:
+        lib_spec = []
+
+    main_spec = manifest.get('main_spec')
+    if main_spec is None:
+        main_spec = []
+
+    return (True, main, binary, modules, native_libs, ldflags, static_args, name, dynamic_args, \
+            lib_spec, main_spec)
+            
 
 
 #iam: used to be just os.path.basename; but now when we are processing trees
@@ -234,10 +242,10 @@ def prevent_collisions(x):
 bit_code_pattern = re.compile(r'\.bc$', re.IGNORECASE)
 
 
-def populate_work_dir(module, libs, work_dir):
+def populate_work_dir(module, libs, lib_spec, main_spec, work_dir):
     files = {}
 
-    for x in [module] + libs:
+    for x in [module] + libs + lib_spec + main_spec :
         if bit_code_pattern.search(x):
             bn = prevent_collisions(x)
             target = os.path.join(work_dir, bn)
@@ -287,7 +295,7 @@ def write_timestamp(msg):
     import datetime
     dt = datetime.datetime.now ().strftime ('%d/%m/%Y %H:%M:%S')
     sys.stderr.write("[%s] %s...\n" % (dt, msg))
-    
+
 def is_exec (fpath):
     if fpath == None: return False
     return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
@@ -302,7 +310,7 @@ def which(program):
             if is_exec (exe_file): return exe_file
     return None
 
-# seaopt is a customized version of LLVM opt that is more 
+# seaopt is a customized version of LLVM opt that is more
 # friendly to tools like crab and seahorn.
 def found_seaopt():
     opt = which('seaopt')
@@ -310,7 +318,7 @@ def found_seaopt():
         return True
     else:
         return False
-    
+
 def get_opt(use_seaopt = False):
     opt = None
     if use_seaopt:
@@ -320,7 +328,7 @@ def get_opt(use_seaopt = False):
     if opt is None:
         raise IOError('opt was not found')
     return opt
-    
+
 # Try to find ROPgadget binary
 def get_ropgadget():
     ropgadget = None
