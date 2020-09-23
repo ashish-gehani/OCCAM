@@ -92,7 +92,7 @@ instructions = """slash has three modes of use:
         --ai-dce                   : Use invariants inferred by abstract interpretation for intra-module dce (experimental)
         --rop-guided-dce           : Use model-checking to remove functions with likely more ROP gadgets (experimental)
         --entry-point              : Entry points of a library (function names separated by comma)
-
+        --remove-functions         : List of functions to be removed at the user's risk.
     """
 
 def entrypoint():
@@ -109,7 +109,7 @@ def entrypoint():
 
 
 def  usage(exe):
-    template = '{0} [--work-dir=<dir>]  [--force] [--help] [--stats] [--opt-stats] [--no-strip] [--verbose] [--debug-manager=] [--debug-pass=] [--debug] [--entry-point] [--print-after-all] [--intra-spec-policy=<type>] [--inter-spec-policy=<type>] [--max-bounded-spec=N] [--disable-inlining] [--use-pointer-analysis] [--force-inline-spec] [--keep-external=<file>] [--enable-config-prime] [--ipdse] [--rop-guided-dce] [--ai-dce] <manifest>\n'
+    template = '{0} [--work-dir=<dir>]  [--force] [--help] [--stats] [--opt-stats] [--no-strip] [--verbose] [--debug-manager=] [--debug-pass=] [--debug] [--entry-point] [--print-after-all] [--intra-spec-policy=<type>] [--inter-spec-policy=<type>] [--max-bounded-spec=N] [--disable-inlining] [--use-pointer-analysis] [--force-inline-spec] [--keep-external=<file>] [--enable-config-prime] [--ipdse] [--rop-guided-dce] [--remove-functions] [--ai-dce] <manifest>\n'
     sys.stderr.write(template.format(exe))
 
 class Slash(object):
@@ -143,7 +143,8 @@ class Slash(object):
                         'verbose',
                         'keep-external=',
                         'amalgamate=',
-                        'entry-point=']
+                        'entry-point=',
+                        'remove-functions=']
             parsedargs = getopt.getopt(argv[1:], None, cmdflags)
             (self.flags, self.args) = parsedargs
 
@@ -260,6 +261,8 @@ class Slash(object):
         if lib_spec != []:
             use_library_spec = True
 
+        remove_functions = utils.get_flag(self.flags,'remove-functions','none')
+        
         intra_spec_policy = utils.get_flag(self.flags, 'intra-spec-policy', 'none')
         if not check_spec_policy(intra_spec_policy):
             return 1
@@ -390,14 +393,26 @@ class Slash(object):
             post = m.new('rm')
             post_base = os.path.basename(post)
             passes.remove_main(pre,post)
-        
+
+        def _remove_functions(m):
+            "Remove functions and add runtime check if function is executed"
+            pre = m.get()
+            pre_base = os.path.basename(pre)
+            post = m.new('rem')
+            post_base = os.path.basename(post)
+            passes.remove_functions(pre,post,remove_functions)
+            
         if use_library_spec:
             pool.InParallel(get_external, files.values(), self.pool)
 
         if entry_point != "none" or use_library_spec:
             pool.InParallel(liboccamize, files.values(), self.pool)
 
+        if remove_functions != "none":
+            pool.InParallel(_remove_functions, files.values(), self.pool)
+
         ### 0. Lift deployment information into main's module
+
         main = files[module]
         pre = main.get()
         post = main.new('a')
@@ -455,7 +470,7 @@ class Slash(object):
         utils.write_timestamp("Started global fixpoint ...")
         iteration = 0
         max_fixpoint_iterations = 10 ## make this user parameter
-
+        
         while progress:
             iteration += 1
             if iteration > max_fixpoint_iterations:
@@ -558,6 +573,7 @@ class Slash(object):
 
             pool.InParallel(sealing, files.values(), self.pool)
 
+
         utils.write_timestamp("Finished global fixpoint.")
 
         if entry_point != "none" or use_library_spec:
@@ -586,13 +602,13 @@ class Slash(object):
             link_cmd = None
 
             if self.amalgamation is None:
-                linker_args = final_libs + native_libs + native_lib_flags + ldflags
+                linker_args =  native_libs + native_lib_flags + ldflags
                 link_cmd = '\nclang++ {0} -o {1} {2}\n'.format(final_module, binary, ' '.join(linker_args))
             else:
                 linker_args = native_libs + native_lib_flags + ldflags
                 link_cmd = '\nclang++ {0} -o {1} {2}\n'.format(self.amalgamation, binary, ' '.join(linker_args))
                 # need to amalgamate the bitcode PRIOR to linking (only needed when there are duplicate symbols)
-                amalargs = ['-override', final_module] + final_libs + ['-o', self.amalgamation]
+                amalargs = ['-override', final_module]  + ['-o', self.amalgamation]
                 driver.run('llvm-link', amalargs)
                 final_module = self.amalgamation
 

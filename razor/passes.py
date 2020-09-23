@@ -128,6 +128,18 @@ def remove_main(input_file, output_file):
     """
     return driver.previrt(input_file,output_file, ['-PremoveMain'])
 
+
+def remove_functions(input_file, output_file, functions):
+    """
+    Remove functions and add runtime checks if they are executed
+    """
+    args = ['-Premove-function']
+    comma_separated_functions = functions.split(",")
+    for function in comma_separated_functions:
+        args += ['-remove-function-list={}'.format(function)]
+
+    return driver.previrt(input_file,output_file, args)
+
 def rewrite(input_file, output_file, rewrites, output=None):
     """ inter module rewriting
     """
@@ -448,6 +460,7 @@ def specialize_program_args(input_file, output_file, \
     driver.previrt(input_file, output_file, args)
     if filename is None:
         os.unlink(arg_file)
+
 
         
 def config_prime(input_file, output_file, known_args, num_dynamic_args):
