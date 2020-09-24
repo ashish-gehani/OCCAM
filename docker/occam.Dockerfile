@@ -41,7 +41,7 @@ ENV LLVM_HOME "/usr/lib/llvm-10"
 ENV PATH "$LLVM_HOME/bin:/bin:/usr/bin:/usr/local/bin:/occam/utils/FileCheck_trusty:$GOPATH/bin:$PATH"
 
 RUN cd / && rm -rf /occam && \
-    git clone --recurse-submodules https://github.com/SRI-CSL/OCCAM.git occam --branch llvm10 --depth=10
+    git clone --recurse-submodules https://github.com/SRI-CSL/OCCAM.git occam --depth=10
     
 WORKDIR /occam
 ENV CC clang
