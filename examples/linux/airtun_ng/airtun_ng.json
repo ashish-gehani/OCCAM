@@ -11,7 +11,7 @@
 		   "radiotap.o.bc"]
 , "ldflags" : [ "-lm", "-lcrypto", "-ldl",  "-lnl-3", "-lnl-genl-3"]
 , "native_libs" : []
-, "args"    : []
+, "static_args"    : []
 , "name"    : "knockd"
 }
 

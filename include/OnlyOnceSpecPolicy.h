@@ -21,7 +21,8 @@
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
 // FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
@@ -37,36 +38,36 @@
 #include "llvm/ADT/DenseSet.h"
 
 namespace previrt {
-  
-  /* 
-   * Allow a new (specialized) copy of a function if there will be
-   * only one copy. I.e., the function will be called only once.
-   *
-   * Note that this is different from BoundedSpecPolicy with threshold
-   * 1.
-   */
-  class OnlyOnceSpecPolicy : public SpecializationPolicy {
-    // Functions that cannot be copied because it is called more than
-    // once. Used only for intra specialization.
-    llvm::DenseSet<const llvm::Function*> m_blacklist;
-  public:
 
-    // Constructor for inter specialization
-    OnlyOnceSpecPolicy() = default;
+/*
+ * Allow a new (specialized) copy of a function if there will be
+ * only one copy. I.e., the function will be called only once.
+ *
+ * Note that this is different from BoundedSpecPolicy with threshold
+ * 1.
+ */
+class OnlyOnceSpecPolicy : public SpecializationPolicy {
+  // Functions that cannot be copied because it is called more than
+  // once. Used only for intra specialization.
+  llvm::DenseSet<const llvm::Function *> m_blacklist;
 
-    // Constructor for intra specialization: the module is used to
-    // precompute information for faster queries.
-    OnlyOnceSpecPolicy(llvm::Module &M);
-    
-    virtual ~OnlyOnceSpecPolicy() = default;
+public:
+  // Constructor for inter specialization
+  OnlyOnceSpecPolicy() = default;
 
-    virtual bool intraSpecializeOn(llvm::CallSite CS,
-				   std::vector<llvm::Value*>& marks) override;
-    
-    virtual bool interSpecializeOn(const llvm::Function& F,
-				   const std::vector<PrevirtType>& args,
-				   const ComponentInterface& interface,
-				   llvm::SmallBitVector& marks) override;
-  };
+  // Constructor for intra specialization: the module is used to
+  // precompute information for faster queries.
+  OnlyOnceSpecPolicy(llvm::Module &M);
+
+  virtual ~OnlyOnceSpecPolicy() = default;
+
+  virtual bool intraSpecializeOn(llvm::CallSite CS,
+                                 std::vector<llvm::Value *> &marks) override;
+
+  virtual bool interSpecializeOn(const llvm::Function &F,
+                                 const std::vector<InterfaceType> &args,
+                                 const ComponentInterface &interface,
+                                 llvm::SmallBitVector &marks) override;
+};
 
 } // end namespace

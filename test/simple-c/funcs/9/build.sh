@@ -7,7 +7,7 @@ cat > multiple.manifest <<EOF
 , "binary"  : "main"
 , "modules"    : []
 , "native_libs" : []
-, "args"    : []
+, "static_args"    : []
 , "name"    : "main"
 }
 EOF
@@ -21,7 +21,8 @@ export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
 export PATH=${LLVM_HOME}/bin:${PATH}
 
-slash  --work-dir=slash --devirt=cha_dsa --inter-spec-policy=none --intra-spec-policy=none multiple.manifest
+slash  --work-dir=slash --no-strip --use-pointer-analysis \
+       --inter-spec-policy=none --intra-spec-policy=none multiple.manifest
 
 cp slash/main main_slash
 

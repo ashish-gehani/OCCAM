@@ -21,7 +21,8 @@
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
 // FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
@@ -36,25 +37,24 @@
 #include "SpecializationPolicy.h"
 
 namespace previrt {
-  
-  /* 
-   * Allow a new (specialized) copy of a function whenever there is a
-   * callsite to it with some constant argument.
-   */
-  class AggressiveSpecPolicy : public SpecializationPolicy {
-  public:
 
-    AggressiveSpecPolicy() = default;
-    
-    virtual ~AggressiveSpecPolicy() = default;
+/*
+ * Allow a new (specialized) copy of a function whenever there is a
+ * callsite to it with some constant argument.
+ */
+class AggressiveSpecPolicy : public SpecializationPolicy {
+public:
+  AggressiveSpecPolicy() = default;
 
-    virtual bool intraSpecializeOn(llvm::CallSite CS,
-				   std::vector<llvm::Value*>& marks) override;
-    
-    virtual bool interSpecializeOn(const llvm::Function& F,
-				   const std::vector<PrevirtType>& args,
-				   const ComponentInterface& interface,
-				   llvm::SmallBitVector& marks) override;
-  };
+  virtual ~AggressiveSpecPolicy() = default;
+
+  virtual bool intraSpecializeOn(llvm::CallSite CS,
+                                 std::vector<llvm::Value *> &marks) override;
+
+  virtual bool interSpecializeOn(const llvm::Function &F,
+                                 const std::vector<InterfaceType> &args,
+                                 const ComponentInterface &interface,
+                                 llvm::SmallBitVector &marks) override;
+};
 
 } // end namespace

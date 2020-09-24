@@ -20,10 +20,6 @@ PIP     = $(shell which pip)
 MKDIR_P = mkdir -p
 RM_F    = rm -f
 
-# User option to enable/disable LLPE
-## run make LLPE=ON to enable LLPE
-LLPE?=OFF
-
 export OCCAM_LIB = $(OCCAM_HOME)/lib
 
 # tests needs an LLVM install from cmake with:
@@ -63,7 +59,7 @@ update: submodule_update
 
 
 occam_lib:
-	$(MAKE) LLPE=$(LLPE) -C src all
+	$(MAKE) -C src all
 
 .PHONY: test
 test:
@@ -128,7 +124,8 @@ endif
 # otherwise the server will give you an error.
 
 publish:
-	python -m twine upload --repository pypi dist/*
+	python -m twine upload dist/*
+
 lint:
 ifeq ($(PYLINT),)
 	$(error lint target requires pylint)
@@ -136,9 +133,6 @@ endif
 # for detecting more than just errors:
 	@ $(PYLINT) --rcfile=.pylintrc razor/*.py
 #	@ $(PYLINT) -E razor/*.py
-
-md2rst:
-	pandoc --from=markdown --to=rst --output=README.rst README.md
 
 zippity:
 	rm -rf doczip*; mkdir doczip;

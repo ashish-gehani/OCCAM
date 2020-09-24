@@ -4,15 +4,13 @@
 set -e
 
 function usage() {
-    echo "Usage: $0 [--disable-inlining] [--ipdse] [--ai-dce] [--devirt VAL1] [--inter-spec VAL2] [--intra-spec VAL2] [--help]"
-    echo "       VAL1=none|dsa|cha_dsa"    
-    echo "       VAL2=none|aggressive|nonrec-aggressive"
+    echo "Usage: $0 [--disable-inlining] [--ipdse] [--ai-dce] [--use-pointer-analysis] [--inter-spec VAL] [--intra-spec VAL] [--help]"
+    echo "       VAL=none|aggressive|nonrec-aggressive"
 }
 
 #default values
 INTER_SPEC="none"
 INTRA_SPEC="none"
-DEVIRT="dsa"
 OPT_OPTIONS=""
 
 POSITIONAL=()
@@ -41,12 +39,11 @@ case $key in
     -ai-dce|--ai-dce)
 	OPT_OPTIONS="${OPT_OPTIONS} --ai-dce"
 	shift # past argument
-	;;            
-    -devirt|--devirt)
-	DEVIRT="$2"
+	;;
+    -use-pointer-analysis|--use-pointer-analysis)
+	OPT_OPTIONS="${OPT_OPTIONS} --use-pointer-analysis"
 	shift # past argument
-	shift # past value
-	;;            
+	;;                    
     -help|--help)
 	usage
 	exit 0
@@ -92,7 +89,7 @@ EOF
 # Run OCCAM
 cp ./libquantum ./libquantum_orig
 
-SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC} --devirt=${DEVIRT} --no-strip --stats $OPT_OPTIONS"
+SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC} --no-strip --stats $OPT_OPTIONS"
 echo "============================================================"
 echo "Running with options ${SLASH_OPTS}"
 echo "============================================================"

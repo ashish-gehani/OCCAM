@@ -3,6 +3,6 @@
 , "modules"    : []
 , "native_libs" : []
 , "ldflags"  : []
-, "args"    : ["-laSr", "/bin"]
+, "static_args"    : ["-laSr", "/bin"]
 , "name"    : "ls"
 }

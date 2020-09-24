@@ -17,6 +17,6 @@
 	"netstat_modules/ether.o.bc"
   ]
 , "native_libs" : []
-, "args"    : ["-a", "-e", "-p", "-s"]
+, "static_args"    : ["-a", "-e", "-p", "-s"]
 , "name"    : "netstat"
 }

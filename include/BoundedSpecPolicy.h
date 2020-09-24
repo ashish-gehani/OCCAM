@@ -21,7 +21,8 @@
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
 // FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
@@ -37,38 +38,37 @@
 #include "llvm/ADT/DenseMap.h"
 
 namespace previrt {
-  /* 
-   * This policy is actually a "functor" policy (i.e., it takes as
-   * argument another policy p).
+/*
+ * This policy is actually a "functor" policy (i.e., it takes as
+ * argument another policy p).
 
-   * Allow a new (specialized) copy of a function if the number of
-   * copies of that function is not greater than m_threshold and p
-   * also agrees.
-  */
-  class BoundedSpecPolicy : public SpecializationPolicy {
-    std::unique_ptr<SpecializationPolicy> m_subpolicy;
-    const unsigned m_threshold;
-    llvm::DenseMap<const llvm::Function*, unsigned> m_num_copy_map;
+ * Allow a new (specialized) copy of a function if the number of
+ * copies of that function is not greater than m_threshold and p
+ * also agrees.
+*/
+class BoundedSpecPolicy : public SpecializationPolicy {
+  std::unique_ptr<SpecializationPolicy> m_subpolicy;
+  const unsigned m_threshold;
+  llvm::DenseMap<const llvm::Function *, unsigned> m_num_copy_map;
 
-    // Add counter for f and return counter's value after the
-    // increment.
-    unsigned addCounter(const llvm::Function& f);
-    
-  public:
+  // Add counter for f and return counter's value after the
+  // increment.
+  unsigned addCounter(const llvm::Function &f);
 
-    BoundedSpecPolicy(llvm::Module &M,
-		      std::unique_ptr<SpecializationPolicy> subpolicy,
-		      unsigned threshold);
+public:
+  BoundedSpecPolicy(llvm::Module &M,
+                    std::unique_ptr<SpecializationPolicy> subpolicy,
+                    unsigned threshold);
 
-    virtual ~BoundedSpecPolicy() = default;
+  virtual ~BoundedSpecPolicy() = default;
 
-    virtual bool intraSpecializeOn(llvm::CallSite CS,
-				   std::vector<llvm::Value*>& marks) override;
-    
-    virtual bool interSpecializeOn(const llvm::Function& F,
-				   const std::vector<PrevirtType>& args,
-				   const ComponentInterface& interface,
-				   llvm::SmallBitVector& marks) override;
-  };
+  virtual bool intraSpecializeOn(llvm::CallSite CS,
+                                 std::vector<llvm::Value *> &marks) override;
+
+  virtual bool interSpecializeOn(const llvm::Function &F,
+                                 const std::vector<InterfaceType> &args,
+                                 const ComponentInterface &interface,
+                                 llvm::SmallBitVector &marks) override;
+};
 
 } // end namespace

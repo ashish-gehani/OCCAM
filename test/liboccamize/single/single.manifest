@@ -1,0 +1,9 @@
+{ "main" : ".testlib.bc"
+, "binary"  : "testlib"
+, "modules"    : []
+, "native_libs" : []
+, "ldflags" : [ "-O2" ]
+, "name"    : "testlib"
+, "static_args"    : []
+, "lib_spec": []
+}

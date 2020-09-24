@@ -16,6 +16,7 @@
 	"httping_modules/mssl.o.bc"]
 , "ldflags" : ["-lm", "-lssl", "-lcrypto"]
 , "native_libs" : []
- , "constraints"    : ["1", "-G", "-s", "-X", "-b", "-B"]
+, "static_args"   : ["-G", "-s", "-X", "-b", "-B"]
+, "dynamic_args"  : "1"
 , "name"    : "httping"
 }

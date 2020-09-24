@@ -1,5 +1,5 @@
 [![PyPI version](https://badge.fury.io/py/razor.svg)](https://badge.fury.io/py/razor)
-[![Build Status](https://travis-ci.org/SRI-CSL/OCCAM.svg?branch=master)](https://travis-ci.org/SRI-CSL/OCCAM)
+[![Build Status](https://travis-ci.org/SRI-CSL/OCCAM.svg?branch=llvm10)](https://travis-ci.org/SRI-CSL/OCCAM)
 
 Description
 ============
@@ -9,7 +9,7 @@ Description
 OCCAM architecture
 ==================
 
-![OCCAM architecture](https://github.com/SRI-CSL/OCCAM/blob/master/OCCAM-arch.jpg?raw=true "OCCAM architecture")
+![OCCAM architecture](https://github.com/SRI-CSL/OCCAM/blob/master/OCCAM-arch.jpg)
 
 Docker
 ======
@@ -17,15 +17,15 @@ Docker
 A pre-built and installed version of OCCAM can be obtained using Docker:
 
 ```shell
-docker pull sricsl/occam:bionic
-docker run -v `pwd`:/host -it sricsl/occam:bionic
+docker pull sricsl/occam10:bionic
+docker run -v `pwd`:/host -it sricsl/occam10:bionic
 ```
 Alternatively, it can be built and installed from source as follows.
 
 Prerequisites
 ============
 
-OCCAM currently works on Linux, macOS, and FreeBSD.  It depends on an installation of LLVM. OCCAM currently requires llvm-5.0. You will also need the Google protocol buffer compiler `protoc` and the corresponding Python [package](https://pypi.python.org/pypi/protobuf/).
+OCCAM currently works on Linux, macOS, and FreeBSD.  It depends on an installation of LLVM. OCCAM currently requires llvm-10.0. You will also need the Google protocol buffer compiler `protoc` and the corresponding Python [package](https://pypi.python.org/pypi/protobuf/).
 
 If you need to generate application bitcode (that OCCAM operates on), you will want to install WLLVM, either from the the pip [package](https://pypi.python.org/pypi/wllvm/) or the GitHub [repository](https://github.com/SRI-CSL/whole-program-llvm.git).
 
@@ -43,8 +43,8 @@ Set where OCCAM's library will be stored:
 
 Point to your LLVM's location, if non-standard:
 ```
-  export LLVM_HOME=/usr/local/llvm-5.0
-  export LLVM_CONFIG=llvm-config-5.0
+  export LLVM_HOME=/usr/local/llvm-10.0
+  export LLVM_CONFIG=llvm-config-10.0
 ```
 
 Set where system libraries, including Google Protocol Buffers, are located:
@@ -88,18 +88,18 @@ make -f Makefile develop
 This may require sudo priviliges. Either way you can now use `slash`:
 
 ```
-slash [--work-dir=<dir>]  [--force] [--no-strip] [--intra-spec-policy=<type>] [--inter-spec-policy=<type>] <manifest>
+slash [--work-dir=<dir>]  [--force] [--no-strip] [--intra-spec-policy=<type>] [--inter-spec-policy=<type>] [--use-pointer-analysis] [--enable-config-prime] <manifest>
 ```
 
 where 
 
 ```
-type=none|aggressive|nonrec-aggressive
+type=none|aggressive|nonrec-aggressive|bounded|onlyonce
 ```
 
-The value `none` will prevent any inter or intra-module specialization. The value `aggressive` specializes a call if any parameter is a constant. The value `nonrec-aggressive` specializes a call if the function is non-recursive and any parameter is a constant.
+The value `none` will prevent any inter or intra-module specialization. The value `aggressive` specializes a call if any parameter is a constant. The value `nonrec-aggressive` specializes a call if the function is non-recursive and any parameter is a constant. The value `bounded` makes at most `k` copies where `k` can be chosen by option `--max-bounded-spec`. The value `onlyonce` makes a copy of a function only if the function is called exactly once.
 
-To function correctly `slash` calls LLVM tools such as `opt` and `clang++`. These should be available in your `PATH`, and be the currently supported version (5.0). Like `wllvm`, `slash`, will pay attention to the environment variables `LLVM_OPT_NAME` and `LLVM_CXX_NAME` if your version of these tools is adorned with suffixes.
+To function correctly `slash` calls LLVM tools such as `opt` and `clang++`. These should be available in your `PATH`, and be the currently supported version (10.0). Like `wllvm`, `slash`, will pay attention to the environment variables `LLVM_OPT_NAME` and `LLVM_CXX_NAME` if your version of these tools is adorned with suffixes.
 
 The Manifest(o)
 ===============
@@ -116,39 +116,42 @@ The manifest for `slash` should be valid JSON. The following keys have meaning:
 
 + `ldflags`: a list of linker flags such as `--static`, `--nostdlib`
 
-+ `args` : the list of arguments you wish to specialize in the _main()_ of `main`.
++ `name`: the program name 
 
-+ `constraints` : a list consisting of a positive integer, followed by some number of strings. The
-number indicates the expected number of arguments the specialized program will receive, and the
-remaing strings are the specialized arguments to the original program.
++ `static_args` : the list of static arguments you wish to specialize in the _main()_ of `main`.
 
-Note that `args` and `constraints` are mutually exclusive. If you use one you should not use the other.
++ `dynamic_args` : a number that indicates the arguments the specialized program will receive at runtime. If this key is omitted then the default value is 0 which means that the specialized program does not expect any parameter. 
+
++ `lib_spec`: list of library bitcode you wish to specialize with respect to `main` or a list of `main` functions given by `main_spec`. 
+
++ `main_spec`:  list of bitcode modules each containing a `main` function used by `lib_spec`. 
 
 As an example, (see `examples/linux/apache`), to previrtualize apache:
 
 ```
 { "main" : "httpd.bc"
-, "binary"  : "httpd_slashed"
-, "modules"    : ["libapr-1.so.bc", "libaprutil-1.so.bc", "libpcre.so.bc"]
+, "binary" : "httpd_slashed"
+, "modules" : ["libapr-1.so.bc", "libaprutil-1.so.bc", "libpcre.so.bc"]
 , "native_libs" : ["-lcrypt", "-ldl", "-lpthread"]
-, "args"    : ["-d", "/var/www"]
 , "name"    : "httpd"
+, "static_args" : ["-d", "/var/www"]
 }
 ```
 
 Another example, (see `examples/linux/musl_nweb`), specializes `nweb` with `musl libc.c`:
 ```
 { "main" :  "nweb.o.bc"
-, "binary"  : "nweb_razor"
-, "modules"    : ["libc.a.bc"]
+, "binary" : "nweb_razor"
+, "modules" : ["libc.a.bc"]
 , "native_libs" : ["crt1.o", "libc.a"]
 , "ldflags" : ["-static", "-nostdlib"]
-, "args"    : ["8181", "./root"]
-, "name"    : "nweb"
+, "name" : "nweb"
+, "static_args" : ["8181", "./root"]
+, "dynamic_args" : "0"
 }
 ```
 
-A third example, (see `examples/portfolio/tree`),  illustrates the use of the `constraints` field to partially specialize the arguments to the `tree` utility.
+A third example, (see `examples/portfolio/tree`),  illustrates the use of the `dynamic_args` field to partially specialize the arguments to the `tree` utility.
 ```
 { "main" : "tree.bc"
 , "binary"  : "tree"
@@ -156,7 +159,8 @@ A third example, (see `examples/portfolio/tree`),  illustrates the use of the `c
 , "native_libs" : []
 , "ldflags" : [ "-O2" ]
 , "name"    : "tree"
-, "constraints" : ["1", "tree", "-J", "-h"]
+, "static_args" : ["-J", "-h"]
+, "dynamic_args" : "1"
 }
 ```
 

@@ -34,6 +34,6 @@ EOF
 
 
 # Run OCCAM
-slash --stats --devirt --work-dir=slash lbm.manifest
+slash --stats --use-pointer-analysis --work-dir=slash lbm.manifest
 
 cp ./slash/lbm_slashed .

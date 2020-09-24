@@ -1,11 +1,4 @@
 [submodule "src/analysis/sea-dsa"]
 	path = src/analysis/sea-dsa
 	url = https://github.com/seahorn/sea-dsa.git
-	branch = master
-[submodule "src/analysis/llvm-dsa"]
-	path = src/analysis/llvm-dsa
-	url = https://github.com/seahorn/llvm-dsa.git
-	branch = master
-[submodule "src/analysis/llpe"]
-	path = src/analysis/llpe
-	url = https://github.com/caballa/llpe
+	branch = dev10

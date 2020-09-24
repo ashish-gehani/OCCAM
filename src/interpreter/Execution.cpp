@@ -149,7 +149,11 @@ void Interpreter::initMemory(const Constant *Init, void *Addr) {
   llvm_unreachable("Unknown constant type to initialize memory with!");
 }
 
-
+/*** 
+* This method keeps track of the range of addresses allocated for
+* GV. The GV has been already allocated in memory before calling
+* this method
+**/
 void Interpreter::initializeGlobalVariable(GlobalVariable &GV) {
   LOG << "Collecting addresses from global initializer for " << GV.getName() << ".\n";
   if (void *GA = getPointerToGlobalIfAvailable(&GV)) {
@@ -1360,7 +1364,12 @@ void Interpreter::visitReturnInst(ReturnInst &I) {
 }
 
 void Interpreter::visitUnreachableInst(UnreachableInst &I) {
-  report_fatal_error("Program executed an 'unreachable' instruction!");
+  llvm::errs() << "ConfigPrime: modeling an 'unreachable' instruction "
+	       << " as a return instruction with an unknown value.\n";
+
+  Type *RetTy = I.getParent()->getParent()->getReturnType();
+  AbsGenericValue Result;
+  popStackAndReturnValueToCaller(RetTy, Result);
 }
 
 void Interpreter::visitBranchInst(BranchInst &I) {
@@ -2808,7 +2817,7 @@ void Interpreter::callFunction(Function *F, ArrayRef<AbsGenericValue> ArgVals) {
   // Special handling for external functions.
   if (F->isDeclaration()) {
     AbsGenericValue Result = callExternalFunction (F, ArgVals);
-    if (!Result.hasValue()) {
+    if (!F->getReturnType()->isVoidTy() && !Result.hasValue()) {
       /// XXX: right now if Result is undefined is because one of the
       /// arguments in ArgVals is unknown.
       LOG << "cannot execute external call to " << F->getName()
@@ -2905,17 +2914,18 @@ static AbsGenericValue dereferencePointerIfBasicElementType(AbsGenericValue Val,
   if (!Val.hasValue() || !Ty->isPointerTy()) {
     return llvm::None;
   }
-  
+
   if (Type* ElementType = Ty->getPointerElementType()) {
     if (ElementType->getTypeID() == Type::IntegerTyID ||
 	ElementType->getTypeID() == Type::FloatTyID ||
 	ElementType->getTypeID() == Type::DoubleTyID) {
       if (void * addr = Val.getValue().PointerVal) {
+	// asssert(isAllocatedMemory(addr))
 	GenericValue Res;
 	switch(ElementType->getTypeID()) {
 	case Type::IntegerTyID: {
 	  APInt val(cast<IntegerType>(ElementType)->getBitWidth(), 0);		
-	  LoadIntFromMemory(val, (uint8_t*)addr, dl.getTypeStoreSize(ElementType));
+	  ::LoadIntFromMemory(val, (uint8_t*)addr, dl.getTypeStoreSize(ElementType));
 	  Res.IntVal = val;
 	  break;
 	}
@@ -2960,6 +2970,13 @@ BasicBlock* Interpreter::inspectStackAndGlobalState(
       Value *V = kv.first;
       AbsGenericValue RawVal = kv.second;
       if (!RawVal.hasValue()) continue;
+      
+      if (void *addr = RawVal.getValue().PointerVal) {
+	if (!isAllocatedMemory(addr)) {
+	  continue;
+	}
+      }
+      
       auto DerefVal = dereferencePointerIfBasicElementType
 	(RawVal, V->getType(), getDataLayout());
       RawAndDerefValue RDV(RawVal.getValue(), DerefVal);

@@ -14,7 +14,7 @@ cat > multiple.manifest <<EOF
 , "binary"  : "main"
 , "modules"    : ["library.o.bc"]
 , "native_libs" : []
-, "args"    : ["one"]
+, "static_args"    : ["one"]
 , "name"    : "main"
 }
 EOF
@@ -30,7 +30,7 @@ export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/${WORKDIR}/occam.log
 export PATH=${LLVM_HOME}/bin:${PATH}
 
-slash --devirt=sea_dsa --work-dir=${WORKDIR} multiple.manifest
+slash --use-pointer-analysis --work-dir=${WORKDIR} multiple.manifest
 
 #debugging stuff below:
 for bitcode in ${WORKDIR}/*.bc; do

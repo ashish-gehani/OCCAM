@@ -4,15 +4,13 @@
 set -e
 
 function usage() {
-    echo "Usage: $0 [--with-musllvm] [--disable-inlining] [--ipdse] [--ai-dce] [--devirt VAL1] [--inter-spec VAL2] [--intra-spec VAL2] [--help]"
-    echo "       VAL1=none|sea_dsa (default)|cha_dsa"    
-    echo "       VAL2=none (default)|aggressive|nonrec-aggressive"
+    echo "Usage: $0 [--with-musllvm] [--disable-inlining] [--ipdse] [--ai-dce] [--use-pointer-analysis] [--inter-spec VAL] [--intra-spec VAL] [--enable-config-prime] [--help]"
+    echo "       VAL=none|aggressive|nonrec-aggressive|onlyonce (default)"
 }
 
 #default values
-INTER_SPEC="none"
-INTRA_SPEC="none"
-DEVIRT="sea_dsa"
+INTER_SPEC="onlyonce"
+INTRA_SPEC="onlyonce"
 OPT_OPTIONS=""
 USE_MUSLLVM="false"
 
@@ -35,6 +33,10 @@ case $key in
 	OPT_OPTIONS="${OPT_OPTIONS} --disable-inlining"
 	shift # past argument
 	;;
+    -enable-config-prime|--enable-config-prime)
+	OPT_OPTIONS="${OPT_OPTIONS} --enable-config-prime"
+	shift # past argument
+	;;    
     -with-musllvm|--with-musllvm)
 	USE_MUSLLVM="true" 
 	shift # past argument
@@ -47,10 +49,9 @@ case $key in
 	OPT_OPTIONS="${OPT_OPTIONS} --ai-dce"
 	shift # past argument
 	;;                    
-    -devirt|--devirt)
-	DEVIRT="$2"
+    -use-pointer-analysis|--use-pointer-analysis)
+	OPT_OPTIONS="${OPT_OPTIONS} --use-pointer-analysis"	
 	shift # past argument
-	shift # past value
 	;;        
     -help|--help)
 	usage
@@ -99,7 +100,7 @@ then
 , "native_libs" : ["libc.a"]
 , "ldflags" : [ "-O2", "-lpthread"]
 , "name"    : "memcached"
-, "args" : ["-m", "1024", "-I", "1k", "-l", "127.0.0.1:11211"]
+, "static_args" : ["-m", "1024", "-I", "1k", "-l", "127.0.0.1:11211"]
 }
 EOF
 else 
@@ -110,7 +111,7 @@ else
 , "native_libs" : ["-lpthread"  ]
 , "ldflags" : [ "-O2" ]
 , "name"    : "memcached"
-, "args" : ["-m", "1024", "-I", "1k", "-l", "127.0.0.1:11211"]
+, "static_args" : ["-m", "1024", "-I", "1k", "-l", "127.0.0.1:11211"]
 }
 EOF
 fi
@@ -120,7 +121,7 @@ export OCCAM_LOGFILE=${PWD}/slash/occam.log
 
 rm -rf slash
 
-SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC} --devirt=${DEVIRT} --no-strip --stats $OPT_OPTIONS"
+SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC} --no-strip --stats $OPT_OPTIONS"
 echo "============================================================"
 if [ $USE_MUSLLVM == "true" ];
 then

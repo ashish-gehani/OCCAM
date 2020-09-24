@@ -41,14 +41,14 @@ void *ArgvArray::reset(LLVMContext &C, ExecutionEngine *EE,
   Values.clear();  // Free the old contents.
   Values.reserve(InputArgv.size());
   unsigned PtrSize = EE->getDataLayout().getPointerSize();
-  Array = make_unique<char[]>((InputArgv.size()+1)*PtrSize);
+  Array = std::make_unique<char[]>((InputArgv.size()+1)*PtrSize);
 
   Type *SBytePtr = Type::getInt8PtrTy(C);
 
   for (unsigned i = 0; i != InputArgv.size(); ++i) {
     errs() << "Processing " << InputArgv[i] << "\n";
     unsigned Size = InputArgv[i].size()+1;
-    auto Dest = make_unique<char[]>(Size);
+    auto Dest = std::make_unique<char[]>(Size);
     std::copy(InputArgv[i].begin(), InputArgv[i].end(), Dest.get());
     Dest[Size-1] = 0;
 
@@ -103,8 +103,9 @@ Interpreter::Interpreter(std::unique_ptr<Module> M)
   emitGlobals();
 
   llvm::errs() << "ConfigPrime: collecting all addresses from global initializers.\n";  
-  /// XXX: we record all the addresses taken by the global
-  /// initializers
+  /// OCCAM: we record all the addresses taken by the global
+  /// initializers All the memory allocation happened already in
+  /// emitGlobals.
   for (unsigned m = 0, e = Modules.size(); m != e; ++m) {
     Module &M = *Modules[m];
     for (auto &GV : M.globals()) {

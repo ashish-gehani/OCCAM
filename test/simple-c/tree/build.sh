@@ -15,7 +15,7 @@ cat > simple.manifest <<EOF
 { "main" : "main.o.bc"
 , "binary"  : "main"
 , "modules"    : ["${LIBRARY}.bc", "subdir/module.o.bc"]
-, "args"    : ["8181"]
+, "static_args"    : ["8181"]
 , "name"    : "main"
 }
 EOF

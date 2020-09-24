@@ -4,16 +4,14 @@
 set -e
 
 function usage() {
-    echo "Usage: $0 [--disable-inlining] [--ipdse] [--ai-dce] [--devirt VAL1] [--inter-spec VAL2] [--intra-spec VAL2] [--link dynamic|static] [--help]"
-    echo "       VAL1=none|dsa|cha_dsa"    
-    echo "       VAL2=none|aggressive|nonrec-aggressive"
+    echo "Usage: $0 [--disable-inlining] [--ipdse] [--ai-dce] [--use-pointer-analysis] [--inter-spec VAL] [--intra-spec VAL] [--enable-config-prime] [--link dynamic|static] [--help]"
+    echo "       VAL=none|aggressive|nonrec-aggressive|onlyonce"
 }
 
 #default values
 LINK="dynamic"
-INTER_SPEC="none"
-INTRA_SPEC="none"
-DEVIRT="dsa"
+INTER_SPEC="onlyonce"
+INTRA_SPEC="onlyonce"
 OPT_OPTIONS=""
 
 POSITIONAL=()
@@ -40,6 +38,10 @@ case $key in
 	OPT_OPTIONS="${OPT_OPTIONS} --disable-inlining"
 	shift # past argument
 	;;
+    -enable-config-prime|--enable-config-prime)
+	OPT_OPTIONS="${OPT_OPTIONS} --enable-config-prime"
+	shift # past argument
+	;;        
     -ipdse|--ipdse)
 	OPT_OPTIONS="${OPT_OPTIONS} --ipdse"
 	shift # past argument
@@ -47,11 +49,10 @@ case $key in
     -ai-dce|--ai-dce)
 	OPT_OPTIONS="${OPT_OPTIONS} --ai-dce"
 	shift # past argument
-	;;                
-    -devirt|--devirt)
-	DEVIRT="$2"
+	;;    
+    -use-pointer-analysis|--use-pointer-analysis)
+	OPT_OPTIONS="${OPT_OPTIONS} --use-pointer-analysis"	
 	shift # past argument
-	shift # past value
 	;;        
     -help|--help)
 	usage
@@ -94,7 +95,7 @@ done
 
 # additional debug flags:
 #  --debug-pass=sroa --verbose --debug-manager=Structure
-SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC} --devirt=${DEVIRT} --stats $OPT_OPTIONS"
+SLASH_OPTS="--inter-spec-policy=${INTER_SPEC} --intra-spec-policy=${INTRA_SPEC} --stats $OPT_OPTIONS"
 
 # OCCAM with program and libraries dynamically linked
 function dynamic_link() {
@@ -111,7 +112,8 @@ function dynamic_link() {
 , "modules"    : ["libcrypto.a.bc", "libz.a.bc"]
 , "native_libs" : ["-ldl", "-lresolv"]
 , "name"    : "ssh"
-, "constraints" : ["1", "-Y", "-4"]
+, "static_args" : ["-Y", "-4"]
+, "dynamic_args" : "1"
 }
 EOF
 
@@ -139,7 +141,8 @@ function static_link() {
 , "modules"    : []
 , "native_libs" : ["-ldl", "-lresolv"]
 , "name"    : "ssh"
-, "constraints" : ["1", "-Y", "-4"]
+, "static_args" : ["-Y", "-4"]
+, "dynamic_args" : "1"
 }
 EOF
 

@@ -7,7 +7,7 @@ cat > multiple.manifest <<EOF
 , "binary"  : "main_slash"
 , "modules"    : []
 , "native_libs" : []
-, "args"    : ["-b"]
+, "static_args"    : ["-b"]
 , "name"    : "main"
 }
 EOF

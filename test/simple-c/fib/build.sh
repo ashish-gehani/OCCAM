@@ -5,7 +5,7 @@ cat > manifest <<EOF
 , "binary"  : "main"
 , "modules"    : []
 , "native_libs" : []
-, "args"    : ["10"]
+, "static_args"    : ["10"]
 , "name"    : "main"
 }
 EOF

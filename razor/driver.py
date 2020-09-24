@@ -68,7 +68,6 @@ def all_args(opt, args):
 
 def previrt(fin, fout, args, **opts):
     libs = ['-load={0}'.format(config.get_sea_dsalib()),
-            '-load={0}'.format(config.get_llvm_dsalib()),
             '-load={0}'.format(config.get_occamlib())]
 
     args = opt_debug_cmds + libs + [fin, '-o={0}'.format(fout)] + args
@@ -77,7 +76,6 @@ def previrt(fin, fout, args, **opts):
 
 def previrt_progress(fin, fout, args, output=None):
     libs = ['-load={0}'.format(config.get_sea_dsalib()),
-            '-load={0}'.format(config.get_llvm_dsalib()),
             '-load={0}'.format(config.get_occamlib())]
 
     prog = config.get_llvm_tool('opt')

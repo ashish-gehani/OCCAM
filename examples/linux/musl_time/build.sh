@@ -18,7 +18,7 @@ function create_dynamic_manifest() {
 , "modules"    : ["libc.a.bc"]
 , "native_libs" : ["crt1.o", "libc.a", "/usr/lib/gcc/x86_64-linux-gnu/7/libgcc.a"]
 , "ldflags" : ["-static", "-nostdlib", "-g"]
-, "args"    : []
+, "static_args"    : []
 , "name"    : "main"
 }
 EOF
@@ -32,7 +32,7 @@ function create_static_manifest() {
 , "modules"    : []
 , "native_libs" : ["crt1.o", "libc.a", "/usr/lib/gcc/x86_64-linux-gnu/7/libgcc.a"]
 , "ldflags" : ["-static", "-nostdlib", "-g"]
-, "args"    : []
+, "static_args"    : []
 , "name"    : "main"
 }
 EOF
@@ -63,7 +63,7 @@ fi
 
 # Previrtualize: can do eitther of these:
 #slash --no-strip --work-dir=slash --keep-external=untouchables.funs.txt ${MANIFEST}
-slash --no-strip --stats --devirt=sea_dsa \
+slash --no-strip --stats --use-pointer-analysis \
       --disable-inlining --inter-spec-policy=nonrec-aggressive \
       --work-dir=slash --keep-external=untouchables.vars.txt ${MANIFEST}
       

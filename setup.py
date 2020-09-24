@@ -9,7 +9,7 @@ from os import path
 here = path.abspath(path.dirname(__file__))
 
 # Get the long description from the README file
-with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
+with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 # use the in house version number so we stay in synch with ourselves.
@@ -33,7 +33,7 @@ setup(
         ],
     },
 
-    license='BSD-3-Clause',
+    license='MIT',
 
     install_requires=[
         "protobuf >= 3.5.1"
@@ -47,6 +47,10 @@ setup(
         'Topic :: System :: Distributed Computing',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
+        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
+
     ],
 )

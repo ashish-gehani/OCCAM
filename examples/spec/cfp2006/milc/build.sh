@@ -34,6 +34,6 @@ EOF
 
 
 # Run OCCAM
-slash --stats --devirt --work-dir=slash milc.manifest
+slash --stats --use-pointer-analysis --work-dir=slash milc.manifest
 
 cp ./slash/milc_slashed .

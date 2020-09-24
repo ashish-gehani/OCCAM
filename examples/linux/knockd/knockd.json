@@ -3,7 +3,7 @@
 , "modules"    : ["list.o.bc"]
 , "ldflags" : [ "-lpcap"]
 , "native_libs" : []
-, "args"    : []
+, "static_args"    : []
 , "name"    : "knockd"
 }
 

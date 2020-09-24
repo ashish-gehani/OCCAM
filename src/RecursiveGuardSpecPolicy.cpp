@@ -21,7 +21,8 @@
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE
 // DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
 // FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 // DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
@@ -38,74 +39,70 @@
 using namespace llvm;
 
 namespace previrt {
-  
-  RecursiveGuardSpecPolicy::
-  RecursiveGuardSpecPolicy(std::unique_ptr<SpecializationPolicy> subpolicy,
-			   CallGraph& cg)
-    : m_cg(cg)
-    , m_subpolicy(std::move(subpolicy)) {
-    
-    markRecursiveFunctions();
-  }
-  
-  void RecursiveGuardSpecPolicy::markRecursiveFunctions() {
-    for (auto it = scc_begin(&m_cg); !it.isAtEnd(); ++it) {
-      auto &scc = *it;
-      bool recursive = false;
-      
-      if (scc.size() == 1 && it.hasLoop()) {
-	// direct recursive
-	recursive = true;
-      } else if (scc.size() > 1) {
-	// indirect recursive
-	recursive = true;
-      }
 
-      if (recursive) {
-	for (CallGraphNode *cgn : scc) {
-	  Function *fn = cgn->getFunction();
-	  if (!fn || fn->isDeclaration() || fn->empty()) {
-	    continue;
-	  }
-	  m_rec_functions.insert(fn);
-	}
+RecursiveGuardSpecPolicy::RecursiveGuardSpecPolicy(
+    std::unique_ptr<SpecializationPolicy> subpolicy, CallGraph &cg)
+    : m_cg(cg), m_subpolicy(std::move(subpolicy)) {
+
+  markRecursiveFunctions();
+}
+
+void RecursiveGuardSpecPolicy::markRecursiveFunctions() {
+  for (auto it = scc_begin(&m_cg); !it.isAtEnd(); ++it) {
+    auto &scc = *it;
+    bool recursive = false;
+
+    if (scc.size() == 1 && it.hasLoop()) {
+      // direct recursive
+      recursive = true;
+    } else if (scc.size() > 1) {
+      // indirect recursive
+      recursive = true;
+    }
+
+    if (recursive) {
+      for (CallGraphNode *cgn : scc) {
+        Function *fn = cgn->getFunction();
+        if (!fn || fn->isDeclaration() || fn->empty()) {
+          continue;
+        }
+        m_rec_functions.insert(fn);
       }
     }
   }
+}
 
-  bool RecursiveGuardSpecPolicy::isRecursive(const Function& F) const {
-    return m_rec_functions.count(&F) > 0;
-  }
-  
-  // Return true if F is not recursive  
-  bool RecursiveGuardSpecPolicy::allowSpecialization(const Function& F) const {
-    return (!isRecursive(F));
-  }
+bool RecursiveGuardSpecPolicy::isRecursive(const Function &F) const {
+  return m_rec_functions.count(&F) > 0;
+}
 
-  bool RecursiveGuardSpecPolicy::intraSpecializeOn(CallSite CS,
-						   std::vector<Value*>& marks) {
-    const Function* calleeF = CS.getCalledFunction();
-    if (!calleeF) {
-      return false;
-    }
-    
-    if (allowSpecialization(*calleeF)) {
-      return m_subpolicy->intraSpecializeOn(CS, marks);
-    } else {
-      return false;
-    }
+// Return true if F is not recursive
+bool RecursiveGuardSpecPolicy::allowSpecialization(const Function &F) const {
+  return (!isRecursive(F));
+}
+
+bool RecursiveGuardSpecPolicy::intraSpecializeOn(CallSite CS,
+                                                 std::vector<Value *> &marks) {
+  const Function *calleeF = CS.getCalledFunction();
+  if (!calleeF) {
+    return false;
   }
 
-  bool RecursiveGuardSpecPolicy::interSpecializeOn(const Function& CalleeF,
-						   const std::vector<PrevirtType>& args,
-						   const ComponentInterface& interface,
-						   SmallBitVector& marks)  {
-    if (allowSpecialization(CalleeF)) {
-      return m_subpolicy->interSpecializeOn(CalleeF, args, interface, marks);
-    } else {
-      return false;
-    }
+  if (allowSpecialization(*calleeF)) {
+    return m_subpolicy->intraSpecializeOn(CS, marks);
+  } else {
+    return false;
   }
+}
+
+bool RecursiveGuardSpecPolicy::interSpecializeOn(
+    const Function &CalleeF, const std::vector<InterfaceType> &args,
+    const ComponentInterface &interface, SmallBitVector &marks) {
+  if (allowSpecialization(CalleeF)) {
+    return m_subpolicy->interSpecializeOn(CalleeF, args, interface, marks);
+  } else {
+    return false;
+  }
+}
 
 } // end namespace previrt
-

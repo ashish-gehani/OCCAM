@@ -7,7 +7,7 @@ cat > simple.manifest <<EOF
 , "binary"  : "main"
 , "modules"    : ["library.o.bc"]
 , "native_libs" : []
-, "args"    : []
+, "static_args"    : []
 , "name"    : "main"
 }
 EOF

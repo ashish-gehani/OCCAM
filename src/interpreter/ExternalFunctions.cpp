@@ -35,7 +35,6 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/ManagedStatic.h"
 #include "llvm/Support/Mutex.h"
-#include "llvm/Support/UniqueLock.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
 #include <cmath>
@@ -224,8 +223,10 @@ static bool ffiInvoke(RawFunc Fn, Function *F, ArrayRef<GenericValue> ArgVals,
   // TODO: We don't have type information about the remaining arguments, because
   // this information is never passed into ExecutionEngine::runFunction().
   if (ArgVals.size() > NumArgs && F->isVarArg()) {
-    report_fatal_error("Calling external var arg function '" + F->getName()
-                      + "' is not supported by the Interpreter.");
+    errs() << "Calling external var arg function '"
+	   << F->getName()
+	   << "' is not supported by the Interpreter.\n";
+    return false;
   }
 
   unsigned ArgBytes = 0;
@@ -283,11 +284,14 @@ static bool ffiInvoke(RawFunc Fn, Function *F, ArrayRef<GenericValue> ArgVals,
 previrt::AbsGenericValue previrt::Interpreter::
 callExternalFunction(Function *F, ArrayRef<AbsGenericValue> AArgVals) {
   
-  // XXX: we don't want to call exit inside OCCAM (i.e. opt).
-  if (F->getName().equals("exit")) {
+  // XXX: Here functions that we don't want to call inside OCCAM
+  // (i.e. opt).
+  if (F->getName().equals("exit") ||
+      F->getName().startswith("pthread_")) {
+    errs() << "ConfigPrime: ignoring \"" << F->getName() << "\"\n";
     return llvm::None;
   }
-  
+
   TheInterpreter = this;
 
   std::vector<GenericValue> ArgVals;
@@ -300,7 +304,7 @@ callExternalFunction(Function *F, ArrayRef<AbsGenericValue> AArgVals) {
     }
   }
   
-  unique_lock<sys::Mutex> Guard(*FunctionsLock);
+  std::unique_lock<sys::Mutex> Guard(*FunctionsLock);
 
   // Do a lookup to see if the function is in our cache... this should just be a
   // deferred annotation!

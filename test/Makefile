@@ -17,7 +17,7 @@ endif
 # Test OCCAM features
 	${LIT} --param=test_dir=simple-c simple -v -o ${OUTPUT_LOG}
 # Test inter-procedural dead store elimination
-	${LIT} --param=test_dir=ipdse ipdse -v -o ${OUTPUT_LOG}
+#	${LIT} --param=test_dir=ipdse ipdse -v -o ${OUTPUT_LOG}
 
 clean:
 	rm -f out.log
@@ -28,10 +28,21 @@ clean:
 	$(MAKE) -C simple-c/funcs/2 clean
 	$(MAKE) -C simple-c/funcs/3 clean
 	$(MAKE) -C simple-c/funcs/4 clean
+	$(MAKE) -C simple-c/funcs/5 clean
+	$(MAKE) -C simple-c/funcs/6 clean
+	$(MAKE) -C simple-c/funcs/7 clean
+	$(MAKE) -C simple-c/funcs/8 clean
+	$(MAKE) -C simple-c/funcs/9 clean
+	$(MAKE) -C simple-c/funcs/10 clean
+	$(MAKE) -C simple-c/funcs/11 clean
+	$(MAKE) -C simple-c/funcs/12 clean
+	$(MAKE) -C simple-c/funcs/13 clean
+	$(MAKE) -C simple-c/funcs/14 clean
 	$(MAKE) -C simple-c/fib clean
 	$(MAKE) -C simple-c/fiblib clean
 	$(MAKE) -C simple-c/bounded-intra clean
 	$(MAKE) -C simple-c/bounded-inter clean
 	$(MAKE) -C simple-c/onlyonce-intra clean
 	$(MAKE) -C simple-c/onlyonce-inter clean
+	$(MAKE) -C simple-c/pe clean
 	$(MAKE) -C ipdse clean

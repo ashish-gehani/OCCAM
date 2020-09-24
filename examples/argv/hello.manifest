@@ -3,5 +3,7 @@
 , "modules"    : []
 , "native_libs" : []
 , "name"    : "hello"
-, "constraints" : ["1", "hello", "donald duck", "-mcsat"]
+, "static_args" : ["donald duck", "-mcsat"]
+, "dynamic_args" : "1"
+
 }

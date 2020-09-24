@@ -1,10 +1,10 @@
-#include "llvm/Pass.h"
 #include "llvm/ADT/StringRef.h"
+#include "llvm/Pass.h"
 
 namespace llvm {
- class APInt;
- class  ExecutionEngine;
-}// namespace llvm;
+class APInt;
+class ExecutionEngine;
+} // namespace llvm;
 
 /**
  * We execute the program with the available manifest. If all input
@@ -17,26 +17,25 @@ namespace llvm {
  **/
 namespace previrt {
 class ConfigPrime : public llvm::ModulePass {
-  
+
   std::unique_ptr<llvm::ExecutionEngine> m_ee;
 
-  void runInterpreterAsMain(llvm::Module &M, llvm::APInt& Res);
-  void stopInterpreter(llvm::Module &M, const llvm::APInt& Res);
-  
+  void runInterpreterAsMain(llvm::Module &M, llvm::APInt &Res);
+  void stopInterpreter(llvm::Module &M, const llvm::APInt &Res);
+
 public:
   static char ID;
-  
+
   ConfigPrime();
-  
+
   virtual ~ConfigPrime();
-  
-  virtual void getAnalysisUsage (llvm::AnalysisUsage &AU) const override;
-  
+
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override;
+
   virtual llvm::StringRef getPassName() const override {
     return "Configuration Priming";
   }
-  
+
   virtual bool runOnModule(llvm::Module &M) override;
 };
 } // end namespace previrt
-

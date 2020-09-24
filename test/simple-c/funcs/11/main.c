@@ -6,13 +6,11 @@ int incr(int x) {
 }
 
 /* 
-   Without pointer analysis llvm cannot reason about fun.  
+   Good example showing occam's capabilities.
 
-   Even with pointer analysis, we need to propagate that *fun = &incr
-   at the callsite of execute_call.  Note that we don't create a
-   bounce function for *fun since it's never called. So even if we
-   know that *fun = &incr we don't say that explicitly so it's never
-   propagated through inter-module specialization.
+   execute_call is fully specialized because both arguments can be
+   known statically (the first argument can be only known through
+   seadsa).
 */
 
 FN_PTR _fun;
