@@ -17,15 +17,10 @@
 //===----------------------------------------------------------------------===//
 // Modifications for OCCAM:
 //===----------------------------------------------------------------------===//
-// - Global initializers of global variables whose addresses have not
-//   been taken are ignored. This is sound because we ensure that the
-//   LowerGvInitializersPass has been run before. This pass inserts
-//   store instructions at the beginning of main to make explicit the
-//   global variable initialization. This is relevant because before we run
-//   IPSCCP, we run the IPDSE (inter-procedural dead store elimination)
-//   pass. This pass removes dead stores. So the hope is that it will
-//   remove a lowered initializer if it is actually dead. As a result,
-//   IPSCCP can be more precise.
+// - Teach SCCP to ignore some global initializers. This is
+//   communicated to SCCP via metadata. The IPDSE (inter-procedural
+//   dead store elimination) pass detects when some global
+//   initializers are useless.
 //===----------------------------------------------------------------------===//
 
 #include "llvm/ADT/DenseMap.h"
@@ -270,21 +265,17 @@ public:
   /// if it can.  This is only legal to call if performing
   /// Interprocedural SCCP.
   void TrackValueOfGlobalVariable(GlobalVariable *GV) {
-    // We only track the contents of scalar globals.
+    // === OCCAM === //
     if (GV->getValueType()->isSingleValueType()) {
-      if (!isa<UndefValue>(GV->getInitializer())) {
-        // We ignore the initializer but check it's not undef.  We can
-        // ignore it because the LowerGlobalInitializer pass is
-        // supposed to be run before.
-        TrackedGlobals.insert({GV, LatticeVal()});
+      ///Key modification wrt to original LLVM SCCP:
+      if (GV->getMetadata("ipdse.useless_initializer")) {
+	TrackedGlobals.insert({GV, LatticeVal()});
+      } else {
+    	LatticeVal &IV = TrackedGlobals[GV];
+    	if (!isa<UndefValue>(GV->getInitializer()))
+	  IV.markConstant(GV->getInitializer());
       }
     }
-    /// --- Key modification wrt to original LLVM SCCP:
-    // if (GV->getValueType()->isSingleValueType()) {
-    // 	LatticeVal &IV = TrackedGlobals[GV];
-    // 	if (!isa<UndefValue>(GV->getInitializer()))
-    // 	  IV.markConstant(GV->getInitializer());
-    // }
   }
 
   /// AddTrackedFunction - If the SCCP solver is supposed to track calls into

@@ -12,9 +12,9 @@ static int y;   // DEAD INITIALIZATION
 int init() {
   y = y+1;    // LIVE STORE
   if (nd_int()) {
-    x = 2;   // DEAD STORE
+    x = 2;    // DEAD STORE
   } else {
-    x = 5; 
+    x = 5;    // DEAD STORE
   }
   return y;
 }

@@ -185,7 +185,7 @@ def devirt(devirt_method, input_file, output_file):
     """
     assert(devirt_method <> 'none')
     args = [ '-Pdevirt',
-             ## Run always sea-dsa with types for more precision
+             ## Improve precision of sea-dsa by considering types
              '-sea-dsa-type-aware=true'
              #, '-Presolve-incomplete-calls=true'
              #, '-Pmax-num-targets=15'
@@ -308,19 +308,18 @@ def peval(input_file, output_file, \
         shutil.copy(tmp.name, done.name)
 
     if use_ipdse:
-        ## 1. lower global initializers to store's in main
-        passes = ['-lower-gv-init']
-        ## 2. dead store elimination based on sea-dsa (improve
-        ##    precision of sccp)
-        passes += [
-                   ###Context-insensitive sea-dsa
-                   '-sea-dsa=ci', '-horn-sea-dsa-local-mod',
-                   ##Inter-procedural dead store elimination
-                   '-ip-dse', '-ip-dse-max-def-use=25']
-        ## 3. perform IPSCCP
+        ## 1. Run dead store elimination based on sea-dsa
+        passes = [
+            ## Options for sea-dsa
+            '--sea-dsa=butd-cs', '--sea-dsa-type-aware', '--horn-sea-dsa-split', \
+            ## Options to run ipdse
+            '--ipdse', '--ipdse-only-singleton=true', '-ipdse-max-def-use=200'
+        ]
+        ## 2. perform OCCAM IPSCCP
         passes += ['-Pipsccp']
-        ## 4. cleanup after IPSCCP
-        passes += ['-dce', '-globaldce']
+        ## 3. cleanup after IPSCCP
+        passes += ['-globaldce']
+        
         retcode = driver.previrt(done.name, tmp.name, passes)
         if retcode != 0:
             sys.stderr.write("ERROR: ipdse failed!\n")
