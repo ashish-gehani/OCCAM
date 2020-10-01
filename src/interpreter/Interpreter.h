@@ -177,6 +177,8 @@ class Interpreter : public llvm::ExecutionEngine, public llvm::InstVisitor<Inter
 
   // XXX: keep track of the blocks executed by the interpreter
   llvm::DenseSet<const llvm::BasicBlock*> VisitedBlocks;
+
+  bool ExitExecuted;
   
 public:
   
@@ -302,6 +304,8 @@ public:
 	       llvm::DenseMap<llvm::Value*, RawAndDerefValue> &StackVals);
 
   bool isExecuted(const llvm::BasicBlock &) const;
+
+  bool exitExecuted() const { return ExitExecuted;}
   
 private:  // Helper functions
   

@@ -94,7 +94,8 @@ ExecutionEngine *Interpreter::create(std::unique_ptr<Module> M,
 //
 Interpreter::Interpreter(std::unique_ptr<Module> M)
   : ExecutionEngine(std::move(M)),
-    StopExecution(false) {
+    StopExecution(false),
+    ExitExecuted(false) {
 
   memset(&ExitValue.Untyped, 0, sizeof(ExitValue.Untyped));
   // Initialize the "backend"

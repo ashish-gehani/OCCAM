@@ -289,6 +289,7 @@ callExternalFunction(Function *F, ArrayRef<AbsGenericValue> AArgVals) {
   if (F->getName().equals("exit") ||
       F->getName().startswith("pthread_")) {
     errs() << "ConfigPrime: ignoring \"" << F->getName() << "\"\n";
+    ExitExecuted = true;
     return llvm::None;
   }
 
