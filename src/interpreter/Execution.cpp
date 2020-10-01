@@ -53,7 +53,7 @@ MemoryHolder::~MemoryHolder() {
   // }
 }
 
-bool MemoryHolder::isAllocatedMemory(void *mem) const {
+bool MemoryHolder::trackMemory(void *mem) const {
   intptr_t addr = intptr_t (mem);
   auto it = m_mem_map.lower_bound (addr+1);
   if (it == m_mem_map.end()) return false;
@@ -70,7 +70,7 @@ static void memlog (const char *format, ...) {
 }
 
 void MemoryHolder::add(void *mem, unsigned size) {
-  if (isAllocatedMemory(mem)) return;
+  if (trackMemory(mem)) return;
   intptr_t addr = intptr_t(mem);
   m_mem_map.insert({addr, addr + size});
   memlog("Allocated %d bytes: [%#lx,%#lx]\n", size, addr, addr+size);        
@@ -155,6 +155,7 @@ void Interpreter::initMemory(const Constant *Init, void *Addr) {
 * this method
 **/
 void Interpreter::initializeGlobalVariable(GlobalVariable &GV) {
+#ifndef TRACK_ONLY_UNACCESSIBLE_MEM  
   LOG << "Collecting addresses from global initializer for " << GV.getName() << ".\n";
   if (void *GA = getPointerToGlobalIfAvailable(&GV)) {
     // Not sure if this is necessary
@@ -164,19 +165,34 @@ void Interpreter::initializeGlobalVariable(GlobalVariable &GV) {
   } else {
     LOG << "\t" << "Pointer to global " << GV.getName()  << " is not available\n";
   }
+#endif   
 }
 
 void Interpreter::initializeMainParams(void *Addr, unsigned Size) {
-  //LOG << "Collecting addresses from main argv parameter.\n";  
-  MemMainParams.add(Addr, Size);
+#ifdef TRACK_ONLY_UNACCESSIBLE_MEM
+  LOG << "Marking as unaccessible memory at address="
+      << Addr << " size=" << Size << "\n";
+  UnaccessibleMem.add(Addr, Size);
+#else
+  LOG << "Collecting addresses from main argv parameter: address="
+      << Addr << " size=" << Size <<".\n";  
+  MemMainParams.add(Addr, Size);				    
+#endif 				    
 }
 
 bool Interpreter::isAllocatedMemory(void *Addr) const {
+#ifdef TRACK_ONLY_UNACCESSIBLE_MEM
+  return !UnaccessibleMem.trackMemory(Addr);
+#else
+  /* We keep track carefully of all allocated memory by the module.
+     If the module calls an external function that allocates memory we
+     will consider that memory as un-allocated. */
   const ExecutionContext &SF = ECStack.back();
-  return (MemMainParams.isAllocatedMemory(Addr) ||
-	  SF.Allocas.isAllocatedMemory(Addr) ||
-	  MemGlobals.isAllocatedMemory(Addr) || 
-	  MemMallocs.isAllocatedMemory(Addr));
+  return (MemMainParams.trackMemory(Addr) ||
+	  SF.Allocas.trackMemory(Addr) ||
+	  MemGlobals.trackMemory(Addr) || 
+	  MemMallocs.trackMemory(Addr));
+#endif  
 }
 
 //===----------------------------------------------------------------------===//
@@ -1507,8 +1523,9 @@ void Interpreter::visitAllocaInst(AllocaInst &I) {
 
   // Allocate enough memory to hold the type...
   void *Memory = malloc(MemToAlloc);
+#ifndef TRACK_ONLY_UNACCESSIBLE_MEM    
   ECStack.back().Allocas.addWithOwnershipTransfer(Memory, MemToAlloc);
-  
+#endif   
   LOG << "Allocated stack Type: " << *Ty << " (" << TypeSize << " bytes) x " 
       << NumElements << " (Total: " << MemToAlloc << ") at "
       << Memory << "\n";
@@ -1517,9 +1534,6 @@ void Interpreter::visitAllocaInst(AllocaInst &I) {
   assert(Result.PointerVal && "Null pointer returned by malloc!");
   SetValue(&I, AbsGenericValue(Result), SF);
 
-  //if (I.getOpcode() == Instruction::Alloca) {
-  //ECStack.back().Allocas.add(Memory);
-  //}
 }
 
 void Interpreter::visitMallocInst(CallSite &CS) {
@@ -1535,7 +1549,9 @@ void Interpreter::visitMallocInst(CallSite &CS) {
   void *Memory = malloc(MemToAlloc);
   LOG << "Allocated heap memory: " << MemToAlloc << " at " << uintptr_t(Memory) << "\n";
   GenericValue Result = PTOGV(Memory);
+#ifndef TRACK_ONLY_UNACCESSIBLE_MEM      
   MemMallocs.addWithOwnershipTransfer(Memory, MemToAlloc);
+#endif   
   SetValue(CS.getInstruction(), Result, SF);  
 }
 
@@ -1645,21 +1661,31 @@ void Interpreter::visitLoadInst(LoadInst &I) {
 
 void Interpreter::visitStoreInst(StoreInst &I) {
   ExecutionContext &SF = ECStack.back();
-  AbsGenericValue AVal = getOperandValue(I.getOperand(0), SF);
-  if (!AVal.hasValue()) {
-    LOG << "Writing an unknown value\n";
-    return;
-  }
   AbsGenericValue ASrc = getOperandValue(I.getPointerOperand(), SF);
   if (!ASrc.hasValue()) {
     LOG << "Writing to an unknown pointer.\n";
     return;
   }
 
-  GenericValue Val = AVal.getValue();
   GenericValue Src = ASrc.getValue();
   GenericValue *Ptr = (GenericValue*)GVTOP(Src);
-
+  
+  AbsGenericValue AVal = getOperandValue(I.getOperand(0), SF);
+  if (!AVal.hasValue()) {
+    LOG << "Writing an unknown value\n";
+    #ifdef TRACK_ONLY_UNACCESSIBLE_MEM
+    // If we are here is because I.getOperand(0) must come from main's
+    // argv
+    Type *Ty = I.getOperand(0)->getType();
+    const unsigned StoreBytes = getDataLayout().getTypeStoreSize(Ty);
+    LOG << "Marking as unaccessible memory at address="
+	<< Ptr << " size=" << StoreBytes << "\n";    
+    UnaccessibleMem.add((void*)Ptr, StoreBytes);
+    #endif 
+    return;
+  }
+  
+  GenericValue Val = AVal.getValue();
   if (!isa<GlobalVariable>(I.getPointerOperand()->stripPointerCasts())) {
     // XXX: see explanation in VisitLoadInst
     if (!isAllocatedMemory((void*) Ptr)) {
@@ -2920,7 +2946,6 @@ static AbsGenericValue dereferencePointerIfBasicElementType(AbsGenericValue Val,
 	ElementType->getTypeID() == Type::FloatTyID ||
 	ElementType->getTypeID() == Type::DoubleTyID) {
       if (void * addr = Val.getValue().PointerVal) {
-	// asssert(isAllocatedMemory(addr))
 	GenericValue Res;
 	switch(ElementType->getTypeID()) {
 	case Type::IntegerTyID: {

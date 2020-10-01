@@ -37,6 +37,10 @@ class BasicBlock;
 } // end namespace llvm
 
 
+#ifdef HAVE_FFI_H
+#define TRACK_ONLY_UNACCESSIBLE_MEM
+#endif
+
 namespace previrt {
 
 class ArgvArray {
@@ -67,7 +71,7 @@ public:
 //   void add(void *Mem) { Allocations.push_back(Mem); }
 // };
 
-// MemoryHolder - Object to track all the blocks of allocated memory.
+// MemoryHolder - Object to track memory.
 class MemoryHolder {
   std::map<intptr_t, intptr_t, std::greater<intptr_t>> m_mem_map;
   //std::vector<intptr_t> m_owned_memory;
@@ -83,7 +87,7 @@ public:
   
   ~MemoryHolder();
 
-  bool isAllocatedMemory(void *mem) const;
+  bool trackMemory(void *mem) const;
   
   void add(void *mem, unsigned size);
 
@@ -163,6 +167,9 @@ class Interpreter : public llvm::ExecutionEngine, public llvm::InstVisitor<Inter
   MemoryHolder MemMainParams;
   // XXX: track global variable initializers
   MemoryHolder MemGlobals;
+  // XXX: memory we know should be unaccessible
+  // Used only if enabled TRACK_ONLY_UNACCESSIBLE_MEM
+  MemoryHolder UnaccessibleMem;
   
   // XXX: the execution cannot continue because some branch depends on
   // some unknown value.
