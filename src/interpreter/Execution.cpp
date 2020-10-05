@@ -1783,7 +1783,8 @@ void Interpreter::visitCallSite(CallSite CS) {
     LOG << "the called function is unknown\n";
     StopExecution = true;
   } else {
-    callFunction((Function*)GVTOP(SRC.getValue()), ArgVals);
+    callFunction((Function*)GVTOP(SRC.getValue()), ArgVals,
+                CS.getInstruction());
   }
 }
 
@@ -2831,7 +2832,8 @@ void Interpreter::visitInsertValueInst(InsertValueInst &I) {
 //===----------------------------------------------------------------------===//
 // callFunction - Execute the specified function...
 //
-void Interpreter::callFunction(Function *F, ArrayRef<AbsGenericValue> ArgVals) {
+  void Interpreter::callFunction(Function *F, ArrayRef<AbsGenericValue> ArgVals,
+                                Instruction *CS) {
   assert((ECStack.empty() || !ECStack.back().Caller.getInstruction() ||
           ECStack.back().Caller.arg_size() == ArgVals.size()) &&
          "Incorrect number of arguments passed into function call!");
@@ -2842,7 +2844,7 @@ void Interpreter::callFunction(Function *F, ArrayRef<AbsGenericValue> ArgVals) {
 
   // Special handling for external functions.
   if (F->isDeclaration()) {
-    AbsGenericValue Result = callExternalFunction (F, ArgVals);
+    AbsGenericValue Result = callExternalFunction (CS, F, ArgVals);
     if (!F->getReturnType()->isVoidTy() && !Result.hasValue()) {
       /// XXX: right now if Result is undefined is because one of the
       /// arguments in ArgVals is unknown.

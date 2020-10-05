@@ -213,7 +213,8 @@ public:
 
   // Methods used to execute code:
   // Place a call on the stack
-  void callFunction(llvm::Function *F, llvm::ArrayRef<AbsGenericValue> ArgVals);
+  void callFunction(llvm::Function *F, llvm::ArrayRef<AbsGenericValue> ArgVals,
+                   llvm::Instruction *CS = nullptr);
   void run();  // Execute instructions until nothing left to do
 
   // Opcode Implementations
@@ -270,7 +271,7 @@ public:
     llvm_unreachable("Instruction not interpretable yet!");
   }
 
-  AbsGenericValue callExternalFunction(llvm::Function *F,
+  AbsGenericValue callExternalFunction(llvm::Instruction *CS, llvm::Function *F,
 				       llvm::ArrayRef<AbsGenericValue> ArgVals);
   void exitCalled(llvm::GenericValue GV);
 

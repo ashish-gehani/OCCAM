@@ -214,29 +214,51 @@ static void *ffiValueFor(Type *Ty, const GenericValue &AV,
   return NULL;
 }
 
-static bool ffiInvoke(RawFunc Fn, Function *F, ArrayRef<GenericValue> ArgVals,
+static bool ffiInvoke(Instruction *I, RawFunc Fn, Function *F, ArrayRef<GenericValue> ArgVals,
                       const DataLayout &TD, GenericValue &Result) {
+
+
   ffi_cif cif;
   FunctionType *FTy = F->getFunctionType();
-  const unsigned NumArgs = F->arg_size();
-
-  // TODO: We don't have type information about the remaining arguments, because
-  // this information is never passed into ExecutionEngine::runFunction().
-  if (ArgVals.size() > NumArgs && F->isVarArg()) {
-    errs() << "Calling external var arg function '"
-	   << F->getName()
-	   << "' is not supported by the Interpreter.\n";
-    return false;
+  std::vector<Type*> ArgTypes;
+  if (ArgVals.size() > F->arg_size() && F->isVarArg()) {
+    // Variadic function: get types from the callsite
+    if (!I) {
+      errs() << "Calling ffiInvoke without a callsite. "
+             << "This should not happen\n";
+      return false;
+    }
+    const unsigned NumArgs = ArgVals.size();
+    CallSite CS(I);
+    if (NumArgs != CS.arg_size()) {
+      errs() << "Mismatch of number of parameters at callsite. "
+             << "This should not happen\n";
+      return false;
+    }
+    ArgTypes.reserve(NumArgs);
+    for (unsigned i=0; i<NumArgs;++i) {
+      Value* A = CS.getArgument(i)->stripPointerCasts();
+      Type *ArgTy = A->getType();
+      ArgTypes.push_back(ArgTy);
+    }
+  } else {
+    // Non-variadic function: get types from the function declaration
+    ArgTypes.reserve(F->arg_size());
+    for (Function::const_arg_iterator A = F->arg_begin(), E = F->arg_end();
+         A != E; ++A) {
+      const unsigned ArgNo = A->getArgNo();
+      Type *ArgTy = FTy->getParamType(ArgNo);
+      ArgTypes.push_back(ArgTy);
+    }
   }
 
   unsigned ArgBytes = 0;
+  const unsigned NumArgs = ArgTypes.size();
 
   std::vector<ffi_type*> args(NumArgs);
-  for (Function::const_arg_iterator A = F->arg_begin(), E = F->arg_end();
-       A != E; ++A) {
-    const unsigned ArgNo = A->getArgNo();
-    Type *ArgTy = FTy->getParamType(ArgNo);
-    args[ArgNo] = ffiTypeFor(ArgTy);
+  for (unsigned i=0;i<NumArgs;++i) {
+    Type *ArgTy = ArgTypes[i];
+    args[i] = ffiTypeFor(ArgTy);
     ArgBytes += TD.getTypeStoreSize(ArgTy);
   }
 
@@ -244,14 +266,14 @@ static bool ffiInvoke(RawFunc Fn, Function *F, ArrayRef<GenericValue> ArgVals,
   ArgData.resize(ArgBytes);
   uint8_t *ArgDataPtr = ArgData.data();
   SmallVector<void*, 16> values(NumArgs);
-  for (Function::const_arg_iterator A = F->arg_begin(), E = F->arg_end();
-       A != E; ++A) {
-    const unsigned ArgNo = A->getArgNo();
-    Type *ArgTy = FTy->getParamType(ArgNo);
-    values[ArgNo] = ffiValueFor(ArgTy, ArgVals[ArgNo], ArgDataPtr);
+  for (unsigned i=0;i<NumArgs;++i) {
+    Type *ArgTy = ArgTypes[i];
+    values[i] = ffiValueFor(ArgTy, ArgVals[i], ArgDataPtr);
     ArgDataPtr += TD.getTypeStoreSize(ArgTy);
-  }
 
+  }
+  
+  
   Type *RetTy = FTy->getReturnType();
   ffi_type *rtype = ffiTypeFor(RetTy);
 
@@ -282,7 +304,7 @@ static bool ffiInvoke(RawFunc Fn, Function *F, ArrayRef<GenericValue> ArgVals,
 #endif // USE_LIBFFI
 
 previrt::AbsGenericValue previrt::Interpreter::
-callExternalFunction(Function *F, ArrayRef<AbsGenericValue> AArgVals) {
+callExternalFunction(Instruction *CS, Function *F, ArrayRef<AbsGenericValue> AArgVals) {
   
   // XXX: Here functions that we don't want to call inside OCCAM
   // (i.e. opt).
@@ -333,7 +355,7 @@ callExternalFunction(Function *F, ArrayRef<AbsGenericValue> AArgVals) {
   Guard.unlock();
 
   GenericValue Result;
-  if (RawFn != 0 && ffiInvoke(RawFn, F, ArgVals, getDataLayout(), Result)) {
+  if (RawFn != 0 && ffiInvoke(CS, RawFn, F, ArgVals, getDataLayout(), Result)) {
     errs() << "Invoking FFI on " << F->getName() << "\n";
     return Result;
   }
