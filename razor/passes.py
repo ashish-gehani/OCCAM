@@ -311,7 +311,7 @@ def peval(input_file, output_file, \
         ## 1. Run dead store elimination based on sea-dsa
         passes = [
             ## Options for sea-dsa
-            '--sea-dsa=butd-cs', '--sea-dsa-type-aware', '--horn-sea-dsa-split', \
+            '--sea-dsa=cs', '--sea-dsa-type-aware', '--horn-sea-dsa-split', \
             ## Options to run ipdse
             '--ipdse', '--ipdse-only-singleton=true', '-ipdse-max-def-use=200'
         ]
@@ -406,7 +406,7 @@ def peval(input_file, output_file, \
     return retcode
 
 def optimize(input_file, output_file, use_seaopt, extra_opts):
-    """ Run opt -O3.
+    """ Run LLVM optimizer.
         The optimizer is tuned for code debloating and not necessarily
         for runtime performance.
     """
