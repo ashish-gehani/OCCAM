@@ -35,8 +35,11 @@ using namespace std;
 struct RemoveFunction : public ModulePass {
 
   Function *makePrintf(Module &M) {
-    Type *charType = Type::getInt8PtrTy(M.getContext());
-    FunctionType *printf_type = FunctionType::get(charType, true);
+    LLVMContext &ctx = M.getContext();
+    Type *charPtrType = Type::getInt8PtrTy(ctx);
+    Type *int32Type = Type::getInt32Ty(ctx);
+
+    FunctionType *printf_type = FunctionType::get(int32Type, {charPtrType}, true);
     Function *printf = cast<Function>(
         M.getOrInsertFunction("printf", printf_type).getCallee());
     assert(printf && "printf not found in module");
@@ -44,10 +47,11 @@ struct RemoveFunction : public ModulePass {
   }
 
   Function *makeExit(Module &M) {
-    Type *voidType = Type::getVoidTy(M.getContext());
-    vector<Type *> exitArgsTypes;
-    exitArgsTypes.push_back(Type::getInt32Ty(M.getContext()));
-    FunctionType *exitType = FunctionType::get(voidType, exitArgsTypes, false);
+    LLVMContext &ctx = M.getContext();
+    Type *voidType = Type::getVoidTy(ctx);
+    Type *int32Type = Type::getInt32Ty(ctx);
+    
+    FunctionType *exitType = FunctionType::get(voidType, {int32Type}, false);
     Function *exit = dyn_cast<Function>(
         M.getOrInsertFunction("exit", exitType).getCallee());
     assert(exit && "exitFunc not found in module");
