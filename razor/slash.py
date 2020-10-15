@@ -206,7 +206,7 @@ class Slash(object):
                policy <> 'nonrec-aggressive':
                 sys.stderr.write('Error: unsupported specialization policy. ' + \
                                  'Valid policies: none, aggressive, nonrec-aggressive, ' + \
-                                 'bounded, onlyonce')
+                                 'bounded, onlyonce\n')
                 return False
             else:
                 return True
@@ -286,9 +286,8 @@ class Slash(object):
         else:
             inline_spec = False
 
-        sys.stderr.write('\nslash working on {0} wrt {1} with lib_spec {2} ...\n'.format(module, ' '.join(libs), ' '.join(lib_spec)))
-        sys.stderr.write('\nslash main_spec {0}  ...\n'.format(' '.join(main_spec)))
-
+        #sys.stderr.write('\nslash working on {0} wrt {1} with lib_spec {2} ...\n'.format(module, ' '.join(libs), ' '.join(lib_spec)))
+        #sys.stderr.write('\nslash main_spec {0}  ...\n'.format(' '.join(main_spec)))
 
         native_lib_flags = []
 
@@ -597,17 +596,20 @@ class Slash(object):
 
         def link(binary, files, libs, native_libs, native_lib_flags, ldflags):
             final_libs = [files[x].get() for x in libs] + [files[x].get() for x in lib_spec]
-            final_module = files[module].get()
+            final_module = files[module].get() 
             linker_args = None
             link_cmd = None
 
             if self.amalgamation is None:
                 linker_args =  native_libs + native_lib_flags + ldflags
-                link_cmd = '\nclang++ {0} -o {1} {2}\n'.format(final_module, binary, ' '.join(linker_args))
+                link_cmd = '\nclang++ {0} {1} -o {2} {3}\n'.format(final_module, ' '.join(final_libs), \
+                                                                   binary, ' '.join(linker_args))
             else:
                 linker_args = native_libs + native_lib_flags + ldflags
-                link_cmd = '\nclang++ {0} -o {1} {2}\n'.format(self.amalgamation, binary, ' '.join(linker_args))
-                # need to amalgamate the bitcode PRIOR to linking (only needed when there are duplicate symbols)
+                link_cmd = '\nclang++ {0} -o {1} {2}\n'.format(self.amalgamation, \
+                                                               binary, ' '.join(linker_args))
+                # need to amalgamate the bitcode PRIOR to linking
+                # (only needed when there are duplicate symbols)
                 amalargs = ['-override', final_module]  + ['-o', self.amalgamation]
                 driver.run('llvm-link', amalargs)
                 final_module = self.amalgamation
@@ -615,7 +617,7 @@ class Slash(object):
             sys.stderr.write('\nLinking ...\n')
             sys.stderr.write(link_cmd)
             try:
-                driver.linker(final_module, binary, linker_args)
+                driver.linker(final_module, final_libs, binary, linker_args)
                 sys.stderr.write('\ndone.\n')
                 return True
             except Exception:
