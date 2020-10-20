@@ -171,13 +171,13 @@ class Interpreter : public llvm::ExecutionEngine, public llvm::InstVisitor<Inter
   // Used only if enabled TRACK_ONLY_UNACCESSIBLE_MEM
   MemoryHolder UnaccessibleMem;
   
-  // XXX: the execution cannot continue because some branch depends on
-  // some unknown value.
+  // XXX: the execution cannot continue
   bool StopExecution;
 
   // XXX: keep track of the blocks executed by the interpreter
   llvm::DenseSet<const llvm::BasicBlock*> VisitedBlocks;
 
+  // Whether "exit" has been found
   bool ExitExecuted;
   
 public:

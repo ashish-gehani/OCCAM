@@ -305,16 +305,39 @@ static bool ffiInvoke(Instruction *I, RawFunc Fn, Function *F, ArrayRef<GenericV
 
 previrt::AbsGenericValue previrt::Interpreter::
 callExternalFunction(Instruction *CS, Function *F, ArrayRef<AbsGenericValue> AArgVals) {
-  
-  // XXX: Here functions that we don't want to call inside OCCAM
-  // (i.e. opt).
-  if (F->getName().equals("exit") ||
-      F->getName().startswith("pthread_")) {
-    errs() << "ConfigPrime: ignoring \"" << F->getName() << "\"\n";
+
+  // We don't want to call exit from the interpreter because it will
+  // abort also OCCAM
+  if (F->getName().equals("exit")) {
+    errs() << "*** ConfigPrime: ignoring \"" << F->getName() << "\"\n";
     ExitExecuted = true;
     return llvm::None;
   }
 
+  // The interpreter doesn't support pthread calls
+  if (F->getName().startswith("pthread_")) {
+    errs() << "*** ConfigPrime: execution cannot continue ignoring a call to \""
+	   << F->getName() << "\" because of potential side-effects. \n";
+    StopExecution = true;
+    return llvm::None;
+  }
+
+  // The intepreter cannot use FFI to make callbacks
+  FunctionType *FTy = F->getFunctionType();
+  for (unsigned i=0, num_params = FTy->getNumParams(); i<num_params; ++i) {
+    Type *ArgTy = FTy->getParamType(i);
+    if (PointerType *ArgPtrTy = dyn_cast<PointerType>(ArgTy)) {
+      if (isa<FunctionType>(ArgPtrTy->getElementType())) {
+	errs() << "*** ConfigPrime: execution cannot continue ignoring a call to \""
+	       << F->getName() << "\" because of potential side-effects. "
+	       << "The reason to skip the call is that some argument is a function pointer "
+	       << "and FFI does not support that.\n";
+	StopExecution = true;
+	return llvm::None;
+      }
+    }
+  }
+  
   TheInterpreter = this;
 
   std::vector<GenericValue> ArgVals;
@@ -323,6 +346,10 @@ callExternalFunction(Instruction *CS, Function *F, ArrayRef<AbsGenericValue> AAr
     if (Arg.hasValue()) {
       ArgVals.push_back(Arg.getValue());
     } else {
+      errs() << "*** ConfigPrime: execution cannot continue ignoring a call to \""
+	     << F->getName() << "\" because of potential side-effects. "
+	     << "The reason to skip the call is that some argument is unknown.\n";
+      StopExecution = true;      
       return llvm::None;
     }
   }
@@ -355,21 +382,19 @@ callExternalFunction(Instruction *CS, Function *F, ArrayRef<AbsGenericValue> AAr
   Guard.unlock();
 
   GenericValue Result;
+  errs() << "Invoking FFI on " << F->getName() << "\n";  
   if (RawFn != 0 && ffiInvoke(CS, RawFn, F, ArgVals, getDataLayout(), Result)) {
-    errs() << "Invoking FFI on " << F->getName() << "\n";
     return Result;
   }
 #endif // USE_LIBFFI
 
-  // if (F->getName() == "__main")
-  //   errs() << "Tried to execute an unknown external function: "
-  //     << *F->getType() << " __main\n";
-  // else
-  //   report_fatal_error("Tried to execute an unknown external function: " +
-  //                      F->getName());
-
 #ifndef USE_LIBFFI
   errs() << "Recompiling LLVM with --enable-libffi might help.\n";
+  errs() << "The execution continues on your own risk: callee side-effects are ignored.\n";
+#else
+  // If we use FFI then we don't ignore side-effects so we stop the
+  // execution.
+  StopExecution = true;
 #endif
   return llvm::None;
 }
