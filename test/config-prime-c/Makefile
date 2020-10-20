@@ -8,4 +8,5 @@ clean:
 	$(MAKE) -C intra-3 clean
 	$(MAKE) -C intra-4 clean
 	$(MAKE) -C intra-5 clean
+	$(MAKE) -C ffi-callback clean
 	rm -rf config-prime-bitcode
