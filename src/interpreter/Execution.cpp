@@ -183,6 +183,19 @@ void Interpreter::initializeMainParams(void *Addr, unsigned Size) {
 }
 
 bool Interpreter::isAllocatedMemory(void *Addr) const {
+  if (((intptr_t)Addr) >= 0x0 && ((intptr_t)Addr) <= 0x400) {
+    /* HACK:
+       %30 = call i8* @strrchr(i8* nonnull dereferenceable(1) %29, i32 47) #20
+       %31 = icmp eq i8* %30, null
+       %32 = getelementptr inbounds i8, i8* %30, i64 1
+       %33 = select i1 %31, i8* %29, i8* %32
+       
+       Since strrchr can return 0x0, then %32 will be 0x1. The program is
+       fine because %32 will never be dereferenced.
+    */
+    return false;
+  }
+  
 #ifdef TRACK_ONLY_UNACCESSIBLE_MEM
   return !UnaccessibleMem.trackMemory(Addr);
 #else
@@ -3090,7 +3103,7 @@ static AbsGenericValue dereferencePointerIfBasicElementType(AbsGenericValue Val,
 BasicBlock* Interpreter::inspectStackAndGlobalState(
 			  DenseMap<Value*, RawAndDerefValue> &globalVals,
 			  DenseMap<Value*, RawAndDerefValue> &stackVals) {
-
+  
   for (unsigned m = 0, e = Modules.size(); m != e; ++m) {
     Module &M = *Modules[m];
     for (auto &GV : M.globals()) {
@@ -3114,10 +3127,13 @@ BasicBlock* Interpreter::inspectStackAndGlobalState(
       
       if (void *addr = RawVal.getValue().PointerVal) {
 	if (!isAllocatedMemory(addr)) {
+	  llvm::errs() << "ConfigPrime: skips " << *V << "\n"
+		       << "Because address "
+		       << addr << " might not be allocated in memory.\n";
 	  continue;
 	}
       }
-      
+
       auto DerefVal = dereferencePointerIfBasicElementType
 	(RawVal, V->getType(), getDataLayout());
       RawAndDerefValue RDV(RawVal.getValue(), DerefVal);
