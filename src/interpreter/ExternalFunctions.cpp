@@ -322,6 +322,13 @@ callExternalFunction(Instruction *CS, Function *F, ArrayRef<AbsGenericValue> AAr
     return llvm::None;
   }
 
+  // XX: not clear why the interpreter crashes with vfprintf
+  if (F->getName().startswith("vfprintf")) {
+    errs() << "*** ConfigPrime: execution ignores a call to \""
+	   << F->getName() << "\" \n";
+    return llvm::None;
+  }
+  
   // The intepreter cannot use FFI to make callbacks
   FunctionType *FTy = F->getFunctionType();
   for (unsigned i=0, num_params = FTy->getNumParams(); i<num_params; ++i) {
