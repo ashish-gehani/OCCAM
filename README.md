@@ -17,8 +17,8 @@ Docker
 A pre-built and installed version of OCCAM can be obtained using Docker:
 
 ```shell
-docker pull sricsl/occam10:bionic
-docker run -v `pwd`:/host -it sricsl/occam10:bionic
+docker pull sricsl/occam:bionic
+docker run -v `pwd`:/host -it sricsl/occam:bionic
 ```
 Alternatively, it can be built and installed from source as follows.
 
