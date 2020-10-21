@@ -18,6 +18,7 @@
 #include "llvm/CodeGen/IntrinsicLowering.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Module.h"
+
 #include <cstring>
 #include <cstdio>
 
@@ -92,6 +93,7 @@ ExecutionEngine *Interpreter::create(std::unique_ptr<Module> M,
 //===----------------------------------------------------------------------===//
 // Interpreter ctor - Initialize stuff
 //
+  
 Interpreter::Interpreter(std::unique_ptr<Module> M)
   : ExecutionEngine(std::move(M)),
     StopExecution(false),
@@ -101,11 +103,11 @@ Interpreter::Interpreter(std::unique_ptr<Module> M)
   // Initialize the "backend"
   initializeExecutionEngine();
   initializeExternalFunctions();
-  emitGlobals();
+  Interpreter::emitGlobals();
 
   llvm::errs() << "ConfigPrime: collecting all addresses from global initializers.\n";  
   /// OCCAM: we record all the addresses taken by the global
-  /// initializers All the memory allocation happened already in
+  /// initializers. All the memory allocation happened already in
   /// emitGlobals.
   for (unsigned m = 0, e = Modules.size(); m != e; ++m) {
     Module &M = *Modules[m];

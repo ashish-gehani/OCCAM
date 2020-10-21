@@ -170,6 +170,10 @@ class Interpreter : public llvm::ExecutionEngine, public llvm::InstVisitor<Inter
   // XXX: memory we know should be unaccessible
   // Used only if enabled TRACK_ONLY_UNACCESSIBLE_MEM
   MemoryHolder UnaccessibleMem;
+
+  // XXX: keep track of unresolved globals (globals that cannot be
+  // resolved by emitGlobals)
+  llvm::DenseSet<const llvm::GlobalVariable*> UnresolvedGlobals;
   
   // XXX: the execution cannot continue
   bool StopExecution;
@@ -370,6 +374,10 @@ private:  // Helper functions
 		       llvm::GenericValue Src2, llvm::Type *Ty);
   
   void popStackAndReturnValueToCaller(llvm::Type *RetTy, AbsGenericValue Result);
+
+  // Similar to lib/ExecutionEngine/ExecutionEngine.cpp but it doesn't
+  // abort if the a global cannot be resolved.
+  void emitGlobals();
 };
 
 } // End llvm previrt

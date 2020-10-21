@@ -23,9 +23,11 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/DynamicLibrary.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdarg>
@@ -195,6 +197,110 @@ bool Interpreter::isAllocatedMemory(void *Addr) const {
 #endif  
 }
 
+/// JN: From lib/ExecutionEngine/ExecutionEngine.cpp but it doesn't
+/// report error if a global cannot be resolved.
+///  
+/// EmitGlobals - Emit all of the global variables to memory, storing their
+/// addresses into GlobalAddress.  This must make sure to copy the contents of
+/// their initializers into the memory.
+void Interpreter::emitGlobals() {
+  // Loop over all of the global variables in the program, allocating the memory
+  // to hold them.  If there is more than one module, do a prepass over globals
+  // to figure out how the different modules should link together.
+  std::map<std::pair<std::string, Type*>,
+           const GlobalValue*> LinkedGlobalsMap;
+
+  if (Modules.size() != 1) {
+    for (unsigned m = 0, e = Modules.size(); m != e; ++m) {
+      Module &M = *Modules[m];
+      for (const auto &GV : M.globals()) {
+        if (GV.hasLocalLinkage() || GV.isDeclaration() ||
+            GV.hasAppendingLinkage() || !GV.hasName())
+          continue;// Ignore external globals and globals with internal linkage.
+
+        const GlobalValue *&GVEntry =
+          LinkedGlobalsMap[std::make_pair(GV.getName(), GV.getType())];
+
+        // If this is the first time we've seen this global, it is the canonical
+        // version.
+        if (!GVEntry) {
+          GVEntry = &GV;
+          continue;
+        }
+
+        // If the existing global is strong, never replace it.
+        if (GVEntry->hasExternalLinkage())
+          continue;
+
+        // Otherwise, we know it's linkonce/weak, replace it if this is a strong
+        // symbol.  FIXME is this right for common?
+        if (GV.hasExternalLinkage() || GVEntry->hasExternalWeakLinkage())
+          GVEntry = &GV;
+      }
+    }
+  }
+
+  std::vector<const GlobalValue*> NonCanonicalGlobals;
+  for (unsigned m = 0, e = Modules.size(); m != e; ++m) {
+    Module &M = *Modules[m];
+    for (const auto &GV : M.globals()) {
+      // In the multi-module case, see what this global maps to.
+      if (!LinkedGlobalsMap.empty()) {
+        if (const GlobalValue *GVEntry =
+              LinkedGlobalsMap[std::make_pair(GV.getName(), GV.getType())]) {
+          // If something else is the canonical global, ignore this one.
+          if (GVEntry != &GV) {
+            NonCanonicalGlobals.push_back(&GV);
+            continue;
+          }
+        }
+      }
+
+      if (!GV.isDeclaration()) {
+        addGlobalMapping(&GV, getMemoryForGV(&GV));
+      } else {
+        // External variable reference. Try to use the dynamic loader to
+        // get a pointer to it.
+        if (void *SymAddr =
+            sys::DynamicLibrary::SearchForAddressOfSymbol(GV.getName()))
+          addGlobalMapping(&GV, SymAddr);
+        else {
+	  UnresolvedGlobals.insert(&GV);
+	  llvm::errs () << "Warning: Could not resolve external global address: "
+			<< GV.getName() << "\n";
+        }
+      }
+    }
+
+    // If there are multiple modules, map the non-canonical globals to their
+    // canonical location.
+    if (!NonCanonicalGlobals.empty()) {
+      for (unsigned i = 0, e = NonCanonicalGlobals.size(); i != e; ++i) {
+        const GlobalValue *GV = NonCanonicalGlobals[i];
+        const GlobalValue *CGV =
+          LinkedGlobalsMap[std::make_pair(GV->getName(), GV->getType())];
+        void *Ptr = getPointerToGlobalIfAvailable(CGV);
+        assert(Ptr && "Canonical global wasn't codegen'd!");
+        addGlobalMapping(GV, Ptr);
+      }
+    }
+
+    // Now that all of the globals are set up in memory, loop through them all
+    // and initialize their contents.
+    for (const auto &GV : M.globals()) {
+      if (!GV.isDeclaration()) {
+        if (!LinkedGlobalsMap.empty()) {
+          if (const GlobalValue *GVEntry =
+                LinkedGlobalsMap[std::make_pair(GV.getName(), GV.getType())])
+            if (GVEntry != &GV)  // Not the canonical variable.
+              continue;
+        }
+        EmitGlobalVariable(&GV);
+      }
+    }
+  }
+}
+
 //===----------------------------------------------------------------------===//
 //                     Various Helper Functions
 //===----------------------------------------------------------------------===//
@@ -285,6 +391,11 @@ AbsGenericValue Interpreter::getOperandValue(Value *V, ExecutionContext &SF) {
   } else if (Constant *CPV = dyn_cast<Constant>(V)) {
     return getConstantValue(CPV);         // Defined in ExecutionEngine.h
   } else if (GlobalValue *GV = dyn_cast<GlobalValue>(V)) {
+    if (GlobalVariable *GVar = dyn_cast<GlobalVariable>(GV)) {
+      if (UnresolvedGlobals.count(GVar) > 0) {
+	return AbsGenericValue();
+      }
+    }
     return PTOGV(getPointerToGlobal(GV)); // Defined in ExecutionEngine.h
   } else {
     return SF.Values[V];
@@ -2983,6 +3094,9 @@ BasicBlock* Interpreter::inspectStackAndGlobalState(
   for (unsigned m = 0, e = Modules.size(); m != e; ++m) {
     Module &M = *Modules[m];
     for (auto &GV : M.globals()) {
+      if (UnresolvedGlobals.count(&GV) > 0) {
+	continue;
+      }
       GenericValue RawVal = PTOGV(getPointerToGlobal(&GV));
       auto DerefVal =
 	dereferencePointerIfBasicElementType(RawVal,GV.getType(), getDataLayout());
