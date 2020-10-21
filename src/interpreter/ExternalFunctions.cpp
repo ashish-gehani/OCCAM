@@ -29,6 +29,7 @@
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/PatternMatch.h"
 #include "llvm/IR/Type.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/DynamicLibrary.h"
@@ -304,7 +305,8 @@ static bool ffiInvoke(Instruction *I, RawFunc Fn, Function *F, ArrayRef<GenericV
 #endif // USE_LIBFFI
 
 previrt::AbsGenericValue previrt::Interpreter::
-callExternalFunction(Instruction *CS, Function *F, ArrayRef<AbsGenericValue> AArgVals) {
+callExternalFunction(Instruction *CI, Function *F, ArrayRef<AbsGenericValue> AArgVals) {
+  using namespace PatternMatch;
 
   // We don't want to call exit from the interpreter because it will
   // abort also OCCAM
@@ -314,6 +316,24 @@ callExternalFunction(Instruction *CS, Function *F, ArrayRef<AbsGenericValue> AAr
     return llvm::None;
   }
 
+  // We don't want to close standard output or error 
+  if (F->getName().equals("fclose")) {
+    CallSite CS(CI);
+    if (CS.arg_size() == 1) {
+      Value* Arg = CS.getArgument(0);
+      Value* LoadAddr;
+      if (match(Arg, m_Load(m_Value(LoadAddr)))) {
+	if (GlobalVariable *GV= dyn_cast<GlobalVariable>(LoadAddr)) {
+	  if (GV->getName() == "stderr" || GV->getName() == "stdout") {
+	    errs() << "*** ConfigPrime: ignoring \"" << F->getName() << "\" on stderr or stdout.\n";
+	    StopExecution = true;
+	    return llvm::None;
+	  }
+	}
+      }
+    }
+  }
+  
   // The interpreter doesn't support pthread calls
   if (F->getName().startswith("pthread_")) {
     errs() << "*** ConfigPrime: execution cannot continue ignoring a call to \""
@@ -390,7 +410,7 @@ callExternalFunction(Instruction *CS, Function *F, ArrayRef<AbsGenericValue> AAr
 
   GenericValue Result;
   errs() << "Invoking FFI on " << F->getName() << "\n";  
-  if (RawFn != 0 && ffiInvoke(CS, RawFn, F, ArgVals, getDataLayout(), Result)) {
+  if (RawFn != 0 && ffiInvoke(CI, RawFn, F, ArgVals, getDataLayout(), Result)) {
     return Result;
   }
 #endif // USE_LIBFFI
