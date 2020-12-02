@@ -29,6 +29,7 @@
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/PatternMatch.h"
 #include "llvm/IR/Type.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/DynamicLibrary.h"
@@ -214,29 +215,51 @@ static void *ffiValueFor(Type *Ty, const GenericValue &AV,
   return NULL;
 }
 
-static bool ffiInvoke(RawFunc Fn, Function *F, ArrayRef<GenericValue> ArgVals,
+static bool ffiInvoke(Instruction *I, RawFunc Fn, Function *F, ArrayRef<GenericValue> ArgVals,
                       const DataLayout &TD, GenericValue &Result) {
+
+
   ffi_cif cif;
   FunctionType *FTy = F->getFunctionType();
-  const unsigned NumArgs = F->arg_size();
-
-  // TODO: We don't have type information about the remaining arguments, because
-  // this information is never passed into ExecutionEngine::runFunction().
-  if (ArgVals.size() > NumArgs && F->isVarArg()) {
-    errs() << "Calling external var arg function '"
-	   << F->getName()
-	   << "' is not supported by the Interpreter.\n";
-    return false;
+  std::vector<Type*> ArgTypes;
+  if (ArgVals.size() > F->arg_size() && F->isVarArg()) {
+    // Variadic function: get types from the callsite
+    if (!I) {
+      errs() << "Calling ffiInvoke without a callsite. "
+             << "This should not happen\n";
+      return false;
+    }
+    const unsigned NumArgs = ArgVals.size();
+    CallSite CS(I);
+    if (NumArgs != CS.arg_size()) {
+      errs() << "Mismatch of number of parameters at callsite. "
+             << "This should not happen\n";
+      return false;
+    }
+    ArgTypes.reserve(NumArgs);
+    for (unsigned i=0; i<NumArgs;++i) {
+      Value* A = CS.getArgument(i)->stripPointerCasts();
+      Type *ArgTy = A->getType();
+      ArgTypes.push_back(ArgTy);
+    }
+  } else {
+    // Non-variadic function: get types from the function declaration
+    ArgTypes.reserve(F->arg_size());
+    for (Function::const_arg_iterator A = F->arg_begin(), E = F->arg_end();
+         A != E; ++A) {
+      const unsigned ArgNo = A->getArgNo();
+      Type *ArgTy = FTy->getParamType(ArgNo);
+      ArgTypes.push_back(ArgTy);
+    }
   }
 
   unsigned ArgBytes = 0;
+  const unsigned NumArgs = ArgTypes.size();
 
   std::vector<ffi_type*> args(NumArgs);
-  for (Function::const_arg_iterator A = F->arg_begin(), E = F->arg_end();
-       A != E; ++A) {
-    const unsigned ArgNo = A->getArgNo();
-    Type *ArgTy = FTy->getParamType(ArgNo);
-    args[ArgNo] = ffiTypeFor(ArgTy);
+  for (unsigned i=0;i<NumArgs;++i) {
+    Type *ArgTy = ArgTypes[i];
+    args[i] = ffiTypeFor(ArgTy);
     ArgBytes += TD.getTypeStoreSize(ArgTy);
   }
 
@@ -244,14 +267,14 @@ static bool ffiInvoke(RawFunc Fn, Function *F, ArrayRef<GenericValue> ArgVals,
   ArgData.resize(ArgBytes);
   uint8_t *ArgDataPtr = ArgData.data();
   SmallVector<void*, 16> values(NumArgs);
-  for (Function::const_arg_iterator A = F->arg_begin(), E = F->arg_end();
-       A != E; ++A) {
-    const unsigned ArgNo = A->getArgNo();
-    Type *ArgTy = FTy->getParamType(ArgNo);
-    values[ArgNo] = ffiValueFor(ArgTy, ArgVals[ArgNo], ArgDataPtr);
+  for (unsigned i=0;i<NumArgs;++i) {
+    Type *ArgTy = ArgTypes[i];
+    values[i] = ffiValueFor(ArgTy, ArgVals[i], ArgDataPtr);
     ArgDataPtr += TD.getTypeStoreSize(ArgTy);
-  }
 
+  }
+  
+  
   Type *RetTy = FTy->getReturnType();
   ffi_type *rtype = ffiTypeFor(RetTy);
 
@@ -282,16 +305,66 @@ static bool ffiInvoke(RawFunc Fn, Function *F, ArrayRef<GenericValue> ArgVals,
 #endif // USE_LIBFFI
 
 previrt::AbsGenericValue previrt::Interpreter::
-callExternalFunction(Function *F, ArrayRef<AbsGenericValue> AArgVals) {
-  
-  // XXX: Here functions that we don't want to call inside OCCAM
-  // (i.e. opt).
-  if (F->getName().equals("exit") ||
-      F->getName().startswith("pthread_")) {
-    errs() << "ConfigPrime: ignoring \"" << F->getName() << "\"\n";
+callExternalFunction(Instruction *CI, Function *F, ArrayRef<AbsGenericValue> AArgVals) {
+  using namespace PatternMatch;
+
+  // We don't want to call exit from the interpreter because it will
+  // abort also OCCAM
+  if (F->getName().equals("exit")) {
+    errs() << "*** ConfigPrime: ignoring \"" << F->getName() << "\"\n";
+    ExitExecuted = true;
     return llvm::None;
   }
 
+  // We don't want to close standard output or error 
+  if (F->getName().equals("fclose")) {
+    CallSite CS(CI);
+    if (CS.arg_size() == 1) {
+      Value* Arg = CS.getArgument(0);
+      Value* LoadAddr;
+      if (match(Arg, m_Load(m_Value(LoadAddr)))) {
+	if (GlobalVariable *GV= dyn_cast<GlobalVariable>(LoadAddr)) {
+	  if (GV->getName() == "stderr" || GV->getName() == "stdout") {
+	    errs() << "*** ConfigPrime: ignoring \"" << F->getName() << "\" on stderr or stdout.\n";
+	    StopExecution = true;
+	    return llvm::None;
+	  }
+	}
+      }
+    }
+  }
+  
+  // The interpreter doesn't support pthread calls
+  if (F->getName().startswith("pthread_")) {
+    errs() << "*** ConfigPrime: execution cannot continue ignoring a call to \""
+	   << F->getName() << "\" because of potential side-effects. \n";
+    StopExecution = true;
+    return llvm::None;
+  }
+
+  // XX: not clear why the interpreter crashes with vfprintf
+  if (F->getName().startswith("vfprintf")) {
+    errs() << "*** ConfigPrime: execution ignores a call to \""
+	   << F->getName() << "\" \n";
+    return llvm::None;
+  }
+  
+  // The intepreter cannot use FFI to make callbacks
+  FunctionType *FTy = F->getFunctionType();
+  for (unsigned i=0, num_params = FTy->getNumParams(); i<num_params; ++i) {
+    Type *ArgTy = FTy->getParamType(i);
+    if (PointerType *ArgPtrTy = dyn_cast<PointerType>(ArgTy)) {
+      if (isa<FunctionType>(ArgPtrTy->getElementType())) {
+	errs() << "*** ConfigPrime: execution cannot continue ignoring a call to \""
+	       << F->getName() << "\" because of potential side-effects. "
+	       << "The reason to skip the call is that some argument is a function pointer "
+	       << "and FFI does not support that.\n";
+	StopExecution = true;
+	return llvm::None;
+      }
+    }
+  }
+  
   TheInterpreter = this;
 
   std::vector<GenericValue> ArgVals;
@@ -300,6 +373,10 @@ callExternalFunction(Function *F, ArrayRef<AbsGenericValue> AArgVals) {
     if (Arg.hasValue()) {
       ArgVals.push_back(Arg.getValue());
     } else {
+      errs() << "*** ConfigPrime: execution cannot continue ignoring a call to \""
+	     << F->getName() << "\" because of potential side-effects. "
+	     << "The reason to skip the call is that some argument is unknown.\n";
+      StopExecution = true;      
       return llvm::None;
     }
   }
@@ -332,21 +409,19 @@ callExternalFunction(Function *F, ArrayRef<AbsGenericValue> AArgVals) {
   Guard.unlock();
 
   GenericValue Result;
-  if (RawFn != 0 && ffiInvoke(RawFn, F, ArgVals, getDataLayout(), Result)) {
-    errs() << "Invoking FFI on " << F->getName() << "\n";
+  errs() << "Invoking FFI on " << F->getName() << "\n";  
+  if (RawFn != 0 && ffiInvoke(CI, RawFn, F, ArgVals, getDataLayout(), Result)) {
     return Result;
   }
 #endif // USE_LIBFFI
 
-  // if (F->getName() == "__main")
-  //   errs() << "Tried to execute an unknown external function: "
-  //     << *F->getType() << " __main\n";
-  // else
-  //   report_fatal_error("Tried to execute an unknown external function: " +
-  //                      F->getName());
-
 #ifndef USE_LIBFFI
   errs() << "Recompiling LLVM with --enable-libffi might help.\n";
+  errs() << "The execution continues on your own risk: callee side-effects are ignored.\n";
+#else
+  // If we use FFI then we don't ignore side-effects so we stop the
+  // execution.
+  StopExecution = true;
 #endif
   return llvm::None;
 }

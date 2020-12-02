@@ -14,32 +14,38 @@
    shadow pseudo functions from which we can extract def-use chains
    from memory:
 
-   (1) shadow.mem.load(NodeID, TLVar, SingletonGlobal)
-   (2) TLVar shadow.mem.store(NodeID, TLVar, SingletonGlobal)
-   (3) TLVar shadow.mem.arg.init(NodeID, SingletonGlobal)
-   (4) shadow.mem.arg.ref(NodeID, TLVar, Idx, SingletonGlobal)
-   (5) TLVar shadow.mem.arg.mod(NodeID, TLVar, Idx, SingletonGlobal)
-   (6) TLVar shadow.mem.arg.ref_mod(NodeID, TLVar, Idx, SingletonGlobal)
-   (7) TLVar shadow.mem.arg.new(NodeID, TLVar, Idx, SingletonGlobal)
-   (8) shadow.mem.in(NodeID, TLVar, Idx, SingletonGlobal)
-   (9) shadow.mem.out(NodeID, TLVar, Idx, SingletonGlobal)
+   (1)  shadow.mem.load(NodeID, TLVar, SingletonGlobal)
+   (2)  TLVar shadow.mem.store(NodeID, TLVar, SingletonGlobal)
+   (3)  shadow.mem.arg.ref(NodeID, TLVar, Idx, SingletonGlobal)
+   (4)  TLVar shadow.mem.arg.mod(NodeID, TLVar, Idx, SingletonGlobal)
+   (5)  TLVar shadow.mem.arg.ref_mod(NodeID, TLVar, Idx, SingletonGlobal)
+   (6)  TLVar shadow.mem.arg.new(NodeID, TLVar, Idx, SingletonGlobal)
+   (7)  shadow.mem.in(NodeID, TLVar, Idx, SingletonGlobal)
+   (8)  shadow.mem.out(NodeID, TLVar, Idx, SingletonGlobal)
+   (9)  TLVar shadow.mem.arg.init(NodeID, SingletonGlobal)
+   (10) TLVar shadow.mem.global.init(NodeID, TLVar, Global)
 
    NodeID is a unique identifier (i32) for memory regions.
 
    LLVM callsites are surrounded by calls to shadow.mem.arg.ref,
    shadow.mem.arg.mod, shadow.mem.arg.ref_mod, and shadow.mem.arg_new
-   (3)-(7). These functions provide information whether the memory
+   (3)-(6). These functions provide information whether the memory
    region passed to the callee is read-only, modified,
    read-and-modified, or created by the callee, respectively.
 
-   Functions also contain calls to shadow.mem.in (8) and shadow.mem.out (9)
+   Functions also contain calls to shadow.mem.in (7) and shadow.mem.out (8)
    (they are always located in the exit blocks of the functions). They
    represent the input and output regions of the function.
 
-   With (3)-(9) we have enough information to match actual and formal
+   With (3)-(8) we have enough information to match actual and formal
    parameters at callsites. To know which actual needs to be matched
    to which formal we use Idx (i32).
 
+   There are also special functions for initialization of globals and
+   functions parameters (9)-(10). If the global variable constains a
+   unique scalar then the initialization is done via (9). Otherwise,
+   (10) is used.
+   
    TLVar (i32) refers to a top-level variable (i.e., LLVM register) of
    pointer type. Note that some of these functions return a TLVar,
    representing the primed version of the memory region after an
@@ -68,10 +74,11 @@
 namespace previrt {
 namespace analysis {
 
-enum MemSSAOp {
+enum class MemSSAOp {
   MEM_SSA_LOAD,        /* load (use) */
   MEM_SSA_STORE,       /* store (definition) */
-  MEM_SSA_ARG_INIT,    /* initial value of a formal parameter */
+  MEM_SSA_ARG_INIT,    /* initial value of a formal parameter or global with unique scalar */
+  MEM_SSA_GLOBAL_INIT, /* initial value of global */
   MEM_SSA_ARG_REF,     /* (read-only) input actual parameter */
   MEM_SSA_ARG_MOD,     /* (modified) input/output actual parameter */
   MEM_SSA_ARG_REF_MOD, /* (read-and-modified) input/output actual parameter */
@@ -81,43 +88,83 @@ enum MemSSAOp {
   NON_MEM_SSA
 };
 
+inline llvm::raw_ostream& operator<<(llvm::raw_ostream &o, MemSSAOp op) {
+  switch (op) {
+  case MemSSAOp::MEM_SSA_LOAD:
+    o << "shadow.mem.load";
+    break;
+  case MemSSAOp::MEM_SSA_STORE:
+    o << "shadow.mem.store";
+    break;    
+  case MemSSAOp::MEM_SSA_ARG_INIT:
+    o << "shadow.mem.arg.init";
+    break;    
+  case MemSSAOp::MEM_SSA_GLOBAL_INIT:
+    o << "shadow.mem.global.init";
+    break;        
+  case MemSSAOp::MEM_SSA_ARG_REF:
+    o << "shadow.mem.arg.ref";
+    break;        
+  case MemSSAOp::MEM_SSA_ARG_MOD:
+    o << "shadow.mem.arg.mod";
+    break;            
+  case MemSSAOp::MEM_SSA_ARG_REF_MOD:
+    o << "shadow.mem.arg.ref_mod";
+    break;            
+  case MemSSAOp::MEM_SSA_ARG_NEW:
+    o << "shadow.mem.arg.new";
+    break;            
+  case MemSSAOp::MEM_SSA_FUN_IN:
+    o << "shadow.mem.arg.in";
+    break;            
+  case MemSSAOp::MEM_SSA_FUN_OUT:
+    o << "shadow.mem.arg.out";
+    break;        
+  default:
+    o << "Unexpected shadow mem op";
+  }
+  return o;
+}
+  
 inline MemSSAOp MemSSAStrToOp(llvm::StringRef name) {
   if (name.equals("shadow.mem.load"))
-    return MEM_SSA_LOAD;
+    return MemSSAOp::MEM_SSA_LOAD;
   if (name.equals("shadow.mem.store"))
-    return MEM_SSA_STORE;
+    return MemSSAOp::MEM_SSA_STORE;
   if (name.equals("shadow.mem.arg.init"))
-    return MEM_SSA_ARG_INIT;
+    return MemSSAOp::MEM_SSA_ARG_INIT;
+  if (name.equals("shadow.mem.global.init"))
+    return MemSSAOp::MEM_SSA_GLOBAL_INIT;
   if (name.equals("shadow.mem.arg.ref"))
-    return MEM_SSA_ARG_REF;
+    return MemSSAOp::MEM_SSA_ARG_REF;
   if (name.equals("shadow.mem.arg.mod"))
-    return MEM_SSA_ARG_MOD;
+    return MemSSAOp::MEM_SSA_ARG_MOD;
   if (name.equals("shadow.mem.arg.ref_mod"))
-    return MEM_SSA_ARG_REF_MOD;
+    return MemSSAOp::MEM_SSA_ARG_REF_MOD;
   if (name.equals("shadow.mem.arg.new"))
-    return MEM_SSA_ARG_NEW;
+    return MemSSAOp::MEM_SSA_ARG_NEW;
   if (name.equals("shadow.mem.in"))
-    return MEM_SSA_FUN_IN;
+    return MemSSAOp::MEM_SSA_FUN_IN;
   if (name.equals("shadow.mem.out"))
-    return MEM_SSA_FUN_OUT;
-  return NON_MEM_SSA;
+    return MemSSAOp::MEM_SSA_FUN_OUT;
+  return MemSSAOp::NON_MEM_SSA;
 }
 
 // Return the "singleton" field from a memory ssa operation
 inline const llvm::Value *getMemSSASingleton(const llvm::ImmutableCallSite &CS,
                                              MemSSAOp op) {
   switch (op) {
-  case MEM_SSA_LOAD:
-  case MEM_SSA_STORE:
+  case MemSSAOp::MEM_SSA_LOAD:
+  case MemSSAOp::MEM_SSA_STORE:
     return CS.getArgument(2)->stripPointerCasts();
-  case MEM_SSA_ARG_INIT:
+  case MemSSAOp::MEM_SSA_ARG_INIT:
     return CS.getArgument(1)->stripPointerCasts();
-  case MEM_SSA_ARG_REF:
-  case MEM_SSA_ARG_MOD:
-  case MEM_SSA_ARG_REF_MOD:
-  case MEM_SSA_ARG_NEW:
-  case MEM_SSA_FUN_IN:
-  case MEM_SSA_FUN_OUT:
+  case MemSSAOp::MEM_SSA_ARG_REF:
+  case MemSSAOp::MEM_SSA_ARG_MOD:
+  case MemSSAOp::MEM_SSA_ARG_REF_MOD:
+  case MemSSAOp::MEM_SSA_ARG_NEW:
+  case MemSSAOp::MEM_SSA_FUN_IN:
+  case MemSSAOp::MEM_SSA_FUN_OUT:
     return CS.getArgument(3)->stripPointerCasts();
   default:
     return nullptr;
@@ -148,27 +195,29 @@ inline const llvm::Value *getMemSSASingleton(const llvm::ImmutableCallSite &CS,
   }
 
 // isMemSSALoad
-DeclareIsMemSSA(Load, MEM_SSA_LOAD)
-    // isMemSSAStore
-    DeclareIsMemSSA(Store, MEM_SSA_STORE)
-    // isMemSSAArgInit
-    DeclareIsMemSSA(ArgInit, MEM_SSA_ARG_INIT)
-    // isMemSSAArgRef
-    DeclareIsMemSSA(ArgRef, MEM_SSA_ARG_REF)
-    // isMemSSAArgMod
-    DeclareIsMemSSA(ArgMod, MEM_SSA_ARG_MOD)
-    // isMemSSAArgRefMod
-    DeclareIsMemSSA(ArgRefMod, MEM_SSA_ARG_REF_MOD)
-    // isMemSSAArgNew
-    DeclareIsMemSSA(ArgNew, MEM_SSA_ARG_NEW)
-    // isMemSSAFunIn
-    DeclareIsMemSSA(FunIn, MEM_SSA_FUN_IN)
-    // isMemSSAFunOut
-    DeclareIsMemSSA(FunOut, MEM_SSA_FUN_OUT)
+DeclareIsMemSSA(Load, MemSSAOp::MEM_SSA_LOAD)
+// isMemSSAStore
+DeclareIsMemSSA(Store, MemSSAOp::MEM_SSA_STORE)
+// isMemSSAArgInit
+DeclareIsMemSSA(ArgInit, MemSSAOp::MEM_SSA_ARG_INIT)
+// isMemSSAGlobalInit
+DeclareIsMemSSA(GlobalInit, MemSSAOp::MEM_SSA_GLOBAL_INIT)
+// isMemSSAArgRef
+DeclareIsMemSSA(ArgRef, MemSSAOp::MEM_SSA_ARG_REF)
+// isMemSSAArgMod
+DeclareIsMemSSA(ArgMod, MemSSAOp::MEM_SSA_ARG_MOD)
+// isMemSSAArgRefMod
+DeclareIsMemSSA(ArgRefMod, MemSSAOp::MEM_SSA_ARG_REF_MOD)
+// isMemSSAArgNew
+DeclareIsMemSSA(ArgNew, MemSSAOp::MEM_SSA_ARG_NEW)
+// isMemSSAFunIn
+DeclareIsMemSSA(FunIn, MemSSAOp::MEM_SSA_FUN_IN)
+// isMemSSAFunOut
+DeclareIsMemSSA(FunOut, MemSSAOp::MEM_SSA_FUN_OUT)
 
-    // Return the "index" field from a memory ssa formal or actual
-    // parameters.
-    inline int64_t getMemSSAParamIdx(const llvm::ImmutableCallSite &CS) {
+// Return the "index" field from a memory ssa formal or actual
+// parameters.
+inline int64_t getMemSSAParamIdx(const llvm::ImmutableCallSite &CS) {
   int64_t idx = -1;
   if (CS.getCalledFunction() &&
       (isMemSSAArgRef(CS, false /*onlySingleton*/) ||
@@ -305,6 +354,8 @@ public:
 class MemorySSAFunction {
   llvm::Function &m_F;
   // map from index to Value*
+  // Important: cannot use a vector because the indexes are not
+  // necessarily consecutive.
   std::map<unsigned, const llvm::Value *> m_in_formal_params;
   // XXX: we don't store out formal parameters for now.
   bool m_only_singleton;

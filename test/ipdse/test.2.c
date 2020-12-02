@@ -14,7 +14,7 @@ int init() {
   if (nd_int()) {
     x = 2;  // DEAD STORE
   } else {
-    x = 5; 
+    x = 5;  // DEAD STORE
   }
   return y;
 }

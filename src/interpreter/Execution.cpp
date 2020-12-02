@@ -23,9 +23,11 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/DynamicLibrary.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdarg>
@@ -53,7 +55,7 @@ MemoryHolder::~MemoryHolder() {
   // }
 }
 
-bool MemoryHolder::isAllocatedMemory(void *mem) const {
+bool MemoryHolder::trackMemory(void *mem) const {
   intptr_t addr = intptr_t (mem);
   auto it = m_mem_map.lower_bound (addr+1);
   if (it == m_mem_map.end()) return false;
@@ -70,7 +72,7 @@ static void memlog (const char *format, ...) {
 }
 
 void MemoryHolder::add(void *mem, unsigned size) {
-  if (isAllocatedMemory(mem)) return;
+  if (trackMemory(mem)) return;
   intptr_t addr = intptr_t(mem);
   m_mem_map.insert({addr, addr + size});
   memlog("Allocated %d bytes: [%#lx,%#lx]\n", size, addr, addr+size);        
@@ -155,6 +157,7 @@ void Interpreter::initMemory(const Constant *Init, void *Addr) {
 * this method
 **/
 void Interpreter::initializeGlobalVariable(GlobalVariable &GV) {
+#ifndef TRACK_ONLY_UNACCESSIBLE_MEM  
   LOG << "Collecting addresses from global initializer for " << GV.getName() << ".\n";
   if (void *GA = getPointerToGlobalIfAvailable(&GV)) {
     // Not sure if this is necessary
@@ -164,19 +167,151 @@ void Interpreter::initializeGlobalVariable(GlobalVariable &GV) {
   } else {
     LOG << "\t" << "Pointer to global " << GV.getName()  << " is not available\n";
   }
+#endif   
 }
 
 void Interpreter::initializeMainParams(void *Addr, unsigned Size) {
-  //LOG << "Collecting addresses from main argv parameter.\n";  
-  MemMainParams.add(Addr, Size);
+#ifdef TRACK_ONLY_UNACCESSIBLE_MEM
+  LOG << "Marking as unaccessible memory at address="
+      << Addr << " size=" << Size << "\n";
+  UnaccessibleMem.add(Addr, Size);
+#else
+  LOG << "Collecting addresses from main argv parameter: address="
+      << Addr << " size=" << Size <<".\n";  
+  MemMainParams.add(Addr, Size);				    
+#endif 				    
 }
 
 bool Interpreter::isAllocatedMemory(void *Addr) const {
+  if (((intptr_t)Addr) >= 0x0 && ((intptr_t)Addr) <= 0x400) {
+    /* HACK:
+       %30 = call i8* @strrchr(i8* nonnull dereferenceable(1) %29, i32 47) #20
+       %31 = icmp eq i8* %30, null
+       %32 = getelementptr inbounds i8, i8* %30, i64 1
+       %33 = select i1 %31, i8* %29, i8* %32
+       
+       Since strrchr can return 0x0, then %32 will be 0x1. The program is
+       fine because %32 will never be dereferenced.
+    */
+    return false;
+  }
+  
+#ifdef TRACK_ONLY_UNACCESSIBLE_MEM
+  return !UnaccessibleMem.trackMemory(Addr);
+#else
+  /* We keep track carefully of all allocated memory by the module.
+     If the module calls an external function that allocates memory we
+     will consider that memory as un-allocated. */
   const ExecutionContext &SF = ECStack.back();
-  return (MemMainParams.isAllocatedMemory(Addr) ||
-	  SF.Allocas.isAllocatedMemory(Addr) ||
-	  MemGlobals.isAllocatedMemory(Addr) || 
-	  MemMallocs.isAllocatedMemory(Addr));
+  return (MemMainParams.trackMemory(Addr) ||
+	  SF.Allocas.trackMemory(Addr) ||
+	  MemGlobals.trackMemory(Addr) || 
+	  MemMallocs.trackMemory(Addr));
+#endif  
+}
+
+/// JN: From lib/ExecutionEngine/ExecutionEngine.cpp but it doesn't
+/// report error if a global cannot be resolved.
+///  
+/// EmitGlobals - Emit all of the global variables to memory, storing their
+/// addresses into GlobalAddress.  This must make sure to copy the contents of
+/// their initializers into the memory.
+void Interpreter::emitGlobals() {
+  // Loop over all of the global variables in the program, allocating the memory
+  // to hold them.  If there is more than one module, do a prepass over globals
+  // to figure out how the different modules should link together.
+  std::map<std::pair<std::string, Type*>,
+           const GlobalValue*> LinkedGlobalsMap;
+
+  if (Modules.size() != 1) {
+    for (unsigned m = 0, e = Modules.size(); m != e; ++m) {
+      Module &M = *Modules[m];
+      for (const auto &GV : M.globals()) {
+        if (GV.hasLocalLinkage() || GV.isDeclaration() ||
+            GV.hasAppendingLinkage() || !GV.hasName())
+          continue;// Ignore external globals and globals with internal linkage.
+
+        const GlobalValue *&GVEntry =
+          LinkedGlobalsMap[std::make_pair(GV.getName(), GV.getType())];
+
+        // If this is the first time we've seen this global, it is the canonical
+        // version.
+        if (!GVEntry) {
+          GVEntry = &GV;
+          continue;
+        }
+
+        // If the existing global is strong, never replace it.
+        if (GVEntry->hasExternalLinkage())
+          continue;
+
+        // Otherwise, we know it's linkonce/weak, replace it if this is a strong
+        // symbol.  FIXME is this right for common?
+        if (GV.hasExternalLinkage() || GVEntry->hasExternalWeakLinkage())
+          GVEntry = &GV;
+      }
+    }
+  }
+
+  std::vector<const GlobalValue*> NonCanonicalGlobals;
+  for (unsigned m = 0, e = Modules.size(); m != e; ++m) {
+    Module &M = *Modules[m];
+    for (const auto &GV : M.globals()) {
+      // In the multi-module case, see what this global maps to.
+      if (!LinkedGlobalsMap.empty()) {
+        if (const GlobalValue *GVEntry =
+              LinkedGlobalsMap[std::make_pair(GV.getName(), GV.getType())]) {
+          // If something else is the canonical global, ignore this one.
+          if (GVEntry != &GV) {
+            NonCanonicalGlobals.push_back(&GV);
+            continue;
+          }
+        }
+      }
+
+      if (!GV.isDeclaration()) {
+        addGlobalMapping(&GV, getMemoryForGV(&GV));
+      } else {
+        // External variable reference. Try to use the dynamic loader to
+        // get a pointer to it.
+        if (void *SymAddr =
+            sys::DynamicLibrary::SearchForAddressOfSymbol(GV.getName()))
+          addGlobalMapping(&GV, SymAddr);
+        else {
+	  UnresolvedGlobals.insert(&GV);
+	  llvm::errs () << "Warning: Could not resolve external global address: "
+			<< GV.getName() << "\n";
+        }
+      }
+    }
+
+    // If there are multiple modules, map the non-canonical globals to their
+    // canonical location.
+    if (!NonCanonicalGlobals.empty()) {
+      for (unsigned i = 0, e = NonCanonicalGlobals.size(); i != e; ++i) {
+        const GlobalValue *GV = NonCanonicalGlobals[i];
+        const GlobalValue *CGV =
+          LinkedGlobalsMap[std::make_pair(GV->getName(), GV->getType())];
+        void *Ptr = getPointerToGlobalIfAvailable(CGV);
+        assert(Ptr && "Canonical global wasn't codegen'd!");
+        addGlobalMapping(GV, Ptr);
+      }
+    }
+
+    // Now that all of the globals are set up in memory, loop through them all
+    // and initialize their contents.
+    for (const auto &GV : M.globals()) {
+      if (!GV.isDeclaration()) {
+        if (!LinkedGlobalsMap.empty()) {
+          if (const GlobalValue *GVEntry =
+                LinkedGlobalsMap[std::make_pair(GV.getName(), GV.getType())])
+            if (GVEntry != &GV)  // Not the canonical variable.
+              continue;
+        }
+        EmitGlobalVariable(&GV);
+      }
+    }
+  }
 }
 
 //===----------------------------------------------------------------------===//
@@ -269,6 +404,11 @@ AbsGenericValue Interpreter::getOperandValue(Value *V, ExecutionContext &SF) {
   } else if (Constant *CPV = dyn_cast<Constant>(V)) {
     return getConstantValue(CPV);         // Defined in ExecutionEngine.h
   } else if (GlobalValue *GV = dyn_cast<GlobalValue>(V)) {
+    if (GlobalVariable *GVar = dyn_cast<GlobalVariable>(GV)) {
+      if (UnresolvedGlobals.count(GVar) > 0) {
+	return AbsGenericValue();
+      }
+    }
     return PTOGV(getPointerToGlobal(GV)); // Defined in ExecutionEngine.h
   } else {
     return SF.Values[V];
@@ -1507,8 +1647,9 @@ void Interpreter::visitAllocaInst(AllocaInst &I) {
 
   // Allocate enough memory to hold the type...
   void *Memory = malloc(MemToAlloc);
+#ifndef TRACK_ONLY_UNACCESSIBLE_MEM    
   ECStack.back().Allocas.addWithOwnershipTransfer(Memory, MemToAlloc);
-  
+#endif   
   LOG << "Allocated stack Type: " << *Ty << " (" << TypeSize << " bytes) x " 
       << NumElements << " (Total: " << MemToAlloc << ") at "
       << Memory << "\n";
@@ -1517,9 +1658,6 @@ void Interpreter::visitAllocaInst(AllocaInst &I) {
   assert(Result.PointerVal && "Null pointer returned by malloc!");
   SetValue(&I, AbsGenericValue(Result), SF);
 
-  //if (I.getOpcode() == Instruction::Alloca) {
-  //ECStack.back().Allocas.add(Memory);
-  //}
 }
 
 void Interpreter::visitMallocInst(CallSite &CS) {
@@ -1535,7 +1673,9 @@ void Interpreter::visitMallocInst(CallSite &CS) {
   void *Memory = malloc(MemToAlloc);
   LOG << "Allocated heap memory: " << MemToAlloc << " at " << uintptr_t(Memory) << "\n";
   GenericValue Result = PTOGV(Memory);
+#ifndef TRACK_ONLY_UNACCESSIBLE_MEM      
   MemMallocs.addWithOwnershipTransfer(Memory, MemToAlloc);
+#endif   
   SetValue(CS.getInstruction(), Result, SF);  
 }
 
@@ -1645,21 +1785,31 @@ void Interpreter::visitLoadInst(LoadInst &I) {
 
 void Interpreter::visitStoreInst(StoreInst &I) {
   ExecutionContext &SF = ECStack.back();
-  AbsGenericValue AVal = getOperandValue(I.getOperand(0), SF);
-  if (!AVal.hasValue()) {
-    LOG << "Writing an unknown value\n";
-    return;
-  }
   AbsGenericValue ASrc = getOperandValue(I.getPointerOperand(), SF);
   if (!ASrc.hasValue()) {
     LOG << "Writing to an unknown pointer.\n";
     return;
   }
 
-  GenericValue Val = AVal.getValue();
   GenericValue Src = ASrc.getValue();
   GenericValue *Ptr = (GenericValue*)GVTOP(Src);
-
+  
+  AbsGenericValue AVal = getOperandValue(I.getOperand(0), SF);
+  if (!AVal.hasValue()) {
+    LOG << "Writing an unknown value\n";
+    #ifdef TRACK_ONLY_UNACCESSIBLE_MEM
+    // If we are here is because I.getOperand(0) must come from main's
+    // argv
+    Type *Ty = I.getOperand(0)->getType();
+    const unsigned StoreBytes = getDataLayout().getTypeStoreSize(Ty);
+    LOG << "Marking as unaccessible memory at address="
+	<< Ptr << " size=" << StoreBytes << "\n";    
+    UnaccessibleMem.add((void*)Ptr, StoreBytes);
+    #endif 
+    return;
+  }
+  
+  GenericValue Val = AVal.getValue();
   if (!isa<GlobalVariable>(I.getPointerOperand()->stripPointerCasts())) {
     // XXX: see explanation in VisitLoadInst
     if (!isAllocatedMemory((void*) Ptr)) {
@@ -1757,7 +1907,8 @@ void Interpreter::visitCallSite(CallSite CS) {
     LOG << "the called function is unknown\n";
     StopExecution = true;
   } else {
-    callFunction((Function*)GVTOP(SRC.getValue()), ArgVals);
+    callFunction((Function*)GVTOP(SRC.getValue()), ArgVals,
+                CS.getInstruction());
   }
 }
 
@@ -2805,7 +2956,8 @@ void Interpreter::visitInsertValueInst(InsertValueInst &I) {
 //===----------------------------------------------------------------------===//
 // callFunction - Execute the specified function...
 //
-void Interpreter::callFunction(Function *F, ArrayRef<AbsGenericValue> ArgVals) {
+  void Interpreter::callFunction(Function *F, ArrayRef<AbsGenericValue> ArgVals,
+                                Instruction *CS) {
   assert((ECStack.empty() || !ECStack.back().Caller.getInstruction() ||
           ECStack.back().Caller.arg_size() == ArgVals.size()) &&
          "Incorrect number of arguments passed into function call!");
@@ -2816,7 +2968,7 @@ void Interpreter::callFunction(Function *F, ArrayRef<AbsGenericValue> ArgVals) {
 
   // Special handling for external functions.
   if (F->isDeclaration()) {
-    AbsGenericValue Result = callExternalFunction (F, ArgVals);
+    AbsGenericValue Result = callExternalFunction (CS, F, ArgVals);
     if (!F->getReturnType()->isVoidTy() && !Result.hasValue()) {
       /// XXX: right now if Result is undefined is because one of the
       /// arguments in ArgVals is unknown.
@@ -2920,7 +3072,6 @@ static AbsGenericValue dereferencePointerIfBasicElementType(AbsGenericValue Val,
 	ElementType->getTypeID() == Type::FloatTyID ||
 	ElementType->getTypeID() == Type::DoubleTyID) {
       if (void * addr = Val.getValue().PointerVal) {
-	// asssert(isAllocatedMemory(addr))
 	GenericValue Res;
 	switch(ElementType->getTypeID()) {
 	case Type::IntegerTyID: {
@@ -2952,10 +3103,13 @@ static AbsGenericValue dereferencePointerIfBasicElementType(AbsGenericValue Val,
 BasicBlock* Interpreter::inspectStackAndGlobalState(
 			  DenseMap<Value*, RawAndDerefValue> &globalVals,
 			  DenseMap<Value*, RawAndDerefValue> &stackVals) {
-
+  
   for (unsigned m = 0, e = Modules.size(); m != e; ++m) {
     Module &M = *Modules[m];
     for (auto &GV : M.globals()) {
+      if (UnresolvedGlobals.count(&GV) > 0) {
+	continue;
+      }
       GenericValue RawVal = PTOGV(getPointerToGlobal(&GV));
       auto DerefVal =
 	dereferencePointerIfBasicElementType(RawVal,GV.getType(), getDataLayout());
@@ -2973,10 +3127,13 @@ BasicBlock* Interpreter::inspectStackAndGlobalState(
       
       if (void *addr = RawVal.getValue().PointerVal) {
 	if (!isAllocatedMemory(addr)) {
+	  llvm::errs() << "ConfigPrime: skips " << *V << "\n"
+		       << "Because address "
+		       << addr << " might not be allocated in memory.\n";
 	  continue;
 	}
       }
-      
+
       auto DerefVal = dereferencePointerIfBasicElementType
 	(RawVal, V->getType(), getDataLayout());
       RawAndDerefValue RDV(RawVal.getValue(), DerefVal);

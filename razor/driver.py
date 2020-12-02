@@ -116,12 +116,9 @@ def previrt_progress(fin, fout, args, output=None):
     return '...progress...' in progress
 
 
-def linker(fin, fout, args):
-    args = [fin, '-o', fout] + args
+def linker(fin, fin_libs, fout, args):
+    args = [fin] + fin_libs + ['-o', fout] + args    
     return run('clang++', args)
-
-
-
 
 opt_call_count = 0
 

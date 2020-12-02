@@ -37,6 +37,10 @@ class BasicBlock;
 } // end namespace llvm
 
 
+#ifdef HAVE_FFI_H
+#define TRACK_ONLY_UNACCESSIBLE_MEM
+#endif
+
 namespace previrt {
 
 class ArgvArray {
@@ -67,7 +71,7 @@ public:
 //   void add(void *Mem) { Allocations.push_back(Mem); }
 // };
 
-// MemoryHolder - Object to track all the blocks of allocated memory.
+// MemoryHolder - Object to track memory.
 class MemoryHolder {
   std::map<intptr_t, intptr_t, std::greater<intptr_t>> m_mem_map;
   //std::vector<intptr_t> m_owned_memory;
@@ -83,7 +87,7 @@ public:
   
   ~MemoryHolder();
 
-  bool isAllocatedMemory(void *mem) const;
+  bool trackMemory(void *mem) const;
   
   void add(void *mem, unsigned size);
 
@@ -163,13 +167,22 @@ class Interpreter : public llvm::ExecutionEngine, public llvm::InstVisitor<Inter
   MemoryHolder MemMainParams;
   // XXX: track global variable initializers
   MemoryHolder MemGlobals;
+  // XXX: memory we know should be unaccessible
+  // Used only if enabled TRACK_ONLY_UNACCESSIBLE_MEM
+  MemoryHolder UnaccessibleMem;
+
+  // XXX: keep track of unresolved globals (globals that cannot be
+  // resolved by emitGlobals)
+  llvm::DenseSet<const llvm::GlobalVariable*> UnresolvedGlobals;
   
-  // XXX: the execution cannot continue because some branch depends on
-  // some unknown value.
+  // XXX: the execution cannot continue
   bool StopExecution;
 
   // XXX: keep track of the blocks executed by the interpreter
   llvm::DenseSet<const llvm::BasicBlock*> VisitedBlocks;
+
+  // Whether "exit" has been found
+  bool ExitExecuted;
   
 public:
   
@@ -204,7 +217,8 @@ public:
 
   // Methods used to execute code:
   // Place a call on the stack
-  void callFunction(llvm::Function *F, llvm::ArrayRef<AbsGenericValue> ArgVals);
+  void callFunction(llvm::Function *F, llvm::ArrayRef<AbsGenericValue> ArgVals,
+                   llvm::Instruction *CS = nullptr);
   void run();  // Execute instructions until nothing left to do
 
   // Opcode Implementations
@@ -261,7 +275,7 @@ public:
     llvm_unreachable("Instruction not interpretable yet!");
   }
 
-  AbsGenericValue callExternalFunction(llvm::Function *F,
+  AbsGenericValue callExternalFunction(llvm::Instruction *CS, llvm::Function *F,
 				       llvm::ArrayRef<AbsGenericValue> ArgVals);
   void exitCalled(llvm::GenericValue GV);
 
@@ -295,6 +309,8 @@ public:
 	       llvm::DenseMap<llvm::Value*, RawAndDerefValue> &StackVals);
 
   bool isExecuted(const llvm::BasicBlock &) const;
+
+  bool exitExecuted() const { return ExitExecuted;}
   
 private:  // Helper functions
   
@@ -358,6 +374,10 @@ private:  // Helper functions
 		       llvm::GenericValue Src2, llvm::Type *Ty);
   
   void popStackAndReturnValueToCaller(llvm::Type *RetTy, AbsGenericValue Result);
+
+  // Similar to lib/ExecutionEngine/ExecutionEngine.cpp but it doesn't
+  // abort if the a global cannot be resolved.
+  void emitGlobals();
 };
 
 } // End llvm previrt

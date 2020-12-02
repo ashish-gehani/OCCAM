@@ -307,6 +307,16 @@ bool ConfigPrime::runOnModule(Module &M) {
   SmallVector<BasicBlock *, 4> Continuations;
   extractValuesFromRun(*Interp, this, GlobalValues, StackValues, Continuations);
 
+  if (Interp->exitExecuted()) {
+    errs() << "****************************************************************\n"; 
+    errs() << "************************* WARNING ******************************\n";
+    errs() << "****************************************************************\n";
+    errs() << "The exit() function has been called during Configuration Prime.\n";
+    errs() << "This might be because the program environment is not the\n"
+           << "expected one (e.g., some file does not exist, no file permissions,etc).\n";
+    errs() << "****************************************************************\n";	      
+  }
+      
 #if 0
   auto printValueMap = [](DenseMap<Value*,RawAndDerefValue> &m, raw_ostream &o) {
     for (auto &kv: m) {
