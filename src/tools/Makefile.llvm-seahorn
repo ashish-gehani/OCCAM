@@ -33,7 +33,7 @@ INSTCOMB_LIB = ${INSTCOMB_LIBNAME}.dylib
 LOOPS_LIB = ${LOOPS_LIBNAME}.dylib
 SEADSA_LIB = ${SEADSA_LIBNAME}.dylib
 LIBFLAGS = -dynamiclib
-OTHERLIBS += -lpthread -lcurses  
+OTHERLIBS += -lpthread -lcurses -lz
 LD_FLAGS += -undefined suppress -flat_namespace
 else ifeq (FreeBSD, $(findstring FreeBSD, ${OS}))
 # FreeBSD
@@ -41,7 +41,7 @@ IPO_LIB = ${IPO_LIBNAME}.so
 INSTCOMB_LIB = ${INSTCOMB_LIBNAME}.so
 LOOPS_LIB = ${LOOPS_LIBNAME}.so
 SEADSA_LIB = ${SEADSA_LIBNAME}.so
-#LIBFLAGS = -shared -Wl,-soname,${IPO_LIB},${INSTCOMB_LIB},${LOOPS_LIB}
+LIBFLAGS = -shared -Wl,-soname,
 OTHERLIBS += -L/usr/local/lib -lpthread 
 else
 # LINUX
@@ -49,7 +49,7 @@ IPO_LIB = ${IPO_LIBNAME}.so
 INSTCOMB_LIB = ${INSTCOMB_LIBNAME}.so
 LOOPS_LIB = ${LOOPS_LIBNAME}.so
 SEADSA_LIB = ${SEADSA_LIBNAME}.so
-#LIBFLAGS = -shared -Wl,-soname,${IPO_LIB},${INSTCOMB_LIB},${LOOPS_LIB}
+LIBFLAGS = -shared -Wl,-soname,
 OTHERLIBS += -L/usr/local/lib -lpthread -ltinfo -ldl
 endif
 
@@ -63,36 +63,31 @@ IPO_OBJECTS := $(patsubst %.cpp,%.o,${IPO_SOURCES})
 LOOPS_OBJECTS := $(patsubst %.cc,%.o,${LOOPS_SOURCES})
 OPT_OBJECTS := $(patsubst %.cpp,%.o,${OPT_SOURCES}) 
 
-## FIXME: "-shared -Wl, ..." OS dependent
 ${INSTCOMB_LIB}: ${INSTCOMB_SOURCES} ${INSTCOMB_OBJECTS}
 	$(CXX) ${INSTCOMB_OBJECTS} \
 	${CXX_FLAGS} ${LD_FLAGS} \
-	-shared -Wl,-soname,${INSTCOMB_LIB} \
+	$(LIBFLAGS) \
 	-o ${INSTCOMB_LIB} 
 
-## FIXME: "-shared and -soname" OS dependent
 ${LOOPS_LIB}: ${LOOPS_SOURCES} ${LOOPS_OBJECTS}
 	$(CXX) ${LOOPS_OBJECTS} \
 	${CXX_FLAGS} ${LD_FLAGS} \
-	-shared -Wl,-soname,${LOOPS_LIB} \
+	$(LIBFLAGS) \
 	-o ${LOOPS_LIB} 
 
-## FIXME: "-shared and -soname" OS dependent
 ${IPO_LIB}: ${IPO_SOURCES} ${IPO_OBJECTS}
 	$(CXX) ${IPO_OBJECTS} \
 	${CXX_FLAGS} ${LD_FLAGS} \
-	-shared -Wl,-soname,${IPO_LIB} \
+	$(LIBFLAGS) \
 	-o ${IPO_LIB} 
 
-## HACK: we assume that the library has been already generated
 ${SEADSA_LIB}:
-	cp ../analysis/libSeaDsa.so .
+	cp ../analysis/${SEADSA_LIB} .
 
-## FIXME: "-rpath and -R" OS dependent
 ${OPT}: ${OPT_OBJECTS} ${INSTCOMB_LIB} ${LOOPS_LIB} ${IPO_LIB}  ${SEADSA_LIB}
-	$(CXX) ${CXX_FLAGS} ${OPT_OBJECTS} $(LIBFLAGS) $(OTHERLIBS) \
+	$(CXX) ${CXX_FLAGS} ${OPT_OBJECTS}  $(OTHERLIBS) \
 	-Wl,-rpath $(INSTALL_LIBDIR) \
-	-Wl,-R -Wl,. ${LOOPS_LIB} ${INSTCOMB_LIB} ${IPO_LIB} ${SEADSA_LIB} \
+	${LOOPS_LIB} ${INSTCOMB_LIB} ${IPO_LIB} ${SEADSA_LIB} \
 	-o llvm-seahorn/tools/opt/${OPT} 
 
 %.o: %.cc
