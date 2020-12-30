@@ -47,7 +47,8 @@ SEADSA_LIB = ${SEADSA_LIBNAME}.so
 LIBFLAGS_INSTCOMB = -shared -Wl,-soname,${INSTCOMB_LIB}
 LIBFLAGS_LOOPS = -shared -Wl,-soname,${LOOPS_LIB}
 LIBFLAGS_IPO = -shared -Wl,-soname,${IPO_LIB}
-LIBFLAGS = -Wl,-R -Wl,. ${LOOPS_LIB} ${INSTCOMB_LIB} ${IPO_LIB} ${SEADSA_LIB}
+#LIBFLAGS = -Wl,-R -Wl,. ${LOOPS_LIB} ${INSTCOMB_LIB} ${IPO_LIB} ${SEADSA_LIB}
+LIBFLAGS = -shared ${LOOPS_LIB} ${INSTCOMB_LIB} ${IPO_LIB} ${SEADSA_LIB}
 OTHERLIBS += -L/usr/local/lib -lpthread 
 else
 # LINUX
@@ -58,7 +59,8 @@ SEADSA_LIB = ${SEADSA_LIBNAME}.so
 LIBFLAGS_INSTCOMB = -shared -Wl,-soname,${INSTCOMB_LIB}
 LIBFLAGS_LOOPS = -shared -Wl,-soname,${LOOPS_LIB}
 LIBFLAGS_IPO = -shared -Wl,-soname,${IPO_LIB}
-LIBFLAGS = -Wl,-R -Wl,. ${LOOPS_LIB} ${INSTCOMB_LIB} ${IPO_LIB} ${SEADSA_LIB}
+#LIBFLAGS = -Wl,-R -Wl,. ${LOOPS_LIB} ${INSTCOMB_LIB} ${IPO_LIB} ${SEADSA_LIB}
+LIBFLAGS = -shared ${LOOPS_LIB} ${INSTCOMB_LIB} ${IPO_LIB} ${SEADSA_LIB}
 OTHERLIBS += -L/usr/local/lib -lpthread -ltinfo -ldl
 endif
 
