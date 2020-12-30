@@ -313,16 +313,15 @@ def which(program):
 # seaopt is a customized version of LLVM opt that is more
 # friendly to tools like crab and seahorn.
 def found_seaopt():
-    opt = which('seaopt')
-    if opt is not None:
-        return True
-    else:
-        return False
+    seaopt = os.path.join(config.get_occambin_path(),'seaopt')
+    return is_exec(seaopt)
 
 def get_opt(use_seaopt = False):
     opt = None
     if use_seaopt:
-        opt = which('seaopt')
+        seaopt = os.path.join(config.get_occambin_path(),'seaopt')
+        if is_exec(seaopt):
+            opt = seaopt
     if opt is None:
         opt = config.get_llvm_tool('opt')
     if opt is None:

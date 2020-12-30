@@ -2,3 +2,8 @@
 	path = src/analysis/sea-dsa
 	url = https://github.com/seahorn/sea-dsa.git
 	branch = dev10
+
+[submodule "src/tools/llvm-seahorn"]
+	path = src/tools/llvm-seahorn
+	url = https://github.com/seahorn/llvm-seahorn.git
+	branch = dev10-seadsa

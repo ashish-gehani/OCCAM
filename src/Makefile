@@ -1,36 +1,39 @@
 include Makefile.config
 
+# use previrt rather than occam for historical reasons
+LIBRARYNAME=libprevirt
+
+### ================================================================== ###
 CXX_FLAGS += -I../include -I/usr/local/include  -I../../../include
 CXX_FLAGS += -DGOOGLE_PROTOBUF_NO_RTTI
 CXX_FLAGS += -fPIC 
 CXX_FLAGS += -Ianalysis/sea-dsa/include
 
-CONFIG_PRIME_LIBDIR = $(shell ${LLVM_CFG} --libdir)
-CONFIG_PRIME_LIBS += -L${CONFIG_PRIME_LIBDIR} -lLLVMExecutionEngine -lffi 
+LLVM_LIB_DIR = $(shell ${LLVM_CFG} --libdir)
 
+CONFIG_PRIME_LIBS += -L${LLVM_LIB_DIR} -lLLVMExecutionEngine -lffi 
 DEMANGLE_LIB += -lLLVMDemangle
-
-LIBRARYNAME=libprevirt
 
 ifeq (Darwin, $(findstring Darwin, ${OS}))
 #  DARWIN
-LIBRARY = ${LIBRARYNAME}.dylib
+OCCAM_LIBRARY = ${LIBRARYNAME}.dylib
 LIBFLAGS = -dynamiclib
 OTHERLIBS = -lpthread -lprotobuf -lcurses  
 LD_FLAGS += -undefined suppress -flat_namespace
 CXX_FLAGS += -DHAVE_FFI_FFI_H
 else ifeq (FreeBSD, $(findstring FreeBSD, ${OS}))
 # FreeBSD
-LIBRARY = ${LIBRARYNAME}.so
-LIBFLAGS = -shared -Wl,-soname,${LIBRARY}
-OTHERLIBS = -L/usr/local/lib -lpthread -lprotobuf
+OCCAM_LIBRARY = ${LIBRARYNAME}.so
+LIBFLAGS = -shared -Wl,-soname,${OCCAM_LIBRARY}
+OTHERLIBS = -L/usr/local/lib -lpthread -lprotobuf 
 else
 # LINUX
-LIBRARY = ${LIBRARYNAME}.so
-LIBFLAGS = -shared -Wl,-soname,${LIBRARY} 
-OTHERLIBS =  -lpthread -lprotobuf
+OCCAM_LIBRARY = ${LIBRARYNAME}.so
+LIBFLAGS = -shared -Wl,-soname,${OCCAM_LIBRARY} 
+OTHERLIBS = -L/usr/local/lib -lpthread -lprotobuf 
 CXX_FLAGS += -DHAVE_FFI_H
 endif
+
 
 PROTOC = $(shell which protoc)
 
@@ -50,18 +53,32 @@ OBJECTS := proto/Previrt.pb.o $(patsubst %.cpp,%.o,${SOURCES})
 
 INSTALL = install
 
-all: ${LIBRARY}
+all: ${OCCAM_LIBRARY} seadsa seaopt
 
-libSeaDsa:
-	$(MAKE) -C analysis -f Makefile.sea-dsa install INSTALL_DIR=${OCCAM_LIB}
-
-${LIBRARY}: libSeaDsa ${SOURCES}
+#===
+# Create a dynamic library containing all the occam stuff
+#===
+${OCCAM_LIBRARY}: ${SOURCES}
 	echo "The source is being built according to ${LLVM_CFG}"
 	$(MAKE) protoc	
 	$(MAKE) lib
 
+#===
+# Create dynamic library containing all the seadsa stuff
+#===
+seadsa:
+	$(MAKE) -C analysis -f Makefile.sea-dsa install \
+	INSTALL_DIR=${OCCAM_LIB}
+
+#===
+# Create a binary opt (similar to LLVM opt but with some tweaks)
+#===
+seaopt: seadsa
+	$(MAKE) -C tools -f Makefile.llvm-seahorn install \
+	INSTALL_BINDIR=${OCCAM_BIN} INSTALL_LIBDIR=${OCCAM_LIB}
+
 lib: ${OBJECTS} 
-	$(CXX) ${OBJECTS} ${LIBFLAGS} -o ${LIBRARY} ${CXX_FLAGS} ${LD_FLAGS} \
+	$(CXX) ${OBJECTS} ${LIBFLAGS} -o ${OCCAM_LIBRARY} ${CXX_FLAGS} ${LD_FLAGS} \
 	${OTHERLIBS} ${CONFIG_PRIME_LIBS} ${DEMANGLE_LIB}
 
 analysis/%.o: analysis/%.cpp 
@@ -85,20 +102,20 @@ utils/%.o: utils/%.cpp
 proto/%.o: proto/%.cc proto/%.h 
 	$(CXX)  ${CXX_FLAGS} $< -c -o $@
 
-
 protoc: Previrt.proto
 	mkdir -p proto
 	${PROTOC} Previrt.proto --cpp_out=proto
 
 clean: 
-	rm -rf ${OBJECTS} proto ${LIBRARY} 
+	rm -rf ${OBJECTS} proto ${OCCAM_LIBRARY}
 	$(MAKE) -C analysis -f Makefile.sea-dsa clean
+	$(MAKE) -C tools -f Makefile.llvm-seahorn clean
 
-install: check-occam-lib ${LIBRARY}
-	$(INSTALL) -m 664 ${LIBRARY} $(OCCAM_LIB)
+install: check-occam-lib ${OCCAM_LIBRARY}
+	$(INSTALL) -m 664 ${OCCAM_LIBRARY} $(OCCAM_LIB)
 
 uninstall_occam_lib:
-	rm -f $(OCCAM_LIB)/${LIBRARY}
+	rm -f $(OCCAM_LIB)/${OCCAM_LIBRARY}
 
 #
 # Check for OCCAM_LIB

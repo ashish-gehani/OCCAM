@@ -263,11 +263,12 @@ def clam(cmd, input_file, output_file):
 def peval(input_file, output_file, \
           opt_options, \
           policy, max_bounded, \
-          use_seadsa,
+          use_seaopt, use_seadsa,
           force_inline_spec, \
           use_ipdse, use_ai_dce, log=None):
     """ intra module specialization/optimization
     """
+    
     opt = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
     done = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
     tmp = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
@@ -275,8 +276,9 @@ def peval(input_file, output_file, \
     done.close()
     tmp.close()
 
-    def _optimize(input_file, output_file, use_seaopt):
-        retcode = optimize(input_file, output_file, use_seaopt, opt_options)
+    def _optimize(input_file, output_file):
+        retcode = optimize(input_file, output_file, \
+                           use_seaopt, use_seadsa, opt_options)
         if retcode != 0:
             sys.stderr.write("ERROR: intra module optimization failed!\n")
             shutil.copy(input_file, output_file)
@@ -292,7 +294,7 @@ def peval(input_file, output_file, \
     else:
         # Optimize using standard llvm transformations before any other
         # optional pass. Otherwise, these passes will not be very effective.
-        retcode = _optimize(input_file, done.name, use_ai_dce or use_ipdse)
+        retcode = _optimize(input_file, done.name)
         if retcode != 0: return retcode
 
     if use_seadsa:
@@ -347,7 +349,7 @@ def peval(input_file, output_file, \
                 ## After crab-llvm insert llvm.assume instructions we must run
                 ## the optimizer again.
                 # shutil.copy(tmp.name, done.name)
-                # retcode = _optimize(tmp.name, done.name, use_ai_dce)
+                # retcode = _optimize(tmp.name, done.name)
                 # if retcode != 0:
                 #     return retcode
             shutil.copy(tmp.name, done.name)
@@ -361,8 +363,7 @@ def peval(input_file, output_file, \
             iteration += 1
             if iteration > 1 or use_ipdse:
                 # optimize using standard llvm transformations
-                use_seaopt = use_ai_dce or use_ipdse
-                retcode = _optimize(done.name, opt.name, use_seaopt)
+                retcode = _optimize(done.name, opt.name)
                 if retcode != 0:
                     break;
             else:
@@ -405,7 +406,7 @@ def peval(input_file, output_file, \
         pass
     return retcode
 
-def optimize(input_file, output_file, use_seaopt, extra_opts):
+def optimize(input_file, output_file, use_seaopt, use_seadsa, extra_opts):
     """ Run LLVM optimizer.
         The optimizer is tuned for code debloating and not necessarily
         for runtime performance.
@@ -421,13 +422,13 @@ def optimize(input_file, output_file, use_seaopt, extra_opts):
         # disable sinking instructions to end of basic block
         # this might create unwanted aliasing scenarios (in sea-dsa)
         # for now, there is no option to undo this switch
-        args += ['--simplifycfg-sink-common=false']
-        # disable loop rotation because it's pretty bad for crab
-        ## LLVM 10: --disable-loop-rotate is gone.
-        #args += ['--disable-loop-rotate']
+        #args += ['--simplifycfg-sink-common=false']
+    #if use_seadsa:
+        args += ['--seaopt-use-seadsa-aa']
+        #args += ['--seaopt-use-cfl-aa=both']
 
     args += extra_opts
-    args += [input_file, '-o', output_file, '-O3']
+    args += [input_file, '-o', output_file, '-Os']
     return driver.run(utils.get_opt(use_seaopt), args)
 
 def specialize_program_args(input_file, output_file, \

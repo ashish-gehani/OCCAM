@@ -52,6 +52,10 @@ case $key in
     -use-pointer-analysis|--use-pointer-analysis)
 	OPT_OPTIONS="${OPT_OPTIONS} --use-pointer-analysis"	
 	shift # past argument
+	;;
+    -use-seaopt|--use-seaopt)
+	OPT_OPTIONS="${OPT_OPTIONS} --use-seaopt"	
+	shift # past argument
 	;;        
     -help|--help)
 	usage

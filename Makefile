@@ -21,6 +21,7 @@ MKDIR_P = mkdir -p
 RM_F    = rm -f
 
 export OCCAM_LIB = $(OCCAM_HOME)/lib
+export OCCAM_BIN = $(OCCAM_HOME)/bin
 
 # tests needs an LLVM install from cmake with:
 # -DLLVM_INSTALL_UTILS=ON
@@ -43,6 +44,7 @@ ifeq ($(OCCAM_HOME),)
 	$(error OCCAM_HOME is undefined)
 endif
 	$(MKDIR_P) $(OCCAM_LIB)
+	$(MKDIR_P) $(OCCAM_BIN)
 
 llvm_home:
 ifeq ($(LLVM_HOME),)
@@ -133,6 +135,9 @@ endif
 # for detecting more than just errors:
 	@ $(PYLINT) --rcfile=.pylintrc razor/*.py
 #	@ $(PYLINT) -E razor/*.py
+
+md2rst:
+	pandoc --from=markdown --to=rst --output=README.rst README.md
 
 zippity:
 	rm -rf doczip*; mkdir doczip;
