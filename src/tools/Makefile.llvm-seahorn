@@ -1,5 +1,7 @@
 #------------------------------------------------------------------#
-# Usage: make install INSTALL_BINDIR=XXX INSTALL_LIBDIR=XXX
+# Usage:
+#   make all INSTALL_LIBDIR=XXX
+#   make install INSTALL_BINDIR=XXX INSTALL_LIBDIR=XXX
 #------------------------------------------------------------------#
 
 include ../Makefile.config
@@ -105,12 +107,14 @@ ${OPT}: ${OPT_OBJECTS} ${INSTCOMB_LIB} ${LOOPS_LIB} ${IPO_LIB}  ${SEADSA_LIB}
 %.o: %.cpp
 	$(CXX) ${CXX_FLAGS} ${OPT_CXX_FLAGS} $< -c -o $@
 
+all:  ${OPT}
+
 clean: 
 	rm -f ${OPT_OBJECTS} ${INSTCOMB_OBJECTS} ${IPO_OBJECTS} ${LOOPS_OBJECTS}
 	rm -f ${INSTCOMB_LIB} ${IPO_LIB} ${LOOPS_LIB} ${SEADSA_LIB}
 	rm -f llvm-seahorn/tools/opt/${OPT}
 
-install: ${OPT}
+install:
 	$(INSTALL) -m 775 llvm-seahorn/tools/opt/${OPT} $(INSTALL_BINDIR)
 	$(INSTALL) -m 664 ${INSTCOMB_LIB} $(INSTALL_LIBDIR)
 	$(INSTALL) -m 664 ${IPO_LIB} $(INSTALL_LIBDIR)

@@ -1,5 +1,7 @@
 #------------------------------------------------------------------#
-# Usage: make install INSTALL_DIR=XXX
+# Usage:
+#   make all
+#   make install INSTALL_DIR=XXX
 #------------------------------------------------------------------#
 
 include ../Makefile.config
@@ -48,7 +50,7 @@ sea-dsa/lib/seadsa/%.o: sea-dsa/lib/seadsa/%.cc
 clean: 
 	rm -f ${OBJECTS} ${LIBRARY} 
 
-install: ${LIBRARY}
+install: 
 	mkdir -p $(INSTALL_DIR)
 	$(INSTALL) -m 664 ${LIBRARY} $(INSTALL_DIR)
 
