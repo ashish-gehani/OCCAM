@@ -6,8 +6,7 @@
 
 include ../Makefile.config
 
-CXX_FLAGS += -I../include -I/usr/local/include  -fPIC
-CXX_FLAGS += -I./sea-dsa/include
+CXX_FLAGS += -fPIC
 
 ## Default install directory
 INSTALL_DIR=.
@@ -33,8 +32,6 @@ SOURCES := $(wildcard sea-dsa/lib/seadsa/*.cc)
 SOURCES := $(filter-out sea-dsa/lib/seadsa/SpecLang.cc, ${SOURCES})
 
 OBJECTS := $(patsubst %.cc,%.o,${SOURCES}) 
-
-INSTALL = install
 
 all: ${LIBRARY}
 

@@ -6,3 +6,7 @@
 	path = src/tools/llvm-seahorn
 	url = https://github.com/seahorn/llvm-seahorn.git
 	branch = dev10-seadsa
+[submodule "src/tools/clam"]
+	path = src/analysis/clam
+	url = https://github.com/seahorn/crab-llvm.git
+	branch = dev10

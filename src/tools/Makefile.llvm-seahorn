@@ -10,17 +10,11 @@ include ../Makefile.config
 INSTALL_BINDIR=.
 INSTALL_LIBDIR=.
 
-INSTALL = install
 OPT = seaopt
 
 ### ================================================================== ###
-CXX_FLAGS += -I../include -I/usr/local/include  -I../../../include
-CXX_FLAGS += -fPIC
-CXX_FLAGS += -Illvm-seahorn/include
-CXX_FLAGS += -I../analysis/sea-dsa/include
-
-LLVM_LIB_DIR = $(shell ${LLVM_CFG} --libdir)
-LLVM_LIBS = $(shell ${LLVM_CFG} --libs all-targets aggressiveinstcombine analysis bitwriter codegen core coroutines ipo irreader instcombine instrumentation mc objcarcopts remarks scalaropts support target transformutils vectorize passes)
+CXX_FLAGS += -fPIC -std=c++14 -fno-exceptions -fno-rtti
+##CXX_FLAGS += -fvisibility=hidden -fvisibility-inlines-hidden
 
 IPO_LIBNAME=libSeaLlvmIpo
 INSTCOMB_LIBNAME=libSeaInstCombine
@@ -98,9 +92,7 @@ ${SEADSA_LIB}:
 	cp ../analysis/${SEADSA_LIB} .
 
 ${OPT}: ${OPT_OBJECTS} ${INSTCOMB_LIB} ${LOOPS_LIB} ${IPO_LIB}  ${SEADSA_LIB}
-	$(CXX) ${CXX_FLAGS} ${OPT_OBJECTS}  $(OTHERLIBS) \
-	-Wl,-rpath $(INSTALL_LIBDIR) ${LIBFLAGS} \
-	-o llvm-seahorn/tools/opt/${OPT} 
+	$(CXX) ${CXX_FLAGS} ${OPT_OBJECTS}  $(OTHERLIBS) -Wl,-rpath $(INSTALL_LIBDIR) ${LIBFLAGS} -o llvm-seahorn/tools/opt/${OPT}  
 
 %.o: %.cc
 	$(CXX) ${CXX_FLAGS} ${OPT_CXX_FLAGS} $< -c -o $@

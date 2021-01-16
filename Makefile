@@ -152,5 +152,7 @@ limpio:
 clean: limpio
 	rm -rf razor/proto
 	rm -rf dist
+	rm -f lib/*
+	rm -f bin/*
 
 .PHONY: clean

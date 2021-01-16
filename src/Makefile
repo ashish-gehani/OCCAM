@@ -4,12 +4,8 @@ include Makefile.config
 LIBRARYNAME=libprevirt
 
 ### ================================================================== ###
-CXX_FLAGS += -I../include -I/usr/local/include  -I../../../include
 CXX_FLAGS += -DGOOGLE_PROTOBUF_NO_RTTI
-CXX_FLAGS += -fPIC 
-CXX_FLAGS += -Ianalysis/sea-dsa/include
-
-LLVM_LIB_DIR = $(shell ${LLVM_CFG} --libdir)
+CXX_FLAGS += -fPIC
 
 CONFIG_PRIME_LIBS += -L${LLVM_LIB_DIR} -lLLVMExecutionEngine -lffi 
 DEMANGLE_LIB += -lLLVMDemangle
@@ -30,7 +26,7 @@ else
 # LINUX
 OCCAM_LIBRARY = ${LIBRARYNAME}.so
 LIBFLAGS = -shared -Wl,-soname,${OCCAM_LIBRARY} 
-OTHERLIBS = -L/usr/local/lib -lpthread -lprotobuf 
+OTHERLIBS = -L/usr/local/lib -lpthread -lprotobuf
 CXX_FLAGS += -DHAVE_FFI_H
 endif
 
@@ -38,44 +34,50 @@ endif
 PROTOC = $(shell which protoc)
 
 SOURCES = $(wildcard *.cpp) 
-
 SOURCES += $(wildcard analysis/*.cpp)
-
 SOURCES += $(wildcard transforms/*.cpp)
-
+SOURCES := $(filter-out transforms/Crab.cpp, ${SOURCES})
 SOURCES += $(wildcard transforms/utils/*.cpp)
-
 SOURCES += $(wildcard interpreter/*.cpp)
-
 SOURCES += $(wildcard utils/*.cpp)
 
 OBJECTS := proto/Previrt.pb.o $(patsubst %.cpp,%.o,${SOURCES}) 
 
-INSTALL = install
 
-all: ${OCCAM_LIBRARY} seadsa seaopt
-
-#===
-# Create a dynamic library containing all the occam stuff
-#===
-${OCCAM_LIBRARY}: ${SOURCES}
-	echo "The source is being built according to ${LLVM_CFG}"
-	$(MAKE) protoc	
-	$(MAKE) lib
+all: clam seadsa seaopt ${OCCAM_LIBRARY}
 
 #===
 # Create dynamic library containing all the seadsa stuff
 #===
 seadsa:
-	$(MAKE) -C analysis -f Makefile.sea-dsa install \
-	INSTALL_DIR=${OCCAM_LIB}
+	$(MAKE) -C analysis -f Makefile.sea-dsa all
+	$(MAKE) -C analysis -f Makefile.sea-dsa install INSTALL_DIR=${OCCAM_LIB}
+#===
+# Create a library containing all the Crab stuff (Clam is the LLVM
+# wrapper for Crab), and a binary crabopt, a LLVM optimized based on
+# Crab invariants.
+# FIXME: seadsa is built twice because clam also relies on seadsa.
+#===
+clam:
+	$(MAKE) -C tools -f Makefile.clam build_clam
+	$(MAKE) -C tools -f Makefile.clam all
+	$(MAKE) -C tools -f Makefile.clam install INSTALL_BINDIR=${OCCAM_BIN} 
 
 #===
 # Create a binary opt (similar to LLVM opt but with some tweaks)
 #===
 seaopt: seadsa
+	$(MAKE) -C tools -f Makefile.llvm-seahorn all INSTALL_LIBDIR=${OCCAM_LIB}
 	$(MAKE) -C tools -f Makefile.llvm-seahorn install \
-	INSTALL_BINDIR=${OCCAM_BIN} INSTALL_LIBDIR=${OCCAM_LIB}
+		INSTALL_BINDIR=${OCCAM_BIN} INSTALL_LIBDIR=${OCCAM_LIB}
+
+#===
+# Create a dynamic library containing all the occam stuff OCCAM_LIBRARY
+#===
+${OCCAM_LIBRARY}: ${SOURCES}
+	echo "The source is being built according to ${LLVM_CFG}"
+	$(MAKE) protoc	
+	$(MAKE) lib
 
 lib: ${OBJECTS} 
 	$(CXX) ${OBJECTS} ${LIBFLAGS} -o ${OCCAM_LIBRARY} ${CXX_FLAGS} ${LD_FLAGS} \
@@ -109,6 +111,7 @@ protoc: Previrt.proto
 clean: 
 	rm -rf ${OBJECTS} proto ${OCCAM_LIBRARY}
 	$(MAKE) -C analysis -f Makefile.sea-dsa clean
+	$(MAKE) -C tools -f Makefile.clam clean
 	$(MAKE) -C tools -f Makefile.llvm-seahorn clean
 
 install: check-occam-lib ${OCCAM_LIBRARY}

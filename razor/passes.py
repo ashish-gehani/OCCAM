@@ -224,48 +224,12 @@ def profile(input_file, output_file):
     args += ['-profile-outfile={0}'.format(output_file)]
     return driver.previrt(input_file, '/dev/null', args)
 
-def clam(cmd, input_file, output_file):
-    """ running clam (https://github.com/seahorn/crab-llvm)
-    """
-    # analysis options
-    args = [
-            #### Abstract domain
-              '--crab-dom=int'
-            #### To avoid code bloating
-            , '--crab-lower-select=false'
-            , '--crab-lower-unsigned-icmp=false'
-            , '--crab-lower-constant-expr=false'
-            , '--crab-lower-switch=false'
-            , '--crab-lower-invoke=false'
-            #### Reason about register and memory contents
-            , '--crab-track=arr'
-            , '--crab-disable-ptr'
-            , '--crab-singleton-aliases'
-            #### We use for now context-insensitive
-            , '--crab-heap-analysis=ci-sea-dsa'
-            #### Options to insert invariants as llvm.assume instructions
-            #, '--crab-add-invariants=block-entry', '--crab-promote-assume'
-            #, '--crab-add-invariants=loop-header', '--crab-promote-assume'
-            #, '--crab-add-invariants=all', '--crab-promote-assume'
-            , '--crab-add-invariants=dead-code'
-            #### for debugging
-            #, '--crab-print-invariants'
-            #, '--crab-verbose=0'
-            #, '--crab-stats'
-    ]
-    args += [input_file, '--o={0}'.format(output_file)]
-    sb = stringbuffer.StringBuffer()
-    res = driver.run(cmd, args, sb, False)
-    ### uncomment for debugging:
-    #print str(sb)
-    return res
-
 def peval(input_file, output_file, \
           opt_options, \
           policy, max_bounded, \
           use_seaopt, use_seadsa,
           force_inline_spec, \
-          use_ipdse, use_ai_dce, log=None):
+          use_ipdse, use_crabopt, log=None):
     """ intra module specialization/optimization
     """
     
@@ -309,6 +273,26 @@ def peval(input_file, output_file, \
         sys.stderr.write("\tresolved indirect calls finished succesfully\n")
         shutil.copy(tmp.name, done.name)
 
+    if use_crabopt:
+        cmd = utils.get_crabopt()
+        if cmd is None:
+            sys.stderr.write('crabopt not found: skipping ...')
+        else:
+            crabopt_args = ['-Pcrab-enable-warnings=false',
+                            '-Pcrab-log=clam-insert-invariants',
+                            '-Pcrab-only-main',
+                            '-Pcrab-print-invariants']
+            crabopt_args += [done.name, '--o={0}'.format(tmp.name)]
+            sb = stringbuffer.StringBuffer()
+            retcode = driver.run(cmd, crabopt_args)
+            if retcode != 0:
+                sys.stderr.write("ERROR: crabopt failed!\n")
+                shutil.copy(done.name, output_file)
+                return retcode
+            else:
+                utils.write_timestamp("Finished crabopt")
+            shutil.copy(tmp.name, done.name)
+            
     if use_ipdse:
         ## 1. Run dead store elimination based on sea-dsa
         passes = [
@@ -331,28 +315,6 @@ def peval(input_file, output_file, \
         else:
             sys.stderr.write("\tipdse finished succesfully\n")
         shutil.copy(tmp.name, done.name)
-
-    if use_ai_dce:
-        clam_cmd = utils.get_clam()
-        if clam_cmd is None:
-            sys.stderr.write('crab not found: skipping ai-based dce')
-        else:
-            utils.write_timestamp("Starting crab found here " + utils.get_clam())
-            retcode = clam(clam_cmd, done.name, tmp.name)
-            if retcode != 0:
-                sys.stderr.write("ERROR: crab failed!\n")
-                shutil.copy(done.name, output_file)
-                return retcode
-            else:
-                utils.write_timestamp("Finished crab")
-                ## XXX: commented the code because we don't add llvm.assume right now.
-                ## After crab-llvm insert llvm.assume instructions we must run
-                ## the optimizer again.
-                # shutil.copy(tmp.name, done.name)
-                # retcode = _optimize(tmp.name, done.name)
-                # if retcode != 0:
-                #     return retcode
-            shutil.copy(tmp.name, done.name)
 
     if policy <> 'none':
         out = ['']

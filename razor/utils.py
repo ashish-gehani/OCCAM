@@ -316,6 +316,8 @@ def found_seaopt():
     seaopt = os.path.join(config.get_occambin_path(),'seaopt')
     return is_exec(seaopt)
 
+# Find seaopt if available. If not we use LLVM opt. If not optimizer
+# is available then we report an error.
 def get_opt(use_seaopt = False):
     opt = None
     if use_seaopt:
@@ -327,6 +329,13 @@ def get_opt(use_seaopt = False):
     if opt is None:
         raise IOError('opt was not found')
     return opt
+
+def get_crabopt():
+    cmd = os.path.join(config.get_occambin_path(),'crabopt')
+    if is_exec(cmd):
+        return cmd
+    else:
+        return None
 
 # Try to find ROPgadget binary
 def get_ropgadget():
@@ -343,9 +352,3 @@ def get_seahorn():
     if not is_exec(seahorn): seahorn = which('sea')
     return seahorn
 
-# Try to find clam binary
-def get_clam():
-    clam = None
-    if 'CLAM' in os.environ: clam = os.environ ['CLAM']
-    if not is_exec(clam): clam = which('clam')
-    return clam
