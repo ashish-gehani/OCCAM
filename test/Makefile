@@ -18,11 +18,14 @@ endif
 	${LIT} --param=test_dir=simple-c simple-bitcode -v -o ${OUTPUT_LOG}
 # Test configuration prime
 	${LIT} --param=test_dir=config-prime-c config-prime-bitcode -v -o ${OUTPUT_LOG}
-# Test inter-procedural dead store elimination
+# Test inter-procedural dead store elimination as a standlone app (outside slash pipeline)
 	${LIT} --param=test_dir=ipdse ipdse -v -o ${OUTPUT_LOG}
+# Test crabopt as a standalone app (outside slash pipeline)
+	${LIT} --param=test_dir=crabopt crabopt -v -o ${OUTPUT_LOG}
 
 clean:
 	rm -f out.log
 	$(MAKE) -C simple-c clean
 	$(MAKE) -C config-prime-c clean
 	$(MAKE) -C ipdse clean
+	$(MAKE) -C crabopt clean

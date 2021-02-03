@@ -1,0 +1,15 @@
+export GOPATH="$HOME/go"
+
+export LLVM_HOME="/usr/lib/llvm-10"
+
+export PATH="$LLVM_HOME/bin:$GOPATH/bin:$HOME/.local/bin:$PATH"
+
+export CC="clang"
+
+export CXX="clang++"
+
+export LLVM_COMPILER="clang"
+
+export OCCAM_HOME="$HOME/occam"
+
+export WLLVM_OUTPUT="WARNING"

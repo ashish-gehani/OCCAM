@@ -25,7 +25,7 @@ Alternatively, it can be built and installed from source as follows.
 Prerequisites
 ============
 
-OCCAM currently works on Linux, macOS, and FreeBSD.  It depends on an installation of LLVM. OCCAM currently requires llvm-10.0. You will also need the Google protocol buffer compiler `protoc` and the corresponding Python [package](https://pypi.python.org/pypi/protobuf/).
+OCCAM currently works on Linux, macOS, and FreeBSD.  It depends on an installation of LLVM. OCCAM currently is built on the top of llvm-10.0 which requires a C++ compiler supporting c++14. You will also need the Google protocol buffer compiler `protoc` and the corresponding Python [package](https://pypi.python.org/pypi/protobuf/). Some OCCAM components (such as [sea-dsa](https://github.com/seahorn/sea-dsa) and [crab](https://github.com/seahorn/crab) require the boost library >= 1.65.
 
 If you need to generate application bitcode (that OCCAM operates on), you will want to install WLLVM, either from the the pip [package](https://pypi.python.org/pypi/wllvm/) or the GitHub [repository](https://github.com/SRI-CSL/whole-program-llvm.git).
 
@@ -85,7 +85,7 @@ To install an editable version from this repository:
 make -f Makefile develop
 ```
 
-This may require sudo priviliges. Either way you can now use `slash`:
+This may require sudo privileges. Either way you can now use `slash`:
 
 ```
 slash [--work-dir=<dir>]  [--force] [--no-strip] [--intra-spec-policy=<type>] [--inter-spec-policy=<type>] [--use-pointer-analysis] [--enable-config-prime] <manifest>

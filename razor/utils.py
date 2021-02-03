@@ -313,21 +313,29 @@ def which(program):
 # seaopt is a customized version of LLVM opt that is more
 # friendly to tools like crab and seahorn.
 def found_seaopt():
-    opt = which('seaopt')
-    if opt is not None:
-        return True
-    else:
-        return False
+    seaopt = os.path.join(config.get_occambin_path(),'seaopt')
+    return is_exec(seaopt)
 
+# Find seaopt if available. If not we use LLVM opt. If not optimizer
+# is available then we report an error.
 def get_opt(use_seaopt = False):
     opt = None
     if use_seaopt:
-        opt = which('seaopt')
+        seaopt = os.path.join(config.get_occambin_path(),'seaopt')
+        if is_exec(seaopt):
+            opt = seaopt
     if opt is None:
         opt = config.get_llvm_tool('opt')
     if opt is None:
         raise IOError('opt was not found')
     return opt
+
+def get_crabopt():
+    cmd = os.path.join(config.get_occambin_path(),'crabopt')
+    if is_exec(cmd):
+        return cmd
+    else:
+        return None
 
 # Try to find ROPgadget binary
 def get_ropgadget():
@@ -344,9 +352,3 @@ def get_seahorn():
     if not is_exec(seahorn): seahorn = which('sea')
     return seahorn
 
-# Try to find clam binary
-def get_clam():
-    clam = None
-    if 'CLAM' in os.environ: clam = os.environ ['CLAM']
-    if not is_exec(clam): clam = which('clam')
-    return clam

@@ -1,0 +1,114 @@
+#------------------------------------------------------------------#
+# Usage:
+#   make all INSTALL_LIBDIR=XXX
+#   make install INSTALL_BINDIR=XXX INSTALL_LIBDIR=XXX
+#------------------------------------------------------------------#
+
+include ../Makefile.config
+
+## Default install directory
+INSTALL_BINDIR=.
+INSTALL_LIBDIR=.
+
+OPT = seaopt
+
+### ================================================================== ###
+CXX_FLAGS += -fPIC -std=c++14 -fno-exceptions -fno-rtti
+##CXX_FLAGS += -fvisibility=hidden -fvisibility-inlines-hidden
+
+IPO_LIBNAME=libSeaLlvmIpo
+INSTCOMB_LIBNAME=libSeaInstCombine
+LOOPS_LIBNAME=libSeaLoops
+SEADSA_LIBNAME=libSeaDsa
+
+OTHERLIBS = -L$(LLVM_LIB_DIR) $(LLVM_LIBS)
+ifeq (Darwin, $(findstring Darwin, ${OS}))
+#  DARWIN
+IPO_LIB = ${IPO_LIBNAME}.dylib
+INSTCOMB_LIB = ${INSTCOMB_LIBNAME}.dylib
+LOOPS_LIB = ${LOOPS_LIBNAME}.dylib
+SEADSA_LIB = ${SEADSA_LIBNAME}.dylib
+LIBFLAGS_INSTCOMB = -dynamiclib
+LIBFLAGS_LOOPS = ${LIBFLAGS_INSTCOMB}
+LIBFLAGS_IPO = ${LIBFLAGS_INSTCOMB}
+LIBFLAGS = ${LOOPS_LIB} ${INSTCOMB_LIB} ${IPO_LIB} ${SEADSA_LIB}
+OTHERLIBS += -lpthread -lcurses -lz
+LD_FLAGS += -undefined suppress -flat_namespace
+else ifeq (FreeBSD, $(findstring FreeBSD, ${OS}))
+# FreeBSD
+IPO_LIB = ${IPO_LIBNAME}.so
+INSTCOMB_LIB = ${INSTCOMB_LIBNAME}.so
+LOOPS_LIB = ${LOOPS_LIBNAME}.so
+SEADSA_LIB = ${SEADSA_LIBNAME}.so
+LIBFLAGS_INSTCOMB = -shared -Wl,-soname,${INSTCOMB_LIB}
+LIBFLAGS_LOOPS = -shared -Wl,-soname,${LOOPS_LIB}
+LIBFLAGS_IPO = -shared -Wl,-soname,${IPO_LIB}
+#LIBFLAGS = -Wl,-R -Wl,. ${LOOPS_LIB} ${INSTCOMB_LIB} ${IPO_LIB} ${SEADSA_LIB}
+LIBFLAGS = -shared ${LOOPS_LIB} ${INSTCOMB_LIB} ${IPO_LIB} ${SEADSA_LIB}
+OTHERLIBS += -L/usr/local/lib -lpthread 
+else
+# LINUX
+IPO_LIB = ${IPO_LIBNAME}.so
+INSTCOMB_LIB = ${INSTCOMB_LIBNAME}.so
+LOOPS_LIB = ${LOOPS_LIBNAME}.so
+SEADSA_LIB = ${SEADSA_LIBNAME}.so
+LIBFLAGS_INSTCOMB = -shared -Wl,-soname,${INSTCOMB_LIB}
+LIBFLAGS_LOOPS = -shared -Wl,-soname,${LOOPS_LIB}
+LIBFLAGS_IPO = -shared -Wl,-soname,${IPO_LIB}
+#LIBFLAGS = -Wl,-R -Wl,. ${LOOPS_LIB} ${INSTCOMB_LIB} ${IPO_LIB} ${SEADSA_LIB}
+LIBFLAGS = -shared ${LOOPS_LIB} ${INSTCOMB_LIB} ${IPO_LIB} ${SEADSA_LIB}
+OTHERLIBS += -L/usr/local/lib -lpthread -ltinfo -ldl
+endif
+
+INSTCOMB_SOURCES := $(wildcard llvm-seahorn/lib/Transforms/InstCombine/*.cpp)
+IPO_SOURCES := $(wildcard llvm-seahorn/lib/Transforms/IPO/*.cpp)
+LOOPS_SOURCES := $(wildcard llvm-seahorn/lib/Transforms/Loops/*.cc)
+OPT_SOURCES := $(wildcard llvm-seahorn/tools/opt/*.cpp)
+
+INSTCOMB_OBJECTS := $(patsubst %.cpp,%.o,${INSTCOMB_SOURCES})
+IPO_OBJECTS := $(patsubst %.cpp,%.o,${IPO_SOURCES})
+LOOPS_OBJECTS := $(patsubst %.cc,%.o,${LOOPS_SOURCES})
+OPT_OBJECTS := $(patsubst %.cpp,%.o,${OPT_SOURCES}) 
+
+${INSTCOMB_LIB}: ${INSTCOMB_SOURCES} ${INSTCOMB_OBJECTS}
+	$(CXX) ${INSTCOMB_OBJECTS} \
+	${CXX_FLAGS} ${LD_FLAGS} \
+	$(LIBFLAGS_INSTCOMB) \
+	-o ${INSTCOMB_LIB} 
+
+${LOOPS_LIB}: ${LOOPS_SOURCES} ${LOOPS_OBJECTS}
+	$(CXX) ${LOOPS_OBJECTS} \
+	${CXX_FLAGS} ${LD_FLAGS} \
+	$(LIBFLAGS_LOOPS) \
+	-o ${LOOPS_LIB} 
+
+${IPO_LIB}: ${IPO_SOURCES} ${IPO_OBJECTS}
+	$(CXX) ${IPO_OBJECTS} \
+	${CXX_FLAGS} ${LD_FLAGS} \
+	$(LIBFLAGS_IPO) \
+	-o ${IPO_LIB} 
+
+${SEADSA_LIB}:
+	cp ../analysis/${SEADSA_LIB} .
+
+${OPT}: ${OPT_OBJECTS} ${INSTCOMB_LIB} ${LOOPS_LIB} ${IPO_LIB}  ${SEADSA_LIB}
+	$(CXX) ${CXX_FLAGS} ${OPT_OBJECTS}  $(OTHERLIBS) -Wl,-rpath $(INSTALL_LIBDIR) ${LIBFLAGS} -o llvm-seahorn/tools/opt/${OPT}  
+
+%.o: %.cc
+	$(CXX) ${CXX_FLAGS} ${OPT_CXX_FLAGS} $< -c -o $@
+%.o: %.cpp
+	$(CXX) ${CXX_FLAGS} ${OPT_CXX_FLAGS} $< -c -o $@
+
+all:  ${OPT}
+
+clean: 
+	rm -f ${OPT_OBJECTS} ${INSTCOMB_OBJECTS} ${IPO_OBJECTS} ${LOOPS_OBJECTS}
+	rm -f ${INSTCOMB_LIB} ${IPO_LIB} ${LOOPS_LIB} ${SEADSA_LIB}
+	rm -f llvm-seahorn/tools/opt/${OPT}
+
+install:
+	$(INSTALL) -m 775 llvm-seahorn/tools/opt/${OPT} $(INSTALL_BINDIR)
+	$(INSTALL) -m 664 ${INSTCOMB_LIB} $(INSTALL_LIBDIR)
+	$(INSTALL) -m 664 ${IPO_LIB} $(INSTALL_LIBDIR)
+	$(INSTALL) -m 664 ${LOOPS_LIB} $(INSTALL_LIBDIR)
+

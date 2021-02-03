@@ -1,11 +1,12 @@
 #------------------------------------------------------------------#
-# Usage: make install INSTALL_DIR=XXX
+# Usage:
+#   make all
+#   make install INSTALL_DIR=XXX
 #------------------------------------------------------------------#
 
 include ../Makefile.config
 
-CXX_FLAGS += -I../include -I/usr/local/include  -fPIC
-CXX_FLAGS += -I./sea-dsa/include
+CXX_FLAGS += -fPIC
 
 ## Default install directory
 INSTALL_DIR=.
@@ -27,16 +28,14 @@ LIBRARY = ${LIBRARYNAME}.so
 LIBFLAGS = -shared -Wl,-soname,${LIBRARY}
 endif
 
-SOURCES = $(wildcard sea-dsa/lib/seadsa/*.cc)
+SOURCES := $(wildcard sea-dsa/lib/seadsa/*.cc)
+SOURCES := $(filter-out sea-dsa/lib/seadsa/SpecLang.cc, ${SOURCES})
 
 OBJECTS := $(patsubst %.cc,%.o,${SOURCES}) 
-
-INSTALL = install
 
 all: ${LIBRARY}
 
 ${LIBRARY}: ${SOURCES} ${OBJECTS}
-	@echo "The sources ${SOURCES} are being built according to ${LLVM_CFG}"
 	$(CXX) ${OBJECTS} ${LIBFLAGS} -o ${LIBRARY} ${CXX_FLAGS} ${LD_FLAGS} 
 
 sea-dsa/lib/seadsa/%.o: sea-dsa/lib/seadsa/%.cc
@@ -48,7 +47,7 @@ sea-dsa/lib/seadsa/%.o: sea-dsa/lib/seadsa/%.cc
 clean: 
 	rm -f ${OBJECTS} ${LIBRARY} 
 
-install: ${LIBRARY}
+install: 
 	mkdir -p $(INSTALL_DIR)
 	$(INSTALL) -m 664 ${LIBRARY} $(INSTALL_DIR)
 

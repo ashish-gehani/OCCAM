@@ -1,0 +1,79 @@
+#------------------------------------------------------------------#
+# Usage:
+#   make build_clam
+#   make all
+#   make install INSTALL_BINDIR=XXX
+#------------------------------------------------------------------#
+
+include ../Makefile.config
+
+## Default install directory
+INSTALL_BINDIR=.
+
+EXECUTABLE=crabopt
+
+GIT = git
+MKDIR = mkdir
+### ================================================================== ###
+CXX_FLAGS += -fvisibility=hidden -fvisibility-inlines-hidden
+
+CLAM_SOURCE_DIR=${OCCAM_HOME}/src/analysis/clam
+CLAM_BUILD_DIR=${CLAM_SOURCE_DIR}/build
+CLAM_INSTALL_DIR=${CLAM_SOURCE_DIR}/install
+
+CLAM_LIBS= ${CLAM_INSTALL_DIR}/lib/libClamAnalysis.a  \
+	${CLAM_INSTALL_DIR}/lib/libClamInstrumentation.a  \
+	${CLAM_INSTALL_DIR}/lib/libCrab.a  \
+	${CLAM_INSTALL_DIR}/lib/libSeaDsaAnalysis.a 
+LLVM_LIBRARIES = -L$(LLVM_LIB_DIR) $(LLVM_LIBS)
+SYSTEM_LIBS = $(shell ${LLVM_CFG} --system-libs)
+OTHER_LIBS = -lgmp
+
+OBJECTS = $(OCCAM_HOME)/src/transforms/Crab.o crabopt.o
+
+all: ${OBJECTS} ${EXECUTABLE}
+
+$(OCCAM_HOME)/src/transforms/Crab.o: $(OCCAM_HOME)/src/transforms/Crab.cpp
+	$(CXX) ${CXX_FLAGS} $< -c -o $@
+crabopt.o: crabopt.cpp
+	$(CXX) ${CXX_FLAGS} $< -c -o $@
+
+CRAB_REPO = clone https://github.com/seahorn/crab.git
+CRAB_BRANCH = master
+SEADSA_REPO = clone https://github.com/seahorn/sea-dsa.git
+SEADSA_BRANCH = dev10
+
+
+.PHONY: build_clam
+build_clam:
+ifeq ($(wildcard ${CLAM_INSTALL_DIR}),)
+	$(GIT) ${CRAB_REPO} -b ${CRAB_BRANCH} ${CLAM_SOURCE_DIR}/crab 
+	$(GIT) ${SEADSA_REPO} -b ${SEADSA_BRANCH} ${CLAM_SOURCE_DIR}/sea-dsa
+	$(MKDIR) -p ${CLAM_BUILD_DIR}
+	cd ${CLAM_BUILD_DIR} && \
+	$(CMAKE) -DCMAKE_INSTALL_PREFIX=${CLAM_INSTALL_DIR}  \
+		-DLLVM_DIR=${LLVM_CFG} \
+		-DCMAKE_BUILD_TYPE=${LLVM_BUILD_MODE} \
+		-DCLAM_INCLUDE_TRANSFORMS=OFF \
+		-DCLAM_INCLUDE_SEAOPT=OFF \
+		-DCLAM_INCLUDE_POST_TRANSFORMS=ON \
+		-DCLAM_INCLUDE_PYTHON=OFF \
+		-DCLAM_INCLUDE_TESTS=OFF \
+		-DCLAM_INCLUDE_TOOLS=OFF \
+		-DCLAM_INCLUDE_ALL_DOMAINS=OFF ${CLAM_SOURCE_DIR} && \
+	$(CMAKE) --build ${CLAM_BUILD_DIR} --target install
+else 
+	@echo "clam is already installed. Nothing to do." 
+endif
+
+${EXECUTABLE}: ${OBJECTS}
+	$(CXX) ${CXX_FLAGS} ${OBJECTS} ${CLAM_LIBS} ${LLVM_LIBRARIES} ${SYSTEM_LIBS} ${OTHER_LIBS} -o ${EXECUTABLE}
+
+install:
+	$(INSTALL) -m 775 crabopt $(INSTALL_BINDIR)
+
+clean: 
+	rm -Rf ${CLAM_INSTALL_DIR}
+	rm -Rf ${CLAM_BUILD_DIR}
+	rm -Rf ${CLAM_SOURCE_DIR}/crab ${CLAM_SOURCE_DIR}/sea-dsa
+	rm -f ${OBJECTS} ${EXECUTABLE}

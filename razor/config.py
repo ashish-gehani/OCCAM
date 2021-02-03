@@ -104,6 +104,15 @@ def get_occamlib_path():
     sys.stderr.write('Unsupported platform: {0}\n'.format(__system))
     return None
 
+def get_occambin_path():
+    """ Deduces the full path to the occam bin directory.
+    """
+    home = os.getenv('OCCAM_HOME')
+    if home is None:
+        sys.stderr.write('OCCAM_HOME not set!\n')
+        return None
+    return os.path.join(home, 'bin')
+
 def get_sea_dsalib_path():
     """ Deduces the full path to the SeaDsa shared/dynamic library.
     """
