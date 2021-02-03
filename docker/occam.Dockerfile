@@ -16,7 +16,11 @@ RUN echo "Build type set to: $BUILD_TYPE" && \
     apt-get install -yqq software-properties-common && \
     apt-get update && \
     apt-get install -y wget libprotobuf-dev python-protobuf protobuf-compiler && \
-    apt-get install -y python-pip
+    apt-get install -y python-pip && \
+    apt-get install -y cmake && \
+    apt-get install -y llvm-10 && \
+    apt-get install -y clang-10 && \
+    apt-get install -y clang-format-10 
 
 RUN pip --version && \
     pip install setuptools --upgrade && \
@@ -32,10 +36,10 @@ RUN apt-get -y install golang-go && \
     go get github.com/SRI-CSL/gllvm/cmd/...
 
 # Install llvm10 from llvm repo since bionic comes with much older version
-WORKDIR /tmp
-RUN wget https://apt.llvm.org/llvm.sh && \
-  chmod +x llvm.sh && \
-  ./llvm.sh 10
+# WORKDIR /tmp
+# RUN wget https://apt.llvm.org/llvm.sh && \
+#  chmod +x llvm.sh && \
+#  ./llvm.sh 10
 
 ENV LLVM_HOME "/usr/lib/llvm-10"
 ENV PATH "$LLVM_HOME/bin:/bin:/usr/bin:/usr/local/bin:/occam/utils/FileCheck_trusty:$GOPATH/bin:$PATH"
