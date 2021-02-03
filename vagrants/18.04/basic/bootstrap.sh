@@ -25,6 +25,6 @@ go get github.com/SRI-CSL/gllvm/cmd/...
 
 # Build OCCAM
 cd $OCCAM_HOME
-make
+make -j16
 make install
-# make test # <-- Currently fails
+make test

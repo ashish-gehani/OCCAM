@@ -2,7 +2,7 @@ export GOPATH="$HOME/go"
 
 export LLVM_HOME="/usr/lib/llvm-10"
 
-export PATH="$LLVM_HOME/bin:$GOPATH/bin:$PATH"
+export PATH="$LLVM_HOME/bin:$GOPATH/bin:$HOME/.local/bin:$PATH"
 
 export CC="clang"
 
