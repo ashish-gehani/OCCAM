@@ -85,7 +85,7 @@ To install an editable version from this repository:
 make -f Makefile develop
 ```
 
-This may require sudo priviliges. Either way you can now use `slash`:
+This may require sudo privileges. Either way you can now use `slash`:
 
 ```
 slash [--work-dir=<dir>]  [--force] [--no-strip] [--intra-spec-policy=<type>] [--inter-spec-policy=<type>] [--use-pointer-analysis] [--enable-config-prime] <manifest>
