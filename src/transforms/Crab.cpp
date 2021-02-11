@@ -22,7 +22,7 @@
 #include "clam/SeaDsaHeapAbstraction.hh"
 #include "clam/Support/Debug.hh"
 #include "clam/Support/NameValues.hh"
-#include "clam/Transforms/InsertInvariants.hh"
+#include "clam/Transforms/Optimizer.hh"
 
 #include "crab/support/stats.hpp"
 
@@ -45,8 +45,20 @@ namespace clam {
 namespace CrabDomain {
 constexpr Type OCCAM(1, "occam", "occam", false, false);  
 } //end CrabDomain
-// We create our own specialized abstract domain!  
-using occam_domain_t = RGN_FUN(BOOL_NUM(BASE(interval_domain_t)));
+// We use the smashed region domain instantiated with a simple product
+// of flat boolean domain with interval domain. The region domain
+// allows to reason about memor contents.
+class OccamRegionParams {
+public:
+  using base_abstract_domain_t = BOOL_NUM(BASE(interval_domain_t));
+  using number_t = z_number;
+  using varname_t = clam::varname_t;
+  using varname_allocator_t = crab::var_factory_impl::str_var_alloc_col;  
+  enum { allocation_sites = 1};
+  enum { deallocation = 0};
+  enum { refine_uninitialized_regions = 0};
+};
+using occam_domain_t = region_domain<OccamRegionParams>;
 REGISTER_DOMAIN(CrabDomain::OCCAM, occam_domain_t)    
 } //end clam
 
@@ -107,7 +119,10 @@ bool CrabPass::runOnModule(Module &M) {
   
   /// Optimize code using Crab invariants
   auto emptyFun = [](Function *F){ return nullptr;};
-  InsertInvariants opt(*ga, &cg, emptyFun, emptyFun, InvariantsLocation::DEAD_CODE);
+  Optimizer opt(*ga, &cg, emptyFun, emptyFun,
+		InvariantsLocation::NONE,
+		true /*dce*/,
+		true /*replace values with constants*/);
   bool res = opt.runOnModule(M);
   // Remove unreachable blocks
   if (res) {
