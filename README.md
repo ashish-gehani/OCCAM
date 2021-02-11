@@ -101,8 +101,8 @@ The value `none` will prevent any inter or intra-module specialization. The valu
 
 To function correctly `slash` calls LLVM tools such as `opt` and `clang++`. These should be available in your `PATH`, and be the currently supported version (10.0). Like `wllvm`, `slash`, will pay attention to the environment variables `LLVM_OPT_NAME` and `LLVM_CXX_NAME` if your version of these tools is adorned with suffixes.
 
-The Manifest(o)
-===============
+The Manifest
+============
 
 The manifest for `slash` should be valid JSON. The following keys have meaning:
 
