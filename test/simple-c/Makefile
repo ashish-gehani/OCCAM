@@ -24,4 +24,5 @@ clean:
 	$(MAKE) -C onlyonce-inter clean
 	$(MAKE) -C pe clean
 	$(MAKE) -C crabopt/1 clean
+	$(MAKE) -C crabopt/2 clean
 	rm -rf simple-bitcode
