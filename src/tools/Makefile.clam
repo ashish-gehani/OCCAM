@@ -73,7 +73,10 @@ install:
 	$(INSTALL) -m 775 crabopt $(INSTALL_BINDIR)
 
 clean: 
+	rm -f ${OBJECTS} ${EXECUTABLE}
+
+uninstall:
 	rm -Rf ${CLAM_INSTALL_DIR}
 	rm -Rf ${CLAM_BUILD_DIR}
 	rm -Rf ${CLAM_SOURCE_DIR}/crab ${CLAM_SOURCE_DIR}/sea-dsa
-	rm -f ${OBJECTS} ${EXECUTABLE}
+	
