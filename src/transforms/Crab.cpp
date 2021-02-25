@@ -57,6 +57,7 @@ public:
   enum { allocation_sites = 1};
   enum { deallocation = 0};
   enum { refine_uninitialized_regions = 0};
+  enum { tag_analysis = 0};  
 };
 using occam_domain_t = region_domain<OccamRegionParams>;
 REGISTER_DOMAIN(CrabDomain::OCCAM, occam_domain_t)    
