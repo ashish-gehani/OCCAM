@@ -31,7 +31,7 @@ If you need to generate application bitcode (that OCCAM operates on), you will w
 
 The test harness also requires [lit](https://pypi.python.org/pypi/lit/) and `FileCheck`. `FileCheck` can often be found in the binary directory of your LLVM installation. However, if you built your own, you may need to read [this.](https://bugs.llvm.org//show_bug.cgi?id=25675) Hint: the build produces it, but does not install it. (Try `locate FileCheck`, then copy it to the `bin` directory.)
 
-Detailed configuration instructions for Ubuntu 14.04 can be gleaned from [bootstrap.sh](https://github.com/SRI-CSL/OCCAM/blob/master/vagrants/14.04/basic/bootstrap.sh) as well as the Travis CI scripts for each branch [.travis.yml](https://github.com/SRI-CSL/OCCAM/blob/master/.travis.yml).
+Detailed configuration instructions for Ubuntu 18.04 can be gleaned from [bootstrap.sh](https://github.com/SRI-CSL/OCCAM/blob/master/vagrants/18.04/basic/bootstrap.sh) as well as the Travis CI scripts for each branch [.travis.yml](https://github.com/SRI-CSL/OCCAM/blob/master/.travis.yml).
 
 Building and Installing
 =======================
@@ -101,8 +101,8 @@ The value `none` will prevent any inter or intra-module specialization. The valu
 
 To function correctly `slash` calls LLVM tools such as `opt` and `clang++`. These should be available in your `PATH`, and be the currently supported version (10.0). Like `wllvm`, `slash`, will pay attention to the environment variables `LLVM_OPT_NAME` and `LLVM_CXX_NAME` if your version of these tools is adorned with suffixes.
 
-The Manifest(o)
-===============
+The Manifest
+============
 
 The manifest for `slash` should be valid JSON. The following keys have meaning:
 

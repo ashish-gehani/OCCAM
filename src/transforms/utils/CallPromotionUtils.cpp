@@ -46,6 +46,7 @@ namespace transforms {
 ///     ...
 ///
 void promoteIndirectCall(CallSite &CS, const std::vector<Function *> &Callees) {
+#if 0  
   for (unsigned i = 0, numCallees = Callees.size(); i < numCallees; ++i) {
     // The last callee does not create an "else" block
     // If there is only one callee we don't create an "else" block either.
@@ -55,6 +56,21 @@ void promoteIndirectCall(CallSite &CS, const std::vector<Function *> &Callees) {
       llvm::promoteCallWithIfThenElse(CS, Callees[i]);
     }
   }
+#else
+  for (unsigned i = 0, numCallees = Callees.size(); i < numCallees; ++i) {
+    llvm::promoteCallWithIfThenElse(CS, Callees[i]);
+  }
+  // We create an "else" block with the original call and then remove
+  // the block that contains the original call. The reason is to avoid
+  // having as the "else" block the last candidate callee.
+  // 
+  // We want to have explicit comparison instructions with each of the
+  // possible callees so that other transformations later can optimize
+  // code if something is known about the comparison operands.
+  Instruction *OriginalCall = CS.getInstruction(); 
+  removeBlock(OriginalCall->getParent(),
+	      OriginalCall->getParent()->getParent()->getContext());
+#endif   
 }
 
 // Copied from llvm CallPromotionUtils

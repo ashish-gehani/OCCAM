@@ -22,7 +22,7 @@ CLAM_BUILD_DIR=${CLAM_SOURCE_DIR}/build
 CLAM_INSTALL_DIR=${CLAM_SOURCE_DIR}/install
 
 CLAM_LIBS= ${CLAM_INSTALL_DIR}/lib/libClamAnalysis.a  \
-	${CLAM_INSTALL_DIR}/lib/libClamInstrumentation.a  \
+	${CLAM_INSTALL_DIR}/lib/libClamOptimizer.a  \
 	${CLAM_INSTALL_DIR}/lib/libCrab.a  \
 	${CLAM_INSTALL_DIR}/lib/libSeaDsaAnalysis.a 
 LLVM_LIBRARIES = -L$(LLVM_LIB_DIR) $(LLVM_LIBS)
@@ -73,7 +73,10 @@ install:
 	$(INSTALL) -m 775 crabopt $(INSTALL_BINDIR)
 
 clean: 
+	rm -f ${OBJECTS} ${EXECUTABLE}
+
+uninstall:
 	rm -Rf ${CLAM_INSTALL_DIR}
 	rm -Rf ${CLAM_BUILD_DIR}
 	rm -Rf ${CLAM_SOURCE_DIR}/crab ${CLAM_SOURCE_DIR}/sea-dsa
-	rm -f ${OBJECTS} ${EXECUTABLE}
+	

@@ -279,7 +279,7 @@ def peval(input_file, output_file, \
             sys.stderr.write('crabopt not found: skipping ...')
         else:
             crabopt_args = ['-Pcrab-enable-warnings=false',
-                            '-Pcrab-log=clam-insert-invariants',
+                            '-Pcrab-log=clam-opt',
                             '-Pcrab-only-main',
                             '-Pcrab-print-invariants']
             crabopt_args += [done.name, '--o={0}'.format(tmp.name)]
