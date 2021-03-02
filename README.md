@@ -151,7 +151,7 @@ Another example, (see `examples/linux/musl_nweb`), specializes `nweb` with `musl
 }
 ```
 
-A third example, (see `examples/portfolio/tree`),  illustrates the use of the `dynamic_args` field to partially specialize the arguments to the `tree` utility.
+A third example, (see `examples/linux/tree`),  illustrates the use of the `dynamic_args` field to partially specialize the arguments to the `tree` utility.
 ```
 { "main" : "tree.bc"
 , "binary"  : "tree"
