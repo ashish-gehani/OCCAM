@@ -1,8 +1,0 @@
-{ "main" : "tree.bc"
-, "binary"  : "tree"
-, "modules"    : []
-, "native_libs" : []
-, "ldflags" : [ "-O2" ]
-, "name"    : "tree"
-, "constraints" : ["1", "tree", "-J", "-h"]
-}
