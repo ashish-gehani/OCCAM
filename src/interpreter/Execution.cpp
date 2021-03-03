@@ -1274,8 +1274,13 @@ void Interpreter::visitBinaryOperator(BinaryOperator &I) {
   AbsGenericValue ASrc2 = getOperandValue(I.getOperand(1), SF);
 
   if (!ASrc1.hasValue() || !ASrc2.hasValue()) {
+    //TODO: if And and one operand is false then return false
+    //      if Or  and one operand is true then return true
+    //      if Mul and one operand is zero then return zero
+    //      if Div and numerator is zero then return zero
     LOG << "skipped " << I << "\n";
-    SetValue(&I, llvm::None, SF);    
+    SetValue(&I, llvm::None, SF);
+    return;
   }
 
   GenericValue Src1 = ASrc1.getValue();
