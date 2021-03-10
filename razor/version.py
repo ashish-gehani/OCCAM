@@ -50,8 +50,10 @@ Version History:
 
 1.1.1    - 3/10/2021  Large leap in development. Lots of new command line arguments.
 
+1.1.2    - 3/10/2021  format fix in setup.py
+
 
 """
 
 
-razor_version = '1.1.1'
+razor_version = '1.1.2'

@@ -118,7 +118,7 @@ endif
 # change the version number in razor/version.py,
 # otherwise the server will give you an error.
 
-publish:
+publish: dist
 	python3 -m twine upload dist/*
 
 lint:

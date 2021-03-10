@@ -20,6 +20,7 @@ setup(
     version=razor_version,
     python_requires='>=3.6',
     description='The OCCAM saga',
+    long_description_content_type='text/markdown',
     long_description=long_description,
     url='https://github.com/SRI-CSL/OCCAM',
     author='Ian A. Mason',
