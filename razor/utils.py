@@ -210,7 +210,7 @@ def check_manifest(manifest):
     if dynamic_args is None:
         sys.stderr.write('Field dynamic_args in manifest must be a int or string representing a int\n')
         return (False, )
-    
+
     name = manifest.get('name')
     if name is None:
         sys.stderr.write('No name in manifest\n')

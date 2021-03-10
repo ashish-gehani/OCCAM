@@ -34,6 +34,7 @@
  The API to the protobuffer interface.
 
 """
+#pylint: disable=E1101
 
 import re
 import sys
