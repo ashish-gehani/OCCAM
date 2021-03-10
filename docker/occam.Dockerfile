@@ -16,7 +16,7 @@ RUN echo "Build type set to: $BUILD_TYPE" && \
     apt-get install -yqq software-properties-common && \
     apt-get update && \
     apt-get install -y wget libprotobuf-dev python-protobuf protobuf-compiler && \
-    apt-get install -y python-pip && \
+    apt-get install -y python3-pip && \
     apt-get install -y cmake && \
     apt-get install -y llvm-10 && \
     apt-get install -y clang-10 && \

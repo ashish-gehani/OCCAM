@@ -34,7 +34,8 @@
  Thread pool for processing modules in parallel.
 
 """
-from Queue import Queue
+from queue import Queue
+import datetime
 import threading
 import traceback
 import sys
@@ -56,7 +57,7 @@ class Worker(threading.Thread):
             f()
 
 
-class ThreadPool(object):
+class ThreadPool:
     """ A pool of daemon worker threads.
     """
     def __init__(self, count=3):
@@ -74,6 +75,7 @@ class ThreadPool(object):
 
     def map(self, f, args):
         self._start()
+        args = list(args)
         result = [None for i in range(0, len(args))]
         sem = threading.Semaphore(0)
         def func(i):
@@ -82,7 +84,7 @@ class ThreadPool(object):
                     result[i] = f(args[i])
                 except Exception:
                     seperator = '-' * 60
-                    print("Exception in worker for {0}:".format(f.func_doc))
+                    print("Exception in worker for {0}:".format(f.__doc__))
                     print(seperator)
                     traceback.print_exc(file=sys.stderr)
                     print(seperator)
@@ -105,9 +107,8 @@ def getDefaultPool():
     return POOL
 
 def InParallel(f, args, pool=None):
-    import datetime
     dt = datetime.datetime.now ().strftime ('%d/%m/%Y %H:%M:%S')
-    sys.stderr.write("[%s] Starting %s...\n" % (dt, f.func_doc))
+    sys.stderr.write("[%s] Starting %s...\n" % (dt, f.__doc__))
     if pool is None:
         pool = getDefaultPool()
     result = pool.map(f, args)

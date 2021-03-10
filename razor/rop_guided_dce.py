@@ -1,17 +1,9 @@
 import sys
-import os
 import tempfile
 import shutil
-
-from . import config
-
 from . import driver
-
 from . import stringbuffer
-
-from . import pool
-
-from . import utils  
+from . import utils
 
 # TODO: split the code between running seahorn and transformation that
 # replaces assert(0) with unreachable
@@ -22,19 +14,21 @@ from . import utils
 def seahorn(sea_cmd, input_file, fname, is_loop_free, cpu, mem, opt_options):
     """ running SeaHorn (https://github.com/seahorn/seahorn)
     """
-    
+
     def check_status(output_str):
-        if "unsat" in output_str: return True
-        elif "sat" in output_str: return False
-        else: return None
-            
-    # 1. Instrument the program with assertions 
+        if "unsat" in output_str:
+            return True
+        if "sat" in output_str:
+            return False
+        return None
+
+    # 1. Instrument the program with assertions
     sea_infile = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
     sea_infile.close()
     args = ['--Padd-verifier-calls',
             '--Padd-verifier-call-in-function={0}'.format(fname)]
     driver.previrt(input_file, sea_infile.name, args)
-    
+
     # 2. Run SeaHorn
     sea_args = [  '--strip-extern'
                 , '--enable-indvar'
@@ -57,7 +51,7 @@ def seahorn(sea_cmd, input_file, fname, is_loop_free, cpu, mem, opt_options):
                      , '--horn-bv-singleton-aliases=true'
                      , '--horn-bv-ignore-calloc=false'
                      , '--horn-at-most-one-predecessor']
-        sys.stderr.write('Running SeaHorn with BMC engine on {0} ...\n'.format(fname))        
+        sys.stderr.write('Running SeaHorn with BMC engine on {0} ...\n'.format(fname))
     else:
         sea_args = ['pf'] + \
                    sea_args + \
@@ -68,7 +62,7 @@ def seahorn(sea_cmd, input_file, fname, is_loop_free, cpu, mem, opt_options):
                    ]
         sys.stderr.write('Running SeaHorn with Spacer+AI engine on {0} ...\n'.format(fname))
     sea_args = sea_args + [sea_infile.name]
-        
+
     sb = stringbuffer.StringBuffer()
     retcode= driver.run(sea_cmd, sea_args, sb, False)
     status = check_status(str(sb))
@@ -81,20 +75,20 @@ def seahorn(sea_cmd, input_file, fname, is_loop_free, cpu, mem, opt_options):
         args = ['--Preplace-verifier-calls-with-unreachable']
         driver.previrt_progress(sea_infile.name, sea_outfile.name, args)
         # 4. And, we run the optimized to remove that function
-        sea_opt_outfile = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
-        sea_opt_outfile.close()
-        optimize(sea_outfile.name, sea_opt_outfile.name, True, opt_options)
-        return sea_opt_outfile.name
-    else:
-        sys.stderr.write('\tSeaHorn could not prove unreachability of {0}:\n'.format(fname))
-        if retcode <> 0:
-            sys.stderr.write('\t\tpossible timeout or memory limits reached\n')
-        elif not status:
-            sys.stderr.write('\t\tSeaHorn got a counterexample\n')
-        return input_file
+        #sea_opt_outfile = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
+        #sea_opt_outfile.close()
+        #optimize(sea_outfile.name, sea_opt_outfile.name, True, opt_options)
+        #return sea_opt_outfile.name
+        return sea_outfile
+    sys.stderr.write('\tSeaHorn could not prove unreachability of {0}:\n'.format(fname))
+    if retcode != 0:
+        sys.stderr.write('\t\tpossible timeout or memory limits reached\n')
+    elif not status:
+        sys.stderr.write('\t\tSeaHorn got a counterexample\n')
+    return input_file
 
 def rop_guided_dce(input_file,
-           # entry functions 
+           # entry functions
            entries,
            # file with ROP gadgets
            ropfile,
@@ -116,18 +110,18 @@ def rop_guided_dce(input_file,
         sys.stderr.write('SeaHorn not found: skipped model-checking-based dce.')
         shutil.copy(input_file, output_file)
         return False
-        
+
     cost_benefit_out = tempfile.NamedTemporaryFile(delete=False)
     args  = ['--Pcost-benefit-cg']
     args += ['--Pbenefits-filename={0}'.format(ropfile)]
     args += ['--Pcost-benefit-output={0}'.format(cost_benefit_out.name)]
     for e in entries:
         args += ['--Pcallgraph-roots={0}'.format(e)]
-        
+
     driver.previrt(input_file, '/dev/null', args)
-    seahorn_queries = []    
+    seahorn_queries = []
     for line in cost_benefit_out:
-        tokens = line.split()        
+        tokens = line.split()
         # Expected format of each token: FUNCTION BENEFIT COST
         # where FUNCTION is a string, BENEFIT is an integer, and COST is an integer
         if len(tokens) < 3:
@@ -141,7 +135,7 @@ def rop_guided_dce(input_file,
     cost_benefit_out.close()
 
     if seahorn_queries == []:
-        print "No queries for SeaHorn ..."
+        print("No queries for SeaHorn ...")
 
     change = False
     curfile = input_file
@@ -155,9 +149,7 @@ def rop_guided_dce(input_file,
                            is_loop_free, \
                            timeout, memlimit, \
                            opt_options)
-        change = change | (curfile <> nextfile)
+        change = change | (curfile != nextfile)
         curfile = nextfile
     shutil.copy(curfile, output_file)
     return change
-
-    

@@ -45,12 +45,13 @@ class Echo:
 
         def thread_main(stream, logger):
             while True:
-                line = stream.readline()
+                line = stream.readline().decode('utf-8')
                 if line == '':
                     return
-                else:
-                    if sb is not None: sb.append(line)
-                    if logger is not None: logger.log(logging.INFO, line.rstrip())
+                if sb is not None:
+                    sb.append(line)
+                if logger is not None:
+                    logger.log(logging.INFO, line.rstrip())
 
         self.thread = Thread(target = thread_main, args = (self.stream, self.logger))
 

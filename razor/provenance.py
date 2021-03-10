@@ -31,7 +31,7 @@
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
-class VersionedFile(object):
+class VersionedFile:
     def __init__(self, base, suffix, digits=2):
         self._base = base
         self._suffix = suffix
@@ -45,7 +45,7 @@ class VersionedFile(object):
             return "%s.%s" % (self._base, self._suffix)
         return self._format % self._version
 
-class FileStream(object):
+class FileStream:
     def __init__(self, base, suffix):
         self._base = base
         self._suffix = suffix

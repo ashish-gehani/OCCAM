@@ -30,6 +30,7 @@
  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
+import datetime
 import json
 import os
 import re
@@ -47,6 +48,13 @@ def checkOccamLib():
         return False
     return True
 
+
+def get_bool_flag(flags, flag):
+    for (x, y) in flags:
+        if x == '--{0}'.format(flag):
+            assert y == ''
+            return True
+    return False
 
 def get_flag(flags, flag, default=None):
     for (x, y) in flags:
@@ -157,15 +165,15 @@ def sanity_check_manifest(manifest):
 def get_int(n):
     if n is None:
         return 0
-    elif isinstance(n, int) or isinstance(n, unicode):
+    if isinstance(n, int):
         return n
-    elif isinstance(n, str):
+    if isinstance(n, str):
         try:
             return int(n)
         except ValueError:
             pass
     return None
-    
+
 def check_manifest(manifest):
 
     ok = sanity_check_manifest(manifest)
@@ -198,8 +206,7 @@ def check_manifest(manifest):
 
     static_args = manifest.get('static_args')
 
-    dynamic_args = manifest.get('dynamic_args')
-    dynamic_args = get_int(dynamic_args)
+    dynamic_args = get_int(manifest.get('dynamic_args'))
     if dynamic_args is None:
         sys.stderr.write('Field dynamic_args in manifest must be a int or string representing a int\n')
         return (False, )
@@ -219,7 +226,7 @@ def check_manifest(manifest):
 
     return (True, main, binary, modules, native_libs, ldflags, static_args, name, dynamic_args, \
             lib_spec, main_spec)
-            
+
 
 
 #iam: used to be just os.path.basename; but now when we are processing trees
@@ -233,7 +240,7 @@ def prevent_collisions(x):
         if folder != "":
             folders.append(folder)
 
-        if path == "" or path == os.sep:
+        if path in ("", os.sep):
             break
 
     folders.reverse()
@@ -292,22 +299,24 @@ def setLogger():
     logger.info(">> %s\n", ' '.join(sys.argv))
 
 def write_timestamp(msg):
-    import datetime
     dt = datetime.datetime.now ().strftime ('%d/%m/%Y %H:%M:%S')
     sys.stderr.write("[%s] %s...\n" % (dt, msg))
 
 def is_exec (fpath):
-    if fpath == None: return False
+    if fpath is None:
+        return False
     return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
 def which(program):
     fpath, _ = os.path.split(program)
     if fpath:
-        if is_exec (program): return program
+        if is_exec (program):
+            return program
     else:
         for path in os.environ["PATH"].split(os.pathsep):
             exe_file = os.path.join(path, program)
-            if is_exec (exe_file): return exe_file
+            if is_exec (exe_file):
+                return exe_file
     return None
 
 # seaopt is a customized version of LLVM opt that is more
@@ -334,21 +343,24 @@ def get_crabopt():
     cmd = os.path.join(config.get_occambin_path(),'crabopt')
     if is_exec(cmd):
         return cmd
-    else:
-        return None
+    return None
 
 # Try to find ROPgadget binary
 def get_ropgadget():
     ropgadget = None
-    if 'ROPGADGET' in os.environ: ropgadget = os.environ ['ROPGADGET']
-    if not is_exec(ropgadget): ropgadget = which('ropgadget')
-    if not is_exec(ropgadget): ropgadget = which('ROPgadget.py')
+    if 'ROPGADGET' in os.environ:
+        ropgadget = os.environ ['ROPGADGET']
+    if not is_exec(ropgadget):
+        ropgadget = which('ropgadget')
+    if not is_exec(ropgadget):
+        ropgadget = which('ROPgadget.py')
     return ropgadget
 
 # Try to find seahorn binary
 def get_seahorn():
     seahorn = None
-    if 'SEAHORN' in os.environ: seahorn = os.environ ['SEAHORN']
-    if not is_exec(seahorn): seahorn = which('sea')
+    if 'SEAHORN' in os.environ:
+        seahorn = os.environ ['SEAHORN']
+    if not is_exec(seahorn):
+        seahorn = which('sea')
     return seahorn
-
