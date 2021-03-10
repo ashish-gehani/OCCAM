@@ -162,7 +162,7 @@ void Interpreter::initializeGlobalVariable(GlobalVariable &GV) {
   if (void *GA = getPointerToGlobalIfAvailable(&GV)) {
     // Not sure if this is necessary
     // MemGlobals.add(GA, (size_t)getDataLayout().getTypeAllocSize(GV.getType()));
-    // XXX: mark as initialized all the memory of the initializer
+    // mark as initialized all the memory of the initializer
     initMemory(GV.getInitializer(), GA);
   } else {
     LOG << "\t" << "Pointer to global " << GV.getName()  << " is not available\n";
@@ -1473,7 +1473,7 @@ void Interpreter::popStackAndReturnValueToCaller(Type *RetTy,
       if (Result.hasValue()) {
 	ExitValue = Result.getValue();
       } else {
-	// XXX: if the result is unknown we pretend the program succeed	
+	// if the result is unknown we pretend the program succeed	
 	memset(&ExitValue.Untyped, 0, sizeof(ExitValue.Untyped));
       }
     } else {
@@ -1761,7 +1761,7 @@ void Interpreter::visitLoadInst(LoadInst &I) {
   GenericValue *Ptr = (GenericValue*)GVTOP(Src);
 
   if (!isa<GlobalVariable>(I.getPointerOperand()->stripPointerCasts())) {
-    // XXX: global variables are always allocated in memory and
+    // global variables are always allocated in memory and
     // isAllocatedMemory should know that. However, for global
     // variables like this one:
     // 
@@ -1784,6 +1784,7 @@ void Interpreter::visitLoadInst(LoadInst &I) {
   LOG << "\n";
   
   SetValue(&I, Result, SF);
+  VisitedInstructions.push_back(&I);
   // if (I.isVolatile() && PrintVolatile)
   //   dbgs() << "Volatile load " << I;
 }
@@ -1816,14 +1817,15 @@ void Interpreter::visitStoreInst(StoreInst &I) {
   
   GenericValue Val = AVal.getValue();
   if (!isa<GlobalVariable>(I.getPointerOperand()->stripPointerCasts())) {
-    // XXX: see explanation in VisitLoadInst
+    // see explanation in VisitLoadInst
     if (!isAllocatedMemory((void*) Ptr)) {
       LOG << "Writing to untrackable memory location.\n";
       return;
     }
   }
 
-  StoreValueToMemory(Val, Ptr, I.getOperand(0)->getType()); 
+  StoreValueToMemory(Val, Ptr, I.getOperand(0)->getType());
+  VisitedInstructions.push_back(&I);  
   // writeToMemory(Val, Ptr, I.getOperand(0)->getType());
   // if (I.isVolatile() && PrintVolatile)
   //   dbgs() << "Volatile store: " << I;
@@ -2974,12 +2976,6 @@ void Interpreter::visitInsertValueInst(InsertValueInst &I) {
   // Special handling for external functions.
   if (F->isDeclaration()) {
     AbsGenericValue Result = callExternalFunction (CS, F, ArgVals);
-    if (!F->getReturnType()->isVoidTy() && !Result.hasValue()) {
-      /// XXX: right now if Result is undefined is because one of the
-      /// arguments in ArgVals is unknown.
-      LOG << "cannot execute external call to " << F->getName()
-	  << " because of some unknown argument\n";      
-    }
     // Simulate a 'ret' instruction of the appropriate type.
     popStackAndReturnValueToCaller (F->getReturnType (), Result);
     return;
