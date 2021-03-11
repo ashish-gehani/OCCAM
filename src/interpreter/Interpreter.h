@@ -181,9 +181,10 @@ class Interpreter : public llvm::ExecutionEngine, public llvm::InstVisitor<Inter
   // keep track of the blocks executed by the interpreter
   llvm::DenseSet<const llvm::BasicBlock*> VisitedBlocks;
 
-  // Keep track of the executed instructions.
-  // It might be a subset of them (e.g., only store and load).
-  std::vector<llvm::Instruction*> VisitedInstructions;
+  // Keep track of the executed memory instruction and its values.
+  // If LoadInst  then its value is the lhs of the LoadInst
+  // If StoreInst then its value is the stored value of the StoreInst
+  std::vector<std::pair<llvm::Instruction*,llvm::GenericValue>> ExecutedMemInsts;
   
   // Whether "exit" has been found
   bool ExitExecuted;
@@ -287,6 +288,10 @@ public:
     AtExitHandlers.push_back(F);
   }
 
+  void addExecutedMemInst(llvm::Instruction *I, llvm::GenericValue V) {
+    ExecutedMemInsts.push_back({I,V});
+  }
+  
   llvm::GenericValue *getFirstVarArg () {
     AbsGenericValue &AVA = ECStack.back().VarArgs[0];
     if (AVA.hasValue()) {
@@ -308,13 +313,14 @@ public:
 
   llvm::Instruction* getLastExecutedInst() const ;
 
-  const std::vector<llvm::Instruction*>& getVisitedInstructions() const {
-    return VisitedInstructions;
+  const std::vector<std::pair<llvm::Instruction*,llvm::GenericValue>>&
+  getExecutedMemInsts() const {
+    return ExecutedMemInsts;
   }
   
   llvm::BasicBlock* inspectStackAndGlobalState(
 	       llvm::DenseMap<llvm::Value*, RawAndDerefValue> &GlobalVals,
-	       llvm::DenseMap<llvm::Value*, RawAndDerefValue> &StackVals);
+	       llvm::DenseMap<llvm::Value*, std::vector<RawAndDerefValue>> &StackVals);
 
   bool isExecuted(const llvm::BasicBlock &) const;
 

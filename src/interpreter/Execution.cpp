@@ -1533,6 +1533,7 @@ void Interpreter::visitBranchInst(BranchInst &I) {
       ACondVal = AbsGenericValue(CondValFromUser);
 #else      
       /// End of our execution: we cannot keep going
+      errs() << "INTERPRETER STOPPED: cannot evaluate branch condition\n";
       StopExecution = true;
       return;
 #endif       
@@ -1555,6 +1556,7 @@ void Interpreter::visitSwitchInst(SwitchInst &I) {
   AbsGenericValue ACondVal = getOperandValue(Cond, SF);
   if (!ACondVal.hasValue()) {
     /// End of our execution: we cannot keep going
+    errs() << "INTERPRETER STOPPED: cannot evaluate switch condition\n";    
     StopExecution = true;
     return;
   }
@@ -1579,6 +1581,7 @@ void Interpreter::visitIndirectBrInst(IndirectBrInst &I) {
   AbsGenericValue AAddr = getOperandValue(I.getAddress(), SF);
   if (!AAddr.hasValue()) {
     /// End of our execution: we cannot keep going
+    errs() << "INTERPRETER STOPPED: cannot evaluate indirect branch\n";        
     StopExecution = true;
     return;
   }
@@ -1779,12 +1782,13 @@ void Interpreter::visitLoadInst(LoadInst &I) {
   LoadValueFromMemory(Result, Ptr, I.getType());
   //GenericValue Result = readFromMemory(Ptr, I.getType());
 
+  addExecutedMemInst(&I, Result);  
+  
   LOG << "\tVal=";
   printAbsGenericValue(I.getType(), Result);
   LOG << "\n";
-  
+
   SetValue(&I, Result, SF);
-  VisitedInstructions.push_back(&I);
   // if (I.isVolatile() && PrintVolatile)
   //   dbgs() << "Volatile load " << I;
 }
@@ -1823,9 +1827,10 @@ void Interpreter::visitStoreInst(StoreInst &I) {
       return;
     }
   }
-
+  
+  addExecutedMemInst(&I, Val);
   StoreValueToMemory(Val, Ptr, I.getOperand(0)->getType());
-  VisitedInstructions.push_back(&I);  
+  
   // writeToMemory(Val, Ptr, I.getOperand(0)->getType());
   // if (I.isVolatile() && PrintVolatile)
   //   dbgs() << "Volatile store: " << I;
@@ -1911,7 +1916,7 @@ void Interpreter::visitCallSite(CallSite CS) {
   AbsGenericValue SRC = getOperandValue(SF.Caller.getCalledValue(), SF);
 
   if (!SRC.hasValue()) {
-    LOG << "the called function is unknown\n";
+    errs() << "INTERPRETER STOPPED: cannot resolve indirect call.\n";
     StopExecution = true;
   } else {
     callFunction((Function*)GVTOP(SRC.getValue()), ArgVals,
@@ -3022,8 +3027,10 @@ void Interpreter::run() {
       break;
     }
   }
-  LOG << "Finished execution after " << NumDynamicInsts << " instructions "
+  LOG << "============================================================\n";
+  LOG << "  Finished execution after " << NumDynamicInsts << " instructions "
       << " and " << VisitedBlocks.size() << " blocks\n";      ;
+  LOG << "============================================================\n";  
 }
 
 llvm::Instruction* Interpreter::getLastExecutedInst() const {
@@ -3103,7 +3110,7 @@ static AbsGenericValue dereferencePointerIfBasicElementType(AbsGenericValue Val,
 // null if the execution terminated. 
 BasicBlock* Interpreter::inspectStackAndGlobalState(
 			  DenseMap<Value*, RawAndDerefValue> &globalVals,
-			  DenseMap<Value*, RawAndDerefValue> &stackVals) {
+			  DenseMap<Value*, std::vector<RawAndDerefValue>> &stackVals) {
   
   for (unsigned m = 0, e = Modules.size(); m != e; ++m) {
     Module &M = *Modules[m];
@@ -3138,7 +3145,14 @@ BasicBlock* Interpreter::inspectStackAndGlobalState(
       auto DerefVal = dereferencePointerIfBasicElementType
 	(RawVal, V->getType(), getDataLayout());
       RawAndDerefValue RDV(RawVal.getValue(), DerefVal);
-      stackVals.insert(std::make_pair(V, RDV));
+
+      auto it = stackVals.find(V);
+      if (it!=stackVals.end()) {
+	it->second.push_back(RDV);
+      } else {
+	std::vector<RawAndDerefValue> stack{RDV};
+	stackVals.insert(std::make_pair(V, stack));	
+      }
     }
   }
 
