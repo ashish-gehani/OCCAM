@@ -280,7 +280,7 @@ class Slash:
                 fd.close()
                 os.remove(v)
             for ll in map(lambda t: list(t),
-                          zip(*map(lambda OrdDic: OrdDic.iteritems(), profile_maps))):
+                          zip(*map(lambda OrdDic: OrdDic.items(), profile_maps))):
                 k, j = None, 0
                 assert len(ll) == len(profile_map_titles)
                 for (ki, vi) in ll:
