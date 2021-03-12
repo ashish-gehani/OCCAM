@@ -338,8 +338,9 @@ callExternalFunction(Instruction *CI, Function *F, ArrayRef<AbsGenericValue> AAr
       if (match(Arg, m_Load(m_Value(LoadAddr)))) {
 	if (GlobalVariable *GV= dyn_cast<GlobalVariable>(LoadAddr)) {
 	  if (GV->getName() == "stderr" || GV->getName() == "stdout") {
-	    errs() << "*** ConfigPrime: ignoring \"" << F->getName() << "\" on stderr or stdout.\n";
-	    StopExecution = true;
+	    errs() << "*** ConfigPrime: ignoring \""
+		   << F->getName() << "\" on stderr or stdout.\n";
+	    //StopExecution = true;
 	    return llvm::None;
 	  }
 	}
@@ -363,7 +364,7 @@ callExternalFunction(Instruction *CI, Function *F, ArrayRef<AbsGenericValue> AAr
     if (Arg.hasValue()) {
       ArgVals.push_back(Arg.getValue());
     } else {
-      errs() << "*** ConfigPrime: execution cannot call to \""
+      errs() << "INTERPRETER STOPPED: execution cannot call to \""
 	     << F->getName() << "\" because some argument is unknown.\n";
       StopExecution = true;      
       return llvm::None;
@@ -383,7 +384,7 @@ callExternalFunction(Instruction *CI, Function *F, ArrayRef<AbsGenericValue> AAr
 
   if (hasFunctionPtrParameter(*F)) {
     // The intepreter cannot use FFI to make callbacks
-    errs() << "ConfigPrime: cannot execute call to \""
+    errs() << "INTERPRETER STOPPED: cannot execute call to \""
 	   << F->getName() << "\" "
 	   << "because FFI cannot execute callbacks.\n";
     StopExecution = true;
@@ -417,9 +418,27 @@ callExternalFunction(Instruction *CI, Function *F, ArrayRef<AbsGenericValue> AAr
   errs() << "Recompiling LLVM with --enable-libffi might help.\n";
   errs() << "The execution continues on your own risk: callee side-effects are ignored.\n";
 #else
-  // If we use FFI then we don't ignore side-effects so we stop the
-  // execution.
-  StopExecution = true;
+  errs() << "FFI could not execute " << F->getName() << "\n";
+  
+  if (F->onlyReadsMemory()) {
+    errs() << "But the function does not access memory "
+	   << "so that we do not stop execution.\n";
+  } else if (F->onlyAccessesInaccessibleMemory()) {
+    errs() << "But the function does not access memory accessible by the program "
+	   << " so that we do not stop execution.\n";
+  } else if (!F->isSpeculatable()) {
+    errs() << "But the function does not have sideeffects "
+	   << "so that we do not stop execution.\n";
+  } // else if (ArgVals.empty()) {
+  //   errs() << "But the function does not have arguments "
+  // 	   << "so we speculatively assume that it does not modify any global variable, "
+  // 	   << "and therefore, we do not stop execution\n";
+  // } 
+  else {
+    errs() << "INTERPRETER STOPPED because function might have side effects.\n";
+    StopExecution = true;
+  }
+  
 #endif
   return llvm::None;
 }
