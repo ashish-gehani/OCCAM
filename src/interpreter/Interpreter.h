@@ -186,8 +186,8 @@ class Interpreter : public llvm::ExecutionEngine, public llvm::InstVisitor<Inter
   // If StoreInst then its value is the stored value of the StoreInst
   std::vector<std::pair<llvm::Instruction*,llvm::GenericValue>> ExecutedMemInsts;
   
-  // Whether "exit" has been found
-  bool ExitExecuted;
+  // Whether "exit" was called with a non-zero value
+  bool NonZeroExitCode;
   
 public:
   
@@ -324,7 +324,7 @@ public:
 
   bool isExecuted(const llvm::BasicBlock &) const;
 
-  bool exitExecuted() const { return ExitExecuted;}
+  bool exitNonZero() const { return NonZeroExitCode;}
   
 private:  // Helper functions
   

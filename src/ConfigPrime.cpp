@@ -485,6 +485,8 @@ bool ConfigPrime::runOnModule(Module &M) {
   // TODO: Similar to lli, we can provide other modules, extra objects
   // or archives.
 
+  //  llvm::errs() << M << "\n";
+  
   APInt Res; // The exit status of running main
   std::string ErrorMsg;
   std::unique_ptr<Module> M_ptr(&M);
@@ -508,11 +510,12 @@ bool ConfigPrime::runOnModule(Module &M) {
 
   /// -- Extract values from the execution
   Interpreter *Interp = static_cast<Interpreter *>(&*m_ee);
-  if (Interp->exitExecuted()) {
+  if (Interp->exitNonZero()) {
     errs() << "****************************************************************\n"; 
     errs() << "************************* WARNING ******************************\n";
     errs() << "****************************************************************\n";
-    errs() << "The exit() function has been called during Configuration Prime.\n";
+    errs() << "The exit() function has been called during Configuration Prime ";
+    errs() << "with a non-zero value\n";
     errs() << "This might be because the program environment is not the\n"
            << "expected one (e.g., some file does not exist, no file permissions,etc).\n"
 	   << "For this reason, configuration prime is disabled.\n";

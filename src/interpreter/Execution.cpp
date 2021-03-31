@@ -1866,6 +1866,50 @@ void Interpreter::visitCallSite(CallSite CS) {
     case Intrinsic::not_intrinsic:
       break;
     case Intrinsic::vastart: { // va_start
+      // This modeling of va_start assumes that the code uses VAArgInst
+      // to access to each variable argument. However, the frontend
+      // might lower VAArgInst so the interpreter will get lost.
+      //
+
+      #if 1
+      // HACK if Clang does not add VAArgInst:
+      // Assumes %struct.__va_list_tag = type { i32, i32, i8*, i8* }
+      ExecutionContext &PenultimateSF = ECStack[ECStack.size()-2];
+      if (Function *CalleeF = PenultimateSF.Caller.getCalledFunction()) {
+	// Value *FirstVarArg =
+	//   PenultimateSF.Caller.getArgument(
+	//        (PenultimateSF.Caller.arg_size() - CalleeF->arg_size())+1);
+
+	Value *FirstVarArg =
+	  PenultimateSF.Caller.getArgument(0);
+	
+	llvm::errs() << "First vararg=" << FirstVarArg
+		     << " -> " << *FirstVarArg << "\n";
+	  
+	assert(CS.getArgument(0)->getType()->isPointerTy());
+	LLVMContext &ctx = CS.getInstruction()->getContext();	
+	AbsGenericValue abs_va_list = getOperandValue(CS.getArgument(0),
+						      SF);
+	if (abs_va_list.hasValue()) {
+	  GenericValue va_list = abs_va_list.getValue();
+	  va_list.PointerVal = ((char*)va_list.PointerVal) + 8;	  
+	  llvm::errs() << "Storing " << FirstVarArg 
+		       << " to memory address="
+		       << (void*)va_list.PointerVal << "\n";
+	  Type *i8PtrTy = static_cast<Type*>(Type::getInt8PtrTy(ctx));
+	  StoreValueToMemory(PTOGV(FirstVarArg), (GenericValue*)GVTOP(va_list), i8PtrTy);
+	}
+      }
+      #endif 
+
+      // Variable arguments are stored in ExecutionContext.VarArgs. A
+      // variable argument is encoded as GenericValue.UIntPairVal
+      // where the first pair element is the index in ECStack
+      // associated to the last execution context and the second
+      // element is 0 indicating the first variable
+      // argument. VAArgInst will increase the second pair element
+      // after each access.
+      
       GenericValue ArgIndex;
       ArgIndex.UIntPairVal.first = ECStack.size() - 1;
       ArgIndex.UIntPairVal.second = 0;
@@ -1876,6 +1920,78 @@ void Interpreter::visitCallSite(CallSite CS) {
       return;
     case Intrinsic::vacopy:   // va_copy: dest = src
       SetValue(CS.getInstruction(), getOperandValue(*CS.arg_begin(), SF), SF);
+      return;
+    case Intrinsic::uadd_sat:
+    case Intrinsic::sadd_sat:
+    case Intrinsic::usub_sat:
+    case Intrinsic::ssub_sat:
+      // LowerIntrinsicCall (llvm10) cannot lower these intrinsics
+      #if 1
+      // HACK: we approximate these intrinsics with +,-, and *
+      {
+	ExecutionContext &SF = ECStack.back();
+	AbsGenericValue AOp1 = getOperandValue(CS.getArgument(0), SF);
+	AbsGenericValue AOp2 = getOperandValue(CS.getArgument(1), SF);
+	bool isVectorType = CS.getInstruction()->getType()->isVectorTy();
+	if (AOp1.hasValue() && AOp2.hasValue()) {
+	  GenericValue Op1 = AOp1.getValue();
+	  GenericValue Op2 = AOp2.getValue();
+	  GenericValue R;   // Result
+	  if (F->getIntrinsicID() == Intrinsic::usub_sat ||
+	      F->getIntrinsicID() == Intrinsic::ssub_sat) {
+	      R.IntVal = Op1.IntVal - Op2.IntVal;
+	  } else {
+	    assert(F->getIntrinsicID() == Intrinsic::uadd_sat ||
+		   F->getIntrinsicID() == Intrinsic::sadd_sat);
+	    R.IntVal = Op1.IntVal + Op2.IntVal;
+	  } 
+	  SetValue(CS.getInstruction(), AbsGenericValue(R), SF);
+	  return;
+	} 
+      }
+      #endif 
+      SetValue(CS.getInstruction(), llvm::None, SF);
+      return;
+    case Intrinsic::uadd_with_overflow:
+    case Intrinsic::sadd_with_overflow:
+    case Intrinsic::usub_with_overflow:
+    case Intrinsic::ssub_with_overflow:
+    case Intrinsic::umul_with_overflow:
+    case Intrinsic::smul_with_overflow:
+      // LowerIntrinsicCall (llvm10) cannot lower these intrinsics
+      #if 1
+      // HACK: we approximate these intrinsics with +,-, and * and
+      // assume that there is overflow.
+      {
+	ExecutionContext &SF = ECStack.back();
+	AbsGenericValue AOp1 = getOperandValue(CS.getArgument(0), SF);
+	AbsGenericValue AOp2 = getOperandValue(CS.getArgument(1), SF);
+	bool isVectorType = CS.getInstruction()->getType()->isVectorTy();
+	if (AOp1.hasValue() && AOp2.hasValue()) {
+	  GenericValue Op1 = AOp1.getValue();
+	  GenericValue Op2 = AOp2.getValue();
+	  GenericValue R;   // Result
+	  R.AggregateVal.resize(2);
+	  if (F->getIntrinsicID() == Intrinsic::usub_with_overflow ||
+	      F->getIntrinsicID() == Intrinsic::ssub_with_overflow) {
+	    R.AggregateVal[0].IntVal = Op1.IntVal - Op2.IntVal;
+	    R.AggregateVal[1].IntVal = 0; // no overflow
+	  } else if (F->getIntrinsicID() == Intrinsic::uadd_with_overflow ||
+		     F->getIntrinsicID() == Intrinsic::sadd_with_overflow) {
+	    R.AggregateVal[0].IntVal = Op1.IntVal + Op2.IntVal;	    
+	    R.AggregateVal[1].IntVal = 0; // no overflow
+	  } else {
+	    assert(F->getIntrinsicID() == Intrinsic::umul_with_overflow ||
+		   F->getIntrinsicID() == Intrinsic::smul_with_overflow);
+	    R.AggregateVal[0].IntVal = Op1.IntVal * Op2.IntVal;	    	    
+	    R.AggregateVal[1].IntVal = 0; // no overflow
+	  }
+	  SetValue(CS.getInstruction(), AbsGenericValue(R), SF);
+	  return;
+	}
+      }
+      #endif 
+      SetValue(CS.getInstruction(), llvm::None, SF);
       return;
     default:
       // If it is an unknown intrinsic function, use the intrinsic lowering
