@@ -347,12 +347,10 @@ callExternalFunction(Instruction *CI, Function *F, ArrayRef<AbsGenericValue> AAr
   // We don't want to call exit from the interpreter because it will
   // abort also OCCAM
   if (F->getName().equals("exit")) {
-    CallSite CS(CI);
-    ExecutionContext &SF = ECStack.back();
-    AbsGenericValue ExitCode = getOperandValue(CS.getArgument(0), SF);
-    if (ExitCode.hasValue()) {
-      if (ExitCode.getValue().IntVal.getZExtValue() != 0) {
-	errs() << "*** ConfigPrime: ignoring \"" << F->getName() << "\"\n";
+    if (AArgVals.size() == 1) {
+      AbsGenericValue ExitCode = AArgVals[0];
+      if (!ExitCode.hasValue() ||
+	  ExitCode.getValue().IntVal.getZExtValue() != 0) {
 	NonZeroExitCode = true;
       }
     }
