@@ -1,3 +1,7 @@
+#include "llvm/ADT/SCCIterator.h"
+#include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/DenseSet.h"
+#include "llvm/Analysis/CallGraph.h"
 #include "llvm/Analysis/LoopPass.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/GenericValue.h"
@@ -31,16 +35,6 @@ static cl::opt<unsigned>
 namespace previrt {
 
 /** Begin helpers **/
-
-static Loop *getRootLoop(LoopInfo &LI, const BasicBlock *B) {
-  if (Loop *Root = LI.getLoopFor(B)) {
-    while (Root->getLoopDepth() > 1) {
-      Root = Root->getParentLoop();
-    }
-    return Root;
-  }
-  return nullptr;
-}
 
 static std::vector<GenericValue>
 prepareArgumentsForMain(Function *mainFn,
@@ -93,68 +87,34 @@ prepareArgumentsForMain(Function *mainFn,
   return GVArgs;
 }
 
-static void
-extractValuesFromRun(Interpreter &Interp, Pass *CPPass,
-                     DenseMap<Value *, RawAndDerefValue> &GlobalValues,
-                     DenseMap<Value *, RawAndDerefValue> &StackValues,
-                     SmallVector<BasicBlock *, 4> &Continuations) {
-
-  BasicBlock *LastExecBlock =
-      Interp.inspectStackAndGlobalState(GlobalValues, StackValues);
-
-#if 0
-  if (LastExecBlock) {
-    // This is typically a bad choice because if LastExecBlock is in
-    // the middle of a loop won't dominate "relevant" uses.
-    Continuations.push_back(LastExecBlock);
-  } else {
-    errs() << "The interpreter finished completely!\n";
-  }
-#else
-  // If the last executed block BB is not inside any loop then the
-  // continuation should be BB.  Otherwise, we identify the outermost
-  // loop where BB is defined and return the exit block or blocks of
-  // that loop.
-  //
-  // My intuition is that the execution will be typically stopped in
-  // the middle of the get-opt loop that reads input parameters. We
-  // pretend that the rest of the loop won't modify either globalVals
-  // or stackVals.
-  if (LastExecBlock) {
-    // errs() << "Last executed block: " << LastExecBlock->getName() << "\n";
-    Function &F = *(LastExecBlock->getParent());
-    LoopInfo &LI = CPPass->getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
-    if (Loop *OuterMostL = getRootLoop(LI, LastExecBlock)) {
-      // XXX: only for LLVM debug builds:
-      // OuterMostL->dump();
-      //// Consider the outermost loop's header as continuation.
-      // Continuations.push_back(OuterMostL->getHeader());
-      // errs() << "Candidate for continuation block: "
-      //       << OuterMostL->getHeader()->getName() << "\n";
-
-      //// Consider the outermost loop's exits as continuations.
-      OuterMostL->getExitingBlocks(Continuations);
-
-      errs() << "Candidates for continuation block:\n";
-      for (BasicBlock *Exit : Continuations) {
-        if (Exit->hasName()) {
-          errs() << "\t" << Exit->getName() << "\n";
-        } else {
-          errs() << "\t"
-                 << "Unnamed block\n";
-        }
+  static bool equal(Type *Ty, GenericValue &Val1, GenericValue &Val2) {
+  switch (Ty->getTypeID()) {
+  case Type::IntegerTyID:
+    return Val1.IntVal == Val2.IntVal;
+  case Type::FloatTyID:
+    return Val1.FloatVal == Val2.FloatVal;
+  case Type::DoubleTyID:
+    return Val1.DoubleVal == Val2.DoubleVal; 
+  case Type::VectorTyID: {
+    auto *VT = cast<VectorType>(Ty);
+    Type *ElemT = VT->getElementType();
+    unsigned numElems = VT->getNumElements();
+    std::vector<Constant *> VElems;
+    for (unsigned i = 0; i < numElems; ++i) {
+      // -- be careful there is a recursive call
+      if (!equal(Ty, Val1.AggregateVal[i], Val2.AggregateVal[i])) {
+	return false;
       }
-    } else {
-      // errs() << "Candidate for continuation block: "
-      // 	     << LastExecBlock->getName() << "\n";
-      Continuations.push_back(LastExecBlock);
     }
-  } else {
-    errs() << "The interpreter finished completely!\n";
+    return true;
   }
-#endif
+  case Type::PointerTyID: 
+  case Type::X86_FP80TyID:
+  default:
+    return false;
+  }
 }
-
+  
 static Constant *convertToLLVMConstant(Type *Ty, GenericValue &Val) {
   switch (Ty->getTypeID()) {
   case Type::IntegerTyID:
@@ -166,7 +126,7 @@ static Constant *convertToLLVMConstant(Type *Ty, GenericValue &Val) {
   case Type::VectorTyID: {
     auto *VT = cast<VectorType>(Ty);
     Type *ElemT = VT->getElementType();
-    const unsigned numElems = VT->getNumElements();
+    unsigned numElems = VT->getNumElements();
     std::vector<Constant *> VElems;
     for (unsigned i = 0; i < numElems; ++i) {
       if (Constant *C = convertToLLVMConstant(ElemT, Val.AggregateVal[i])) {
@@ -184,10 +144,20 @@ static Constant *convertToLLVMConstant(Type *Ty, GenericValue &Val) {
   }
 }
 
+static Loop *getRootLoop(LoopInfo &LI, const BasicBlock &B) {
+  if (Loop *Root = LI.getLoopFor(&B)) {
+    while (Root->getLoopDepth() > 1) {
+      Root = Root->getParentLoop();
+    }
+    return Root;
+  }
+  return nullptr;
+}
+  
 // Return true if a block in BBs dominates I.
 // This might be unsound.
-static bool may_dominate(const SmallVector<BasicBlock *, 4> &BBs,
-                         Instruction *I, Pass *CPPass) {
+static bool mayDominate(const SmallVector<BasicBlock *, 4> &BBs,
+                         Instruction *I, Pass &CPPass) {
   assert(!BBs.empty());
   // we know already that all BBs belong to the same parent.
 
@@ -196,14 +166,14 @@ static bool may_dominate(const SmallVector<BasicBlock *, 4> &BBs,
   if (F != BBs_F)
     return false;
 
-  auto &DT = CPPass->getAnalysis<DominatorTreeWrapperPass>(*F).getDomTree();
-  auto &LI = CPPass->getAnalysis<LoopInfoWrapperPass>(*F).getLoopInfo();
+  auto &DT = CPPass.getAnalysis<DominatorTreeWrapperPass>(*F).getDomTree();
+  auto &LI = CPPass.getAnalysis<LoopInfoWrapperPass>(*F).getLoopInfo();
   // DT.print(errs());
 
   return std::any_of(BBs.begin(), BBs.end(),
                      [&DT, &LI, &I](const BasicBlock *B) {
-                       auto RootLoop_B = getRootLoop(LI, B);
-                       auto RootLoop_I = getRootLoop(LI, I->getParent());
+                       auto RootLoop_B = getRootLoop(LI, *B);
+                       auto RootLoop_I = getRootLoop(LI, *(I->getParent()));
                        if (RootLoop_B && (RootLoop_B == RootLoop_I)) {
                          // Heuristic to increase soundness if B is a loop
                          // header.
@@ -276,10 +246,247 @@ void ConfigPrime::stopInterpreter(Module &M, const APInt &Res) {
 #endif
 }
 
-bool ConfigPrime::runOnModule(Module &M) {
-  // TODOX: Similar to lli, we can provide other modules, extra
-  // objects or archives.
+  
+static void markRecursiveFunctions(CallGraph &cg, DenseSet<Function*> &out) {
+  for (auto it = scc_begin(&cg); !it.isAtEnd(); ++it) {
+    auto &scc = *it;
+    bool recursive = false;
+    if (scc.size() == 1 && it.hasLoop()) {
+      // direct recursive
+      recursive = true;
+    } else if (scc.size() > 1) {
+      // indirect recursive
+      recursive = true;
+    }
+    if (recursive) {
+      for (CallGraphNode *cgn : scc) {
+        Function *fn = cgn->getFunction();
+        if (!fn || fn->isDeclaration() || fn->empty()) {
+          continue;
+        }
+        out.insert(fn);
+      }
+    }
+  }
+}
+  
+// static bool isSafeToReplace(Instruction &I,
+// 			    DenseMap<BasicBlock*, bool> &blocksInLoops,
+// 			    const DenseSet<Function*> &recursiveFunctions,
+// 			    Pass &CPPass) {
+//   BasicBlock &B = *(I.getParent());  
+//   if (recursiveFunctions.count(B.getParent()) > 0) {
+//     errs() << "\t" << B.getName() << " is marked as recursive\n";
+//     return false;
+//   }
+  
+//   auto it = blocksInLoops.find(&B);
+//   if (it != blocksInLoops.end()) {
+//     if (it->second) {
+//       errs() << "\t" << B.getName() << " inside a loop [CACHE]\n";      
+//     }
+//     return it->second;
+//   } else {
+//     Function &F = *(B.getParent());
+//     LoopInfo &LI = CPPass.getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
+//     bool isInsideLoop = false;    
+//     if (auto Loop = LI.getLoopFor(&B)) {
+//       isInsideLoop = true;
+//       errs() << "\t" << B.getName() << " inside a loop " << *Loop << "\n";
+//     }
+//     // cache for later
+//     blocksInLoops[&B] = isInsideLoop;
+//     return (!isInsideLoop);
+//   }
+// }
+  
+static bool simplifyPrefix(Interpreter &Interp, Pass &CPPass,
+       const std::vector<std::pair<Instruction*, GenericValue>>& ExecutedMemInsts) {
 
+  // ExecutedMemInsts can contain the same instruction multiple times
+  // with possibly different values if the execution went through a
+  // loop. replaceMap creates a map where the key is an instruction
+  // and its value is a vector of values: one for each possible value
+  // of the instruction if the instruction is executed multiple times.
+  
+  DenseMap<Instruction*, std::vector<GenericValue>> replaceMap;
+  for(auto &kv: ExecutedMemInsts) {
+    auto it = replaceMap.find(kv.first);
+    if (it == replaceMap.end()) {
+      std::vector<GenericValue> values{kv.second};
+      replaceMap[kv.first] = values;
+    } else {
+      it->second.push_back(kv.second);
+    }
+  }
+    
+  // The join operation for constant propagation where constants are
+  // GenericValue's
+  auto constantJoin =
+    [](Type *ty, const std::vector<GenericValue>& values) {
+    AbsGenericValue oldAbsVal;
+    for (unsigned i=0, sz=values.size(); i<sz;++i) {
+      GenericValue val = values[i];
+      if (oldAbsVal.hasValue()) {
+	//errs() << "Joining ";
+	//printAbsGenericValue(ty, oldAbsVal);
+	//errs() << " and ";
+	//printAbsGenericValue(ty, val);
+	//errs() << "\n";
+	if (!equal(ty, oldAbsVal.getValue(), val)) {
+	  //errs() << "\ttop\n";	    
+	  return AbsGenericValue();
+	} else {
+	  //errs() << "\t"; printAbsGenericValue(ty, val); errs() << "\n";
+	}
+      }
+      oldAbsVal = AbsGenericValue(val);
+    }
+    return oldAbsVal;
+  };
+  
+  // DenseMap<BasicBlock*, bool> blocksInLoops;
+  // DenseSet<Function*> recursiveFunctions;
+  // CallGraph &cg = CPPass.getAnalysis<CallGraphWrapperPass>().getCallGraph();
+  // markRecursiveFunctions(cg, recursiveFunctions);
+  
+  bool Change = false;
+  for(auto &kv: replaceMap) {
+    Instruction *I = kv.first;
+    Value * valueToReplace = nullptr;
+    
+    if (LoadInst *LI = dyn_cast<LoadInst>(I)) {
+      valueToReplace = LI;
+    } else if (StoreInst *SI = dyn_cast<StoreInst>(I)) {
+      valueToReplace = SI->getValueOperand();
+      if (isa<Constant>(valueToReplace)) {
+	// already a constant so nothing to do
+	continue;
+      }
+    }
+    if (!valueToReplace) {
+      continue;
+    }
+
+    // if (!isSafeToReplace(*I, blocksInLoops, recursiveFunctions, CPPass)) {
+    //   errs() << "[PREFIX] cannot replace " << *valueToReplace
+    // 	     << " because it's not safe\n";
+    //   continue;
+    // }
+
+    errs() << "[PREFIX] checking if we can simplify " << *valueToReplace <<"\n";
+    Type *ty = valueToReplace->getType();
+    auto &values = kv.second;
+    AbsGenericValue val = constantJoin(ty, values);
+    if (val.hasValue()) {
+      if (Constant *C = convertToLLVMConstant(ty,val.getValue())) {
+	errs() << "[PREFIX] replaced " << *valueToReplace << " with "
+	       << *C << "\n";
+	valueToReplace->replaceAllUsesWith(C);
+	Change = true;
+      }
+    } 
+  }
+  
+  return Change;
+}
+
+// Simplify parts of the code that has not been executed by the
+// interpreter (we call it suffixes). We do that by identifying
+// information from the executed path (we call it prefix) that can be
+// used to simplify unseen code.
+static bool simplifySpeculativelySuffixes
+(Interpreter &Interp, Pass &CPPass,
+ BasicBlock &LastBlock,
+ DenseMap<Value *, RawAndDerefValue> &GlobalValues,
+ DenseMap<Value *, std::vector<RawAndDerefValue>> &StackValues /*unused*/) {
+  
+  // 1. Identify the basic block(s) on which we are going to take the
+  // memory snapshot.
+  // 
+  // If the last executed block BB is not inside any loop then the
+  // continuation should be BB.  Otherwise, we identify the outermost
+  // loop where BB is defined and return the exit block or blocks of
+  // that loop.  My intuition is that the execution will be typically
+  // stopped in the middle of the get-opt loop that reads input
+  // parameters. We pretend that the rest of the loop won't modify
+  // either globalVals or stackVals.
+  bool Change = false;
+  SmallVector<BasicBlock *, 4> MemSnapshots;
+  Function &F = *(LastBlock.getParent());
+  LoopInfo &LI = CPPass.getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
+  if (Loop *OuterMostL = getRootLoop(LI, LastBlock)) {
+    //// Consider the outermost loop's exits as continuations.
+    OuterMostL->getExitingBlocks(MemSnapshots);
+    errs() << "Candidates for continuation block:\n";
+    for (BasicBlock *Exit : MemSnapshots) {
+      if (Exit->hasName()) {
+	errs() << "\t" << Exit->getName() << "\n";
+      } else {
+	errs() << "\t"
+	       << "Unnamed block\n";
+      }
+    }
+  } else {
+    MemSnapshots.push_back(&LastBlock);
+  }
+
+  // 2. Replace left-hand side of LoadInst instructions with values
+  // obtained from the memory snapshot. The difficult part is to
+  // ensure that the memory location that is being accessed has not
+  // been modified since the snapshot was taken. 
+  if (!MemSnapshots.empty()) {
+    // Sanity check
+    BasicBlock *ContBB = *(MemSnapshots.begin());
+    auto it = MemSnapshots.begin();
+    (void)ContBB; // avoid warning in non-debug builds
+    (void)it;     // avoid warning in non-debug builds
+    assert(
+        std::all_of(++it, MemSnapshots.end(), [&ContBB](const BasicBlock *B) {
+          return ContBB->getParent() == B->getParent();
+        }));
+
+    auto replaceValues = [&MemSnapshots, &CPPass](
+        DenseMap<Value *, RawAndDerefValue> &m, bool &change) {
+      for (auto &kv : m) {
+        if (kv.second.hasDerefValue()) {
+          Type *ElementType = kv.first->getType()->getPointerElementType();
+          GenericValue ElementVal = kv.second.getDerefValue();
+          if (Constant *C = convertToLLVMConstant(ElementType, ElementVal)) {
+            for (auto &U : kv.first->uses()) {
+              if (LoadInst *LI = dyn_cast<LoadInst>(U.getUser())) {
+                if (mayDominate(MemSnapshots, LI, CPPass)) {
+                  errs() << "[SUFFIX] replaced "
+                         << "lhs of " << *LI << " with " << *C << "\n";
+                  errs() << *(LI->getParent()) << "\n";
+                  LI->replaceAllUsesWith(C);
+                  change = true;
+                }
+              }
+            }
+          }
+        }
+      }
+    };
+
+    // TOIMPROVE: this is very limited.
+    // We only replace loads from global variables with the
+    // constant values from the interpreter's execution. More
+    // importantly, we only perform the replacement if the memory load
+    // and the last executed block belong to the same function.
+    replaceValues(GlobalValues, Change);
+  } 
+  
+  return Change;
+  
+}
+  
+bool ConfigPrime::runOnModule(Module &M) {
+  // TODO: Similar to lli, we can provide other modules, extra objects
+  // or archives.
+
+  //  llvm::errs() << M << "\n";
+  
   APInt Res; // The exit status of running main
   std::string ErrorMsg;
   std::unique_ptr<Module> M_ptr(&M);
@@ -303,92 +510,31 @@ bool ConfigPrime::runOnModule(Module &M) {
 
   /// -- Extract values from the execution
   Interpreter *Interp = static_cast<Interpreter *>(&*m_ee);
-  DenseMap<Value *, RawAndDerefValue> GlobalValues, StackValues;
-  SmallVector<BasicBlock *, 4> Continuations;
-  extractValuesFromRun(*Interp, this, GlobalValues, StackValues, Continuations);
-
-  if (Interp->exitExecuted()) {
+  if (Interp->exitNonZero()) {
     errs() << "****************************************************************\n"; 
     errs() << "************************* WARNING ******************************\n";
     errs() << "****************************************************************\n";
-    errs() << "The exit() function has been called during Configuration Prime.\n";
+    errs() << "The exit() function has been called during Configuration Prime ";
+    errs() << "with a non-zero value\n";
     errs() << "This might be because the program environment is not the\n"
-           << "expected one (e.g., some file does not exist, no file permissions,etc).\n";
-    errs() << "****************************************************************\n";	      
+           << "expected one (e.g., some file does not exist, no file permissions,etc).\n"
+	   << "For this reason, configuration prime is disabled.\n";
+    errs() << "****************************************************************\n";
+    return false;
   }
-      
-#if 0
-  auto printValueMap = [](DenseMap<Value*,RawAndDerefValue> &m, raw_ostream &o) {
-    for (auto &kv: m) {
-      if (kv.second.hasDerefValue()) {
-	o << "*(" << kv.first->getName() << ")=";
-	printAbsGenericValue(kv.first->getType()->getPointerElementType(),
-			     kv.second.getDerefValue());
-      } else {
-	o << kv.first->getName() << "=";	  
-	printAbsGenericValue(kv.first->getType(), kv.second.getRawValue());
-      }
-      o << "\n";
-    }
-  };
   
-  errs() << "Global values:\n";
-  printValueMap(GlobalValues, errs());
-  errs() << "Local values:\n";
-  printValueMap(StackValues, errs());
-#endif
+  DenseMap<Value *, RawAndDerefValue> GlobalValues;
+  DenseMap<Value *, std::vector<RawAndDerefValue>> StackValues;  
+  BasicBlock *LastExecBlock =
+    Interp->inspectStackAndGlobalState(GlobalValues, StackValues);
 
-  /// -- Simplify program
-  bool Change = false;
-  if (!Continuations.empty()) {
+  if (!LastExecBlock) {
+    errs() << "****************************************************************\n";
+    errs() << "           The interpreter finished completely!\n";
+    errs() << "****************************************************************\n";    
 
-    // Sanity check
-    BasicBlock *ContBB = *(Continuations.begin());
-    auto it = Continuations.begin();
-    (void)ContBB; // avoid warning in non-debug builds
-    (void)it;     // avoid warning in non-debug builds
-    assert(
-        std::all_of(++it, Continuations.end(), [&ContBB](const BasicBlock *B) {
-          return ContBB->getParent() == B->getParent();
-        }));
-
-    auto replaceValues = [&Continuations, this](
-        DenseMap<Value *, RawAndDerefValue> &m, bool &change) {
-      for (auto &kv : m) {
-        if (kv.second.hasDerefValue()) {
-          Type *ElementType = kv.first->getType()->getPointerElementType();
-          GenericValue ElementVal = kv.second.getDerefValue();
-          if (Constant *C = convertToLLVMConstant(ElementType, ElementVal)) {
-            for (auto &U : kv.first->uses()) {
-              if (LoadInst *LI = dyn_cast<LoadInst>(U.getUser())) {
-                if (may_dominate(Continuations, LI, this)) {
-                  errs() << "Replaced "
-                         << "lhs of " << *LI << " with " << *C << "\n";
-                  errs() << *(LI->getParent()) << "\n";
-                  LI->replaceAllUsesWith(C);
-                  change = true;
-                }
-              }
-            }
-          }
-        }
-      }
-    };
-
-    // TODOX: this is very limited.
-    //
-    // We only replace loads from global variables with the
-    // constant values from the interpreter's execution. More
-    // importantly, we only perform the replacement if the memory load
-    // and the last executed block belong to the same function.
-
-    replaceValues(GlobalValues, Change);
-    // replaceValues(StackValues, Change);
-
-  } else {
     // Best case scenario: The interpreter finishes so the program can
     // be reduced to one single execution.
-
     std::vector<BasicBlock *> toRemove;
     for (auto &F : M) {
       for (auto &BB : F) {
@@ -405,11 +551,15 @@ bool ConfigPrime::runOnModule(Module &M) {
       previrt::transforms::removeBlock(BB, M.getContext());
     }
 
-    // XXX: I think it makes sense to call the destructors and
+    // I think it makes sense to call the destructors and
     // finalization routines if the execution finished.
     stopInterpreter(M, Res);
+    return true;
   }
 
+  bool Change = simplifyPrefix(*Interp, *this, Interp->getExecutedMemInsts()); 
+  Change |= simplifySpeculativelySuffixes(*Interp, *this, *LastExecBlock, 
+					  GlobalValues, StackValues);
   return Change;
 }
 
@@ -417,6 +567,7 @@ void ConfigPrime::getAnalysisUsage(AnalysisUsage &AU) const {
   // TODOX: update on the fly
   // AU.setPreservesAll();
   AU.addRequiredID(LoopSimplifyID);
+  //AU.addRequired<CallGraphWrapperPass>();  
   AU.addRequired<LoopInfoWrapperPass>();
   AU.addRequired<DominatorTreeWrapperPass>();
 }

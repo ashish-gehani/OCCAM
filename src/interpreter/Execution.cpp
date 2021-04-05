@@ -162,7 +162,7 @@ void Interpreter::initializeGlobalVariable(GlobalVariable &GV) {
   if (void *GA = getPointerToGlobalIfAvailable(&GV)) {
     // Not sure if this is necessary
     // MemGlobals.add(GA, (size_t)getDataLayout().getTypeAllocSize(GV.getType()));
-    // XXX: mark as initialized all the memory of the initializer
+    // mark as initialized all the memory of the initializer
     initMemory(GV.getInitializer(), GA);
   } else {
     LOG << "\t" << "Pointer to global " << GV.getName()  << " is not available\n";
@@ -1274,8 +1274,13 @@ void Interpreter::visitBinaryOperator(BinaryOperator &I) {
   AbsGenericValue ASrc2 = getOperandValue(I.getOperand(1), SF);
 
   if (!ASrc1.hasValue() || !ASrc2.hasValue()) {
+    //TODO: if And and one operand is false then return false
+    //      if Or  and one operand is true then return true
+    //      if Mul and one operand is zero then return zero
+    //      if Div and numerator is zero then return zero
     LOG << "skipped " << I << "\n";
-    SetValue(&I, llvm::None, SF);    
+    SetValue(&I, llvm::None, SF);
+    return;
   }
 
   GenericValue Src1 = ASrc1.getValue();
@@ -1468,7 +1473,7 @@ void Interpreter::popStackAndReturnValueToCaller(Type *RetTy,
       if (Result.hasValue()) {
 	ExitValue = Result.getValue();
       } else {
-	// XXX: if the result is unknown we pretend the program succeed	
+	// if the result is unknown we pretend the program succeed	
 	memset(&ExitValue.Untyped, 0, sizeof(ExitValue.Untyped));
       }
     } else {
@@ -1528,6 +1533,7 @@ void Interpreter::visitBranchInst(BranchInst &I) {
       ACondVal = AbsGenericValue(CondValFromUser);
 #else      
       /// End of our execution: we cannot keep going
+      errs() << "INTERPRETER STOPPED: cannot evaluate branch condition\n";
       StopExecution = true;
       return;
 #endif       
@@ -1550,6 +1556,7 @@ void Interpreter::visitSwitchInst(SwitchInst &I) {
   AbsGenericValue ACondVal = getOperandValue(Cond, SF);
   if (!ACondVal.hasValue()) {
     /// End of our execution: we cannot keep going
+    errs() << "INTERPRETER STOPPED: cannot evaluate switch condition\n";    
     StopExecution = true;
     return;
   }
@@ -1574,6 +1581,7 @@ void Interpreter::visitIndirectBrInst(IndirectBrInst &I) {
   AbsGenericValue AAddr = getOperandValue(I.getAddress(), SF);
   if (!AAddr.hasValue()) {
     /// End of our execution: we cannot keep going
+    errs() << "INTERPRETER STOPPED: cannot evaluate indirect branch\n";        
     StopExecution = true;
     return;
   }
@@ -1756,7 +1764,7 @@ void Interpreter::visitLoadInst(LoadInst &I) {
   GenericValue *Ptr = (GenericValue*)GVTOP(Src);
 
   if (!isa<GlobalVariable>(I.getPointerOperand()->stripPointerCasts())) {
-    // XXX: global variables are always allocated in memory and
+    // global variables are always allocated in memory and
     // isAllocatedMemory should know that. However, for global
     // variables like this one:
     // 
@@ -1774,10 +1782,12 @@ void Interpreter::visitLoadInst(LoadInst &I) {
   LoadValueFromMemory(Result, Ptr, I.getType());
   //GenericValue Result = readFromMemory(Ptr, I.getType());
 
+  addExecutedMemInst(&I, Result);  
+  
   LOG << "\tVal=";
   printAbsGenericValue(I.getType(), Result);
   LOG << "\n";
-  
+
   SetValue(&I, Result, SF);
   // if (I.isVolatile() && PrintVolatile)
   //   dbgs() << "Volatile load " << I;
@@ -1811,14 +1821,16 @@ void Interpreter::visitStoreInst(StoreInst &I) {
   
   GenericValue Val = AVal.getValue();
   if (!isa<GlobalVariable>(I.getPointerOperand()->stripPointerCasts())) {
-    // XXX: see explanation in VisitLoadInst
+    // see explanation in VisitLoadInst
     if (!isAllocatedMemory((void*) Ptr)) {
       LOG << "Writing to untrackable memory location.\n";
       return;
     }
   }
-
-  StoreValueToMemory(Val, Ptr, I.getOperand(0)->getType()); 
+  
+  addExecutedMemInst(&I, Val);
+  StoreValueToMemory(Val, Ptr, I.getOperand(0)->getType());
+  
   // writeToMemory(Val, Ptr, I.getOperand(0)->getType());
   // if (I.isVolatile() && PrintVolatile)
   //   dbgs() << "Volatile store: " << I;
@@ -1854,6 +1866,50 @@ void Interpreter::visitCallSite(CallSite CS) {
     case Intrinsic::not_intrinsic:
       break;
     case Intrinsic::vastart: { // va_start
+      // This modeling of va_start assumes that the code uses VAArgInst
+      // to access to each variable argument. However, the frontend
+      // might lower VAArgInst so the interpreter will get lost.
+      //
+
+      #if 1
+      // HACK if Clang does not add VAArgInst:
+      // Assumes %struct.__va_list_tag = type { i32, i32, i8*, i8* }
+      ExecutionContext &PenultimateSF = ECStack[ECStack.size()-2];
+      if (Function *CalleeF = PenultimateSF.Caller.getCalledFunction()) {
+	// Value *FirstVarArg =
+	//   PenultimateSF.Caller.getArgument(
+	//        (PenultimateSF.Caller.arg_size() - CalleeF->arg_size())+1);
+
+	Value *FirstVarArg =
+	  PenultimateSF.Caller.getArgument(0);
+	
+	llvm::errs() << "First vararg=" << FirstVarArg
+		     << " -> " << *FirstVarArg << "\n";
+	  
+	assert(CS.getArgument(0)->getType()->isPointerTy());
+	LLVMContext &ctx = CS.getInstruction()->getContext();	
+	AbsGenericValue abs_va_list = getOperandValue(CS.getArgument(0),
+						      SF);
+	if (abs_va_list.hasValue()) {
+	  GenericValue va_list = abs_va_list.getValue();
+	  va_list.PointerVal = ((char*)va_list.PointerVal) + 8;	  
+	  llvm::errs() << "Storing " << FirstVarArg 
+		       << " to memory address="
+		       << (void*)va_list.PointerVal << "\n";
+	  Type *i8PtrTy = static_cast<Type*>(Type::getInt8PtrTy(ctx));
+	  StoreValueToMemory(PTOGV(FirstVarArg), (GenericValue*)GVTOP(va_list), i8PtrTy);
+	}
+      }
+      #endif 
+
+      // Variable arguments are stored in ExecutionContext.VarArgs. A
+      // variable argument is encoded as GenericValue.UIntPairVal
+      // where the first pair element is the index in ECStack
+      // associated to the last execution context and the second
+      // element is 0 indicating the first variable
+      // argument. VAArgInst will increase the second pair element
+      // after each access.
+      
       GenericValue ArgIndex;
       ArgIndex.UIntPairVal.first = ECStack.size() - 1;
       ArgIndex.UIntPairVal.second = 0;
@@ -1864,6 +1920,78 @@ void Interpreter::visitCallSite(CallSite CS) {
       return;
     case Intrinsic::vacopy:   // va_copy: dest = src
       SetValue(CS.getInstruction(), getOperandValue(*CS.arg_begin(), SF), SF);
+      return;
+    case Intrinsic::uadd_sat:
+    case Intrinsic::sadd_sat:
+    case Intrinsic::usub_sat:
+    case Intrinsic::ssub_sat:
+      // LowerIntrinsicCall (llvm10) cannot lower these intrinsics
+      #if 1
+      // HACK: we approximate these intrinsics with +,-, and *
+      {
+	ExecutionContext &SF = ECStack.back();
+	AbsGenericValue AOp1 = getOperandValue(CS.getArgument(0), SF);
+	AbsGenericValue AOp2 = getOperandValue(CS.getArgument(1), SF);
+	bool isVectorType = CS.getInstruction()->getType()->isVectorTy();
+	if (AOp1.hasValue() && AOp2.hasValue()) {
+	  GenericValue Op1 = AOp1.getValue();
+	  GenericValue Op2 = AOp2.getValue();
+	  GenericValue R;   // Result
+	  if (F->getIntrinsicID() == Intrinsic::usub_sat ||
+	      F->getIntrinsicID() == Intrinsic::ssub_sat) {
+	      R.IntVal = Op1.IntVal - Op2.IntVal;
+	  } else {
+	    assert(F->getIntrinsicID() == Intrinsic::uadd_sat ||
+		   F->getIntrinsicID() == Intrinsic::sadd_sat);
+	    R.IntVal = Op1.IntVal + Op2.IntVal;
+	  } 
+	  SetValue(CS.getInstruction(), AbsGenericValue(R), SF);
+	  return;
+	} 
+      }
+      #endif 
+      SetValue(CS.getInstruction(), llvm::None, SF);
+      return;
+    case Intrinsic::uadd_with_overflow:
+    case Intrinsic::sadd_with_overflow:
+    case Intrinsic::usub_with_overflow:
+    case Intrinsic::ssub_with_overflow:
+    case Intrinsic::umul_with_overflow:
+    case Intrinsic::smul_with_overflow:
+      // LowerIntrinsicCall (llvm10) cannot lower these intrinsics
+      #if 1
+      // HACK: we approximate these intrinsics with +,-, and * and
+      // assume that there is overflow.
+      {
+	ExecutionContext &SF = ECStack.back();
+	AbsGenericValue AOp1 = getOperandValue(CS.getArgument(0), SF);
+	AbsGenericValue AOp2 = getOperandValue(CS.getArgument(1), SF);
+	bool isVectorType = CS.getInstruction()->getType()->isVectorTy();
+	if (AOp1.hasValue() && AOp2.hasValue()) {
+	  GenericValue Op1 = AOp1.getValue();
+	  GenericValue Op2 = AOp2.getValue();
+	  GenericValue R;   // Result
+	  R.AggregateVal.resize(2);
+	  if (F->getIntrinsicID() == Intrinsic::usub_with_overflow ||
+	      F->getIntrinsicID() == Intrinsic::ssub_with_overflow) {
+	    R.AggregateVal[0].IntVal = Op1.IntVal - Op2.IntVal;
+	    R.AggregateVal[1].IntVal = 0; // no overflow
+	  } else if (F->getIntrinsicID() == Intrinsic::uadd_with_overflow ||
+		     F->getIntrinsicID() == Intrinsic::sadd_with_overflow) {
+	    R.AggregateVal[0].IntVal = Op1.IntVal + Op2.IntVal;	    
+	    R.AggregateVal[1].IntVal = 0; // no overflow
+	  } else {
+	    assert(F->getIntrinsicID() == Intrinsic::umul_with_overflow ||
+		   F->getIntrinsicID() == Intrinsic::smul_with_overflow);
+	    R.AggregateVal[0].IntVal = Op1.IntVal * Op2.IntVal;	    	    
+	    R.AggregateVal[1].IntVal = 0; // no overflow
+	  }
+	  SetValue(CS.getInstruction(), AbsGenericValue(R), SF);
+	  return;
+	}
+      }
+      #endif 
+      SetValue(CS.getInstruction(), llvm::None, SF);
       return;
     default:
       // If it is an unknown intrinsic function, use the intrinsic lowering
@@ -1904,7 +2032,7 @@ void Interpreter::visitCallSite(CallSite CS) {
   AbsGenericValue SRC = getOperandValue(SF.Caller.getCalledValue(), SF);
 
   if (!SRC.hasValue()) {
-    LOG << "the called function is unknown\n";
+    errs() << "INTERPRETER STOPPED: cannot resolve indirect call.\n";
     StopExecution = true;
   } else {
     callFunction((Function*)GVTOP(SRC.getValue()), ArgVals,
@@ -2969,12 +3097,6 @@ void Interpreter::visitInsertValueInst(InsertValueInst &I) {
   // Special handling for external functions.
   if (F->isDeclaration()) {
     AbsGenericValue Result = callExternalFunction (CS, F, ArgVals);
-    if (!F->getReturnType()->isVoidTy() && !Result.hasValue()) {
-      /// XXX: right now if Result is undefined is because one of the
-      /// arguments in ArgVals is unknown.
-      LOG << "cannot execute external call to " << F->getName()
-	  << " because of some unknown argument\n";      
-    }
     // Simulate a 'ret' instruction of the appropriate type.
     popStackAndReturnValueToCaller (F->getReturnType (), Result);
     return;
@@ -3021,8 +3143,10 @@ void Interpreter::run() {
       break;
     }
   }
-  LOG << "Finished execution after " << NumDynamicInsts << " instructions "
+  LOG << "============================================================\n";
+  LOG << "  Finished execution after " << NumDynamicInsts << " instructions "
       << " and " << VisitedBlocks.size() << " blocks\n";      ;
+  LOG << "============================================================\n";  
 }
 
 llvm::Instruction* Interpreter::getLastExecutedInst() const {
@@ -3102,7 +3226,7 @@ static AbsGenericValue dereferencePointerIfBasicElementType(AbsGenericValue Val,
 // null if the execution terminated. 
 BasicBlock* Interpreter::inspectStackAndGlobalState(
 			  DenseMap<Value*, RawAndDerefValue> &globalVals,
-			  DenseMap<Value*, RawAndDerefValue> &stackVals) {
+			  DenseMap<Value*, std::vector<RawAndDerefValue>> &stackVals) {
   
   for (unsigned m = 0, e = Modules.size(); m != e; ++m) {
     Module &M = *Modules[m];
@@ -3137,7 +3261,14 @@ BasicBlock* Interpreter::inspectStackAndGlobalState(
       auto DerefVal = dereferencePointerIfBasicElementType
 	(RawVal, V->getType(), getDataLayout());
       RawAndDerefValue RDV(RawVal.getValue(), DerefVal);
-      stackVals.insert(std::make_pair(V, RDV));
+
+      auto it = stackVals.find(V);
+      if (it!=stackVals.end()) {
+	it->second.push_back(RDV);
+      } else {
+	std::vector<RawAndDerefValue> stack{RDV};
+	stackVals.insert(std::make_pair(V, stack));	
+      }
     }
   }
 

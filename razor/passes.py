@@ -42,10 +42,6 @@ from . import driver
 
 from . import interface as inter
 
-from . import stringbuffer
-
-from . import pool
-
 from . import utils
 
 
@@ -93,7 +89,7 @@ def specialize(input_file, output_file, rewrite_file, interfaces, \
     if not rewrite_file is None:
         args += ['-Pspecialize-output', rewrite_file]
     args += driver.all_args('-Pspecialize-input', interfaces)
-    if policy <> 'none':
+    if policy != 'none':
         args += ['-Pspecialize-policy={0}'.format(policy)]
     if policy == 'bounded':
         args += ['-Pspecialize-max-bounded={0}'.format(max_bounded)]
@@ -118,7 +114,7 @@ def lib_occamize(input_file, output_file, functions):
 
     args = ['-PaddMain']
     for fn_name in functions.split(","):
-       args+= ['-entry-point={}'.format(fn_name)]
+        args+= ['-entry-point={}'.format(fn_name)]
 
     return driver.previrt(input_file,output_file, args)
 
@@ -183,7 +179,7 @@ def devirt(devirt_method, input_file, output_file):
     """use seadsa to resolve indirect function calls by adding multiple
     direct calls. devirt_method = sea_dsa | sea_dsa_with_cha
     """
-    assert(devirt_method <> 'none')
+    assert devirt_method != 'none'
     args = [ '-Pdevirt',
              ## Improve precision of sea-dsa by considering types
              '-sea-dsa-type-aware=true'
@@ -207,8 +203,7 @@ def devirt(devirt_method, input_file, output_file):
     if not os.path.isfile(output_file):
         #Some return code different from zero
         return 3
-    else:
-        return retcode
+    return retcode
 
 
 def profile(input_file, output_file):
@@ -232,7 +227,6 @@ def peval(input_file, output_file, \
           use_ipdse, use_crabopt, log=None):
     """ intra module specialization/optimization
     """
-    
     opt = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
     done = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
     tmp = tempfile.NamedTemporaryFile(suffix='.bc', delete=False)
@@ -283,16 +277,14 @@ def peval(input_file, output_file, \
                             '-Pcrab-only-main',
                             '-Pcrab-print-invariants']
             crabopt_args += [done.name, '--o={0}'.format(tmp.name)]
-            sb = stringbuffer.StringBuffer()
             retcode = driver.run(cmd, crabopt_args)
             if retcode != 0:
                 sys.stderr.write("ERROR: crabopt failed!\n")
                 shutil.copy(done.name, output_file)
                 return retcode
-            else:
-                utils.write_timestamp("Finished crabopt")
+            utils.write_timestamp("Finished crabopt")
             shutil.copy(tmp.name, done.name)
-            
+
     if use_ipdse:
         ## 1. Run dead store elimination based on sea-dsa
         passes = [
@@ -305,18 +297,17 @@ def peval(input_file, output_file, \
         passes += ['-Pipsccp']
         ## 3. cleanup after IPSCCP
         passes += ['-globaldce']
-        
+
         retcode = driver.previrt(done.name, tmp.name, passes)
         if retcode != 0:
             sys.stderr.write("ERROR: ipdse failed!\n")
             shutil.copy(done.name, output_file)
             #FIXME: unlink files
             return retcode
-        else:
-            sys.stderr.write("\tipdse finished succesfully\n")
+        sys.stderr.write("\tipdse finished succesfully\n")
         shutil.copy(tmp.name, done.name)
 
-    if policy <> 'none':
+    if policy != 'none':
         out = ['']
         iteration = 0
         while True:
@@ -327,7 +318,7 @@ def peval(input_file, output_file, \
                 # optimize using standard llvm transformations
                 retcode = _optimize(done.name, opt.name)
                 if retcode != 0:
-                    break;
+                    break
             else:
                 shutil.copy(done.name, opt.name)
 
@@ -357,7 +348,7 @@ def peval(input_file, output_file, \
             else:
                 break
     else:
-        print "\tskipped intra-module specialization"
+        print("\tskipped intra-module specialization")
 
     shutil.copy(done.name, output_file)
     try:
@@ -404,11 +395,11 @@ def specialize_program_args(input_file, output_file, \
         arg_file = arg_file.name
     else:
         arg_file = filename
-        
+
     f = open(arg_file, 'w')
     # first line the number of dynamic args
     # second line 0 name
-    # the rest is one line per parameter 
+    # the rest is one line per parameter
     f.write('{0}\n'.format(num_dynamic_args))
     f.write('0 {0}\n'.format(program_name))
     index = 1
@@ -418,15 +409,13 @@ def specialize_program_args(input_file, output_file, \
     f.close()
 
     args = ['-Pcmdline-spec', '-Pcmdline-spec-input', arg_file]
-            
+
     driver.previrt(input_file, output_file, args)
     if filename is None:
         os.unlink(arg_file)
 
-
-        
 def config_prime(input_file, output_file, known_args, num_dynamic_args):
-    """ 
+    """
     Execute the program until a branch condition is unknown.
     known_args is a list of strings
     num_dynamic_args is a non-negative number.
@@ -443,6 +432,3 @@ def config_prime(input_file, output_file, known_args, num_dynamic_args):
         index += 1
     args.append('-Pconfig-prime-unknown-args={0}'.format(num_dynamic_args))
     driver.previrt(input_file, output_file, args)
-
-
-

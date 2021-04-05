@@ -18,7 +18,9 @@ from razor.version import razor_version
 setup(
     name='razor',
     version=razor_version,
+    python_requires='>=3.6',
     description='The OCCAM saga',
+    long_description_content_type='text/markdown',
     long_description=long_description,
     url='https://github.com/SRI-CSL/OCCAM',
     author='Ian A. Mason',
@@ -47,10 +49,6 @@ setup(
         'Topic :: System :: Distributed Computing',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-
     ],
 )

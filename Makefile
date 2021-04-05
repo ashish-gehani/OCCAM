@@ -16,7 +16,6 @@ endif
 # tools that are used
 PROTOC  = $(shell which protoc)
 PYLINT  = $(shell which pylint)
-PIP     = $(shell which pip)
 MKDIR_P = mkdir -p
 RM_F    = rm -f
 
@@ -75,16 +74,13 @@ uninstall_occam_lib:
 
 
 install_razor:  dist
-ifeq ($(PIP),)
-	$(error installing razor requires pip)
-endif
-	$(PIP) install .
+	pip3 install .
 
 uninstall_razor:
 ifeq ($(PROTOC),)
 	$(error uninstalling razor requires pip)
 endif
-	$(PIP) uninstall razor
+	pip3 uninstall razor
 
 uninstall: uninstall_razor uninstall_occam_lib
 
@@ -98,15 +94,12 @@ instalar: install_occam_lib #install_razor
 
 #iam: local editable install of razor for developing
 develop: install_occam_lib
-ifeq ($(PIP),)
-	$(error developing requires pip)
-endif
-	$(PIP) install -e .
+	pip3 install -e .
 
 # python pip packaging
 
 dist: proto
-	python setup.py sdist bdist_wheel
+	python3 setup.py sdist bdist_wheel
 
 proto:  protoc
 	mkdir -p razor/proto
@@ -125,8 +118,8 @@ endif
 # change the version number in razor/version.py,
 # otherwise the server will give you an error.
 
-publish:
-	python -m twine upload dist/*
+publish: dist
+	python3 -m twine upload dist/*
 
 lint:
 ifeq ($(PYLINT),)

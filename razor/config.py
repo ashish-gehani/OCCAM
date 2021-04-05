@@ -52,7 +52,7 @@ def libExtension():
 
 __libext = libExtension()
 
-class ConfigObj(object):
+class ConfigObj:
     """All access to the environment comes through this class.
     """
     def  __init__(self, libfile, seadsalib):

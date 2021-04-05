@@ -25,7 +25,7 @@ static bool isIndirectCall(CallSite &CS) {
   if (!v)
     return false;
 
-  v = v->stripPointerCasts();
+  v = v->stripPointerCastsAndAliases();
   return !isa<Function>(v);
 }
 

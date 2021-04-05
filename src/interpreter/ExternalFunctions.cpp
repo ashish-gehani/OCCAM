@@ -48,6 +48,9 @@
 #include <utility>
 #include <vector>
 
+// To deal with Glibc trickery.
+#include <sys/stat.h>
+
 /// HAVE_FFI_CALL, HAVE_FFI_H, and HAVE_HAVE_FFI_FFI_H are defined if
 /// LLVM is compiled with --enable-libffi.
 //
@@ -143,6 +146,19 @@ static ExFunc lookupFunction(const Function *F) {
   }
   
   return FnPtr;
+}
+
+static bool hasFunctionPtrParameter(const Function &F) {
+  const FunctionType *FTy = F.getFunctionType();
+  for (unsigned i=0, num_params = FTy->getNumParams(); i<num_params; ++i) {
+    const Type *ArgTy = FTy->getParamType(i);
+    if (const PointerType *ArgPtrTy = dyn_cast<PointerType>(ArgTy)) {
+      if (isa<FunctionType>(ArgPtrTy->getElementType())) {
+	return true;
+      }
+    }
+  }
+  return false;
 }
 
 #ifdef USE_LIBFFI
@@ -304,6 +320,26 @@ static bool ffiInvoke(Instruction *I, RawFunc Fn, Function *F, ArrayRef<GenericV
 }
 #endif // USE_LIBFFI
 
+static bool stopExecution(const Function& F) {
+  if (F.onlyReadsMemory()) {
+    errs() << "INTERPRETER CONTINUED because "
+      << "the function does not access memory "
+      << "so that we do not stop execution.\n";
+	 return false;
+  } else if (F.onlyAccessesInaccessibleMemory()) {
+      errs() << "INTERPRETER CONTINUED because "      
+	     << "the function does not access memory accessible by the program\n";
+      return false;
+    } else if (!F.isSpeculatable()) {
+      errs() << "INTERPRETER CONTINUED because "            
+	     << "the function does not have sideeffects\n";
+      return false;
+    } else {
+      errs() << "INTERPRETER STOPPED because function might have side effects.\n";    
+      return true;
+    }
+}
+
 previrt::AbsGenericValue previrt::Interpreter::
 callExternalFunction(Instruction *CI, Function *F, ArrayRef<AbsGenericValue> AArgVals) {
   using namespace PatternMatch;
@@ -311,8 +347,13 @@ callExternalFunction(Instruction *CI, Function *F, ArrayRef<AbsGenericValue> AAr
   // We don't want to call exit from the interpreter because it will
   // abort also OCCAM
   if (F->getName().equals("exit")) {
-    errs() << "*** ConfigPrime: ignoring \"" << F->getName() << "\"\n";
-    ExitExecuted = true;
+    if (AArgVals.size() == 1) {
+      AbsGenericValue ExitCode = AArgVals[0];
+      if (!ExitCode.hasValue() ||
+	  ExitCode.getValue().IntVal.getZExtValue() != 0) {
+	NonZeroExitCode = true;
+      }
+    }
     return llvm::None;
   }
 
@@ -325,66 +366,47 @@ callExternalFunction(Instruction *CI, Function *F, ArrayRef<AbsGenericValue> AAr
       if (match(Arg, m_Load(m_Value(LoadAddr)))) {
 	if (GlobalVariable *GV= dyn_cast<GlobalVariable>(LoadAddr)) {
 	  if (GV->getName() == "stderr" || GV->getName() == "stdout") {
-	    errs() << "*** ConfigPrime: ignoring \"" << F->getName() << "\" on stderr or stdout.\n";
-	    StopExecution = true;
+	    errs() << "*** ConfigPrime: ignoring \""
+		   << F->getName() << "\" on stderr or stdout.\n";
 	    return llvm::None;
 	  }
 	}
       }
     }
   }
-  
-  // The interpreter doesn't support pthread calls
-  if (F->getName().startswith("pthread_")) {
-    errs() << "*** ConfigPrime: execution cannot continue ignoring a call to \""
-	   << F->getName() << "\" because of potential side-effects. \n";
-    StopExecution = true;
-    return llvm::None;
-  }
 
-  // XX: not clear why the interpreter crashes with vfprintf
-  if (F->getName().startswith("vfprintf")) {
+  // REVISIT: FFI crashes with these functions. Don't know why.
+  if (F->getName().startswith("vfprintf") ||
+      F->getName().startswith("vsnprintf")) {
     errs() << "*** ConfigPrime: execution ignores a call to \""
 	   << F->getName() << "\" \n";
     return llvm::None;
-  }
-  
-  // The intepreter cannot use FFI to make callbacks
-  FunctionType *FTy = F->getFunctionType();
-  for (unsigned i=0, num_params = FTy->getNumParams(); i<num_params; ++i) {
-    Type *ArgTy = FTy->getParamType(i);
-    if (PointerType *ArgPtrTy = dyn_cast<PointerType>(ArgTy)) {
-      if (isa<FunctionType>(ArgPtrTy->getElementType())) {
-	errs() << "*** ConfigPrime: execution cannot continue ignoring a call to \""
-	       << F->getName() << "\" because of potential side-effects. "
-	       << "The reason to skip the call is that some argument is a function pointer "
-	       << "and FFI does not support that.\n";
-	StopExecution = true;
-	return llvm::None;
-      }
-    }
   }
   
   TheInterpreter = this;
 
   std::vector<GenericValue> ArgVals;
   ArgVals.reserve(AArgVals.size());
+  unsigned idx = 0;
   for(AbsGenericValue Arg: AArgVals) {
+    idx++;
     if (Arg.hasValue()) {
       ArgVals.push_back(Arg.getValue());
     } else {
-      errs() << "*** ConfigPrime: execution cannot continue ignoring a call to \""
-	     << F->getName() << "\" because of potential side-effects. "
-	     << "The reason to skip the call is that some argument is unknown.\n";
-      StopExecution = true;      
+      errs() << "*** ConfigPrime: FFI cannot execute call to \""
+	     << F->getName() << "\" because argument " << idx
+	     << " is unknown.\n";
+      if (stopExecution(*F)) {      
+	StopExecution = true;
+      }
       return llvm::None;
     }
   }
   
   std::unique_lock<sys::Mutex> Guard(*FunctionsLock);
 
-  // Do a lookup to see if the function is in our cache... this should just be a
-  // deferred annotation!
+  // Do a lookup to see if the function is in our cache... this should
+  // just be a deferred annotation!
   std::map<const Function *, ExFunc>::iterator FI = ExportedFunctions->find(F);
   if (ExFunc Fn = (FI == ExportedFunctions->end()) ? lookupFunction(F)
                                                    : FI->second) {
@@ -392,26 +414,66 @@ callExternalFunction(Instruction *CI, Function *F, ArrayRef<AbsGenericValue> AAr
     return Fn(F->getFunctionType(), ArgVals);
   }
 
+  if (hasFunctionPtrParameter(*F)) {
+    // The intepreter cannot use FFI to make callbacks
+    errs() << "*** ConfigPrime: FFI cannot execute call to \""
+	   << F->getName() << "\" "
+	   << "because it cannot execute callbacks.\n";
+    if (stopExecution(*F)) {          
+	StopExecution = true;
+    }
+    return llvm::None;
+  }
+  
 #ifdef USE_LIBFFI
   std::map<const Function *, RawFunc>::iterator RF = RawFunctions->find(F);
-  RawFunc RawFn;
+  RawFunc RawFn = nullptr;
   if (RF == RawFunctions->end()) {
-    RawFn = (RawFunc)(intptr_t)
-      sys::DynamicLibrary::SearchForAddressOfSymbol(F->getName());
-    if (!RawFn)
-      RawFn = (RawFunc)(intptr_t)getPointerToGlobalIfAvailable(F);
-    if (RawFn != 0)
+
+    // HACK to find stat/lstat/fstat functions
+    // 
+    // This is a hack designed to work around the all-too-clever Glibc
+    // strategy of making these functions work differently when
+    // inlined vs. when not inlined, and hiding their real definitions
+    // in a separate archive file that the dynamic linker can't
+    // see. For more info, search for 'libc_nonshared.a' on Google, or
+    // read http://llvm.org/PR274.
+    if (F->getName().equals("stat")) {
+      RawFn = (RawFunc)(intptr_t) &stat;
+    } else if (F->getName().equals("lstat")) {
+      RawFn = (RawFunc)(intptr_t) &lstat;
+    } else if (F->getName().equals("fstat")) {
+      RawFn = (RawFunc)(intptr_t) &fstat;
+    } else if (F->getName().equals("stat64")) {
+      RawFn = (RawFunc)(intptr_t) &stat64;
+    } else if (F->getName().equals("lstat64")) {
+      RawFn = (RawFunc)(intptr_t) &lstat64;
+    } else if (F->getName().equals("fstat")) {
+      RawFn = (RawFunc)(intptr_t) &fstat64;
+    }
+
+    if (!RawFn) {
+      RawFn = (RawFunc)(intptr_t)
+	sys::DynamicLibrary::SearchForAddressOfSymbol(F->getName());
+    }
+    if (!RawFn) {
+      RawFn = (RawFunc)(intptr_t)
+	getPointerToGlobalIfAvailable(F);
+    }
+    if (RawFn) {
       RawFunctions->insert(std::make_pair(F, RawFn));  // Cache for later
+    }
   } else {
     RawFn = RF->second;
   }
 
   Guard.unlock();
-
   GenericValue Result;
-  errs() << "Invoking FFI on " << F->getName() << "\n";  
-  if (RawFn != 0 && ffiInvoke(CI, RawFn, F, ArgVals, getDataLayout(), Result)) {
-    return Result;
+  if (RawFn) {
+    errs() << "Invoking FFI on " << F->getName() << "\n";          
+    if (ffiInvoke(CI, RawFn, F, ArgVals, getDataLayout(), Result)) { 
+      return Result;
+    }
   }
 #endif // USE_LIBFFI
 
@@ -419,9 +481,20 @@ callExternalFunction(Instruction *CI, Function *F, ArrayRef<AbsGenericValue> AAr
   errs() << "Recompiling LLVM with --enable-libffi might help.\n";
   errs() << "The execution continues on your own risk: callee side-effects are ignored.\n";
 #else
-  // If we use FFI then we don't ignore side-effects so we stop the
-  // execution.
-  StopExecution = true;
+  if (!RawFn) {
+    errs() << "*** ConfigPrime: "
+	   << "FFI was not called because cannot find the address of "
+	   << F->getName() << "\n";
+  } else {
+    errs() << "*** ConfigPrime: "
+	   << "FFI was called but something went wrong while executing "
+	   << F->getName() << "\n";
+  }
+  
+  if (stopExecution(*F)) {
+    StopExecution = true;
+  }
+  
 #endif
   return llvm::None;
 }
@@ -453,6 +526,22 @@ static GenericValue lle_X_abort(FunctionType *FT, ArrayRef<GenericValue> Args) {
   raise (SIGABRT);
   return GenericValue();
 }
+
+// (i32)* signal(i32, (i32)*)
+static GenericValue lle_X_signal(FunctionType *FT, ArrayRef<GenericValue> Args) {
+  errs() << "ConfigPrime: replaced called to signal with empty stub\n";
+  return GenericValue();
+}
+
+// int usleep(useconds_t usec)
+static GenericValue lle_X_usleep(FunctionType *FT, ArrayRef<GenericValue> Args) {
+  // We assume that it always succeed
+  errs() << "ConfigPrime: replaced call to usleep with stub that returns 0.\n";
+  GenericValue GV;
+  GV.IntVal = 0;
+  return GV;
+}
+
 
 // int sprintf(char *, const char *, ...) - a very rough implementation to make
 // output useful.
@@ -627,15 +716,17 @@ static GenericValue lle_X_fgets(FunctionType *FT,
 void previrt::Interpreter::initializeExternalFunctions() {
   sys::ScopedLock Writer(*FunctionsLock);
   (*FuncNames)["lle_X_atexit"]       = lle_X_atexit;
-  (*FuncNames)["lle_X_exit"]         = lle_X_exit;
+  // Handled elsewhere
+  //(*FuncNames)["lle_X_exit"]         = lle_X_exit;
   (*FuncNames)["lle_X_abort"]        = lle_X_abort;
-
   (*FuncNames)["lle_X_printf"]       = lle_X_printf;
   (*FuncNames)["lle_X_sprintf"]      = lle_X_sprintf;
+  (*FuncNames)["lle_X_fprintf"]      = lle_X_fprintf;  
   (*FuncNames)["lle_X_sscanf"]       = lle_X_sscanf;
   (*FuncNames)["lle_X_scanf"]        = lle_X_scanf;
-  (*FuncNames)["lle_X_fprintf"]      = lle_X_fprintf;
   (*FuncNames)["lle_X_memset"]       = lle_X_memset;
   (*FuncNames)["lle_X_memcpy"]       = lle_X_memcpy;
-  (*FuncNames)["lle_X_fgets"]        = lle_X_fgets;  
+  (*FuncNames)["lle_X_fgets"]        = lle_X_fgets;
+  (*FuncNames)["lle_X_signal"]       = lle_X_signal;
+  (*FuncNames)["lle_X_usleep"]       = lle_X_usleep;  
 }

@@ -34,6 +34,7 @@
  The API to the protobuffer interface.
 
 """
+#pylint: disable=E1101
 
 import re
 import sys
@@ -58,7 +59,7 @@ def parseInterface(filename):
 def writeInterface(iface, filename):
     """ Writes the innterface out to the file.
     """
-    if isinstance(filename, basestring):
+    if isinstance(filename, str):
         if filename == '-':
             f = sys.stdout
         else:
@@ -72,26 +73,26 @@ def mainInterface():
     """ Returns the interface for main.
     """
     main = pb.ComponentInterface()
-    c = main.calls.add(name='main', count=1)
+    c = main.calls.add(name=str.encode('main','utf-8'), count=1)
     c.args.add(type=pb.U)
     c.args.add(type=pb.U)
-    main.references.extend('main')
+    main.references.extend([str.encode('main','utf-8')])
 
     #iam 11/15/2016 these don't seem to be really necessary;
     # or if they are necessary, then there probably should be
     # a lot more, no?
-    atexit = main.calls.add(name='atexit', count=1)
+    atexit = main.calls.add(name=str.encode('atexit','utf-8'), count=1)
     atexit.args.add(type=pb.U)
-    main.references.extend('atexit')
+    main.references.extend([str.encode('atexit','utf-8')])
 
     #inittls = main.calls.add(name='_init_tls', count=1)
     #iam: no inittls.args.add ???
-    main.calls.add(name='_init_tls', count=1)
-    main.references.extend('_init_tls')
+    main.calls.add(name=str.encode('_init_tls','utf-8'), count=1)
+    main.references.extend([str.encode('_init_tls','utf-8')])
 
-    exitr = main.calls.add(name='exit', count=1)
+    exitr = main.calls.add(name=str.encode('exit', 'utf-8'), count=1)
     exitr.args.add(type=pb.U)
-    main.references.extend('exit')
+    main.references.extend([str.encode('exit','utf-8')])
 
     return main
 
@@ -112,9 +113,8 @@ def joinInterfaces(into, merge):
     for mr in merge.references:
         if mr in into.references:
             continue
-        else:
-            into.references.append(mr)
-            result = True
+        into.references.append(mr)
+        result = True
     return result
 
 def readInterfaceFromText(f):

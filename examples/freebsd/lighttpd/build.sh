@@ -47,7 +47,7 @@ export OCCAM_LOGLEVEL=INFO
 export OCCAM_LOGFILE=${PWD}/slash/occam.log
 
 function usage() {
-    echo "Usage: $0 [--disable-inlining] [--ipdse] [--ai-dce] [--use-pointer-analysis] [--inter-spec VAL2] [--intra-spec VAL] [--enable-config-prime] [--help]"
+    echo "Usage: $0 [--disable-inlining] [--ipdse] [--use-crabopt] [--use-pointer-analysis] [--inter-spec VAL2] [--intra-spec VAL] [--enable-config-prime] [--help]"
     echo "       VAL=none|aggressive|nonrec-aggressive"
 }
 
@@ -83,8 +83,8 @@ case $key in
 	OPT_OPTIONS="${OPT_OPTIONS} --ipdse"
 	shift # past argument
 	;;
-    -ai-dce|--ai-dce)
-	OPT_OPTIONS="${OPT_OPTIONS} --ai-dce"
+    -use-crabopt|--use-crabopt)
+	OPT_OPTIONS="${OPT_OPTIONS} --use-crabopt"
 	shift # past argument
 	;;
     -use-pointer-analysis|--use-pointer-analysis)

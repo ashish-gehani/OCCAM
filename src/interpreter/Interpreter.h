@@ -96,7 +96,7 @@ public:
   // TODOX: remove method that free memory.
 };
 
-// XXX: we create this new type to consider the case where the generic
+// we create this new type to consider the case where the generic
 // value is "unknown".
 typedef llvm::Optional<llvm::GenericValue> AbsGenericValue;
 
@@ -159,30 +159,35 @@ class Interpreter : public llvm::ExecutionEngine, public llvm::InstVisitor<Inter
   // registered with the atexit() library function.
   std::vector<llvm::Function*> AtExitHandlers;
 
-  // XXX: track memory allocated by malloc
+  // track memory allocated by malloc
   MemoryHolder MemMallocs;
-  // XXX: track memory of main parameters Technically, they are part
+  // track memory of main parameters Technically, they are part
   //      of the top-level stack frame. For convenience, we put them
   //      separate.
   MemoryHolder MemMainParams;
-  // XXX: track global variable initializers
+  // track global variable initializers
   MemoryHolder MemGlobals;
-  // XXX: memory we know should be unaccessible
+  // memory we know should be unaccessible
   // Used only if enabled TRACK_ONLY_UNACCESSIBLE_MEM
   MemoryHolder UnaccessibleMem;
 
-  // XXX: keep track of unresolved globals (globals that cannot be
+  // keep track of unresolved globals (globals that cannot be
   // resolved by emitGlobals)
   llvm::DenseSet<const llvm::GlobalVariable*> UnresolvedGlobals;
   
-  // XXX: the execution cannot continue
+  // the execution cannot continue
   bool StopExecution;
 
-  // XXX: keep track of the blocks executed by the interpreter
+  // keep track of the blocks executed by the interpreter
   llvm::DenseSet<const llvm::BasicBlock*> VisitedBlocks;
 
-  // Whether "exit" has been found
-  bool ExitExecuted;
+  // Keep track of the executed memory instruction and its values.
+  // If LoadInst  then its value is the lhs of the LoadInst
+  // If StoreInst then its value is the stored value of the StoreInst
+  std::vector<std::pair<llvm::Instruction*,llvm::GenericValue>> ExecutedMemInsts;
+  
+  // Whether "exit" was called with a non-zero value
+  bool NonZeroExitCode;
   
 public:
   
@@ -283,12 +288,16 @@ public:
     AtExitHandlers.push_back(F);
   }
 
+  void addExecutedMemInst(llvm::Instruction *I, llvm::GenericValue V) {
+    ExecutedMemInsts.push_back({I,V});
+  }
+  
   llvm::GenericValue *getFirstVarArg () {
     AbsGenericValue &AVA = ECStack.back().VarArgs[0];
     if (AVA.hasValue()) {
       return &(AVA.getValue());
     } else {
-      // XXX: not sure if this will break things
+      // JN: not sure if this will break things
       return nullptr;
     }
   }
@@ -303,14 +312,19 @@ public:
 
 
   llvm::Instruction* getLastExecutedInst() const ;
+
+  const std::vector<std::pair<llvm::Instruction*,llvm::GenericValue>>&
+  getExecutedMemInsts() const {
+    return ExecutedMemInsts;
+  }
   
   llvm::BasicBlock* inspectStackAndGlobalState(
 	       llvm::DenseMap<llvm::Value*, RawAndDerefValue> &GlobalVals,
-	       llvm::DenseMap<llvm::Value*, RawAndDerefValue> &StackVals);
+	       llvm::DenseMap<llvm::Value*, std::vector<RawAndDerefValue>> &StackVals);
 
   bool isExecuted(const llvm::BasicBlock &) const;
 
-  bool exitExecuted() const { return ExitExecuted;}
+  bool exitNonZero() const { return NonZeroExitCode;}
   
 private:  // Helper functions
   

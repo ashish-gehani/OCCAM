@@ -98,26 +98,25 @@ def previrt_progress(fin, fout, args, output=None):
                             stdin=subprocess.PIPE)
 
     eobj = echo.Echo(proc.stderr, log, sb)
-
     # wait for the echo thread to finish.
     eobj.wait()
 
     # this should be already finished.
     retcode = proc.wait()
-
     progress = str(sb)
 
     logging.getLogger().info('%(cmd)s => %(code)d\n',
                              {'cmd'  : ' '.join(args),
                               'code' : retcode,
                               'progress' : progress})
-    if output != None:
+
+    if output is not None:
         output[0] = progress
     return '...progress...' in progress
 
 
 def linker(fin, fin_libs, fout, args):
-    args = [fin] + fin_libs + ['-o', fout] + args    
+    args = [fin] + fin_libs + ['-o', fout] + args
     return run('clang++', args)
 
 opt_call_count = 0
@@ -176,4 +175,5 @@ def run(prog, args, sb=None, fail_on_error=True):
 
 
 def report(prog, args):
-    if verbose: print 'Calling:\n\t{0}\n'.format(prog + ' ' + ' '.join(args))
+    if verbose:
+        print('Calling:\n\t{0}\n'.format(prog + ' ' + ' '.join(args)))
