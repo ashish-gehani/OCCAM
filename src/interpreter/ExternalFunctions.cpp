@@ -357,12 +357,38 @@ callExternalFunction(Instruction *CI, Function *F, ArrayRef<AbsGenericValue> AAr
     return llvm::None;
   }
 
+  // We don't want to read from standard input
+  if (F->getName().equals("read")) {
+    CallSite CS(CI);
+    if (CS.arg_size() == 1) {
+      Value* Arg = CS.getArgument(0);
+      Value* LoadAddr;
+      // FIXME: This only succeeds if the file descriptor is exactly
+      // the content of the global variable @stdin. In general, we
+      // need to apply inter-procedural static analysis to know
+      // whether the first parameter is connected to @stdin or not.
+      if (match(Arg, m_Load(m_Value(LoadAddr)))) {
+	if (GlobalVariable *GV= dyn_cast<GlobalVariable>(LoadAddr)) {
+	  if (GV->getName() == "stdin") {
+	    errs() << "*** ConfigPrime: ignoring \""
+		   << F->getName() << "\" on stdin.\n";
+	    return llvm::None;
+	  }
+	}
+      }
+    }
+  }
+  
   // We don't want to close standard output or error 
   if (F->getName().equals("fclose")) {
     CallSite CS(CI);
     if (CS.arg_size() == 1) {
       Value* Arg = CS.getArgument(0);
       Value* LoadAddr;
+      // FIXME: This only succeeds if the file descriptor is exactly
+      // the content of the global variable @stdout or @stderr. In
+      // general, we also need to apply inter-procedural static
+      // analysis.
       if (match(Arg, m_Load(m_Value(LoadAddr)))) {
 	if (GlobalVariable *GV= dyn_cast<GlobalVariable>(LoadAddr)) {
 	  if (GV->getName() == "stderr" || GV->getName() == "stdout") {
