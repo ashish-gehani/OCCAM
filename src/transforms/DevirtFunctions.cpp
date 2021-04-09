@@ -176,54 +176,54 @@ void CallSiteResolverByTypes::cacheBounceFunction(CallSite &CS,
 }
 #endif
 
-// Discard all dsa targets whose signature do not match with function
-// defined within the module. 
-bool CallSiteResolverBySeaDsa::enforceWellTyping(CallSite &CS,
-						 const AliasSet &dsa_targets,
-						 AliasSet &out) {
-  if (const AliasSet *types_targets =
-      CallSiteResolverByTypes::getTargets(CS)) {
-    DEVIRT_LOG(errs() << "Type-based targets: \n";
-	       for (auto F: *types_targets) {
-		 errs() << "\t" << F->getName()
-			<< "::" << *(F->getType()) << "\n";
-	       });
+// // Discard all dsa targets whose signature do not match with function
+// // defined within the module. 
+// bool CallSiteResolverBySeaDsa::enforceWellTyping(CallSite &CS,
+// 						 const AliasSet &dsa_targets,
+// 						 AliasSet &out) {
+//   if (const AliasSet *types_targets =
+//       CallSiteResolverByTypes::getTargets(CS)) {
+//     DEVIRT_LOG(errs() << "Type-based targets: \n";
+// 	       for (auto F: *types_targets) {
+// 		 errs() << "\t" << F->getName()
+// 			<< "::" << *(F->getType()) << "\n";
+// 	       });
     
-    std::set_intersection(dsa_targets.begin(), dsa_targets.end(),
-			  types_targets->begin(),
-			  types_targets->end(),
-			  std::back_inserter(out));
-    if (out.empty()) {
-      errs() << "WARNING Devirt (dsa): cannot resolve "
-	     << *(CS.getInstruction())
-	     << " after refining dsa targets with calsite type\n";
-    } else if (out.size() <= m_max_num_targets) {
-      // Sort by name so that we can fix a
-      // deterministic ordering (useful for e.g., tests)
-      if (std::all_of(out.begin(), out.end(),
-		      [](const Function *f) { return f->hasName(); })) {
-	std::sort(out.begin(), out.end(),
-		  [](const Function *f1, const Function *f2) {
-		    return f1->getName() < f2->getName();
-		  });
-      }
-      DEVIRT_LOG(errs() << "Devirt (dsa) resolved "
-		 << *(CS.getInstruction())
-		   << " with targets=\n";
-		 for (auto F : out) {
-		     errs() << "\t" << F->getName()
-			    << "::" << *(F->getType()) << "\n";
-		 });
-      return true;
-    } else {
-      errs() << "WARNING Devirt (dsa): unresolve "
-	     << *(CS.getInstruction())
-	     << " because the number of targets is greater than "
-	     << m_max_num_targets << "\n";
-    }
-  }
-  return false;
-}
+//     std::set_intersection(dsa_targets.begin(), dsa_targets.end(),
+// 			  types_targets->begin(),
+// 			  types_targets->end(),
+// 			  std::back_inserter(out));
+//     if (out.empty()) {
+//       errs() << "WARNING Devirt (dsa): cannot resolve "
+// 	     << *(CS.getInstruction())
+// 	     << " after refining dsa targets with calsite type\n";
+//     } else if (out.size() <= m_max_num_targets) {
+//       // Sort by name so that we can fix a
+//       // deterministic ordering (useful for e.g., tests)
+//       if (std::all_of(out.begin(), out.end(),
+// 		      [](const Function *f) { return f->hasName(); })) {
+// 	std::sort(out.begin(), out.end(),
+// 		  [](const Function *f1, const Function *f2) {
+// 		    return f1->getName() < f2->getName();
+// 		  });
+//       }
+//       DEVIRT_LOG(errs() << "Devirt (dsa) resolved "
+// 		 << *(CS.getInstruction())
+// 		   << " with targets=\n";
+// 		 for (auto F : out) {
+// 		     errs() << "\t" << F->getName()
+// 			    << "::" << *(F->getType()) << "\n";
+// 		 });
+//       return true;
+//     } else {
+//       errs() << "WARNING Devirt (dsa): unresolve "
+// 	     << *(CS.getInstruction())
+// 	     << " because the number of targets is greater than "
+// 	     << m_max_num_targets << "\n";
+//     }
+//   }
+//   return false;
+// }
 						   
 						   
 CallSiteResolverBySeaDsa::CallSiteResolverBySeaDsa(
@@ -261,18 +261,14 @@ CallSiteResolverBySeaDsa::CallSiteResolverBySeaDsa(
 	    continue;
 	  }
 	  std::sort(dsa_targets.begin(), dsa_targets.end());
-	  DEVIRT_LOG(errs() << "\nDsa-based targets: \n";
+	  DEVIRT_LOG(errs() << "Devirt (dsa): resolved " << *(CS.getInstruction())
+		            << " with targets:\n";
 		     for (auto F: dsa_targets) {
-		     errs() << "\t" << F->getName()
-			    << "::" << *(F->getType()) << "\n";
+		       errs() << "\t" << F->getName()
+			      << "::" << *(F->getType()) << "\n";
 		     });
-	  
-	  AliasSet refined_dsa_targets;	    
-	  if (enforceWellTyping(CS, dsa_targets, refined_dsa_targets)) {
-	    m_targets_map.insert({CS.getInstruction(), refined_dsa_targets});
-	    num_resolved_calls++;
-	  }
-	  
+	  m_targets_map.insert({CS.getInstruction(), dsa_targets});
+	  num_resolved_calls++;
 	} else {
 	  errs() << "WARNING Devirt (dsa): cannot resolve "
 		 << *(CS.getInstruction())
