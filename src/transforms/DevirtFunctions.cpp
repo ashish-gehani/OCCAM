@@ -260,7 +260,17 @@ CallSiteResolverBySeaDsa::CallSiteResolverBySeaDsa(
 		 << *(CS.getInstruction()) << "\n";
 	    continue;
 	  }
-	  std::sort(dsa_targets.begin(), dsa_targets.end());
+
+	  if (std::all_of(dsa_targets.begin(), dsa_targets.end(),
+			  [](const Function *f) { return f->hasName(); })) {
+	    std::sort(dsa_targets.begin(), dsa_targets.end(),
+		      [](const Function *f1, const Function *f2) {
+			return f1->getName() < f2->getName();
+		      });
+	  } else {
+	    std::sort(dsa_targets.begin(), dsa_targets.end());
+	  }
+	  
 	  DEVIRT_LOG(errs() << "Devirt (dsa): resolved " << *(CS.getInstruction())
 		            << " with targets:\n";
 		     for (auto F: dsa_targets) {
