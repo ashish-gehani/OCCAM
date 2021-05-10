@@ -63,7 +63,8 @@ llvm::Instruction *specializeCallSite(llvm::Instruction *cs, llvm::Function *,
  * Create a LLVM global variable from a string.
  */
 llvm::GlobalVariable *materializeStringLiteral(llvm::Module &m,
-                                               const char *data);
+                                               const char *data,
+					       bool isConstant = true);
 
 llvm::Constant *charStarFromStringConstant(llvm::Module &m, llvm::Constant *v);
 }
