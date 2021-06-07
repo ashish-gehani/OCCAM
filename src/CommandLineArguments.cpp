@@ -282,7 +282,12 @@ bool CommandLineArguments::runOnModule(Module &M) {
   unsigned i = 0;
   for (auto &kv : argv_map) {
     // create a global variable with the argument from the manifest
-    GlobalVariable *gv_i = materializeStringLiteral(M, kv.second.c_str());
+    const bool isConstant = false;
+    // Important to make the global variable as non-constant.  Some
+    // applications rewrite some argv[i]. If we mark them as const and
+    // the application modifies it then it is undefined behavior.
+    GlobalVariable *gv_i = materializeStringLiteral(M, kv.second.c_str(),
+						    isConstant);
     gv_i->setName("new_argv");
     // take the address of the global variable
     Value *gv_i_ref = builder.CreateConstGEP2_32(

@@ -235,14 +235,14 @@ Instruction *specializeCallSite(Instruction *I, llvm::Function *nfunc,
   return newInst;
 }
 
-GlobalVariable *materializeStringLiteral(llvm::Module &m, const char *data) {
-  Constant *ary =
+  GlobalVariable *materializeStringLiteral(llvm::Module &m, const char *data,
+					   bool isConstant) {
+  Constant *initializer =
       llvm::ConstantDataArray::getString(m.getContext(), data, true);
   GlobalVariable *gv =
-      new GlobalVariable(m, ary->getType(), true,
-                         GlobalValue::LinkageTypes::PrivateLinkage, ary, "");
-  gv->setConstant(true);
-
+      new GlobalVariable(m, initializer->getType(), isConstant,
+                         GlobalValue::LinkageTypes::PrivateLinkage,
+			 initializer);
   return gv;
 }
 

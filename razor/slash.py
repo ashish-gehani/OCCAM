@@ -552,7 +552,10 @@ class Slash:
                                                                binary, ' '.join(linker_args))
                 # need to amalgamate the bitcode PRIOR to linking
                 # (only needed when there are duplicate symbols)
-                amalargs = ['-override', final_module]  + ['-o', self.amalgamation]
+                amalargs = ['-override', final_module] + final_libs  + ['-o', self.amalgamation]
+                ## reset final_libs because we already included in
+                ## self.amalgamation
+                final_libs = []
                 driver.run('llvm-link', amalargs)
                 final_module = self.amalgamation
 
