@@ -22,7 +22,8 @@ class ConfigPrime : public llvm::ModulePass {
 
   void runInterpreterAsMain(llvm::Module &M, llvm::APInt &Res);
   void stopInterpreter(llvm::Module &M, const llvm::APInt &Res);
-
+  bool run(llvm::Module &M);
+  
 public:
   static char ID;
 
@@ -37,5 +38,5 @@ public:
   }
 
   virtual bool runOnModule(llvm::Module &M) override;
-};
+}; 
 } // end namespace previrt

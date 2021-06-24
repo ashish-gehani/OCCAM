@@ -365,7 +365,7 @@ class Slash:
             pre = main.get()
             post = main.new('cp')
             # static_args are already lowered in the bitcode
-            passes.config_prime(pre, post, list(), dynamic_args)
+            passes.config_prime(pre, post, len(static_args) + 1, dynamic_args)
 
         # Create interface for main. We can never internalize main
         interface.writeInterface(interface.mainInterface(), 'main.iface')

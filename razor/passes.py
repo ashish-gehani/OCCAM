@@ -414,21 +414,23 @@ def specialize_program_args(input_file, output_file, \
     if filename is None:
         os.unlink(arg_file)
 
-def config_prime(input_file, output_file, known_args, num_dynamic_args):
+def config_prime(input_file, output_file, \
+                 index_first_dynamic_arg, num_dynamic_args):
     """
     Execute the program until a branch condition is unknown.
-    known_args is a list of strings
+    index_first_dynamic_arg is a number starting at 1.
     num_dynamic_args is a non-negative number.
     """
     ## TODOX: find subset of -O1 that simplify loops for dominance queries
     args = ['-O1'] # '-loop-simplify', '-simplifycfg'
     args += ['-Pconfig-prime']
-    index = 0
-    for x in known_args:
-        if index == 0:
-            args.append('-Pconfig-prime-file=\"{0}\"'.format(x))
-        else:
-            args.append('-Pconfig-prime-input-arg=\"{0}\"'.format(x))
-        index += 1
+    # index = 0
+    # for x in known_args:
+    #     if index == 0:
+    #         args.append('-Pconfig-prime-file=\"{0}\"'.format(x))
+    #     else:
+    #         args.append('-Pconfig-prime-input-arg=\"{0}\"'.format(x))
+    #     index += 1
+    args.append('-Pconfig-prime-index-first-unknown-arg={0}'.format(index_first_dynamic_arg))
     args.append('-Pconfig-prime-unknown-args={0}'.format(num_dynamic_args))
     driver.previrt(input_file, output_file, args)
