@@ -5,6 +5,7 @@
 #include "llvm/Analysis/LoopPass.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/GenericValue.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
@@ -14,6 +15,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Utils.h"
+#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
 #include "ConfigPrime.h"
 #include "interpreter/Interpreter.h"
@@ -24,16 +26,51 @@ using namespace llvm;
 static cl::opt<std::string> InputFile("Pconfig-prime-file", cl::Hidden,
                                       cl::desc("Specify input bitcode"));
 
+/* unused */
 static cl::list<std::string>
-    InputArgv("Pconfig-prime-input-arg", cl::Hidden,
-              cl::desc("Specify one known program argument"));
+InputArgv("Pconfig-prime-input-arg",
+	 cl::Hidden,
+	 cl::desc("Specify one known program argument"));
 
 static cl::opt<unsigned>
-    UnknownArgs("Pconfig-prime-unknown-args", cl::Hidden, cl::init(0),
-                cl::desc("Specify the number of unknown parameters"));
+FirstUnknownIndex("Pconfig-prime-index-first-unknown-arg",
+	 cl::Hidden,
+	 cl::init(0), 
+	 cl::desc("Specify the index of the first unknown parameter starting at 1"));
+
+static cl::opt<unsigned>
+UnknownArgs("Pconfig-prime-unknown-args",
+	 cl::Hidden,
+	 cl::init(0),
+	 cl::desc("Specify the number of unknown parameters"));
+
 
 namespace previrt {
 
+StringRef CONFIG_PRIME_STOP = "occam.config_prime.stop";
+  
+// Instrumentation to be added before running configuration priming.
+class PreConfigPrimeInst {
+  llvm::FunctionCallee m_stopConfigPrime;
+  GlobalVariable *m_optind;
+  ConstantInt *m_firstUnknownIdx;
+public:
+  PreConfigPrimeInst();
+  ~PreConfigPrimeInst() = default;
+  bool runOnModule(llvm::Module &M);
+  bool runOnFunction(llvm::Function &F);  
+};
+  
+// Instrumentation to be added/removed after running configuration
+// priming.
+class PostConfigPrimeInst{
+public:
+  PostConfigPrimeInst();
+  ~PostConfigPrimeInst() = default;
+  bool runOnModule(llvm::Module &M);
+  bool runOnFunction(llvm::Function &F);  
+};
+  
 /** Begin helpers **/
 
 static std::vector<GenericValue>
@@ -481,7 +518,7 @@ static bool simplifySpeculativelySuffixes
   
 }
   
-bool ConfigPrime::runOnModule(Module &M) {
+bool ConfigPrime::run(Module &M) {
   // TODO: Similar to lli, we can provide other modules, extra objects
   // or archives.
 
@@ -505,7 +542,7 @@ bool ConfigPrime::runOnModule(Module &M) {
       errs() << "Unknown error creating EE!\n";
     return false;
   }
-
+  
   runInterpreterAsMain(M, Res);
 
   /// -- Extract values from the execution
@@ -563,6 +600,16 @@ bool ConfigPrime::runOnModule(Module &M) {
   return Change;
 }
 
+bool ConfigPrime::runOnModule(Module &M) {
+  PreConfigPrimeInst beforeInst;
+  PostConfigPrimeInst afterInst;
+
+  beforeInst.runOnModule(M);
+  bool Change = run(M);
+  Change |= afterInst.runOnModule(M);
+  return Change;
+}
+  
 void ConfigPrime::getAnalysisUsage(AnalysisUsage &AU) const {
   // TODOX: update on the fly
   // AU.setPreservesAll();
@@ -572,6 +619,136 @@ void ConfigPrime::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<DominatorTreeWrapperPass>();
 }
 
+PreConfigPrimeInst::PreConfigPrimeInst()
+  : m_stopConfigPrime(nullptr), m_optind(nullptr), m_firstUnknownIdx(nullptr) {
+}
+
+bool PreConfigPrimeInst::runOnModule(Module &M) {
+  LLVMContext &ctx = M.getContext();
+
+  // find optind 
+  m_optind = M.getGlobalVariable("optind");
+  if (!m_optind) {
+    m_optind = dyn_cast<GlobalVariable>(M.getOrInsertGlobal("optind", Type::getInt32Ty(ctx)));
+    if (!m_optind) {
+      return false;
+    }
+    m_optind->setDSOLocal(true);
+    m_optind->setLinkage(GlobalValue::LinkageTypes::ExternalLinkage);
+  }
+
+  
+  // m_optind should be i32*
+  if (IntegerType *iTy =
+      dyn_cast<IntegerType>(cast<PointerType>(m_optind->getType())->getElementType())) {
+    m_firstUnknownIdx = ConstantInt::getSigned(iTy, FirstUnknownIndex);
+  } else {
+    return false;
+  }
+  
+  Type *voidTy = Type::getVoidTy(ctx);
+  m_stopConfigPrime = M.getOrInsertFunction(CONFIG_PRIME_STOP, voidTy);
+  
+  bool change = false;
+  for (auto &F: M) {
+    change |= runOnFunction(F);
+  }
+  return change;
+}
+				
+bool PreConfigPrimeInst::runOnFunction(Function &F) {
+  if (F.empty()) {
+    return false;
+  }
+
+  SmallVector<CallBase*, 4> worklist;
+  for (auto &B: F) {
+    for (auto &I: B) {
+      if (CallBase *CB = dyn_cast<CallBase>(&I)) {
+	if (Function *calleeF = CB->getCalledFunction()) {
+	  if (calleeF->getName() == "getopt" ||
+	      calleeF->getName() == "getopt_long" ||
+	      calleeF->getName() == "getopt_long_only") {
+	    worklist.push_back(CB);
+	  }
+	}
+      }
+    }
+  }
+
+  bool change = !worklist.empty();
+  LLVMContext &ctx = F.getParent()->getContext();
+  IRBuilder<> Builder(ctx);
+  while (!worklist.empty()) {
+    CallBase *CB = worklist.back();
+    worklist.pop_back();
+    Builder.SetInsertPoint(CB);
+    Value *optInvDeref = Builder.CreateLoad(m_firstUnknownIdx->getType(), m_optind);
+    Value *Cond = Builder.CreateICmpSGE(optInvDeref, m_firstUnknownIdx);	    
+    Instruction *ThenTerm = SplitBlockAndInsertIfThen(Cond, CB, false);
+    ThenTerm->getParent()->setName("ConfigPrime");
+    Builder.SetInsertPoint(ThenTerm);
+    Builder.CreateCall(m_stopConfigPrime.getFunctionType(),
+		       m_stopConfigPrime.getCallee(), {});
+    // BEFORE
+    //  call get_opt(...);
+    // AFTER
+    //  if (optind >= FirstUnknownIndex) {
+    //   config_prime.stop();
+    //  }
+    //  call get_opt(...);
+    // 
+  }
+  return change;
+}
+  
+PostConfigPrimeInst::PostConfigPrimeInst() {}
+
+bool PostConfigPrimeInst::runOnModule(Module &M) {
+  for (auto &F: M) {
+    runOnFunction(F);
+  }
+  return false;
+}
+  
+bool PostConfigPrimeInst::runOnFunction(Function &F) {
+  if (F.empty()) {
+    return false;
+  }
+  SmallVector<CallBase*,4> toRemove;
+  for (auto &B: F) {
+    for (auto &I: B) {
+      if (CallBase *CB = dyn_cast<CallBase>(&I)) {
+	if (Function *calleeF = CB->getCalledFunction()) {
+	  if (calleeF->getName() == CONFIG_PRIME_STOP) {
+	    toRemove.push_back(CB);
+	  }
+	}
+      }
+    }
+  }
+  LLVMContext &ctx = F.getParent()->getContext();
+  
+  // Remove the whole basic block 
+  while (!toRemove.empty()) {
+    CallBase *CB = toRemove.back();
+    toRemove.pop_back();
+    BasicBlock *B = CB->getParent();
+    BasicBlock *Pred = B->getUniquePredecessor();
+    BasicBlock *Succ = B->getUniqueSuccessor();
+    if (Pred && Succ) {
+      // remove all instructions in B and add "unreachable" as terminator
+      previrt::transforms::removeBlock(B, ctx);
+      Pred->getInstList().pop_back(); 
+      Pred->getInstList().push_back(BranchInst::Create(Succ));     
+      B->eraseFromParent();
+    }
+  }
+
+  // return true only if there is a change wrt the code *before*
+  // PreConfigPrimeInst was run.
+  return false;
+}
 } // end namespace previrt
 
 char previrt::ConfigPrime::ID = 0;

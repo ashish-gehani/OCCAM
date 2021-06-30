@@ -44,6 +44,9 @@ llvm::errs()
 #define ERR \
 llvm::errs() << "ERROR: "
 
+// defined in ConfigPrime.cpp
+extern StringRef CONFIG_PRIME_STOP;
+  
 //===----------------------------------------------------------------------===//
 //                     Memory management helpers
 //===----------------------------------------------------------------------===//
@@ -1851,8 +1854,14 @@ void Interpreter::visitCallSite(CallSite CS) {
   Function *F = dyn_cast<Function>(V);
   if (F && F->isDeclaration()) {
 
+    if (F->getName() == CONFIG_PRIME_STOP) {
+      errs() << "INTERPRETER STOPPED: found " << *CS.getInstruction() << "\n";
+      StopExecution = true;
+      return;
+    }
+    
     // HACK: maybe use isMallocLikeFn from MemoryBuiltins
-    if (F->getName().equals("malloc")) {
+    if (F->getName() == "malloc") {
       visitMallocInst(CS);
       return;
     }
@@ -2036,7 +2045,7 @@ void Interpreter::visitCallSite(CallSite CS) {
     StopExecution = true;
   } else {
     callFunction((Function*)GVTOP(SRC.getValue()), ArgVals,
-                CS.getInstruction());
+		 CS.getInstruction());
   }
 }
 
