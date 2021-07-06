@@ -327,17 +327,18 @@ static bool stopExecution(const Function& F) {
       << "so that we do not stop execution.\n";
 	 return false;
   } else if (F.onlyAccessesInaccessibleMemory()) {
-      errs() << "INTERPRETER CONTINUED because "      
-	     << "the function does not access memory accessible by the program\n";
-      return false;
-    } else if (!F.isSpeculatable()) {
-      errs() << "INTERPRETER CONTINUED because "            
-	     << "the function does not have sideeffects\n";
-      return false;
-    } else {
-      errs() << "INTERPRETER STOPPED because function might have side effects.\n";    
-      return true;
-    }
+    errs() << "INTERPRETER CONTINUED because "      
+	   << "the function does not access memory accessible by the program\n";
+    return false;
+  } // else if (!F.isSpeculatable()) {
+    //   errs() << "INTERPRETER CONTINUED because "            
+    // 	     << "the function does not have sideeffects\n";
+    //   return false;
+    // } 
+  else {
+    errs() << "INTERPRETER STOPPED because function might have side effects.\n";    
+    return true;
+  }
 }
 
 previrt::AbsGenericValue previrt::Interpreter::
