@@ -453,6 +453,7 @@ static bool simplifySpeculativelySuffixes
   Function &F = *(LastBlock.getParent());
   LoopInfo &LI = CPPass.getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
   if (Loop *OuterMostL = getRootLoop(LI, LastBlock)) {
+    #if 0
     //// Consider the outermost loop's exits as continuations.
     OuterMostL->getExitingBlocks(MemSnapshots);
     errs() << "Candidates for continuation block:\n";
@@ -464,6 +465,7 @@ static bool simplifySpeculativelySuffixes
 	       << "Unnamed block\n";
       }
     }
+    #endif 
   } else {
     MemSnapshots.push_back(&LastBlock);
   }
@@ -492,7 +494,8 @@ static bool simplifySpeculativelySuffixes
           if (Constant *C = convertToLLVMConstant(ElementType, ElementVal)) {
             for (auto &U : kv.first->uses()) {
               if (LoadInst *LI = dyn_cast<LoadInst>(U.getUser())) {
-                if (mayDominate(MemSnapshots, LI, CPPass)) {
+		// TODO: mayDominate needs to consider memory SSA.
+                if (false /*mayDominate(MemSnapshots, LI, CPPass)*/) {
                   errs() << "[SUFFIX] replaced "
                          << "lhs of " << *LI << " with " << *C << "\n";
                   errs() << *(LI->getParent()) << "\n";
@@ -594,9 +597,11 @@ bool ConfigPrime::run(Module &M) {
     return true;
   }
 
-  bool Change = simplifyPrefix(*Interp, *this, Interp->getExecutedMemInsts()); 
+  bool Change = simplifyPrefix(*Interp, *this, Interp->getExecutedMemInsts());
+  #if 0
   Change |= simplifySpeculativelySuffixes(*Interp, *this, *LastExecBlock, 
 					  GlobalValues, StackValues);
+  #endif 
   return Change;
 }
 

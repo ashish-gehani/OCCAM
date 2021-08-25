@@ -29,6 +29,7 @@ make -j16
 make install
 make test
 
-# Get OCCAM benchmarks
+# Get OCCAM benchmarks (and depepndencies)
 cd $HOME
 git clone https://github.com/SRI-CSL/OCCAM-Benchmarks.git runbench
+. runbench/dependencies.sh

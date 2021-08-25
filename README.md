@@ -8,7 +8,7 @@ Description
 [OCCAM](https://github.com/SRI-CSL/OCCAM) is a whole-program partial evaluator for LLVM bitcode that aims at debloating programs and shared/static libraries running in a specific deployment context. The current LLVM version is 10.
 
 The available documentation can be found in
-our [wiki](https://github.com/SRI-CSL/OCCAM/wiki/Home.md).
+our [wiki](https://github.com/SRI-CSL/OCCAM/wiki).
 
 Docker
 ======
