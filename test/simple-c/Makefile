@@ -25,4 +25,5 @@ clean:
 	$(MAKE) -C pe clean
 	$(MAKE) -C crabopt/1 clean
 	$(MAKE) -C crabopt/2 clean
+	$(MAKE) -C getopt clean
 	rm -rf simple-bitcode
