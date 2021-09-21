@@ -361,11 +361,13 @@ class Slash:
                                        'arguments')
 
         if use_config_prime:
+            utils.write_timestamp("Started Configuration Priming...")
             ## Apply configuration prime in main
             pre = main.get()
             post = main.new('cp')
             # static_args are already lowered in the bitcode
             passes.config_prime(pre, post, len(static_args) + 1, dynamic_args)
+            sys.stderr.write('done.\n')            
 
         # Create interface for main. We can never internalize main
         interface.writeInterface(interface.mainInterface(), 'main.iface')
