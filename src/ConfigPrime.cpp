@@ -10,6 +10,7 @@
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
+#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
@@ -20,6 +21,9 @@
 #include "ConfigPrime.h"
 #include "interpreter/Interpreter.h"
 #include "transforms/utils/BasicBlockUtils.hh"
+
+#include "seadsa/InitializePasses.hh"
+#include "seadsa/support/RemovePtrToInt.hh"
 
 using namespace llvm;
 
@@ -525,7 +529,7 @@ bool ConfigPrime::run(Module &M) {
   // TODO: Similar to lli, we can provide other modules, extra objects
   // or archives.
 
-  //  llvm::errs() << M << "\n";
+  // llvm::errs() << M << "\n";
   
   APInt Res; // The exit status of running main
   std::string ErrorMsg;
@@ -609,9 +613,21 @@ bool ConfigPrime::runOnModule(Module &M) {
   PreConfigPrimeInst beforeInst;
   PostConfigPrimeInst afterInst;
 
+  #if 1
+  // We cannot schedule this pass via getAnalysisUsage because it will
+  // miss the initialization.
+  llvm::PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
+  llvm::initializeRemovePtrToIntPass(Registry);
+  llvm::legacy::PassManager pm;
+  pm.add(seadsa::createRemovePtrToIntPass());
+  pm.run(M);
+  #endif
+
   beforeInst.runOnModule(M);
   bool Change = run(M);
-  Change |= afterInst.runOnModule(M);
+  afterInst.runOnModule(M);
+  // afterInst is supposed to undo the changes that beforeInst does so
+  // we don't update Change.
   return Change;
 }
   
