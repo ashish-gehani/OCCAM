@@ -92,8 +92,10 @@ public:
   void add(void *mem, unsigned size);
 
   void addWithOwnershipTransfer(void *mem, unsigned size);  
-  
-  // TODOX: remove method that free memory.
+
+  // If free returns true then size is the number of bytes being
+  // deallocated. 
+  bool free(void *mem, size_t &size);
 };
 
 // we create this new type to consider the case where the generic
@@ -168,6 +170,7 @@ class Interpreter : public llvm::ExecutionEngine, public llvm::InstVisitor<Inter
   // track global variable initializers
   MemoryHolder MemGlobals;
   // memory we know should be unaccessible
+  
   // Used only if enabled TRACK_ONLY_UNACCESSIBLE_MEM
   MemoryHolder UnaccessibleMem;
 
@@ -236,7 +239,8 @@ public:
   void visitICmpInst(llvm::ICmpInst &I);
   void visitFCmpInst(llvm::FCmpInst &I);
 
-  void visitMallocInst(llvm::CallSite &CS);
+  void visitAllocFnInst(llvm::CallSite &CS);
+  void visitFreeInst(llvm::CallSite &CS);  
   void visitAllocaInst(llvm::AllocaInst &I);
   void visitLoadInst(llvm::LoadInst &I);
   void visitStoreInst(llvm::StoreInst &I);

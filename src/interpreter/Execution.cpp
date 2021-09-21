@@ -46,7 +46,9 @@ llvm::errs() << "ERROR: "
 
 // defined in ConfigPrime.cpp
 extern StringRef CONFIG_PRIME_STOP;
-  
+
+
+#define DEBUG_PTR_PROVENANCE
 //===----------------------------------------------------------------------===//
 //                     Memory management helpers
 //===----------------------------------------------------------------------===//
@@ -78,12 +80,37 @@ void MemoryHolder::add(void *mem, unsigned size) {
   if (trackMemory(mem)) return;
   intptr_t addr = intptr_t(mem);
   m_mem_map.insert({addr, addr + size});
-  memlog("Allocated %d bytes: [%#lx,%#lx]\n", size, addr, addr+size);        
 }
 
 void MemoryHolder::addWithOwnershipTransfer(void *mem, unsigned size) {
   add(mem, size);
   //m_owned_memory.push_back(intptr_t(mem));  
+}
+
+bool MemoryHolder::free(void *mem, size_t &size) {
+  size = 0;
+  if (mem == 0) {
+    // if free a null then it's a non-op
+    return false;
+  }
+  
+  intptr_t addr = intptr_t (mem);
+  auto it = m_mem_map.lower_bound (addr+1);
+  if (it == m_mem_map.end()) {
+    LOG << "Warning: the pointer " << mem << " was not allocated via malloc?\n";
+    return false;
+  }
+  intptr_t lb = it->first;
+  intptr_t ub = it->second;
+  if (addr == lb) {
+    m_mem_map.erase(it);
+    size = (size_t)(ub - lb);
+    return true;
+  } else {
+    LOG << "Warning: the pointer " << mem
+	<< " must point to the base of a memory object\n";
+    return false;
+  }
 }
 
 #if 0
@@ -106,6 +133,18 @@ static const Function *getCalledFunction(const Value *V, bool LookThroughBitCast
 }
 #endif
 
+// FIXME: use isMallocLikeFn from MemoryBuiltins  
+static bool isMallocLikeFn(const Function &F) {
+  return (F.getName() == "malloc" ||
+	  F.getName() == "calloc" ||
+	  F.getName() == "realloc");
+}
+
+//FIXME: use MemoryBuiltins to recognize free functions
+static bool isFreeLikeFn(const Function &F) {
+  return F.getName() == "free";
+}
+  
 // from lib/ExecutionEngine/ExecutionEngine.cpp
 void Interpreter::initMemory(const Constant *Init, void *Addr) {
 			     
@@ -120,7 +159,9 @@ void Interpreter::initMemory(const Constant *Init, void *Addr) {
   }
 
   if (isa<ConstantAggregateZero>(Init)) {
-    MemGlobals.add(Addr, (size_t)getDataLayout().getTypeAllocSize(Init->getType()));
+    size_t sz = (size_t)getDataLayout().getTypeAllocSize(Init->getType());
+    MemGlobals.add(Addr, sz);
+    memlog("Allocated %d bytes: [%#lx,%#lx]\n", sz, intptr_t(Addr), intptr_t(Addr)+sz);    
     return;
   }
 
@@ -142,12 +183,16 @@ void Interpreter::initMemory(const Constant *Init, void *Addr) {
     // CDS is already laid out in host memory order.
     StringRef Data = CDS->getRawDataValues();
     MemGlobals.add(Addr, Data.size());
+    memlog("Allocated %d bytes: [%#lx,%#lx]\n", Data.size(),
+	   intptr_t(Addr), intptr_t(Addr)+Data.size());    
     return;
   }
 
   if (Init->getType()->isFirstClassType()) {
     GenericValue Val = getConstantValue(Init);
-    MemGlobals.add(Addr, getDataLayout().getTypeAllocSize(Init->getType()));
+    size_t sz = getDataLayout().getTypeAllocSize(Init->getType());
+    MemGlobals.add(Addr, sz);
+    memlog("Allocated %d bytes: [%#lx,%#lx]\n", sz, intptr_t(Addr), intptr_t(Addr)+sz);        
     return;
   }
 
@@ -178,10 +223,14 @@ void Interpreter::initializeMainParams(void *Addr, unsigned Size) {
   LOG << "Marking as unaccessible memory at address="
       << Addr << " size=" << Size << "\n";
   UnaccessibleMem.add(Addr, Size);
+  memlog("Marking as unaccessible %d bytes: [%#lx,%#lx]\n",
+	 Size, intptr_t(Addr), intptr_t(Addr)+Size);   
 #else
   LOG << "Collecting addresses from main argv parameter: address="
       << Addr << " size=" << Size <<".\n";  
-  MemMainParams.add(Addr, Size);				    
+  MemMainParams.add(Addr, Size);
+  memlog("Allocated %d bytes: [%#lx,%#lx]\n",
+	 Size, intptr_t(Addr), intptr_t(Addr)+Size);   
 #endif 				    
 }
 
@@ -1506,6 +1555,16 @@ void Interpreter::visitReturnInst(ReturnInst &I) {
   if (I.getNumOperands()) {
     RetTy  = I.getReturnValue()->getType();
     Result = getOperandValue(I.getReturnValue(), SF);
+
+    #ifdef DEBUG_PTR_PROVENANCE
+    if (RetTy->isPointerTy()) {
+      if (Result) {
+	LOG << "Returned pointer ";      
+	printAbsGenericValue(RetTy, Result);
+	LOG << "\n";	
+      }
+    }
+    #endif 
   }
 
   popStackAndReturnValueToCaller(RetTy, Result);
@@ -1660,6 +1719,8 @@ void Interpreter::visitAllocaInst(AllocaInst &I) {
   void *Memory = malloc(MemToAlloc);
 #ifndef TRACK_ONLY_UNACCESSIBLE_MEM    
   ECStack.back().Allocas.addWithOwnershipTransfer(Memory, MemToAlloc);
+  memlog("Allocated %d bytes: [%#lx,%#lx]\n",
+	 MemToAlloc, intptr_t(Memory), intptr_t(Addr)+MemToAlloc);     
 #endif   
   LOG << "Allocated stack Type: " << *Ty << " (" << TypeSize << " bytes) x " 
       << NumElements << " (Total: " << MemToAlloc << ") at "
@@ -1671,25 +1732,108 @@ void Interpreter::visitAllocaInst(AllocaInst &I) {
 
 }
 
-void Interpreter::visitMallocInst(CallSite &CS) {
+void Interpreter::visitAllocFnInst(CallSite &CS) {
   ExecutionContext &SF = ECStack.back();
-  AbsGenericValue AMemToAlloc = getOperandValue(CS.getArgument(0), SF);
-  if (!AMemToAlloc.hasValue()) {
-    LOG << "Cannot allocate memory for " << *CS.getInstruction() << "\n";
-    SetValue(CS.getInstruction(), llvm::None, SF);
-    return;
+  const Function *Callee = CS.getCalledFunction();
+  assert(Callee);
+  if (Callee->getName() == "malloc") {
+    AbsGenericValue SizeGV = getOperandValue(CS.getArgument(0), SF);
+    if (!SizeGV.hasValue()) {
+      LOG << "Cannot allocate memory for " << *CS.getInstruction() << "\n";
+      SetValue(CS.getInstruction(), llvm::None, SF);
+      return;
+    }
+    unsigned Size = SizeGV.getValue().IntVal.getZExtValue();
+    void *Result = malloc(Size);
+    memlog("Allocated heap memory: %d bytes at [%#lx,%#lx]\n",
+	   Size, intptr_t(Result), intptr_t(Result)+Size);     
+    GenericValue ResultGV = PTOGV(Result);
+    SetValue(CS.getInstruction(), ResultGV, SF);
+    
+    // == update memory shadowing
+    MemMallocs.addWithOwnershipTransfer(Result, Size);
+  } else if (Callee->getName() == "realloc") {
+    AbsGenericValue PtrGV = getOperandValue(CS.getArgument(0), SF);
+    AbsGenericValue SizeGV = getOperandValue(CS.getArgument(1), SF);
+    if (!PtrGV.hasValue() || !SizeGV.hasValue()) {
+      LOG << "Cannot allocate memory for " << *CS.getInstruction() << "\n";
+      SetValue(CS.getInstruction(), llvm::None, SF);
+      return;
+    }
+
+    unsigned Size = SizeGV.getValue().IntVal.getZExtValue();
+    void *Ptr = (void*)GVTOP(PtrGV.getValue());
+    void *Result = realloc(Ptr, Size);
+    memlog("Allocated heap memory: %d bytes at [%#lx,%#lx]\n",
+	   Size, intptr_t(Result), intptr_t(Result)+Size);     
+    GenericValue ResultGV = PTOGV(Result);
+    SetValue(CS.getInstruction(), ResultGV, SF);
+
+    // == update memory shadowing
+    size_t OldSize;
+    bool ok = MemMallocs.free(Ptr, OldSize); 
+    if (ok) {
+     #ifdef TRACK_ONLY_UNACCESSIBLE_MEM
+      UnaccessibleMem.add(Ptr, OldSize);
+      memlog("Marking as unaccessible %d bytes: [%#lx,%#lx]\n",
+             OldSize, intptr_t(Ptr), intptr_t(Ptr)+OldSize);
+     #endif  
+    }
+    MemMallocs.addWithOwnershipTransfer(Result, Size);
+  } else if (Callee->getName() == "calloc") {
+    AbsGenericValue NumGV  = getOperandValue(CS.getArgument(0), SF);
+    AbsGenericValue SizeGV = getOperandValue(CS.getArgument(1), SF);    
+    if (!NumGV.hasValue() || !SizeGV.hasValue()) {
+      LOG << "Cannot allocate memory for " << *CS.getInstruction() << "\n";
+      SetValue(CS.getInstruction(), llvm::None, SF);
+      return;
+    }
+    unsigned Num  = NumGV.getValue().IntVal.getZExtValue();    
+    unsigned Size = SizeGV.getValue().IntVal.getZExtValue();
+    void *Result = calloc(Num, Size);
+    // FIXME(https://en.cppreference.com/w/c/memory/calloc):
+    // Due to the alignment requirements, the number of allocated
+    // bytes is not necessarily equal to num*size.
+    unsigned AllocatedBytes = Num*Size;    
+    memlog("Allocated heap memory: %d bytes at [%#lx,%#lx]\n",
+	   AllocatedBytes, intptr_t(Result), intptr_t(Result)+AllocatedBytes);     
+    GenericValue ResultGV = PTOGV(Result);
+    SetValue(CS.getInstruction(), ResultGV, SF);
+    
+    // == update memory shadowing
+    MemMallocs.addWithOwnershipTransfer(Result, AllocatedBytes);
+  } else {
+    LOG << "Warning: unsupported allocation function " << *CS.getInstruction() << "\n";
   }
   
-  unsigned MemToAlloc = AMemToAlloc.getValue().IntVal.getZExtValue();
-  void *Memory = malloc(MemToAlloc);
-  LOG << "Allocated heap memory: " << MemToAlloc << " at " << uintptr_t(Memory) << "\n";
-  GenericValue Result = PTOGV(Memory);
-#ifndef TRACK_ONLY_UNACCESSIBLE_MEM      
-  MemMallocs.addWithOwnershipTransfer(Memory, MemToAlloc);
-#endif   
-  SetValue(CS.getInstruction(), Result, SF);  
 }
 
+void Interpreter::visitFreeInst(CallSite &CS) {
+  ExecutionContext &SF = ECStack.back();
+  AbsGenericValue PtrToFree = getOperandValue(CS.getArgument(0), SF);
+  if (!PtrToFree.hasValue()) {
+    LOG << "Warning: cannot free memory for " << *CS.getArgument(0) << "\n";
+    return;
+  } 
+
+  void *Ptr = (void*)GVTOP(PtrToFree.getValue());
+  size_t sz;
+  bool ok = MemMallocs.free(Ptr, sz); // marked as free
+  if (ok) {
+    free(Ptr); // the actual free
+    #ifdef TRACK_ONLY_UNACCESSIBLE_MEM
+    UnaccessibleMem.add(Ptr, sz);
+    memlog("Marking as unaccessible %d bytes: [%#lx,%#lx]\n",
+           sz, intptr_t(Ptr), intptr_t(Ptr)+sz);
+    #else
+    memlog("Free bytes [%#lx,%#lx]\n", intptr_t(Ptr), intptr_t(Ptr)+sz);    
+    #endif
+  } else {
+    LOG << "Warning: cannot free memory for " << *CS.getArgument(0)
+	<< " because memory not recognized as allocated by the interpreter\n";
+  }
+}
+  
 // getElementOffset - The workhorse for getelementptr.
 //
 AbsGenericValue Interpreter::executeGEPOperation(Value *Ptr, gep_type_iterator I,
@@ -1815,9 +1959,9 @@ void Interpreter::visitStoreInst(StoreInst &I) {
     // argv
     Type *Ty = I.getOperand(0)->getType();
     const unsigned StoreBytes = getDataLayout().getTypeStoreSize(Ty);
-    LOG << "Marking as unaccessible memory at address="
-	<< Ptr << " size=" << StoreBytes << "\n";    
     UnaccessibleMem.add((void*)Ptr, StoreBytes);
+    memlog("Marking as unaccessible %d bytes: [%#lx,%#lx]\n",
+	 StoreBytes, intptr_t(Ptr), intptr_t(Ptr)+StoreBytes);         
     #endif 
     return;
   }
@@ -1860,12 +2004,17 @@ void Interpreter::visitCallSite(CallSite CS) {
       return;
     }
     
-    // HACK: maybe use isMallocLikeFn from MemoryBuiltins
-    if (F->getName() == "malloc") {
-      visitMallocInst(CS);
+
+    if (isMallocLikeFn(*F)) {
+      visitAllocFnInst(CS);
       return;
     }
 
+    if (isFreeLikeFn(*F)) {
+      visitFreeInst(CS);
+      return;
+    }
+    
     // Ignore debug llvm functions
     if (F->getName().startswith("llvm.dbg")) {
       return;
@@ -3106,6 +3255,15 @@ void Interpreter::visitInsertValueInst(InsertValueInst &I) {
   // Special handling for external functions.
   if (F->isDeclaration()) {
     AbsGenericValue Result = callExternalFunction (CS, F, ArgVals);
+    #ifdef DEBUG_PTR_PROVENANCE
+    if (CS->getType()->isPointerTy()) {
+      if (Result) {
+	LOG << "External call Returned pointer ";
+	printAbsGenericValue(CS->getType(), Result);
+	LOG << " from " << *CS << "\n";	
+      }
+    }
+    #endif    
     // Simulate a 'ret' instruction of the appropriate type.
     popStackAndReturnValueToCaller (F->getReturnType (), Result);
     return;
@@ -3143,7 +3301,8 @@ void Interpreter::run() {
     LOG << "About to interpret: " << I << "\n";
     if (VisitedBlocks.insert(I.getParent()).second) {
       LOG << "Marked " << I.getParent()->getParent()->getName() << "::"
-	  << I.getParent()->getName() << " as visited \n";
+	  << (I.getParent()->hasName() ? I.getParent()->getName() : "unnamed_block")
+	  << " as visited \n";
     }
     
     visit(I);   // Dispatch to one of the visit* methods...
