@@ -5,10 +5,9 @@
 Description
 ============
 
-[OCCAM](https://github.com/SRI-CSL/OCCAM) is a whole-program partial evaluator for LLVM bitcode that aims at debloating programs and shared/static libraries running in a specific deployment context. The current LLVM version is 10.
+[OCCAM](https://github.com/SRI-CSL/OCCAM) is a whole-program partial evaluator for LLVM bitcode. It can be used to debloat programs and shared/static libraries. To do so, it relies on a manifest that describes the specific deployment context. It uses LLVM version 10.
 
-The available documentation can be found in
-our [wiki](https://github.com/SRI-CSL/OCCAM/wiki).
+The available documentation can be found in our [wiki](https://github.com/SRI-CSL/OCCAM/wiki).
 
 Docker
 ======
@@ -24,11 +23,11 @@ Alternatively, it can be built and installed from source as follows.
 Prerequisites
 ============
 
-OCCAM currently works on Linux, macOS, and FreeBSD.  It depends on an installation of LLVM. OCCAM currently is built on the top of llvm-10.0 which requires a C++ compiler supporting c++14. You will also need the Google protocol buffer compiler `protoc` and the corresponding Python [package](https://pypi.python.org/pypi/protobuf/). Some OCCAM components (such as [sea-dsa](https://github.com/seahorn/sea-dsa) and [crab](https://github.com/seahorn/crab) require the boost library >= 1.65.
+OCCAM works on Linux, macOS, and FreeBSD.  It depends on an installation of LLVM. OCCAM is built on the top of llvm-10.0 which requires a C++ compiler supporting c++14. You will also need the Google protocol buffer compiler `protoc` and the corresponding Python [package](https://pypi.python.org/pypi/protobuf/). Some OCCAM components (such as [sea-dsa](https://github.com/seahorn/sea-dsa) and [crab](https://github.com/seahorn/crab) require the boost library >= 1.65.
 
-If you need to generate application bitcode (that OCCAM operates on), you will want to install WLLVM, either from the the pip [package](https://pypi.python.org/pypi/wllvm/) or the GitHub [repository](https://github.com/SRI-CSL/whole-program-llvm.git).
+If you need to generate application bitcode (that OCCAM operates on), you may want to install WLLVM, either from the the pip [package](https://pypi.python.org/pypi/wllvm/) or the GitHub [repository](https://github.com/SRI-CSL/whole-program-llvm.git).
 
-The test harness also requires [lit](https://pypi.python.org/pypi/lit/) and `FileCheck`. `FileCheck` can often be found in the binary directory of your LLVM installation. However, if you built your own, you may need to read [this.](https://bugs.llvm.org//show_bug.cgi?id=25675) Hint: the build produces it, but does not install it. (Try `locate FileCheck`, then copy it to the `bin` directory.)
+The test harness also requires [lit](https://pypi.python.org/pypi/lit/) and `FileCheck`. `FileCheck` can often be found in the binary directory of your LLVM installation. However, if you built your own, you may need to read [this](https://bugs.llvm.org//show_bug.cgi?id=25675). Hint: the build produces it, but does not install it. (Try `locate FileCheck`, then copy it to the `bin` directory.)
 
 Detailed configuration instructions for Ubuntu 18.04 can be gleaned from [bootstrap.sh](https://github.com/SRI-CSL/OCCAM/blob/master/vagrants/18.04/basic/bootstrap.sh).
 
@@ -59,7 +58,6 @@ Clone, build, and install OCCAM with:
   make install
   make test
 ```
-
 
 ---
 
