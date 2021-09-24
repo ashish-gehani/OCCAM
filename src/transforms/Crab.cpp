@@ -25,6 +25,7 @@
 #include "clam/Transforms/Optimizer.hh"
 
 #include "crab/support/stats.hpp"
+#include "crab/domains/abstract_domain_params.hpp"
 
 #include "seadsa/AllocWrapInfo.hh"
 #include "seadsa/CompleteCallGraph.hh"
@@ -54,10 +55,6 @@ public:
   using number_t = z_number;
   using varname_t = clam::varname_t;
   using varname_allocator_t = crab::var_factory_impl::str_var_alloc_col;  
-  enum { allocation_sites = 1};
-  enum { deallocation = 0};
-  enum { refine_uninitialized_regions = 0};
-  enum { tag_analysis = 0};  
 };
 using occam_domain_t = region_domain<OccamRegionParams>;
 REGISTER_DOMAIN(CrabDomain::OCCAM, occam_domain_t)    
@@ -114,6 +111,16 @@ bool CrabPass::runOnModule(Module &M) {
   params.print_invars = PrintInvariants;
   // Needed to keep info needed by InsertInvariants
   params.store_invariants = true;
+
+  // set parameters for the region domain
+  crab::domains::region_domain_params p(true/*allocation_sites*/,
+					false/*deallocation*/,
+					false/*refine_uninitialized_regions*/,
+					false/*tag_analysis*/,
+					false/*is_dereferenceable*/,
+					true/*skip_unknown_regions*/);
+  crab::domains::crab_domain_params_man::get().update_params(p);
+  
   std::unique_ptr<ClamGlobalAnalysis> ga(new InterGlobalClam(M, builder_man));
   typename ClamGlobalAnalysis::abs_dom_map_t abs_dom_assumptions /*no assumptions*/;    
   ga->analyze(params, abs_dom_assumptions);
