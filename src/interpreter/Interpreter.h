@@ -74,19 +74,19 @@ public:
 // MemoryHolder - Object to track memory.
 class MemoryHolder {
   std::map<intptr_t, intptr_t, std::greater<intptr_t>> m_mem_map;
-  //std::vector<intptr_t> m_owned_memory;
+  intptr_t m_smallest_addr;
   
+    
 public:
-  MemoryHolder() {}
-
+  MemoryHolder(): m_smallest_addr(0) {}
+  ~MemoryHolder() {}
+  
   // Make this type move-only.
   MemoryHolder(const MemoryHolder &) = delete;
   MemoryHolder &operator=(const MemoryHolder &RHS) = delete;  
   MemoryHolder(MemoryHolder &&) = default;
   MemoryHolder &operator=(MemoryHolder &&RHS) = default;
   
-  ~MemoryHolder();
-
   bool trackMemory(void *mem) const;
   
   void add(void *mem, unsigned size);
@@ -96,6 +96,10 @@ public:
   // If free returns true then size is the number of bytes being
   // deallocated. 
   bool free(void *mem, size_t &size);
+
+  intptr_t getSmallestAllocatedAddr() const {
+    return m_smallest_addr;
+  }
 };
 
 // we create this new type to consider the case where the generic
@@ -163,14 +167,14 @@ class Interpreter : public llvm::ExecutionEngine, public llvm::InstVisitor<Inter
 
   // track memory allocated by malloc
   MemoryHolder MemMallocs;
-  // track memory of main parameters Technically, they are part
-  //      of the top-level stack frame. For convenience, we put them
-  //      separate.
+  // track memory of main parameters.
+  // Technically, they are part of the top-level stack frame. For
+  // convenience, we put them separate.
   MemoryHolder MemMainParams;
   // track global variable initializers
   MemoryHolder MemGlobals;
-  // memory we know should be unaccessible
   
+  // memory we know should be unaccessible
   // Used only if enabled TRACK_ONLY_UNACCESSIBLE_MEM
   MemoryHolder UnaccessibleMem;
 
@@ -223,6 +227,13 @@ public:
     return nullptr;
   }
 
+  intptr_t getSmallestAllocatedAddr() const {
+    intptr_t x = MemMallocs.getSmallestAllocatedAddr();
+    //intptr_t y = MemMainParams.getSmallestAllocatedAddr();
+    //intptr_t z = MemGlobals.getSmallestAllocatedAddr();
+    return x;
+  }
+  
   // Methods used to execute code:
   // Place a call on the stack
   void callFunction(llvm::Function *F, llvm::ArrayRef<AbsGenericValue> ArgVals,
