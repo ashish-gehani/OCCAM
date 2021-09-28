@@ -38,22 +38,16 @@ $(OCCAM_HOME)/src/transforms/Crab.o: $(OCCAM_HOME)/src/transforms/Crab.cpp
 crabopt.o: crabopt.cpp
 	$(CXX) ${CXX_FLAGS} $< -c -o $@
 
-CRAB_REPO = clone https://github.com/seahorn/crab.git
-CRAB_BRANCH = master
-SEADSA_REPO = clone https://github.com/seahorn/sea-dsa.git
-SEADSA_BRANCH = dev10
-
-
 .PHONY: build_clam
 build_clam:
 ifeq ($(wildcard ${CLAM_INSTALL_DIR}),)
-	$(GIT) ${CRAB_REPO} -b ${CRAB_BRANCH} ${CLAM_SOURCE_DIR}/crab 
-	$(GIT) ${SEADSA_REPO} -b ${SEADSA_BRANCH} ${CLAM_SOURCE_DIR}/sea-dsa
 	$(MKDIR) -p ${CLAM_BUILD_DIR}
 	cd ${CLAM_BUILD_DIR} && \
 	$(CMAKE) -DCMAKE_INSTALL_PREFIX=${CLAM_INSTALL_DIR}  \
 		-DLLVM_DIR=${LLVM_CFG} \
 		-DCMAKE_BUILD_TYPE=${LLVM_BUILD_MODE} \
+		-DSEADSA_ROOT=${OCCAM_HOME}/src/analysis/sea-dsa \
+		-DCRAB_ROOT=${OCCAM_HOME}/src/analysis/crab \
 		-DCLAM_INCLUDE_TRANSFORMS=OFF \
 		-DCLAM_INCLUDE_SEAOPT=OFF \
 		-DCLAM_INCLUDE_POST_TRANSFORMS=ON \
@@ -78,5 +72,4 @@ clean:
 uninstall:
 	rm -Rf ${CLAM_INSTALL_DIR}
 	rm -Rf ${CLAM_BUILD_DIR}
-	rm -Rf ${CLAM_SOURCE_DIR}/crab ${CLAM_SOURCE_DIR}/sea-dsa
 	
