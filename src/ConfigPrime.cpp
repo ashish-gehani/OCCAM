@@ -48,6 +48,10 @@ UnknownArgs("Pconfig-prime-unknown-args",
 	 cl::init(0),
 	 cl::desc("Specify the number of unknown parameters"));
 
+static cl::list<std::string>
+BlackList("Pconfig-prime-blacklisted-function",
+	  cl::Hidden,
+	  cl::desc("Function whose returned values should not be used for specialization"));
 
 namespace previrt {
 
@@ -343,12 +347,34 @@ static void markRecursiveFunctions(CallGraph &cg, DenseSet<Function*> &out) {
   
 static bool simplifyPrefix(Interpreter &Interp, Pass &CPPass,
        const std::vector<std::pair<Instruction*, GenericValue>>& ExecutedMemInsts) {
-
   // ExecutedMemInsts can contain the same instruction multiple times
   // with possibly different values if the execution went through a
   // loop. replaceMap creates a map where the key is an instruction
   // and its value is a vector of values: one for each possible value
   // of the instruction if the instruction is executed multiple times.
+
+  std::set<std::string> blacklisted_fns{
+    "socket"
+      , "time"
+      // it is also possible to call
+      // getresuid(uid_t *ruid, uid_t *euid, uid_t *suid);   
+      , "getgid"
+      , "getegid"
+      , "getuid"
+      , "geteuid"
+  };
+  blacklisted_fns.insert(BlackList.begin(), BlackList.end());
+  
+  int64_t smallestAddr = (int64_t)Interp.getSmallestAllocatedAddr();   
+  errs() << "Hint: smallest address allocated by the interpreter: "
+	 << smallestAddr << "\n";
+  
+  auto integerLooksAddress = [&smallestAddr](const APInt &n) -> bool {
+    if (smallestAddr == 0) {
+      return false;
+    }
+    return n.sge(smallestAddr);
+  };
   
   DenseMap<Instruction*, std::vector<GenericValue>> replaceMap;
   for(auto &kv: ExecutedMemInsts) {
@@ -390,7 +416,7 @@ static bool simplifyPrefix(Interpreter &Interp, Pass &CPPass,
   // DenseSet<Function*> recursiveFunctions;
   // CallGraph &cg = CPPass.getAnalysis<CallGraphWrapperPass>().getCallGraph();
   // markRecursiveFunctions(cg, recursiveFunctions);
-  
+
   bool Change = false;
   for(auto &kv: replaceMap) {
     Instruction *I = kv.first;
@@ -405,10 +431,11 @@ static bool simplifyPrefix(Interpreter &Interp, Pass &CPPass,
 	continue;
       }
     }
+    
     if (!valueToReplace) {
       continue;
     }
-
+    
     // if (!isSafeToReplace(*I, blocksInLoops, recursiveFunctions, CPPass)) {
     //   errs() << "[PREFIX] cannot replace " << *valueToReplace
     // 	     << " because it's not safe\n";
@@ -416,18 +443,42 @@ static bool simplifyPrefix(Interpreter &Interp, Pass &CPPass,
     // }
 
     errs() << "[PREFIX] checking if we can simplify " << *valueToReplace <<"\n";
+
     Type *ty = valueToReplace->getType();
     auto &values = kv.second;
     AbsGenericValue val = constantJoin(ty, values);
     if (val.hasValue()) {
+      // HACK: blacklist of functions that we should skip because they
+      // return an integer but they are not reusable across
+      // executions.
+      if (CallBase *CB = dyn_cast<CallInst>(valueToReplace)) {
+	if (Function *CalleeF = dyn_cast<Function>(CB->getCalledFunction())) {
+	  if (blacklisted_fns.count(CalleeF->getName().str()) > 0) {
+	    errs() << "[PREFIX] skipped " << *valueToReplace << " with "
+		   << val.getValue().IntVal
+		   << " because it might not be reusable across executions.\n";
+	    continue;
+	  }
+	}
+      }
+
+      // HACK: avoid replacing LLVM values with integers that can
+      // look like addresses      
+      if (ty->isIntegerTy() && integerLooksAddress(val.getValue().IntVal)) {
+	errs() << "[PREFIX] skipped " << *valueToReplace << " with "
+	       << val.getValue().IntVal << " because it might be an address.\n";
+	continue;
+      }
+
       if (Constant *C = convertToLLVMConstant(ty,val.getValue())) {
-	errs() << "[PREFIX] replaced " << *valueToReplace << " with "
-	       << *C << "\n";
+	errs() << "[PREFIX] replaced " << *valueToReplace
+	       << " with " << *C << "\n";
 	valueToReplace->replaceAllUsesWith(C);
 	Change = true;
       }
-    } 
-  }
+      
+    }
+  } // end for
   
   return Change;
 }
@@ -601,6 +652,7 @@ bool ConfigPrime::run(Module &M) {
     return true;
   }
 
+  // llvm::errs() << M << "\n";  
   bool Change = simplifyPrefix(*Interp, *this, Interp->getExecutedMemInsts());
   #if 0
   Change |= simplifySpeculativelySuffixes(*Interp, *this, *LastExecBlock, 
