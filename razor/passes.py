@@ -433,4 +433,30 @@ def config_prime(input_file, output_file, \
     #     index += 1
     args.append('-Pconfig-prime-index-first-unknown-arg={0}'.format(index_first_dynamic_arg))
     args.append('-Pconfig-prime-unknown-args={0}'.format(num_dynamic_args))
+
+    ###----------------------------------------------------------------###
+    ## https://code.woboq.org/userspace/glibc/posix/getopt.c.html#58
+    ###----------------------------------------------------------------###    
+    ## If the environment variable POSIXLY_CORRECT is not set then
+    ## getopt will permute the argv’s elements so that all the ones
+    ## started with '-' come first but only if you use the glibc
+    ## version.  That is, if you call directly getopt directly (e.g.,
+    ## if the program is linked with musllvm) then getopt does not
+    ## permute elements.  The permutation must be disabled because it
+    ## will go through the dynamic arguments and check if it starts
+    ## with `-`. However, the dynamic arguments cannot be accessed
+    ## during the configuration priming because they are undefined at
+    ## that time.
+
+    key = 'POSIXLY_CORRECT'
+    # remember value
+    old_val = os.getenv(key)
+    # set the environment variable to any value
+    os.environ[key] = '1'
+    # call configuration priming
     driver.previrt(input_file, output_file, args)
+    ## Update old value of the environment variable
+    if old_val is None:
+        os.unsetenv(key)
+    else:
+        os.environ[key] = old_val
