@@ -46,7 +46,7 @@ llvm::errs() << "ERROR: "
 
 // defined in ConfigPrime.cpp
 extern StringRef CONFIG_PRIME_STOP;
-
+extern StringRef CONFIG_PRIME_UNACCESSIBLE;
 
 #define DEBUG_PTR_PROVENANCE
 //===----------------------------------------------------------------------===//
@@ -2000,6 +2000,11 @@ void Interpreter::visitCallSite(CallSite CS) {
       return;
     }
     
+    if (F->getName() == CONFIG_PRIME_UNACCESSIBLE) {
+      LOG << "Marking as unaccessible the return value of " << *CS.getInstruction() << "\n";
+      SetValue(CS.getInstruction(), llvm::None, SF);
+      return;
+    }
 
     if (isMallocLikeFn(*F)) {
       visitAllocFnInst(CS);
