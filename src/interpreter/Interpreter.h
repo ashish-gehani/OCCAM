@@ -195,6 +195,9 @@ class Interpreter : public llvm::ExecutionEngine, public llvm::InstVisitor<Inter
   
   // Whether "exit" was called with a non-zero value
   bool NonZeroExitCode;
+
+  // Functions whose returned value should not be used for specialization
+  std::set<std::string> DoNotSpecializeFuncs;
   
 public:
   
@@ -325,6 +328,9 @@ public:
 
   void initMemory(const llvm::Constant *Init, void *Addr);
 
+  void setDoNotSpecializeFunctions(const std::set<std::string> &funcs) {
+    DoNotSpecializeFuncs.insert(funcs.begin(), funcs.end());
+  }
 
   llvm::Instruction* getLastExecutedInst() const ;
 

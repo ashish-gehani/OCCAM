@@ -35,7 +35,8 @@
 //#define INTERACTIVE
 #ifdef INTERACTIVE
 #include <stdio.h>
-#endif 
+#endif
+
 using namespace llvm;
 
 namespace previrt {
@@ -2006,6 +2007,15 @@ void Interpreter::visitCallSite(CallSite CS) {
       return;
     }
 
+    // HACK: there are some functions whose return values are of
+    // integer type but are not reusable across executions.
+    if (!(CS.getInstruction()->getType()->isVoidTy()) &&
+    	DoNotSpecializeFuncs.count(F->getName().str()) > 0) {
+      LOG << "Marking as unaccessible the return value of " << *CS.getInstruction() << "\n";
+      SetValue(CS.getInstruction(), llvm::None, SF);
+      return;
+    }
+    
     if (isMallocLikeFn(*F)) {
       visitAllocFnInst(CS);
       return;
