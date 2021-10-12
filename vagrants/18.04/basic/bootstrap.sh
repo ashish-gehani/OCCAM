@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Do apt-get package installations in non-interactive mode
+export DEBIAN_FRONTEND=noninteractive
+
 # Install GLLVM / OCCAM dependencies
 sudo apt-get update
 sudo apt-get install -y clang-10 clang-format-10 cmake git golang-go
