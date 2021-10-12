@@ -4,6 +4,8 @@ include Makefile.config
 LIBRARYNAME=libprevirt
 
 ### ================================================================== ###
+# assume that google protobuf is installed in the standard path
+
 CXX_FLAGS += -DGOOGLE_PROTOBUF_NO_RTTI
 CXX_FLAGS += -fPIC
 
@@ -26,8 +28,8 @@ else
 # LINUX
 OCCAM_LIBRARY = ${LIBRARYNAME}.so
 LIBFLAGS = -shared -Wl,-soname,${OCCAM_LIBRARY} 
-OTHERLIBS = -L/usr/local/lib -lpthread -lprotobuf
-CXX_FLAGS += -DHAVE_FFI_H
+OTHERLIBS = -L/usr/local/lib -lpthread -lprotobuf 
+CXX_FLAGS += -DHAVE_FFI_H 
 endif
 
 
@@ -56,7 +58,6 @@ seadsa:
 # Create a library containing all the Crab stuff (Clam is the LLVM
 # wrapper for Crab), and a binary crabopt, a LLVM optimized based on
 # Crab invariants.
-# FIXME: seadsa is built twice because clam also relies on seadsa.
 #===
 clam:
 	$(MAKE) -C tools -f Makefile.clam build_clam

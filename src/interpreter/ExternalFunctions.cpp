@@ -498,7 +498,10 @@ callExternalFunction(Instruction *CI, Function *F, ArrayRef<AbsGenericValue> AAr
   GenericValue Result;
   if (RawFn) {
     errs() << "Invoking FFI on " << F->getName() << "\n";          
-    if (ffiInvoke(CI, RawFn, F, ArgVals, getDataLayout(), Result)) { 
+    if (ffiInvoke(CI, RawFn, F, ArgVals, getDataLayout(), Result)) {
+      errs() << "\tReturn value=";
+      printAbsGenericValue(CI->getType(), Result);
+      errs() << "\n";
       return Result;
     }
   }

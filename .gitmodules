@@ -8,5 +8,8 @@
 	branch = dev10-seadsa
 [submodule "src/tools/clam"]
 	path = src/analysis/clam
-	url = https://github.com/seahorn/crab-llvm.git
-	branch = dev10
+	url = https://github.com/seahorn/clam.git
+	branch = master
+[submodule "src/analysis/crab"]
+	path = src/analysis/crab
+	url = https://github.com/seahorn/crab.git

@@ -34,6 +34,8 @@ extern "C" void LLVMLinkInInterpreter() { }
 
 namespace previrt {
 
+/// Turn a vector of strings into a nice argv style array of pointers to null
+/// terminated strings.
 void *ArgvArray::reset(LLVMContext &C, ExecutionEngine *EE,
                        const std::vector<std::string> &InputArgv) {
 
@@ -46,7 +48,14 @@ void *ArgvArray::reset(LLVMContext &C, ExecutionEngine *EE,
 
   Type *SBytePtr = Type::getInt8PtrTy(C);
 
+  // IMPORTANT: InputArgv contains each of the argv's elements as
+  // strings.  When the interpreter is run after the static arguments
+  // have been lifted into the bitcode, InputArgv is a vector of empty
+  // strings (one per dynamic argument).
   for (unsigned i = 0; i != InputArgv.size(); ++i) {
+    if (InputArgv[i].empty()) {
+      continue;
+    }
     errs() << "Processing " << InputArgv[i] << "\n";
     unsigned Size = InputArgv[i].size()+1;
     auto Dest = std::make_unique<char[]>(Size);
@@ -57,17 +66,15 @@ void *ArgvArray::reset(LLVMContext &C, ExecutionEngine *EE,
     EE->StoreValueToMemory(PTOGV(Dest.get()),
                            (GenericValue*)(&Array[i*PtrSize]), SBytePtr);
     // HACK: track of the address that contains argv[i]
-    Interp->initializeMainParams((void*) (&Array[i*PtrSize]), PtrSize);
-    Interp->initializeMainParams((void *) (Dest.get()), Size);
+    //Interp->initializeMainParams((void*) (&Array[i*PtrSize]), PtrSize);
+    //Interp->initializeMainParams((void *) (Dest.get()), Size);
     Values.push_back(std::move(Dest));
-  }
-
+  }	      
   // Null terminate it
   EE->StoreValueToMemory(PTOGV(nullptr),
                          (GenericValue*)(&Array[InputArgv.size()*PtrSize]),
                          SBytePtr);
-  // HACK: track of the address of argv
-  Interp->initializeMainParams((void*) (&Array[InputArgv.size()*PtrSize]), PtrSize);
+
   return Array.get();
 }
 
@@ -157,13 +164,13 @@ GenericValue Interpreter::runFunction(Function *F,
   const size_t ArgCount = F->getFunctionType()->getNumParams();
   ArrayRef<GenericValue> ActualArgs =
       ArgValues.slice(0, std::min(ArgValues.size(), ArgCount));
-
+  
   std::vector<AbsGenericValue> AActualArgs;
   AActualArgs.reserve(ActualArgs.size());
   for(unsigned i=0, sz=ActualArgs.size(); i<sz;++i) {
     AActualArgs.push_back(AbsGenericValue(ActualArgs[i]));
   }
-  
+
   // Set up the function call.
   callFunction(F, AActualArgs);
   // Start executing the function.

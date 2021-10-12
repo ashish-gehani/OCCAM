@@ -27,6 +27,11 @@
 
 using namespace llvm;
 
+namespace previrt {
+unsigned FirstUnknownIndex;
+unsigned UnknownArgs;
+} //end namespace previrt
+
 static cl::opt<std::string> InputFile("Pconfig-prime-file", cl::Hidden,
                                       cl::desc("Specify input bitcode"));
 
@@ -36,28 +41,38 @@ InputArgv("Pconfig-prime-input-arg",
 	 cl::Hidden,
 	 cl::desc("Specify one known program argument"));
 
-static cl::opt<unsigned>
-FirstUnknownIndex("Pconfig-prime-index-first-unknown-arg",
+static cl::opt<unsigned, true>
+XFirstUnknownIndex("Pconfig-prime-index-first-unknown-arg",
 	 cl::Hidden,
+	 cl::location(previrt::FirstUnknownIndex),
 	 cl::init(0), 
 	 cl::desc("Specify the index of the first unknown parameter starting at 1"));
 
-static cl::opt<unsigned>
-UnknownArgs("Pconfig-prime-unknown-args",
+static cl::opt<unsigned, true>
+XUnknownArgs("Pconfig-prime-unknown-args",
 	 cl::Hidden,
+	 cl::location(previrt::UnknownArgs),	     
 	 cl::init(0),
 	 cl::desc("Specify the number of unknown parameters"));
 
+static cl::list<std::string>
+DoNotSpecialize("Pconfig-prime-do-not-specialize",
+  cl::Hidden,
+  cl::desc("Function calls whose returned values should not be used for specialization"));
 
 namespace previrt {
 
 StringRef CONFIG_PRIME_STOP = "occam.config_prime.stop";
+StringRef CONFIG_PRIME_UNACCESSIBLE = "occam.config_prime.unaccessible";  
   
 // Instrumentation to be added before running configuration priming.
 class PreConfigPrimeInst {
   llvm::FunctionCallee m_stopConfigPrime;
+  llvm::FunctionCallee m_markAsUnaccessible;
   GlobalVariable *m_optind;
   ConstantInt *m_firstUnknownIdx;
+  bool transformGetOptFn(llvm::Function &F);
+  bool transformOptArgLoad(Function &F);
 public:
   PreConfigPrimeInst();
   ~PreConfigPrimeInst() = default;
@@ -68,6 +83,8 @@ public:
 // Instrumentation to be added/removed after running configuration
 // priming.
 class PostConfigPrimeInst{
+  void undoGetOptFnTransform(llvm::Function &F);
+  void undoOptArgLoadTransform(llvm::Function &F);
 public:
   PostConfigPrimeInst();
   ~PostConfigPrimeInst() = default;
@@ -77,10 +94,13 @@ public:
   
 /** Begin helpers **/
 
+// pre: strArg.size() == 1
+// pre: strArg[0] contains the program name  
+// pre: argc >= 1 where argc-1 are the dynamic (unknown) arguments.
 static std::vector<GenericValue>
 prepareArgumentsForMain(Function *mainFn,
-                        // argc >= len(argv)
-                        unsigned argc, const std::vector<std::string> &argv,
+                        // argc >= len(strArgv)
+                        unsigned argc, const std::vector<std::string> &strArgv,
                         const std::vector<std::string> &envp,
                         ExecutionEngine &EE, ArgvArray &CArgv,
                         ArgvArray &CEnv) {
@@ -88,6 +108,7 @@ prepareArgumentsForMain(Function *mainFn,
   GenericValue GVArgc;
   GVArgc.IntVal = APInt(32, argc);
 
+    
   // Check main() type
   unsigned NumArgs = mainFn->getFunctionType()->getNumParams();
   FunctionType *FTy = mainFn->getFunctionType();
@@ -110,10 +131,30 @@ prepareArgumentsForMain(Function *mainFn,
     GVArgs.push_back(GVArgc);
     if (NumArgs > 1) {
       // Arg #1 = argv.
-      GVArgs.push_back(PTOGV(CArgv.reset(mainFn->getContext(), &EE, argv)));
+      // Turn a vector of strings into a nice argv style array of pointers to null
+      // terminated strings.
+      void* argv = (void*)CArgv.reset(mainFn->getContext(), &EE, strArgv);
+      GVArgs.push_back(PTOGV(argv));
 
+      errs() << "argc=" << argc << "\n";
+      errs() << "argv starts at address=" << argv << "\n";
+#ifdef TRACK_ONLY_UNACCESSIBLE_MEM
+       Interpreter *Interp = static_cast<Interpreter *>(&EE);
+       unsigned PtrSize = EE.getDataLayout().getPointerSize();
+       intptr_t addr = (intptr_t) argv;
+       size_t offset = PtrSize; // skips the program name
+       errs() << "-- Begin marking as unaccessible dynamic arguments\n";
+       for (unsigned i=1;i<argc;i++) {
+	 // iterate argc-1 times (one per dynamic argument)
+	 // 
+	 // initialize here means mark the addresses of all dynamic
+	 // arguments as unaccessible
+	 Interp->initializeMainParams((void*)(addr+offset), PtrSize);
+       }
+       errs() << "-- End marking as unaccessible dynamic arguments\n";       
+#endif      
       // assert(!isTargetNullPtr(this, GVTOP(GVArgs[1])) &&
-      //        "argv[0] was null after CreateArgv");
+      //        "strArgv[0] was null after CreateArgv");
       /// XXX: ignore for now envp
       // if (NumArgs > 2) {
       //   std::vector<std::string> EnvVars;
@@ -242,15 +283,20 @@ void ConfigPrime::runInterpreterAsMain(Module &M, APInt &Res) {
   // Run static constructors.
   m_ee->runStaticConstructorsDestructors(false);
 
+  errs() << "STARTED interpreter from main\n";
+  
   // Run main
   std::vector<std::string> mainArgV;
   // Add the module's name to the start of the vector of arguments to main().
   mainArgV.push_back(InputFile);
   unsigned i = 1;
+
+  // InputArgv is unused so this loop is not executed
   for (auto a : InputArgv) {
     errs() << "ConfigPrime: reading argv[" << i++ << "] " << a << "\n";
     mainArgV.push_back(a);
   }
+  
   unsigned argc = mainArgV.size() + UnknownArgs;
   std::vector<std::string> envp; /* unused */
   ArgvArray CArgv, CEnv; // they need to be alive while m_ee may use them
@@ -343,12 +389,23 @@ static void markRecursiveFunctions(CallGraph &cg, DenseSet<Function*> &out) {
   
 static bool simplifyPrefix(Interpreter &Interp, Pass &CPPass,
        const std::vector<std::pair<Instruction*, GenericValue>>& ExecutedMemInsts) {
-
   // ExecutedMemInsts can contain the same instruction multiple times
   // with possibly different values if the execution went through a
   // loop. replaceMap creates a map where the key is an instruction
   // and its value is a vector of values: one for each possible value
   // of the instruction if the instruction is executed multiple times.
+
+  
+  int64_t smallestAddr = (int64_t)Interp.getSmallestAllocatedAddr();   
+  errs() << "Hint: smallest address allocated by the interpreter: "
+	 << smallestAddr << "\n";
+  
+  auto integerLooksAddress = [&smallestAddr](const APInt &n) -> bool {
+    if (smallestAddr == 0) {
+      return false;
+    }
+    return n.sge(smallestAddr);
+  };
   
   DenseMap<Instruction*, std::vector<GenericValue>> replaceMap;
   for(auto &kv: ExecutedMemInsts) {
@@ -390,7 +447,7 @@ static bool simplifyPrefix(Interpreter &Interp, Pass &CPPass,
   // DenseSet<Function*> recursiveFunctions;
   // CallGraph &cg = CPPass.getAnalysis<CallGraphWrapperPass>().getCallGraph();
   // markRecursiveFunctions(cg, recursiveFunctions);
-  
+
   bool Change = false;
   for(auto &kv: replaceMap) {
     Instruction *I = kv.first;
@@ -405,10 +462,11 @@ static bool simplifyPrefix(Interpreter &Interp, Pass &CPPass,
 	continue;
       }
     }
+    
     if (!valueToReplace) {
       continue;
     }
-
+    
     // if (!isSafeToReplace(*I, blocksInLoops, recursiveFunctions, CPPass)) {
     //   errs() << "[PREFIX] cannot replace " << *valueToReplace
     // 	     << " because it's not safe\n";
@@ -416,18 +474,28 @@ static bool simplifyPrefix(Interpreter &Interp, Pass &CPPass,
     // }
 
     errs() << "[PREFIX] checking if we can simplify " << *valueToReplace <<"\n";
+
     Type *ty = valueToReplace->getType();
     auto &values = kv.second;
     AbsGenericValue val = constantJoin(ty, values);
     if (val.hasValue()) {
+      // HACK: avoid replacing LLVM values with integers that can
+      // look like addresses      
+      if (ty->isIntegerTy() && integerLooksAddress(val.getValue().IntVal)) {
+	errs() << "[PREFIX] skipped " << *valueToReplace << " with "
+	       << val.getValue().IntVal << " because it might be an address.\n";
+	continue;
+      }
+
       if (Constant *C = convertToLLVMConstant(ty,val.getValue())) {
-	errs() << "[PREFIX] replaced " << *valueToReplace << " with "
-	       << *C << "\n";
+	errs() << "[PREFIX] replaced " << *valueToReplace
+	       << " with " << *C << "\n";
 	valueToReplace->replaceAllUsesWith(C);
 	Change = true;
       }
-    } 
-  }
+      
+    }
+  } // end for
   
   return Change;
 }
@@ -549,11 +617,25 @@ bool ConfigPrime::run(Module &M) {
       errs() << "Unknown error creating EE!\n";
     return false;
   }
+
+  std::set<std::string> do_not_specialize_fns{
+    "socket"
+      , "time"
+      // it is also possible to call
+      // getresuid(uid_t *ruid, uid_t *euid, uid_t *suid);   
+      , "getgid"
+      , "getegid"
+      , "getuid"
+      , "geteuid"
+  };
+  do_not_specialize_fns.insert(DoNotSpecialize.begin(), DoNotSpecialize.end());
+
+  Interpreter *Interp = static_cast<Interpreter *>(&*m_ee);    
+  Interp->setDoNotSpecializeFunctions(do_not_specialize_fns);
   
   runInterpreterAsMain(M, Res);
 
   /// -- Extract values from the execution
-  Interpreter *Interp = static_cast<Interpreter *>(&*m_ee);
   if (Interp->exitNonZero()) {
     errs() << "****************************************************************\n"; 
     errs() << "************************* WARNING ******************************\n";
@@ -624,11 +706,13 @@ bool ConfigPrime::runOnModule(Module &M) {
   #endif
 
   beforeInst.runOnModule(M);
-  bool Change = run(M);
+  /*bool Change=*/ run(M);
   afterInst.runOnModule(M);
-  // afterInst is supposed to undo the changes that beforeInst does so
-  // we don't update Change.
-  return Change;
+  // afterInst is supposed to be the inverse of beforeInst so we
+  // should return true only if run(M) returns true. However,
+  // afterInst is not exactly the inverse because it keeps some dead
+  // code. Thus, we return true conservatively.
+  return true;
 }
   
 void ConfigPrime::getAnalysisUsage(AnalysisUsage &AU) const {
@@ -641,7 +725,8 @@ void ConfigPrime::getAnalysisUsage(AnalysisUsage &AU) const {
 }
 
 PreConfigPrimeInst::PreConfigPrimeInst()
-  : m_stopConfigPrime(nullptr), m_optind(nullptr), m_firstUnknownIdx(nullptr) {
+  : m_stopConfigPrime(nullptr), m_markAsUnaccessible(nullptr),
+    m_optind(nullptr), m_firstUnknownIdx(nullptr) {
 }
 
 bool PreConfigPrimeInst::runOnModule(Module &M) {
@@ -669,6 +754,9 @@ bool PreConfigPrimeInst::runOnModule(Module &M) {
   
   Type *voidTy = Type::getVoidTy(ctx);
   m_stopConfigPrime = M.getOrInsertFunction(CONFIG_PRIME_STOP, voidTy);
+
+  Type *i8Ptr= Type::getInt8PtrTy(ctx);
+  m_markAsUnaccessible = M.getOrInsertFunction(CONFIG_PRIME_UNACCESSIBLE, i8Ptr);  
   
   bool change = false;
   for (auto &F: M) {
@@ -676,12 +764,16 @@ bool PreConfigPrimeInst::runOnModule(Module &M) {
   }
   return change;
 }
-				
-bool PreConfigPrimeInst::runOnFunction(Function &F) {
-  if (F.empty()) {
-    return false;
-  }
 
+/* BEFORE
+   call get_opt(...);
+  AFTER
+   if (optind >= FirstUnknownIndex) {
+     config_prime.stop();
+   }
+   call get_opt(...);
+*/ 
+bool PreConfigPrimeInst::transformGetOptFn(Function &F) {
   SmallVector<CallBase*, 4> worklist;
   for (auto &B: F) {
     for (auto &I: B) {
@@ -711,16 +803,91 @@ bool PreConfigPrimeInst::runOnFunction(Function &F) {
     Builder.SetInsertPoint(ThenTerm);
     Builder.CreateCall(m_stopConfigPrime.getFunctionType(),
 		       m_stopConfigPrime.getCallee(), {});
-    // BEFORE
-    //  call get_opt(...);
-    // AFTER
-    //  if (optind >= FirstUnknownIndex) {
-    //   config_prime.stop();
-    //  }
-    //  call get_opt(...);
-    // 
   }
   return change;
+}
+
+/* BEFORE
+  bb:
+   Head
+   %s = load i8*, i8** @optarg
+   Tail
+  AFTER
+  bb:
+   Head
+   if (optind >= FirstUnknownIndex) 
+     ThenBlock
+   else
+     ElseBlock
+   %s = load i8 ... <- remove
+   Tail' 
+
+  ThenBlock:
+    %s1 = config_prime.mark_as_unaccessible();;
+    goto ...
+  ElseBlock:
+    %s2 = load i8*, i8** @optarg
+    goto ... 
+  Tail':
+    %s = phi (s1, ThenBlock) (s2 ElseBlock)
+*/ 
+bool PreConfigPrimeInst::transformOptArgLoad(Function &F) {
+  SmallVector<LoadInst*, 4> worklist;
+  for (auto &B: F) {
+    for (auto &I: B) {
+      if (LoadInst *LI = dyn_cast<LoadInst>(&I)) {
+	if (GlobalVariable *GV = dyn_cast<GlobalVariable>(LI->getPointerOperand())) {
+	  if (GV->getName() == "optarg") {
+	    worklist.push_back(LI);
+	  }
+	}
+      }
+    }
+  }
+
+  bool change = !worklist.empty();
+  LLVMContext &ctx = F.getParent()->getContext();
+  IRBuilder<> Builder(ctx);
+  while (!worklist.empty()) {
+    LoadInst *LI = worklist.back();
+    worklist.pop_back();
+    Builder.SetInsertPoint(LI);
+    Value *optInvDeref = Builder.CreateLoad(m_firstUnknownIdx->getType(), m_optind);
+    Value *Cond = Builder.CreateICmpSGE(optInvDeref, m_firstUnknownIdx);
+    Instruction *ThenTerm = nullptr;
+    Instruction *ElseTerm = nullptr;
+    SplitBlockAndInsertIfThenElse(Cond, LI, &ThenTerm, &ElseTerm);
+    BasicBlock *ThenBlock = ThenTerm->getParent();
+    BasicBlock *ElseBlock = ElseTerm->getParent();
+    BasicBlock *MergeBlock = LI->getParent();
+
+    Builder.SetInsertPoint(ThenTerm);
+    Instruction *ThenNewLI =  cast<Instruction>(Builder.CreateBitCast(
+				 Builder.CreateCall(m_markAsUnaccessible.getFunctionType(),
+						    m_markAsUnaccessible.getCallee(), {}),
+				 LI->getType()));
+
+    // clone the load instruction and insert it before ElseTerm
+    Instruction *ElseNewLI = LI->clone();
+    ElseBlock->getInstList().insert(ElseTerm->getIterator(), ElseNewLI);
+
+    // Replace LI with a PHI node 
+    Builder.SetInsertPoint(LI);
+    PHINode *NewLI = Builder.CreatePHI(LI->getType(), 2, LI->getName());
+    NewLI->setDebugLoc(LI->getDebugLoc());
+    NewLI->addIncoming(ThenNewLI, ThenBlock);
+    NewLI->addIncoming(ElseNewLI, ElseBlock);
+    LI->replaceAllUsesWith(NewLI);
+    LI->eraseFromParent();
+  }
+  return change;
+}
+  
+bool PreConfigPrimeInst::runOnFunction(Function &F) {
+  if (F.empty()) {
+    return false;
+  }
+  return transformGetOptFn(F) && transformOptArgLoad(F);
 }
   
 PostConfigPrimeInst::PostConfigPrimeInst() {}
@@ -731,11 +898,8 @@ bool PostConfigPrimeInst::runOnModule(Module &M) {
   }
   return false;
 }
-  
-bool PostConfigPrimeInst::runOnFunction(Function &F) {
-  if (F.empty()) {
-    return false;
-  }
+
+void PostConfigPrimeInst::undoGetOptFnTransform(Function &F) {
   SmallVector<CallBase*,4> toRemove;
   for (auto &B: F) {
     for (auto &I: B) {
@@ -765,6 +929,97 @@ bool PostConfigPrimeInst::runOnFunction(Function &F) {
       B->eraseFromParent();
     }
   }
+}
+
+void PostConfigPrimeInst::undoOptArgLoadTransform(Function &F) {
+  SmallVector<CallBase*,4> toRemove;
+  for (auto &B: F) {
+    for (auto &I: B) {
+      if (CallBase *CB = dyn_cast<CallBase>(&I)) {
+	if (Function *calleeF = CB->getCalledFunction()) {
+	  if (calleeF->getName() == CONFIG_PRIME_UNACCESSIBLE) {
+	    toRemove.push_back(CB);
+	  }
+	}
+      }
+    }
+  }
+  LLVMContext &ctx = F.getParent()->getContext();
+  /*BEFORE
+    54:                                               ; preds = %52
+     %55 = load i32, i32* @optind, !dbg !10672
+     %56 = icmp sge i32 %55, 2, !dbg !10672
+     br i1 %56, label %57, label %59, !dbg !10672
+    57:                                               ; preds = %54
+     %58 = call i8* @occam.config_prime.unaccessible(), !dbg !10672
+     br label %61, !dbg !10672
+    59:                                               ; preds = %54
+     %60 = load i8*, i8** @optarg, align 8, !dbg !10672, !tbaa !2038
+     br label %61, !dbg !10672
+    61:                                               ; preds = %59, %57
+     %62 = phi i8* [ %58, %57 ], [ %60, %59 ], !dbg !10672
+
+   AFTER
+    54:                                               ; preds = %52
+     %55 = load i32, i32* @optind, !dbg !10672   // to be removed by DCE
+     %56 = icmp sge i32 %55, 2, !dbg !10672      // to be removed by DCE
+     br label %59, !dbg !10672
+    59:                                               ; preds = %54
+     %60 = load i8*, i8** @optarg, align 8, !dbg !10672, !tbaa !2038
+     br label %61, !dbg !10672
+    61:                                               ; preds = %59
+     // replaced all uses of %62 with %60
+  */
+
+  
+  // Remove the whole basic block 
+  while (!toRemove.empty()) {
+    CallBase *CB = toRemove.back();
+    toRemove.pop_back();
+    BasicBlock *B = CB->getParent();
+    BasicBlock *Pred = B->getUniquePredecessor();
+    BasicBlock *Succ = B->getUniqueSuccessor();
+    if (Pred && Succ) {
+      if (BranchInst *BI = dyn_cast<BranchInst>(Pred->getTerminator())) {
+	// Assume the branch is conditional because we put it there
+	BranchInst *NewBI = BranchInst::Create((BI->getSuccessor(0) == B) ?
+					       BI->getSuccessor(1):
+					       BI->getSuccessor(0), BI);
+	BI->replaceAllUsesWith(NewBI);
+	BI->eraseFromParent();
+      }
+
+      // Assume we added this PHI node
+      if (PHINode *PHI = dyn_cast<PHINode>(&(Succ->getInstList().front()))) {
+	Value *NewV = (PHI->getIncomingBlock(0) == B ?
+		       PHI->getIncomingValue(1) :
+		       PHI->getIncomingValue(0));
+	// It shouldn't fail
+	LoadInst *OrigLI = cast<LoadInst>(NewV);
+	OrigLI->setName(PHI->getName());
+	OrigLI->setDebugLoc(PHI->getDebugLoc());
+	PHI->replaceAllUsesWith(OrigLI);
+	PHI->eraseFromParent();
+      } else {
+	// this shouldn't reachable
+      }
+      
+      // remove all instructions in B and add "unreachable" as terminator
+      previrt::transforms::removeBlock(B, ctx);
+      // unlink B and free B
+      //B->eraseFromParent();
+    } else {
+      // this shouldn't be reachable
+    }
+  }
+}
+
+bool PostConfigPrimeInst::runOnFunction(Function &F) {
+  if (F.empty()) {
+    return false;
+  }
+  undoGetOptFnTransform(F);
+  undoOptArgLoadTransform(F);
 
   // return true only if there is a change wrt the code *before*
   // PreConfigPrimeInst was run.

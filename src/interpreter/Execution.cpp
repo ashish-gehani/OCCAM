@@ -35,7 +35,8 @@
 //#define INTERACTIVE
 #ifdef INTERACTIVE
 #include <stdio.h>
-#endif 
+#endif
+
 using namespace llvm;
 
 namespace previrt {
@@ -46,20 +47,12 @@ llvm::errs() << "ERROR: "
 
 // defined in ConfigPrime.cpp
 extern StringRef CONFIG_PRIME_STOP;
-
+extern StringRef CONFIG_PRIME_UNACCESSIBLE;
 
 #define DEBUG_PTR_PROVENANCE
 //===----------------------------------------------------------------------===//
 //                     Memory management helpers
 //===----------------------------------------------------------------------===//
-
-MemoryHolder::~MemoryHolder() {
-  // FIXME: memory leaks
-  // for (void *p: m_owned_memory) {
-  //   free(p);
-  // }
-}
-
 bool MemoryHolder::trackMemory(void *mem) const {
   intptr_t addr = intptr_t (mem);
   auto it = m_mem_map.lower_bound (addr+1);
@@ -80,6 +73,10 @@ void MemoryHolder::add(void *mem, unsigned size) {
   if (trackMemory(mem)) return;
   intptr_t addr = intptr_t(mem);
   m_mem_map.insert({addr, addr + size});
+  
+  if (m_smallest_addr == 0 || addr < m_smallest_addr) {
+    m_smallest_addr = addr;
+  } 
 }
 
 void MemoryHolder::addWithOwnershipTransfer(void *mem, unsigned size) {
@@ -2004,7 +2001,21 @@ void Interpreter::visitCallSite(CallSite CS) {
       return;
     }
     
+    if (F->getName() == CONFIG_PRIME_UNACCESSIBLE) {
+      LOG << "Marking as unaccessible the return value of " << *CS.getInstruction() << "\n";
+      SetValue(CS.getInstruction(), llvm::None, SF);
+      return;
+    }
 
+    // HACK: there are some functions whose return values are of
+    // integer type but are not reusable across executions.
+    if (!(CS.getInstruction()->getType()->isVoidTy()) &&
+    	DoNotSpecializeFuncs.count(F->getName().str()) > 0) {
+      LOG << "Marking as unaccessible the return value of " << *CS.getInstruction() << "\n";
+      SetValue(CS.getInstruction(), llvm::None, SF);
+      return;
+    }
+    
     if (isMallocLikeFn(*F)) {
       visitAllocFnInst(CS);
       return;
@@ -2193,6 +2204,7 @@ void Interpreter::visitCallSite(CallSite CS) {
     errs() << "INTERPRETER STOPPED: cannot resolve indirect call.\n";
     StopExecution = true;
   } else {
+    // This call can also set StopExecution to true
     callFunction((Function*)GVTOP(SRC.getValue()), ArgVals,
 		 CS.getInstruction());
   }
@@ -3242,8 +3254,8 @@ void Interpreter::visitInsertValueInst(InsertValueInst &I) {
 //===----------------------------------------------------------------------===//
 // callFunction - Execute the specified function...
 //
-  void Interpreter::callFunction(Function *F, ArrayRef<AbsGenericValue> ArgVals,
-                                Instruction *CS) {
+void Interpreter::callFunction(Function *F, ArrayRef<AbsGenericValue> ArgVals,
+			       Instruction *CS) {
   assert((ECStack.empty() || !ECStack.back().Caller.getInstruction() ||
           ECStack.back().Caller.arg_size() == ArgVals.size()) &&
          "Incorrect number of arguments passed into function call!");
@@ -3254,6 +3266,8 @@ void Interpreter::visitInsertValueInst(InsertValueInst &I) {
 
   // Special handling for external functions.
   if (F->isDeclaration()) {
+    // As a side-effect, it sets StopExecution to true if the
+    // interpreter should be stopped here.
     AbsGenericValue Result = callExternalFunction (CS, F, ArgVals);
     #ifdef DEBUG_PTR_PROVENANCE
     if (CS->getType()->isPointerTy()) {
