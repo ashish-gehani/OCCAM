@@ -5,10 +5,10 @@ export DEBIAN_FRONTEND=noninteractive
 
 # Install GLLVM / OCCAM dependencies
 sudo apt-get update
-sudo apt-get install -y clang-10 clang-format-10 cmake git golang-go
-sudo apt-get install -y libboost-dev libgmp-dev libprotobuf-dev llvm-10 
-sudo apt-get install -y protobuf-compiler python3-pip python-protobuf
-sudo apt-get install -y software-properties-common wget
+sudo -E apt-get install -y clang-10 clang-format-10 cmake git golang-go
+sudo -E apt-get install -y libboost-dev libgmp-dev libprotobuf-dev llvm-10 
+sudo -E apt-get install -y protobuf-compiler python3-pip python-protobuf
+sudo -E apt-get install -y software-properties-common wget
 pip3 install setuptools --upgrade
 pip3 install wheel
 pip3 install protobuf
