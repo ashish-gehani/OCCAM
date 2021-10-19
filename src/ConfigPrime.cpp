@@ -28,8 +28,9 @@
 using namespace llvm;
 
 namespace previrt {
-unsigned FirstUnknownIndex;
-unsigned UnknownArgs;
+unsigned CP_FirstUnknownIndex;
+unsigned CP_UnknownArgs;
+bool CP_SpecOnlyGlobals;
 } //end namespace previrt
 
 static cl::opt<std::string> InputFile("Pconfig-prime-file", cl::Hidden,
@@ -44,14 +45,14 @@ InputArgv("Pconfig-prime-input-arg",
 static cl::opt<unsigned, true>
 XFirstUnknownIndex("Pconfig-prime-index-first-unknown-arg",
 	 cl::Hidden,
-	 cl::location(previrt::FirstUnknownIndex),
+	 cl::location(previrt::CP_FirstUnknownIndex),
 	 cl::init(0), 
 	 cl::desc("Specify the index of the first unknown parameter starting at 1"));
 
 static cl::opt<unsigned, true>
 XUnknownArgs("Pconfig-prime-unknown-args",
 	 cl::Hidden,
-	 cl::location(previrt::UnknownArgs),	     
+	 cl::location(previrt::CP_UnknownArgs),	     
 	 cl::init(0),
 	 cl::desc("Specify the number of unknown parameters"));
 
@@ -59,6 +60,13 @@ static cl::list<std::string>
 DoNotSpecialize("Pconfig-prime-do-not-specialize",
   cl::Hidden,
   cl::desc("Function calls whose returned values should not be used for specialization"));
+
+static cl::opt<bool, true>
+SpecOnlyGlobals("Pconfig-prime-specialize-only-globals",
+	 cl::Hidden,
+	 cl::location(previrt::CP_SpecOnlyGlobals),
+	 cl::init(false), 
+	 cl::desc("Specialize if the constant is the value of a global variable"));
 
 namespace previrt {
 
@@ -297,7 +305,7 @@ void ConfigPrime::runInterpreterAsMain(Module &M, APInt &Res) {
     mainArgV.push_back(a);
   }
   
-  unsigned argc = mainArgV.size() + UnknownArgs;
+  unsigned argc = mainArgV.size() + CP_UnknownArgs;
   std::vector<std::string> envp; /* unused */
   ArgvArray CArgv, CEnv; // they need to be alive while m_ee may use them
   std::vector<GenericValue> mainArgVGV =
@@ -448,18 +456,31 @@ static bool simplifyPrefix(Interpreter &Interp, Pass &CPPass,
   // CallGraph &cg = CPPass.getAnalysis<CallGraphWrapperPass>().getCallGraph();
   // markRecursiveFunctions(cg, recursiveFunctions);
 
+  auto shouldBeSpec = [](Value *v) -> bool {
+    if (!CP_SpecOnlyGlobals) {
+      return true;
+    } else {
+      return isa<GlobalVariable>(v);
+    }
+  };
+    
   bool Change = false;
   for(auto &kv: replaceMap) {
     Instruction *I = kv.first;
     Value * valueToReplace = nullptr;
-    
+
+    // We only look at memory reads and writes
     if (LoadInst *LI = dyn_cast<LoadInst>(I)) {
-      valueToReplace = LI;
+      if (shouldBeSpec(LI->getPointerOperand())) {
+	valueToReplace = LI;
+      }
     } else if (StoreInst *SI = dyn_cast<StoreInst>(I)) {
-      valueToReplace = SI->getValueOperand();
-      if (isa<Constant>(valueToReplace)) {
+      if (shouldBeSpec(SI->getPointerOperand())) {
+	valueToReplace = SI->getValueOperand();
+      }
+      if (valueToReplace && isa<Constant>(valueToReplace)) {
 	// already a constant so nothing to do
-	continue;
+	valueToReplace = nullptr;
       }
     }
     
@@ -747,7 +768,7 @@ bool PreConfigPrimeInst::runOnModule(Module &M) {
   // m_optind should be i32*
   if (IntegerType *iTy =
       dyn_cast<IntegerType>(cast<PointerType>(m_optind->getType())->getElementType())) {
-    m_firstUnknownIdx = ConstantInt::getSigned(iTy, FirstUnknownIndex);
+    m_firstUnknownIdx = ConstantInt::getSigned(iTy, CP_FirstUnknownIndex);
   } else {
     return false;
   }
@@ -768,7 +789,7 @@ bool PreConfigPrimeInst::runOnModule(Module &M) {
 /* BEFORE
    call get_opt(...);
   AFTER
-   if (optind >= FirstUnknownIndex) {
+   if (optind >= CP_FirstUnknownIndex) {
      config_prime.stop();
    }
    call get_opt(...);
@@ -815,7 +836,7 @@ bool PreConfigPrimeInst::transformGetOptFn(Function &F) {
   AFTER
   bb:
    Head
-   if (optind >= FirstUnknownIndex) 
+   if (optind >= CP_FirstUnknownIndex) 
      ThenBlock
    else
      ElseBlock

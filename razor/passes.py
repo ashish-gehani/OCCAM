@@ -415,7 +415,8 @@ def specialize_program_args(input_file, output_file, \
         os.unlink(arg_file)
 
 def config_prime(input_file, output_file, \
-                 index_first_dynamic_arg, num_dynamic_args):
+                 index_first_dynamic_arg, num_dynamic_args, \
+                 spec_only_globals):
     """
     Execute the program until a branch condition is unknown.
     index_first_dynamic_arg is a number starting at 1.
@@ -433,7 +434,11 @@ def config_prime(input_file, output_file, \
     #     index += 1
     args.append('-Pconfig-prime-index-first-unknown-arg={0}'.format(index_first_dynamic_arg))
     args.append('-Pconfig-prime-unknown-args={0}'.format(num_dynamic_args))
-
+    if spec_only_globals:
+        args.append('-Pconfig-prime-specialize-only-globals=true')
+    else:
+        args.append('-Pconfig-prime-specialize-only-globals=false')
+        
     ###----------------------------------------------------------------###
     ## https://code.woboq.org/userspace/glibc/posix/getopt.c.html#58
     ###----------------------------------------------------------------###    
