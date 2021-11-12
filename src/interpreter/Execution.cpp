@@ -1717,7 +1717,7 @@ void Interpreter::visitAllocaInst(AllocaInst &I) {
 #ifndef TRACK_ONLY_UNACCESSIBLE_MEM    
   ECStack.back().Allocas.addWithOwnershipTransfer(Memory, MemToAlloc);
   memlog("Allocated %d bytes: [%#lx,%#lx]\n",
-	 MemToAlloc, intptr_t(Memory), intptr_t(Addr)+MemToAlloc);     
+	 MemToAlloc, intptr_t(Memory), intptr_t(Memory)+MemToAlloc);     
 #endif   
   LOG << "Allocated stack Type: " << *Ty << " (" << TypeSize << " bytes) x " 
       << NumElements << " (Total: " << MemToAlloc << ") at "
