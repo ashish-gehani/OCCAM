@@ -27,7 +27,7 @@ CLAM_LIBS= ${CLAM_INSTALL_DIR}/lib/libClamAnalysis.a  \
 	${CLAM_INSTALL_DIR}/lib/libSeaDsaAnalysis.a 
 LLVM_LIBRARIES = -L$(LLVM_LIB_DIR) $(LLVM_LIBS)
 SYSTEM_LIBS = $(shell ${LLVM_CFG} --system-libs)
-OTHER_LIBS = ${GMP_LIB_DIR} -lgmp
+OTHER_LIBS = -lgmp
 
 OBJECTS = $(OCCAM_HOME)/src/transforms/Crab.o $(OCCAM_HOME)/src/tools/crabopt.o
 
@@ -62,7 +62,7 @@ else
 endif
 
 ${EXECUTABLE}: ${OBJECTS}
-	$(CXX) ${CXX_FLAGS} ${OBJECTS} ${CLAM_LIBS} ${LLVM_LIBRARIES} ${SYSTEM_LIBS} ${OTHER_LIBS} -o ${EXECUTABLE}
+	$(CXX) ${CXX_FLAGS} ${OBJECTS} ${CLAM_LIBS} ${LLVM_LIBRARIES} ${LD_FLAGS}  ${SYSTEM_LIBS} ${OTHER_LIBS} -o ${EXECUTABLE}
 
 install:
 	$(INSTALL) -m 775 crabopt $(INSTALL_BINDIR)
