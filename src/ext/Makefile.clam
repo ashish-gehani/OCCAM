@@ -26,16 +26,16 @@ CLAM_LIBS= ${CLAM_INSTALL_DIR}/lib/libClamAnalysis.a  \
 	${CLAM_INSTALL_DIR}/lib/libCrab.a  \
 	${CLAM_INSTALL_DIR}/lib/libSeaDsaAnalysis.a 
 LLVM_LIBRARIES = -L$(LLVM_LIB_DIR) $(LLVM_LIBS)
-#SYSTEM_LIBS = $(shell ${LLVM_CFG} --system-libs)
+SYSTEM_LIBS = $(shell ${LLVM_CFG} --system-libs)
 OTHER_LIBS = ${GMP_LIB_DIR} -lgmp
 
-OBJECTS = $(OCCAM_HOME)/src/transforms/Crab.o crabopt.o
+OBJECTS = $(OCCAM_HOME)/src/transforms/Crab.o $(OCCAM_HOME)/src/tools/crabopt.o
 
 all: ${OBJECTS} ${EXECUTABLE}
 
 $(OCCAM_HOME)/src/transforms/Crab.o: $(OCCAM_HOME)/src/transforms/Crab.cpp
 	$(CXX) ${CXX_FLAGS} $< -c -o $@
-crabopt.o: crabopt.cpp
+$(OCCAM_HOME)/src/tools/crabopt.o: $(OCCAM_HOME)/src/tools/crabopt.cpp
 	$(CXX) ${CXX_FLAGS} $< -c -o $@
 
 .PHONY: build_clam
