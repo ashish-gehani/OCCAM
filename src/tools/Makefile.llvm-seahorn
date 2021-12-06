@@ -34,6 +34,7 @@ LIBFLAGS_IPO = ${LIBFLAGS_INSTCOMB}
 LIBFLAGS = ${LOOPS_LIB} ${INSTCOMB_LIB} ${IPO_LIB} ${SEADSA_LIB}
 OTHERLIBS += -lpthread -lcurses -lz
 LD_FLAGS += -undefined suppress -flat_namespace
+CXX_FLAGS += -isysroot $(OSX_SYSROOT)
 else ifeq (FreeBSD, $(findstring FreeBSD, ${OS}))
 # FreeBSD
 IPO_LIB = ${IPO_LIBNAME}.so

@@ -26,8 +26,8 @@ CLAM_LIBS= ${CLAM_INSTALL_DIR}/lib/libClamAnalysis.a  \
 	${CLAM_INSTALL_DIR}/lib/libCrab.a  \
 	${CLAM_INSTALL_DIR}/lib/libSeaDsaAnalysis.a 
 LLVM_LIBRARIES = -L$(LLVM_LIB_DIR) $(LLVM_LIBS)
-SYSTEM_LIBS = $(shell ${LLVM_CFG} --system-libs)
-OTHER_LIBS = -lgmp
+#SYSTEM_LIBS = $(shell ${LLVM_CFG} --system-libs)
+OTHER_LIBS = ${GMP_LIB_DIR} -lgmp
 
 OBJECTS = $(OCCAM_HOME)/src/transforms/Crab.o crabopt.o
 
@@ -48,6 +48,7 @@ ifeq ($(wildcard ${CLAM_INSTALL_DIR}),)
 		-DCMAKE_BUILD_TYPE=${LLVM_BUILD_MODE} \
 		-DSEADSA_ROOT=${OCCAM_HOME}/src/analysis/sea-dsa \
 		-DCRAB_ROOT=${OCCAM_HOME}/src/analysis/crab \
+		-DCMAKE_OSX_SYSROOT=$(OSX_SYSROOT) \
 		-DCLAM_INCLUDE_TRANSFORMS=OFF \
 		-DCLAM_INCLUDE_SEAOPT=OFF \
 		-DCLAM_INCLUDE_POST_TRANSFORMS=ON \

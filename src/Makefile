@@ -16,9 +16,10 @@ ifeq (Darwin, $(findstring Darwin, ${OS}))
 #  DARWIN
 OCCAM_LIBRARY = ${LIBRARYNAME}.dylib
 LIBFLAGS = -dynamiclib
-OTHERLIBS = -lpthread -lprotobuf -lcurses  
+OTHERLIBS = -L/usr/local/lib -lprotobuf -lpthread -lcurses  
 LD_FLAGS += -undefined suppress -flat_namespace
 CXX_FLAGS += -DHAVE_FFI_FFI_H
+CXX_FLAGS += -isysroot $(OSX_SYSROOT)
 else ifeq (FreeBSD, $(findstring FreeBSD, ${OS}))
 # FreeBSD
 OCCAM_LIBRARY = ${LIBRARYNAME}.so
