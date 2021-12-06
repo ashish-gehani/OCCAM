@@ -20,6 +20,9 @@ OTHERLIBS = -L/usr/local/lib -lprotobuf -lpthread -lcurses
 LD_FLAGS += -undefined suppress -flat_namespace
 CXX_FLAGS += -DHAVE_FFI_FFI_H
 CXX_FLAGS += -isysroot $(OSX_SYSROOT)
+ifeq ($(PROCESSOR), arm64)
+CXX_FLAGS += -DDARWIN_USE_64_BIT_INODE
+endif 
 else ifeq (FreeBSD, $(findstring FreeBSD, ${OS}))
 # FreeBSD
 OCCAM_LIBRARY = ${LIBRARYNAME}.so
