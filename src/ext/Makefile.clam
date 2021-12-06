@@ -17,7 +17,7 @@ MKDIR = mkdir
 ### ================================================================== ###
 CXX_FLAGS += -fvisibility=hidden -fvisibility-inlines-hidden
 
-CLAM_SOURCE_DIR=${OCCAM_HOME}/src/analysis/clam
+CLAM_SOURCE_DIR=${OCCAM_HOME}/src/ext/clam
 CLAM_BUILD_DIR=${CLAM_SOURCE_DIR}/build
 CLAM_INSTALL_DIR=${CLAM_SOURCE_DIR}/install
 
@@ -46,8 +46,8 @@ ifeq ($(wildcard ${CLAM_INSTALL_DIR}),)
 	$(CMAKE) -DCMAKE_INSTALL_PREFIX=${CLAM_INSTALL_DIR}  \
 		-DLLVM_DIR=${LLVM_CFG} \
 		-DCMAKE_BUILD_TYPE=${LLVM_BUILD_MODE} \
-		-DSEADSA_ROOT=${OCCAM_HOME}/src/analysis/sea-dsa \
-		-DCRAB_ROOT=${OCCAM_HOME}/src/analysis/crab \
+		-DSEADSA_ROOT=${OCCAM_HOME}/src/ext/sea-dsa \
+		-DCRAB_ROOT=${OCCAM_HOME}/src/ext/crab \
 		-DCMAKE_OSX_SYSROOT=$(OSX_SYSROOT) \
 		-DCLAM_INCLUDE_TRANSFORMS=OFF \
 		-DCLAM_INCLUDE_SEAOPT=OFF \
