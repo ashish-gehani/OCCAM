@@ -1,15 +1,15 @@
-[submodule "src/analysis/sea-dsa"]
-	path = src/analysis/sea-dsa
+[submodule "src/ext/sea-dsa"]
+	path = src/ext/sea-dsa
 	url = https://github.com/seahorn/sea-dsa.git
 	branch = dev10
-[submodule "src/tools/llvm-seahorn"]
-	path = src/tools/llvm-seahorn
+[submodule "src/ext/llvm-seahorn"]
+	path = src/ext/llvm-seahorn
 	url = https://github.com/seahorn/llvm-seahorn.git
 	branch = dev10-seadsa
-[submodule "src/tools/clam"]
-	path = src/analysis/clam
+[submodule "src/ext/clam"]
+	path = src/ext/clam
 	url = https://github.com/seahorn/clam.git
 	branch = master
-[submodule "src/analysis/crab"]
-	path = src/analysis/crab
+[submodule "src/ext/crab"]
+	path = src/ext/crab
 	url = https://github.com/seahorn/crab.git

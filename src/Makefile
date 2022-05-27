@@ -16,9 +16,13 @@ ifeq (Darwin, $(findstring Darwin, ${OS}))
 #  DARWIN
 OCCAM_LIBRARY = ${LIBRARYNAME}.dylib
 LIBFLAGS = -dynamiclib
-OTHERLIBS = -lpthread -lprotobuf -lcurses  
+OTHERLIBS = -L/usr/local/lib -lprotobuf -lpthread -lcurses  
 LD_FLAGS += -undefined suppress -flat_namespace
 CXX_FLAGS += -DHAVE_FFI_FFI_H
+CXX_FLAGS += -isysroot $(OSX_SYSROOT)
+ifeq ($(PROCESSOR), arm64)
+CXX_FLAGS += -DDARWIN_USE_64_BIT_INODE
+endif 
 else ifeq (FreeBSD, $(findstring FreeBSD, ${OS}))
 # FreeBSD
 OCCAM_LIBRARY = ${LIBRARYNAME}.so
@@ -52,24 +56,24 @@ all: clam seadsa seaopt ${OCCAM_LIBRARY}
 # Create dynamic library containing all the seadsa stuff
 #===
 seadsa:
-	$(MAKE) -C analysis -f Makefile.sea-dsa all
-	$(MAKE) -C analysis -f Makefile.sea-dsa install INSTALL_DIR=${OCCAM_LIB}
+	$(MAKE) -C ext -f Makefile.sea-dsa all
+	$(MAKE) -C ext -f Makefile.sea-dsa install INSTALL_DIR=${OCCAM_LIB}
 #===
 # Create a library containing all the Crab stuff (Clam is the LLVM
 # wrapper for Crab), and a binary crabopt, a LLVM optimized based on
 # Crab invariants.
 #===
 clam:
-	$(MAKE) -C tools -f Makefile.clam build_clam
-	$(MAKE) -C tools -f Makefile.clam all
-	$(MAKE) -C tools -f Makefile.clam install INSTALL_BINDIR=${OCCAM_BIN} 
+	$(MAKE) -C ext -f Makefile.clam build_clam
+	$(MAKE) -C ext -f Makefile.clam all
+	$(MAKE) -C ext -f Makefile.clam install INSTALL_BINDIR=${OCCAM_BIN} 
 
 #===
 # Create a binary opt (similar to LLVM opt but with some tweaks)
 #===
 seaopt: seadsa
-	$(MAKE) -C tools -f Makefile.llvm-seahorn all INSTALL_LIBDIR=${OCCAM_LIB}
-	$(MAKE) -C tools -f Makefile.llvm-seahorn install \
+	$(MAKE) -C ext -f Makefile.llvm-seahorn all INSTALL_LIBDIR=${OCCAM_LIB}
+	$(MAKE) -C ext -f Makefile.llvm-seahorn install \
 		INSTALL_BINDIR=${OCCAM_BIN} INSTALL_LIBDIR=${OCCAM_LIB}
 
 #===
@@ -111,9 +115,9 @@ protoc: Previrt.proto
 
 clean: 
 	rm -rf ${OBJECTS} proto ${OCCAM_LIBRARY}
-	$(MAKE) -C analysis -f Makefile.sea-dsa clean
-	$(MAKE) -C tools -f Makefile.clam clean
-	$(MAKE) -C tools -f Makefile.llvm-seahorn clean
+	$(MAKE) -C ext -f Makefile.sea-dsa clean
+	$(MAKE) -C ext -f Makefile.clam clean
+	$(MAKE) -C ext -f Makefile.llvm-seahorn clean
 
 install: check-occam-lib ${OCCAM_LIBRARY}
 	$(INSTALL) -m 664 ${OCCAM_LIBRARY} $(OCCAM_LIB)

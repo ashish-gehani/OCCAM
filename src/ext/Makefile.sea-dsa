@@ -18,6 +18,7 @@ ifeq (Darwin, $(findstring Darwin, ${OS}))
 LIBRARY = ${LIBRARYNAME}.dylib
 LIBFLAGS = -dynamiclib
 LD_FLAGS += -undefined suppress -flat_namespace
+CXX_FLAGS += -isysroot $(OSX_SYSROOT)
 else ifeq (FreeBSD, $(findstring FreeBSD, ${OS}))
 # FreeBSD
 LIBRARY = ${LIBRARYNAME}.so

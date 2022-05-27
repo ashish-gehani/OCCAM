@@ -465,6 +465,11 @@ callExternalFunction(Instruction *CI, Function *F, ArrayRef<AbsGenericValue> AAr
     // in a separate archive file that the dynamic linker can't
     // see. For more info, search for 'libc_nonshared.a' on Google, or
     // read http://llvm.org/PR274.
+    
+    // With macOS >= Big Sur and Apple M1 stat64, lstat64, and fstat64
+    // are not available anymore because they are equivalent to
+    // non-64-suffixed versions.
+    
     if (F->getName().equals("stat")) {
       RawFn = (RawFunc)(intptr_t) &stat;
     } else if (F->getName().equals("lstat")) {
@@ -472,11 +477,23 @@ callExternalFunction(Instruction *CI, Function *F, ArrayRef<AbsGenericValue> AAr
     } else if (F->getName().equals("fstat")) {
       RawFn = (RawFunc)(intptr_t) &fstat;
     } else if (F->getName().equals("stat64")) {
+#ifdef DARWIN_USE_64_BIT_INODE
+      RawFn = (RawFunc)(intptr_t) &stat;
+#else      
       RawFn = (RawFunc)(intptr_t) &stat64;
+#endif       
     } else if (F->getName().equals("lstat64")) {
+#ifdef DARWIN_USE_64_BIT_INODE
+      RawFn = (RawFunc)(intptr_t) &lstat;
+#else      
       RawFn = (RawFunc)(intptr_t) &lstat64;
+#endif      
     } else if (F->getName().equals("fstat")) {
+#ifdef DARWIN_USE_64_BIT_INODE
+      RawFn = (RawFunc)(intptr_t) &fstat;
+#else      
       RawFn = (RawFunc)(intptr_t) &fstat64;
+#endif       
     }
 
     if (!RawFn) {
